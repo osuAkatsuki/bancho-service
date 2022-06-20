@@ -115,7 +115,8 @@ if __name__ == "__main__":
         # Empty redis cache
         try:
             glob.redis.set("ripple:online_users", 0)
-            glob.redis.eval("return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, "peppy:*")
+            glob.redis.delete(*glob.redis.keys("peppy:*"))
+            glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
         except redis.exceptions.ResponseError:
             # Script returns error if there are no keys starting with peppy:*
             pass

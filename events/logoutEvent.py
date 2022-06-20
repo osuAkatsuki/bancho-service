@@ -50,6 +50,9 @@ def handle(userToken, _=None, deleteToken=True):
                 "userID": userToken.userID,
                 "newUsername": newUsername.decode("utf-8")
             }))
+            
+        # Expire token in redis
+        glob.redis.expire(f"akatsuki:sessions:{userToken.token}", 60 * 60) # expire in 1 hour (60 minutes)
 
         # Console output
         log(f'{userToken.username} ({userToken.userID}) logged out. '

@@ -356,6 +356,9 @@ def handle(
                     f'{glob.banchoConf.config["menuIcon"]}/u/{userID}'
                 )
             )
+            
+        # Save token in redis
+        glob.redis.set(f"akatsuki:session:{responseTokenString}", userID)
 
         # Send online users' panels
         with glob.tokens:
