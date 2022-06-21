@@ -358,7 +358,7 @@ def handle(
             )
             
         # Save token in redis
-        glob.redis.set(f"akatsuki:session:{responseTokenString}", userID)
+        glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
 
         # Send online users' panels
         with glob.tokens:
