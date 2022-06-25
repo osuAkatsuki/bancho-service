@@ -283,7 +283,9 @@ def handle(
         # Get supporter/GMT
         userGMT = responseToken.staff
         userTournament = responseToken.privileges & privileges.USER_TOURNAMENT_STAFF > 0
-        userSupporter = not restricted
+
+        #userSupporter = not restricted
+        userSupporter = True
 
         # Server restarting check
         if glob.restarting:
