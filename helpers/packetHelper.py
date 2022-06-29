@@ -1,10 +1,10 @@
 import struct
 
+# NOTE: removed cython 2022-06-26
+
 from constants import dataTypes
 
-# pp -m timeit -s 'from helpers.packetHelper import readPacketData,buildPacket;from constants import dataTypes' 'readPacketData(buildPacket(11,((1001,dataTypes.UINT32),(0,dataTypes.BYTE),("",dataTypes.STRING),("sdfudasgfuidasjfuisadf",dataTypes.STRING),(128,dataTypes.SINT32),(0,dataTypes.BYTE),(1234131,dataTypes.SINT32),(2347123842,dataTypes.UINT64),(1.0,dataTypes.FFLOAT),(3223,dataTypes.UINT32),(23452345235,dataTypes.UINT64),(69,dataTypes.UINT32),(31124,dataTypes.UINT16))),(("userID",dataTypes.UINT32),("actionID",dataTypes.BYTE),("actionText",dataTypes.STRING),("actionMd5",dataTypes.STRING),("actionMods",dataTypes.SINT32),("gameMode",dataTypes.BYTE),("beatmapID",dataTypes.SINT32),("rankedScore",dataTypes.UINT64),("accuracy",dataTypes.FFLOAT),("playcount",dataTypes.UINT32),("totalScore",dataTypes.UINT64),("gameRank",dataTypes.UINT32),("pp",dataTypes.UINT16)))'
-
-cpdef bytearray uleb128Encode(int num):
+def uleb128Encode(num: int) ->  bytearray:
     """
     Encode an int to uleb128
 
@@ -14,8 +14,8 @@ cpdef bytearray uleb128Encode(int num):
     if num == 0:
         return bytearray(b"\x00")
 
-    cdef bytearray arr = bytearray()
-    cdef int length = 0
+    arr = bytearray()
+    length = 0
 
     while num > 0:
         arr.append(num & 0b01111111)
@@ -26,16 +26,15 @@ cpdef bytearray uleb128Encode(int num):
 
     return arr
 
-cpdef list uleb128Decode(bytes num):
+def uleb128Decode(num: bytes) -> list:
     """
     Decode a uleb128 to int
 
     :param num: encoded uleb128 int
     :return: (total, length)
     """
-    cdef int shift = 0
-    cdef list arr = [0,0] # total, length
-    cdef int b
+    shift = 0
+    arr = [0,0] # total, length
 
     while True:
         b = num[arr[1]]
@@ -49,7 +48,6 @@ cpdef list uleb128Decode(bytes num):
 
     return arr
 
-cdef dict _default_packs
 _default_packs = {
     dataTypes.UINT16: struct.Struct('<H'),
     dataTypes.SINT16: struct.Struct('<h'),
@@ -62,7 +60,7 @@ _default_packs = {
     dataTypes.BYTE:   struct.Struct('<B')
 }
 
-cpdef unpackData(bytes data, int dataType):
+def unpackData(data: bytes,  dataType: int):
     """
     Unpacks a single section of a packet.
 
@@ -72,7 +70,7 @@ cpdef unpackData(bytes data, int dataType):
     """
     return _default_packs[dataType].unpack(data)[0]
 
-cpdef bytes packData(__data, int dataType):
+def packData(__data, dataType: int)->bytes:
     """
     Packs a single section of a packet.
 
@@ -83,7 +81,7 @@ cpdef bytes packData(__data, int dataType):
     if dataType == dataTypes.BBYTES: # current mood
         return __data
 
-    cdef bytearray data = bytearray() # data to return
+    data = bytearray() # data to return
 
     # Get right pack Type
     if dataType == dataTypes.INT_LIST:
@@ -110,7 +108,7 @@ cpdef bytes packData(__data, int dataType):
 PKT_HDR_START = struct.Struct('<Hx')
 PKT_HDR_END = struct.Struct('<I')
 
-cpdef bytes buildPacket(int __packet, tuple __packetData = ()):
+def  buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
     """
     Builds a packet
 
@@ -118,16 +116,15 @@ cpdef bytes buildPacket(int __packet, tuple __packetData = ()):
     :param __packetData: packet structure [[data, dataType], [data, dataType], ...]
     :return: packet bytes
     """
-    cpdef bytearray packetData = bytearray(PKT_HDR_START.pack(__packet))
+    packetData = bytearray(PKT_HDR_START.pack(__packet))
 
-    cdef tuple i
     for i in __packetData:
         packetData += packData(i[0], i[1])
 
     packetData[3:3] = PKT_HDR_END.pack(len(packetData) - 3)
     return bytes(packetData)
 
-cpdef readPacketData(bytes stream, tuple structure = (), bint hasFirstBytes = True):
+def readPacketData(stream:bytes,  structure:tuple = (), hasFirstBytes:bool = True):
     """
     Read packet data from `stream` according to `structure`
     :param stream: packet bytes
@@ -137,16 +134,12 @@ cpdef readPacketData(bytes stream, tuple structure = (), bint hasFirstBytes = Tr
     :return: {data, end}
     """
     # Read packet ID (first 2 bytes)
-    cdef dict data = {}
+    data = {}
 
     # Skip packet ID and packet length if needed
-    cdef int start, end
     start = end = 7 if hasFirstBytes else 0
 
     # Read packet
-    cdef int j, offs # lol imagine if we had a class.,.,,,.,,.
-    cdef tuple i
-
     for i in structure:
         start = end
         if i[1] == dataTypes.INT_LIST:

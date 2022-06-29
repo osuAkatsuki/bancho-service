@@ -8,7 +8,6 @@ redistest.py
 *.c
 *.so
 .pyenv
-common
 gitold/
 build.date
 .DS_Store

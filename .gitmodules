@@ -1,6 +1,6 @@
 [submodule "common"]
-    path = common
-    url = git@github.com:osuAkatsuki/akatsuki-common.git
+	path = common
+	url = git@github.com:osuAkatsuki/common.git
 [submodule "oppai-ng"]
 	path = oppai-ng
 	url = https://github.com/tsunyoku/oppai-ng
