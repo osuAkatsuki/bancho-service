@@ -105,6 +105,7 @@ class tokenList:
         # Return full list or None if not found
         if _all:
             return ret
+
     @overload
     def getTokenFromUsername(self, username: str, ignoreIRC: bool = ..., safe: bool = False, _all: Literal[False] = ...) -> Optional[osuToken.token]:
         ...
