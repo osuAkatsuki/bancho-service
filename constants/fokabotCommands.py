@@ -296,9 +296,6 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
     # Set allowed to 0
     userUtils.ban(targetID)
 
-    # Remove any delayed bans the user may have had applied to their account
-    userUtils.setDelayBan(targetID, False)
-
     # Send ban packet to the user if he's online
     if targetToken := glob.tokens.getTokenFromUserID(targetID):
         targetToken.enqueue(serverPackets.loginBanned)
@@ -376,9 +373,6 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
 
     # Put this user in restricted mode
     userUtils.restrict(targetID)
-
-    # Remove any delayed bans the user may have had applied to their account
-    userUtils.setDelayBan(targetID, False)
 
     # Send restricted mode packet to this user if he's online
     if targetToken := glob.tokens.getTokenFromUserID(targetID):
@@ -1282,9 +1276,6 @@ def freeze(fro: str, chan: str, message: list[str]) -> str:
     if not (target_id := userUtils.getID(target)):
         return "That user does not exist"
 
-    if userUtils.checkDelayBan(target_id):
-        return "This user is already in the cleaning queue."
-
     if userUtils.getFreezeTime(target_id):
         return "That user is already frozen."
 
@@ -1602,43 +1593,6 @@ def recalc(fro: str, chan: str, message: list[str]) -> str:
     subprocess.Popen(cmd)
 
     return f"Recalculating scores for https://akatsuki.pw/b/{beatmap_id}"
-
-
-@command(trigger="!clean", privs=privileges.ADMIN_CAKER, hidden=True)
-def cleanPendingBans(fro: str, chan: str, message: list[str]) -> str:
-    """Clean any pending ac bans."""
-    override = message and message[0] in {"1", "override"}
-
-    if not (
-        res := glob.db.fetchAll("SELECT id, username FROM users " "WHERE delay_ban = 1")
-    ):
-        return "The place is already sparkly clean!"
-
-    restricted = []
-
-    for row in res:
-        if not override and userUtils.getPlaytimeTotal(row["id"]) < (30 * 60):  # 30min
-            continue
-
-        userUtils.restrict(row["id"])  # Restrict the user.
-        userUtils.setDelayBan(row["id"], False)  # Remove user's delayban.
-        userUtils.appendNotes(
-            row["id"], f"[Anticheat] Contact cmyui#0425 for evidence."
-        )  # Append their note.
-        chat.sendMessage(
-            glob.BOT_NAME, "#admin", f'[Anticheat] Restricted: {row["username"]}.'
-        )
-        restricted.append(f'[{row["username"]}](https://akatsuki.pw/u/{row["id"]})')
-
-    if restricted:
-        log.ac(
-            f"{fro} performed a clean on the following users:\n"
-            + "\n".join(restricted),
-            "ac_general",
-        )
-
-    return f"{len(restricted)}/{len(res)} users cleaned."
-
 
 @command(trigger="!overwrite", hidden=True)
 def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
