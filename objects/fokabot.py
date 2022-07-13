@@ -3,6 +3,7 @@ import threading
 from queue import Queue
 from time import time
 from typing import Optional
+from typing import TypedDict
 
 from common.constants import actions
 from common.ripple import userUtils
@@ -42,7 +43,6 @@ def disconnect() -> None:
 #     # NOTE: this is not safe, will break references
 # 	reload(fokabotCommands)
 
-from typing import TypedDict
 
 
 class CommandResponse(TypedDict):

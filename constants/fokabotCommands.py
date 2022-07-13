@@ -1058,11 +1058,13 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if not (token := glob.tokens.getTokenFromUsername(fro)):
         return
 
-    table = (
-        "scores_relax"
-        if token.relax
-        else ("scores" if not token.autopilot else "scores_ap")
-    )
+    if token.autopilot:
+        table = "scores_ap"
+    elif token.relax:
+        table = "scores_relax"
+    else:
+        table = "scores"
+
 
     if not (
         data := glob.db.fetch(

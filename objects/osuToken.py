@@ -149,8 +149,8 @@ class token:
         self.actionMd5 = ""
         self.actionMods = 0
         self.gameMode = gameModes.STD
-        self.relax = 0
-        self.autopilot = 0
+        self.relax = False
+        self.autopilot = False
         self.beatmapID = 0
         self.rankedScore = 0
         self.accuracy = 0.0
@@ -547,11 +547,13 @@ class token:
 
         :return:
         """
-        relax_int = 0
+
         if self.relax:
             relax_int = 1
         elif self.autopilot:
             relax_int = 2
+        else:
+            relax_int = 0
 
         stats = userUtils.getUserStats(
             self.userID,

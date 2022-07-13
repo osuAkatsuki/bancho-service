@@ -1,4 +1,6 @@
 import struct
+from typing import Any, Mapping
+from typing import TypedDict
 
 # NOTE: removed cython 2022-06-26
 
@@ -26,7 +28,8 @@ def uleb128Encode(num: int) ->  bytearray:
 
     return arr
 
-def uleb128Decode(num: bytes) -> list:
+
+def uleb128Decode(num: bytes) -> list[int]:
     """
     Decode a uleb128 to int
 
@@ -47,6 +50,7 @@ def uleb128Decode(num: bytes) -> list:
         shift += 7
 
     return arr
+
 
 _default_packs = {
     dataTypes.UINT16: struct.Struct('<H'),
@@ -70,7 +74,7 @@ def unpackData(data: bytes,  dataType: int):
     """
     return _default_packs[dataType].unpack(data)[0]
 
-def packData(__data, dataType: int)->bytes:
+
     """
     Packs a single section of a packet.
 
@@ -124,7 +128,17 @@ def  buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
     packetData[3:3] = PKT_HDR_END.pack(len(packetData) - 3)
     return bytes(packetData)
 
-def readPacketData(stream:bytes,  structure:tuple = (), hasFirstBytes:bool = True):
+
+class PacketData(TypedDict):
+    data: Mapping[str, Any]
+    end: int
+
+
+def readPacketData(
+    stream: bytes,
+    structure: tuple = (),
+    hasFirstBytes: bool = True,
+) -> PacketData:
     """
     Read packet data from `stream` according to `structure`
     :param stream: packet bytes

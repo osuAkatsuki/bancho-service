@@ -2,9 +2,10 @@ from common.constants import actions, mods
 from common.ripple import userUtils
 from constants import clientPackets, serverPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Make sure we are not banned
     # if userUtils.isBanned(userID):
     # 	userToken.enqueue(serverPackets.loginBanned)
@@ -15,7 +16,7 @@ def handle(userToken, packetData):
     # 	userToken.checkRestricted(True)
 
     # Change action packet
-    packetData = clientPackets.userActionChange(packetData)
+    packetData = clientPackets.userActionChange(rawPacketData)
 
     """ If we are not in spectate status but we're spectating someone, stop spectating
     if userToken.spectating != 0 and userToken.actionID != actions.WATCHING and userToken.actionID != actions.IDLE and userToken.actionID != actions.AFK:
@@ -26,10 +27,11 @@ def handle(userToken, packetData):
         userToken.partMatch()
     """
 
-    relax_in_mods = packetData["actionMods"] & mods.RELAX != 0
-    autopilot_in_mods = packetData["actionMods"] & mods.RELAX2 != 0
+    relax_in_mods: bool = packetData["actionMods"] & mods.RELAX != 0
+    autopilot_in_mods: bool = packetData["actionMods"] & mods.RELAX2 != 0
 
-    # Update cached stats if relax status changed
+    # Update cached stats if relax/autopilot status changed
+
     if relax_in_mods != userToken.relax:
         userToken.relax = relax_in_mods
         userToken.updateCachedStats()
@@ -43,7 +45,10 @@ def handle(userToken, packetData):
         actions.PLAYING,
         actions.MULTIPLAYING,
     } or userToken.pp != userUtils.getPP(
-        userToken.userID, userToken.gameMode, userToken.relax
+        userToken.userID,
+        userToken.gameMode,
+        userToken.relax,
+        userToken.autopilot,
     ):
         userToken.updateCachedStats()
 
