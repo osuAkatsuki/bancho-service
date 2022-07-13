@@ -1,6 +1,9 @@
 from constants import clientPackets
 from helpers import chatHelper as chat
+from objects.osuToken import token
 
 
-def handle(userToken, packetData): # Channel join packet
-    chat.partChannel(token=userToken, channel=clientPackets.channelPart(packetData)["channel"])
+def handle(userToken: token, packetData: bytes):  # Channel join packet
+    chat.partChannel(
+        token=userToken, channel=clientPackets.channelPart(packetData)["channel"]
+    )

@@ -1,12 +1,13 @@
 from common.log import logUtils as log
 from constants import clientPackets, exceptions
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     try:
         # Start spectating packet
-        packetData = clientPackets.startSpectating(packetData)
+        packetData = clientPackets.startSpectating(rawPacketData)
 
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:

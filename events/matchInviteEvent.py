@@ -1,8 +1,9 @@
 from constants import clientPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Make sure we are in a match
     if userToken.matchID == -1:
         return
@@ -13,4 +14,6 @@ def handle(userToken, packetData):
 
     # Send invite
     with glob.matches.matches[userToken.matchID] as match:
-        match.invite(userToken.userID, clientPackets.matchInvite(packetData)["userID"])
+        match.invite(
+            userToken.userID, clientPackets.matchInvite(rawPacketData)["userID"]
+        )

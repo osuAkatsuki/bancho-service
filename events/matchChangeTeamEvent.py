@@ -1,7 +1,8 @@
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, _):
+def handle(userToken: token, _):
     # Make sure we are in a match
     if userToken.matchID == -1:
         return

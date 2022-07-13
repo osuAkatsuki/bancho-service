@@ -1,5 +1,6 @@
 from events import matchBeatmapEvent
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
-    matchBeatmapEvent.handle(userToken, packetData, True)
+def handle(userToken: token, rawPacketData: bytes):
+    matchBeatmapEvent.handle(userToken, rawPacketData, True)

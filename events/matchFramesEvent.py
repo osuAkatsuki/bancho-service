@@ -1,8 +1,9 @@
 from constants import clientPackets, serverPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Make sure we are in a match
     if userToken.matchID == -1:
         return
@@ -12,15 +13,18 @@ def handle(userToken, packetData):
         return
 
     # Parse the data
-    data = clientPackets.matchFrames(packetData)
+    packetData = clientPackets.matchFrames(rawPacketData)
 
     with glob.matches.matches[userToken.matchID] as match:
         # Change slot id in packetData
         slotID = match.getUserSlotID(userToken.userID)
+        assert slotID is not None
 
         # Update the score
-        match.updateScore(slotID, data["totalScore"])
-        match.updateHP(slotID, data["currentHp"])
+        match.updateScore(slotID, packetData["totalScore"])
+        match.updateHP(slotID, packetData["currentHp"])
 
         # Enqueue frames to who's playing
-        glob.streams.broadcast(match.playingStreamName, serverPackets.matchFrames(slotID, packetData))
+        glob.streams.broadcast(
+            match.playingStreamName, serverPackets.matchFrames(slotID, rawPacketData)
+        )

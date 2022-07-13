@@ -1,8 +1,9 @@
 from constants import clientPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Make sure we are in a match
     if userToken.matchID == -1:
         return
@@ -17,4 +18,4 @@ def handle(userToken, packetData):
             return
 
         # Transfer host
-        match.transferHost(clientPackets.transferHost(packetData)["slotID"])
+        match.transferHost(clientPackets.transferHost(rawPacketData)["slotID"])

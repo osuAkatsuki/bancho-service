@@ -1,22 +1,23 @@
 from common.log import logUtils as log
 from constants import clientPackets, serverPackets
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Read userIDs list
-    packetData = clientPackets.userStatsRequest(packetData)
+    packetData = clientPackets.userStatsRequest(rawPacketData)
 
     # Process lists with length <= 32
     if len(packetData) > 32:
         log.warning("Received userStatsRequest with length > 32.")
         return
 
-    for i in packetData["users"]:
-        log.debug(f"Sending stats for user {i}.")
+    for userID in packetData["users"]:
+        log.debug(f"Sending stats for user {userID}.")
 
         # Skip our stats
-        if i == userToken.userID:
+        if userID == userToken.userID:
             continue
 
         # Enqueue stats packets relative to this user
-        userToken.enqueue(serverPackets.userStats(i))
+        userToken.enqueue(serverPackets.userStats(userID))

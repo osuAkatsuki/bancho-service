@@ -1,10 +1,11 @@
 from constants import clientPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Read packet data. Same structure as changeMatchSettings
-    packetData = clientPackets.changeMatchSettings(packetData)
+    packetData = clientPackets.changeMatchSettings(rawPacketData)
 
     # Make sure the match exists
     if userToken.matchID not in glob.matches.matches:

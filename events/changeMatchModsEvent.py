@@ -1,11 +1,12 @@
 from common.constants import mods
 from constants import clientPackets, matchModModes
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Get packet data
-    packetData = clientPackets.changeMods(packetData)
+    packetData = clientPackets.changeMods(rawPacketData)
 
     # Make sure the match exists
     if userToken.matchID not in glob.matches.matches:
@@ -16,12 +17,12 @@ def handle(userToken, packetData):
         if match.matchModMode == matchModModes.FREE_MOD:
             if userToken.userID == match.hostUserID:
                 # Allow host to apply speed changing mods.
-                match.changeMods(packetData['mods'] & mods.SPEED_CHANGING)
+                match.changeMods(packetData["mods"] & mods.SPEED_CHANGING)
 
             # Set slot mods
             slotID = match.getUserSlotID(userToken.userID)
-            if slotID is not None: # Apply non-speed changing mods.
-                match.setSlotMods(slotID, packetData['mods'] & ~mods.SPEED_CHANGING)
+            if slotID is not None:  # Apply non-speed changing mods.
+                match.setSlotMods(slotID, packetData["mods"] & ~mods.SPEED_CHANGING)
         else:
             # Not freemod, set match mods
             match.changeMods(packetData["mods"])

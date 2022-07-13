@@ -1,10 +1,11 @@
 from common.log import logUtils as log
 from constants import clientPackets, serverPackets
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Read userIDs list
-    packetData = clientPackets.userPanelRequest(packetData)
+    packetData = clientPackets.userPanelRequest(rawPacketData)
 
     # Process lists with length <= 32
     if len(packetData) > 256:

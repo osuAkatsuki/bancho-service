@@ -1,11 +1,12 @@
 from common.constants import mods
 from constants import clientPackets, matchModModes, matchTeamTypes
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Read new settings
-    packetData = clientPackets.changeMatchSettings(packetData)
+    packetData = clientPackets.changeMatchSettings(rawPacketData)
 
     # Make sure the match exists
     if userToken.matchID not in glob.matches.matches:
@@ -38,11 +39,11 @@ def handle(userToken, packetData):
         match.matchModMode = packetData["freeMods"]
 
         if (
-            oldMods != match.mods or
-            oldBeatmapMD5 != match.beatmapMD5 or
-            oldScoringType != match.matchScoringType or
-            oldMatchTeamType != match.matchTeamType or
-            oldMatchModMode != match.matchModMode
+            oldMods != match.mods
+            or oldBeatmapMD5 != match.beatmapMD5
+            or oldScoringType != match.matchScoringType
+            or oldMatchTeamType != match.matchTeamType
+            or oldMatchModMode != match.matchModMode
         ):
             match.resetReady()
 
@@ -53,7 +54,7 @@ def handle(userToken, packetData):
                 # Move mods from host -> match.
                 is_host = lambda s: s.userID == match.hostUserID
                 for slot in filter(is_host, match.slots):
-                    match.mods = slot.mods # yoink
+                    match.mods = slot.mods  # yoink
                     break
             else:
                 # Central -> Freemods
