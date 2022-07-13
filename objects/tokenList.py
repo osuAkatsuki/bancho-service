@@ -1,7 +1,7 @@
 import threading
 import time
 from types import TracebackType
-from typing import Optional, Type
+from typing import Literal, Optional, overload
 
 import redis
 
@@ -23,11 +23,13 @@ class tokenList:
 
     def __enter__(self) -> 'tokenList':
         self._lock.acquire()
+        return self
 
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
+    def __exit__(self, exc_type: Optional[type[BaseException]],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
+                 traceback: Optional[TracebackType]) -> bool:
         self._lock.release()
+        return exc_value is not None
 
     def addToken(
         self, userID: int, ip: str = "", irc: bool = False,
@@ -72,7 +74,14 @@ class tokenList:
         if token in self.tokens:
             return self.tokens[token].userID
 
-    def getTokenFromUserID(self, userID, ignoreIRC=False, _all=False):
+    @overload
+    def getTokenFromUserID(self, userID: int, ignoreIRC: bool = ..., _all: Literal[False] = ...) -> Optional[osuToken.token]:
+        ...
+    @overload
+    def getTokenFromUserID(self, userID: int, ignoreIRC: bool = ..., _all: Literal[True] = ...) -> list[osuToken.token]:
+        ...
+
+    def getTokenFromUserID(self, userID: int, ignoreIRC: bool = False, _all: bool = False):
         """
         Get token from a user ID
 
@@ -96,8 +105,17 @@ class tokenList:
         # Return full list or None if not found
         if _all:
             return ret
+    @overload
+    def getTokenFromUsername(self, username: str, ignoreIRC: bool = ..., safe: bool = False, _all: Literal[False] = ...) -> Optional[osuToken.token]:
+        ...
+    @overload
+    def getTokenFromUsername(self, username: str, ignoreIRC: bool = ..., safe: bool = False, _all: Literal[True] = ...) -> list[osuToken.token]:
+        ...
 
-    def getTokenFromUsername(self, username, ignoreIRC=False, safe=False, _all=False):
+    def getTokenFromUsername(
+        self, username: str, ignoreIRC: bool = False,
+        safe: bool = False, _all: bool = False
+    ):
         """
         Get an osuToken object from an username
 
@@ -128,7 +146,7 @@ class tokenList:
         if _all:
             return ret
 
-    def deleteOldTokens(self, userID):
+    def deleteOldTokens(self, userID: int) -> None:
         """
         Delete old userID's tokens if found
 
@@ -146,7 +164,7 @@ class tokenList:
         for i in delete:
             logoutEvent.handle(i)
 
-    def multipleEnqueue(self, packet, who, but = False):
+    def multipleEnqueue(self, packet: bytes, who: list[int], but: bool = False) -> None:
         """
         Enqueue a packet to multiple users
 
@@ -165,7 +183,7 @@ class tokenList:
             if shouldEnqueue:
                 value.enqueue(packet)
 
-    def enqueueAll(self, packet):
+    def enqueueAll(self, packet: bytes) -> None:
         """
         Enqueue packet(s) to every connected user
 
@@ -176,7 +194,7 @@ class tokenList:
             value.enqueue(packet)
 
     @sentry.capture()
-    def usersTimeoutCheckLoop(self):
+    def usersTimeoutCheckLoop(self) -> None:
         """
         Start timed out users disconnect loop.
         This function will be called every `checkTime` seconds and so on, forever.
@@ -224,7 +242,7 @@ class tokenList:
             threading.Timer(100, self.usersTimeoutCheckLoop).start()
 
     @sentry.capture()
-    def spamProtectionResetLoop(self):
+    def spamProtectionResetLoop(self) -> None:
         """
         Start spam protection reset loop.
         Called every 10 seconds.
@@ -241,7 +259,7 @@ class tokenList:
             # Schedule a new check (endless loop)
             threading.Timer(10, self.spamProtectionResetLoop).start()
 
-    def deleteBanchoSessions(self):
+    def deleteBanchoSessions(self) -> None:
         """
         Remove all `peppy:sessions:*` redis keys.
         Call at bancho startup to delete old cached sessions
@@ -254,7 +272,7 @@ class tokenList:
         except redis.RedisError:
             pass
 
-    def tokenExists(self, username = "", userID = -1):
+    def tokenExists(self, username: Optional[str] = None, userID: Optional[int] = None) -> bool:
         """
         Check if a token exists
         Use username or userid, not both at the same time.
@@ -263,11 +281,9 @@ class tokenList:
         :param userID: Optional.
         :return: True if it exists, otherwise False
         """
-        if userID > -1:
-            getter = self.getTokenFromUserID
-            param = userID
+        if userID is not None:
+            return self.getTokenFromUserID(userID) is not None
+        elif username is not None:
+            return self.getTokenFromUsername(username) is not None
         else:
-            getter = self.getTokenFromUsername
-            param = username
-
-        return getter(param) is not None
+            raise RuntimeError("You must provide either a username or a userID")

@@ -1,4 +1,5 @@
 """Global objects and variables"""
+from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING
@@ -9,7 +10,8 @@ from common.web import schiavo
 from objects import channelList, matchList, streamList, tokenList
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from redis import Redis
+
     from common.db import dbConnector
 
 try:
@@ -23,8 +25,8 @@ except:
 DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
 application = None
-db: 'Optional[dbConnector.db]' = None
-redis = None
+db: dbConnector.db
+redis: Redis
 conf = None
 banchoConf = None
 tokens = tokenList.tokenList()

@@ -195,7 +195,7 @@ class match:
         self.sendUpdates()
 
     def setSlot(
-        self, slotID: int, status: Optional[str] = None,
+        self, slotID: int, status: Optional[int] = None,
         team: Optional[int] = None, user: Optional[str] = "",
         mods: Optional[int] = None, loaded: Optional[bool] = None,
         skip: Optional[bool] = None, complete: Optional[bool] = None,
@@ -741,7 +741,7 @@ class match:
         # Send packet to everyone
         glob.streams.broadcast(self.playingStreamName, serverPackets.playerFailed(slotID))
 
-    def invite(self, fro: str, to: str) -> None:
+    def invite(self, fro: int, to: int) -> None:
         """
         Fro invites to in this match.
 
@@ -750,8 +750,8 @@ class match:
         :return:
         """
         # Get tokens
-        froToken = glob.tokens.getTokenFromUserID(fro)
-        toToken = glob.tokens.getTokenFromUserID(to)
+        froToken = glob.tokens.getTokenFromUserID(fro, _all=False)
+        toToken = glob.tokens.getTokenFromUserID(to, _all=False)
         if not froToken or not toToken:
             return
 

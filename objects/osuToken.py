@@ -224,7 +224,7 @@ class token:
 
         # Make sure we have write permissions.
         if (
-            ((
+            (
                 channelObject.name == "#premium"
                 and self.privileges & privileges.USER_PREMIUM == 0
             )
@@ -232,9 +232,8 @@ class token:
                 channelObject.name == "#supporter"
                 and self.privileges & privileges.USER_DONOR == 0
             )
-            or (not channelObject.publicRead and not self.staff))
-            and self.userID != 999
-        ):
+            or (not channelObject.publicRead and not self.staff)
+        ) and self.userID != 999:
             raise exceptions.channelNoPermissionsException()
 
         self.joinedChannels.append(channelObject.name)
@@ -456,7 +455,9 @@ class token:
             match.sendReadyStatus()
 
     def kick(
-        self, message: str = "You we're kicked from the server.", reason: str = "kick"
+        self,
+        message: str = "You we're kicked from the server.",
+        reason: str = "kick",
     ) -> None:
         """
         Kick this user from the server
@@ -477,7 +478,10 @@ class token:
         logoutEvent.handle(self, deleteToken=self.irc)
 
     def silence(
-        self, seconds: Optional[int] = None, reason: str = "", author: int = 999
+        self,
+        seconds: Optional[int] = None,
+        reason: str = "",
+        author: int = 999,
     ) -> None:
         """
         Silences this user (db, packet and token)
@@ -520,7 +524,7 @@ class token:
         if self.spamRate > acceptable_rate:
             self.silence(600, "Spamming (auto spam protection)")
 
-    def isSilenced(self) -> None:
+    def isSilenced(self) -> bool:
         """
         Returns True if this user is silenced, otherwise False
 
@@ -616,7 +620,7 @@ class token:
             "Your account has been unrestricted! Please log in again.",
         )
 
-    def joinStream(self, name) -> None:
+    def joinStream(self, name: str) -> None:
         """
         Join a packet stream, or create it if the stream doesn't exist.
 
@@ -627,7 +631,7 @@ class token:
         if name not in self.streams:
             self.streams.append(name)
 
-    def leaveStream(self, name) -> None:
+    def leaveStream(self, name: str) -> None:
         """
         Leave a packets stream
 
