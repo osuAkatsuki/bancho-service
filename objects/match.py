@@ -162,7 +162,7 @@ class match:
 
         return tuple(struct)
 
-    def setHost(self, newHost: int) -> bool:
+    def setHost(self, newHostID: int) -> bool:
         """
         Set room host to newHost and send him host packet
 
@@ -170,10 +170,15 @@ class match:
         :return:
         """
 
-        self.remove_referee(self.hostUserID)
-        self.add_referee(newHost)
+        old_host = glob.tokens.getTokenFromUserID(self.hostUserID)
+        assert old_host is not None
 
-        slotID = self.getUserSlotID(newHost)
+        if not old_host.staff:
+            self.remove_referee(self.hostUserID)
+
+        self.add_referee(newHostID)
+
+        slotID = self.getUserSlotID(newHostID)
         if slotID is None:
             return False
 
@@ -181,7 +186,7 @@ class match:
         if slot_token is None or slot_token not in glob.tokens.tokens:
             return False
 
-        self.hostUserID = newHost
+        self.hostUserID = newHostID
 
         user_token = glob.tokens.tokens[slot_token]
         user_token.enqueue(serverPackets.matchTransferHost)
