@@ -1,7 +1,7 @@
 import threading
 import time
 from types import TracebackType
-from typing import Literal, Optional, overload
+from typing import Literal, MutableMapping, Optional, overload
 
 import redis
 
@@ -18,7 +18,7 @@ class tokenList:
     __slots__ = ('tokens', '_lock')
 
     def __init__(self) -> None:
-        self.tokens = {}
+        self.tokens: MutableMapping[str, osuToken.token] = {}
         self._lock = threading.Lock()
 
     def __enter__(self) -> 'tokenList':

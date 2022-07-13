@@ -1,6 +1,6 @@
 from threading import Timer
 from time import time
-from typing import Optional
+from typing import MutableMapping, Optional
 
 from common.log import logUtils as log
 from common.sentry import sentry
@@ -13,7 +13,7 @@ class matchList:
     __slots__ = ('matches', 'lastID')
     def __init__(self) -> None:
         """Initialize a matchList object"""
-        self.matches = {}
+        self.matches: MutableMapping[int, match.match] = {}
         self.lastID: int = 1
 
     def createMatch(
