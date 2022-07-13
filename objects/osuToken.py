@@ -224,7 +224,7 @@ class token:
 
         # Make sure we have write permissions.
         if (
-            (
+            ((
                 channelObject.name == "#premium"
                 and self.privileges & privileges.USER_PREMIUM == 0
             )
@@ -232,7 +232,8 @@ class token:
                 channelObject.name == "#supporter"
                 and self.privileges & privileges.USER_DONOR == 0
             )
-            or (not channelObject.publicRead and not self.staff)
+            or (not channelObject.publicRead and not self.staff))
+            and self.userID != 999
         ):
             raise exceptions.channelNoPermissionsException()
 

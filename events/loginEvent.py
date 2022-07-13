@@ -179,7 +179,7 @@ def handle(
                         [
                             f"Your account has been frozen by an administrator{freeze_str}",
                             "This is not a restriction, but will lead to one if ignored.",
-                            "You are required to submit a liveplay using the following criteria: https://pastebin.com/fbUCUVmL",
+                            "You are required to submit a liveplay using the (specified criteria)[https://pastebin.com/BwcXp6Cr]",
                             "Please remember we are not stupid - we have done plenty of these before and have heard every excuse in the book; if you are breaking rules, your best bet would be to admit to a staff member, lying will only end up digging your grave deeper.",
                             "-------------",
                             "If you have any questions or are ready to liveplay, please contact an (Akatsuki Administrator)[https://akatsuki.pw/team] {ingame, (Discord)[https://akatsuki.pw/discord], etc.}",
