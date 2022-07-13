@@ -1630,43 +1630,6 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     return f"Your score on {overwrite} has been overwritten."
 
 
-# NOTE: this is dangerous, namely because ids of singletons (and other object)
-# will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
-@command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
-def reload(fro: str, chan: str, message: list[str]) -> str:
-    """Reload a python module, by name (relative to pep.py)."""
-    if len(message) != 1:
-        return "Invalid syntax: !reload <module>"
-
-    parent, *children = message[0].split(".")
-
-    try:
-        mod = __import__(parent)
-    except ModuleNotFoundError:
-        return "Module not found."
-
-    try:
-        for child in children:
-            mod = getattr(mod, child)
-    except AttributeError:
-        return f"Failed at {child}."
-
-    mod = importlib.reload(mod)
-    return f"Reloaded {mod.__name__}"
-
-
-# NOTE: not safe - breaks references
-# @command(trigger="!reloadcmd", privs=privileges.ADMIN_CAKER, hidden=True)
-# def reload_commands(fro, chan, mes) -> str:
-#     """Reloads all of the RealistikBot commands."""
-
-#     try:
-#         fokabot.reload_commands()
-#         return "Aika commands has been reloaded successfully!"
-#     except Exception as e:
-#         return f"There has been an exception while reloading the bot: {e}"
-
-
 @command(trigger="!mp", syntax="<subcommand>", hidden=False)
 def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Contains many multiplayer subcommands (TODO: document them as well)."""
