@@ -1,12 +1,13 @@
 from common.log import logUtils as log
 from constants import clientPackets, exceptions, serverPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     try:
         # Read packet data
-        packetData = clientPackets.createMatch(packetData)
+        packetData = clientPackets.createMatch(rawPacketData)
 
         # Make sure the name is valid
         matchName = packetData["matchName"].strip()
@@ -16,10 +17,13 @@ def handle(userToken, packetData):
         # Create a match object
         # TODO: Player number check
         matchID = glob.matches.createMatch(
-            matchName, packetData["matchPassword"].strip(),
-            packetData["beatmapID"], packetData["beatmapName"],
-            packetData["beatmapMD5"], packetData["gameMode"],
-            userToken.userID
+            matchName,
+            packetData["matchPassword"].strip(),
+            packetData["beatmapID"],
+            packetData["beatmapName"],
+            packetData["beatmapMD5"],
+            packetData["gameMode"],
+            userToken.userID,
         )
 
         # Make sure the match has been created

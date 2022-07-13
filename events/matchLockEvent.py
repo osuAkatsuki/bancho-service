@@ -1,10 +1,11 @@
 from constants import clientPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Get packet data
-    packetData = clientPackets.lockSlot(packetData)
+    packetData = clientPackets.lockSlot(rawPacketData)
 
     # Make sure the match exists
     matchID = userToken.matchID

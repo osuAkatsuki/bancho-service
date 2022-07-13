@@ -1,10 +1,11 @@
 from constants import clientPackets, serverPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # Read packet data
-    packetData = clientPackets.setAwayMessage(packetData)
+    packetData = clientPackets.setAwayMessage(rawPacketData)
 
     # Set token away message
     userToken.awayMessage = packetData["awayMessage"]
@@ -15,9 +16,11 @@ def handle(userToken, packetData):
     else:
         fokaMessage = f"Your away message is now: {packetData['awayMessage']}."
 
-    userToken.enqueue(serverPackets.sendMessage(
-        fro=glob.BOT_NAME,
-        to=userToken.username,
-        message=fokaMessage,
-        fro_id=999
-    ))
+    userToken.enqueue(
+        serverPackets.sendMessage(
+            fro=glob.BOT_NAME,
+            to=userToken.username,
+            message=fokaMessage,
+            fro_id=999,
+        )
+    )

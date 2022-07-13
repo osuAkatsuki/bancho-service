@@ -1,5 +1,6 @@
 from constants import clientPackets
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
-    userToken.blockNonFriendsDM = clientPackets.blockDM(packetData)['value'] > 0
+def handle(userToken: token, rawPacketData: bytes):
+    userToken.blockNonFriendsDM = clientPackets.blockDM(rawPacketData)["value"] > 0

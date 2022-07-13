@@ -1,11 +1,12 @@
 from common.log import logUtils as log
 from constants import clientPackets, exceptions, serverPackets
 from objects import glob
+from objects.osuToken import token
 
 
-def handle(userToken, packetData):
+def handle(userToken: token, rawPacketData: bytes):
     # read packet data
-    packetData = clientPackets.joinMatch(packetData)
+    packetData = clientPackets.joinMatch(rawPacketData)
     matchID = packetData["matchID"]
     password = packetData["password"]
 
@@ -24,4 +25,6 @@ def handle(userToken, packetData):
             userToken.joinMatch(matchID)
     except exceptions.matchWrongPasswordException:
         userToken.enqueue(serverPackets.matchJoinFail)
-        log.warning(f"{userToken.username} has tried to join a mp room, but he typed the wrong password.")
+        log.warning(
+            f"{userToken.username} has tried to join a mp room, but he typed the wrong password."
+        )
