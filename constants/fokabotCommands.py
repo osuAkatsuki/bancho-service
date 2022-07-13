@@ -1567,33 +1567,6 @@ def announceContest(fro: str, chan: str, message: list[str]) -> None:
 """
 
 
-@command(trigger="!recalc", privs=privileges.ADMIN_CAKER, hidden=True)
-def recalc(fro: str, chan: str, message: list[str]) -> str:
-    """Recalculate scores on the last /np'ed map."""
-    if len(message) % 2 != 0:
-        return "Invalid syntax."
-
-    if not (token := glob.tokens.getTokenFromUsername(fro)):
-        return "Couldn't find token for your username."
-
-    if not (beatmap_id := token.tillerino[0]):
-        return "Please give me a beatmap first with /np command."
-
-    cmd = ["python3.9", "/home/akatsuki/pp_recalc/calc.py", "-b", str(beatmap_id)]
-
-    # g: gamemode | l: limit | r: relax
-    for flag in ("-g", "-l", "-r"):
-        if flag in message:
-            val = message[message.index(flag) + 1]
-            if not val.isdecimal():
-                return "Invalid syntax."
-
-            cmd.extend([flag, val])
-
-    subprocess.Popen(cmd)
-
-    return f"Recalculating scores for https://akatsuki.pw/b/{beatmap_id}"
-
 @command(trigger="!overwrite", hidden=True)
 def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     """Force your latest score to overwrite. (NOTE: this is possibly destructive)"""
