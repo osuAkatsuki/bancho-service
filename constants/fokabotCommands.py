@@ -2308,19 +2308,19 @@ def crashClient(fro: str, chan: str, message: list[str]) -> str:
     return "deletus"
 
 
-@command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
-def runPython(fro: str, chan: str, message: list[str]) -> str:
-    # NOTE: not documented on purpose
-    lines = " ".join(message).split(r"\n")
-    definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
+# @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
+# def runPython(fro: str, chan: str, message: list[str]) -> str:
+#     # NOTE: not documented on purpose
+#     lines = " ".join(message).split(r"\n")
+#     definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
 
-    try:
-        exec(definition)  # define function
-        ret = str(locals()["__py"](fro, chan, message))  # run it
-    except Exception as e:
-        ret = f"{e.__class__}: {e}"
+#     try:
+#         exec(definition)  # define function
+#         ret = str(locals()["__py"](fro, chan, message))  # run it
+#     except Exception as e:
+#         ret = f"{e.__class__}: {e}"
 
-    return ret
+#     return ret
 
 
 # used in fokabot.py, here so we can !reload constants.fokabotCommands
