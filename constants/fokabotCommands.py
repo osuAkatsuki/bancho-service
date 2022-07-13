@@ -766,8 +766,6 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     return getPPMessage(token.userID)
 
 
-
-
 # @command(
 #     trigger="!r",
 # )
@@ -1384,7 +1382,7 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         t.kick()
 
     userUtils.appendNotes(userID, f"Changed username: '{fro}' -> '{newUsername}'.")
-    log.rap(userID, f"is now known as {newUsername}.")
+    log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
     return f"Changed username to ({fro} -> {newUsername})."
 
 
