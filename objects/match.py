@@ -10,6 +10,7 @@ from constants import (dataTypes, matchModModes, matchScoringTypes, matchTeams,
                        matchTeamTypes, serverPackets, slotStatuses)
 from helpers import chatHelper as chat
 from objects import glob
+from objects.osuToken import token
 
 
 class slot:
@@ -131,14 +132,14 @@ class match:
             (self.beatmapMD5, dataTypes.STRING)
         ])
 
-        struct.extend([(self.slots[i].status, dataTypes.BYTE) for i in range(16)])
-        struct.extend([(self.slots[i].team, dataTypes.BYTE) for i in range(16)])
+        struct.extend([(slot.status, dataTypes.BYTE) for slot in self.slots])
+        struct.extend([(slot.team, dataTypes.BYTE) for slot in self.slots])
 
         struct.extend([
-            (glob.tokens.tokens[self.slots[i].user].userID, dataTypes.UINT32)
-            for i in range(16) if (
-                self.slots[i].user and
-                self.slots[i].user in glob.tokens.tokens
+            (glob.tokens.tokens[slot.user].userID, dataTypes.UINT32)
+            for slot in self.slots if (
+                slot.user and
+                slot.user in glob.tokens.tokens
             )
         ])
 
@@ -153,7 +154,7 @@ class match:
 
         # Slot mods if free mod is enabled
         if self.matchModMode == matchModModes.FREE_MOD:
-            struct.extend([(self.slots[i].mods, dataTypes.UINT32) for i in range(16)])
+            struct.extend([(slot.mods, dataTypes.UINT32) for slot in self.slots])
 
         # Seed idk
         # TODO: Implement this, it should be used for mania "random" mod
@@ -173,14 +174,17 @@ class match:
         self.add_referee(newHost)
 
         slotID = self.getUserSlotID(newHost)
-        if (
-            slotID is None or
-            self.slots[slotID].user not in glob.tokens.tokens
-        ):
+        if slotID is None:
             return False
-        token = glob.tokens.tokens[self.slots[slotID].user]
+
+        slot_token = self.slots[slotID].user
+        if slot_token is None or slot_token not in glob.tokens.tokens:
+            return False
+
         self.hostUserID = newHost
-        token.enqueue(serverPackets.matchTransferHost)
+
+        user_token = glob.tokens.tokens[slot_token]
+        user_token.enqueue(serverPackets.matchTransferHost)
         self.sendUpdates()
         return True
 
@@ -201,14 +205,32 @@ class match:
         skip: Optional[bool] = None, complete: Optional[bool] = None,
         userID: Optional[int] = None
     ) -> None:
-        if status is not None: self.slots[slotID].status = status
-        if team is not None: self.slots[slotID].team = team
-        if user != "": self.slots[slotID].user = user # don't `is not None`, u will regret it due to ripple programming antics
-        if userID is not None: self.slots[slotID].userID = userID
-        if mods is not None: self.slots[slotID].mods = mods
-        if loaded is not None: self.slots[slotID].loaded = loaded
-        if skip is not None: self.slots[slotID].skip = skip
-        if complete is not None: self.slots[slotID].complete = complete
+        slot = self.slots[slotID]
+
+        if status is not None:
+            slot.status = status
+
+        if team is not None:
+            slot.team = team
+
+        if user != "":
+            slot.user = user # don't `is not None`, u will regret it due to ripple programming antics
+
+        if userID is not None:
+            slot.userID = userID
+
+        if mods is not None:
+            slot.mods = mods
+
+        if loaded is not None:
+            slot.loaded = loaded
+
+        if skip is not None:
+            slot.skip = skip
+
+        if complete is not None:
+            slot.complete = complete
+
 
     def setSlotMods(self, slotID: int, mods: int) -> None:
         """
@@ -230,14 +252,18 @@ class match:
         :param slotID: slot number
         :return:
         """
+        slot = self.slots[slotID]
+
         # Update ready status and setnd update
-        if not self.slots[slotID].user or self.isStarting:
+        if not slot.user or self.isStarting:
             return
-        oldStatus = self.slots[slotID].status
+
+        oldStatus = slot.status
         if oldStatus == slotStatuses.READY:
             newStatus = slotStatuses.NOT_READY
         else:
             newStatus = slotStatuses.READY
+
         self.setSlot(slotID, newStatus)
         self.sendUpdates()
 
@@ -249,18 +275,21 @@ class match:
         :param slotID: slot number
         :return:
         """
+
+        slot = self.slots[slotID]
+
         # Check if slot is already locked
-        if self.slots[slotID].status == slotStatuses.LOCKED:
+        if slot.status == slotStatuses.LOCKED:
             newStatus = slotStatuses.FREE
         else:
             newStatus = slotStatuses.LOCKED
 
         # Send updated settings to kicked user, so he returns to lobby
         if (
-            self.slots[slotID].user and
-            self.slots[slotID].user in glob.tokens.tokens
+            slot.user and
+            slot.user in glob.tokens.tokens
         ):
-            glob.tokens.tokens[self.slots[slotID].user].enqueue(serverPackets.updateMatch(self.matchID))
+            glob.tokens.tokens[slot.user].enqueue(serverPackets.updateMatch(self.matchID))
 
         # Set new slot status
         self.setSlot(
@@ -292,9 +321,9 @@ class match:
         # Check whether all players are loaded
         playing = 0
         loaded = 0
-        for i in range(16):
-            if self.slots[i].status == slotStatuses.PLAYING:
-                if self.slots[i].loaded:
+        for slot in self.slots:
+            if slot.status == slotStatuses.PLAYING:
+                if slot.loaded:
                     loaded += 1
                 playing += 1
 
@@ -477,15 +506,15 @@ class match:
 
         :return: slot id if found, None if user is not in room
         """
-        for i in range(16):
+        for i, slot in enumerate(self.slots):
             if (
-                self.slots[i].user and
-                self.slots[i].user in glob.tokens.tokens and
-                glob.tokens.tokens[self.slots[i].user].userID == userID
+                slot.user and
+                slot.user in glob.tokens.tokens and
+                glob.tokens.tokens[slot.user].userID == userID
             ):
                 return i
 
-    def userJoin(self, user) -> bool:
+    def userJoin(self, user: token) -> bool:
         """
         Add someone to users in match
 
@@ -493,8 +522,8 @@ class match:
         :return: True if join success, False if fail (room is full)
         """
         # Make sure we're not in this match
-        for i in range(16):
-            if self.slots[i].user == user.token:
+        for i, slot in enumerate(self.slots):
+            if slot.user == user.token:
                 # Set bugged slot to free
                 self.setSlot(
                     slotID = i,
@@ -506,8 +535,8 @@ class match:
                 )
 
         # Find first free slot
-        for i in range(16):
-            if self.slots[i].status == slotStatuses.FREE:
+        for i, slot in enumerate(self.slots):
+            if slot.status == slotStatuses.FREE:
                 # Occupy slot
                 team = matchTeams.NO_TEAM
                 if (
@@ -533,10 +562,10 @@ class match:
                 return True
 
         if user.staff: # Allow mods+ to join into locked but empty slots.
-            for i in range(16):
+            for i, slot in enumerate(self.slots):
                 if (
-                    self.slots[i].status == slotStatuses.LOCKED and
-                    self.slots[i].userID == -1
+                    slot.status == slotStatuses.LOCKED and
+                    slot.userID == -1
                 ):
                     if self.matchTeamType in (
                         matchTeamTypes.TEAM_VS,
@@ -594,12 +623,12 @@ class match:
         # Check if host left
         if user.userID == self.hostUserID:
             # Give host to someone else
-            for i in range(16):
+            for slot in self.slots:
                 if (
-                    self.slots[i].user and
-                    self.slots[i].user in glob.tokens.tokens
+                    slot.user and
+                    slot.user in glob.tokens.tokens
                 ):
-                    self.setHost(glob.tokens.tokens[self.slots[i].user].userID)
+                    self.setHost(glob.tokens.tokens[slot.user].userID)
                     break
 
         # Send updated match data
@@ -714,15 +743,17 @@ class match:
         :param slotID: ID of slot
         :return:
         """
+        slot = self.slots[slotID]
+
         # Make sure there is someone in that slot
         if (
-            not self.slots[slotID].user or
-            self.slots[slotID].user not in glob.tokens.tokens
+            not slot.user or
+            slot.user not in glob.tokens.tokens
         ):
             return
 
         # Transfer host
-        self.setHost(glob.tokens.tokens[self.slots[slotID].user].userID)
+        self.setHost(glob.tokens.tokens[slot.user].userID)
 
     def playerFailed(self, userID: int) -> None:
         """
@@ -776,11 +807,7 @@ class match:
 
         :return: number of users
         """
-        c = 0
-        for i in range(16):
-            if self.slots[i].user:
-                c += 1
-        return c
+        return sum(1 for slot in self.slots if slot.user is not None)
 
     def changeTeam(self, userID: int, newTeam: Optional[int] = None) -> None:
         """
@@ -807,7 +834,7 @@ class match:
 
         # Update slot and send update
         if newTeam is None:
-            if self.slots[slotID].team:
+            if self.slots[slotID].team == matchTeams.RED:
                 newTeam = matchTeams.BLUE
             else:
                 newTeam = matchTeams.RED
@@ -843,11 +870,12 @@ class match:
 
         # We have teams, check if they are valid
         firstTeam = -1
-        for i in range(16):
-            if self.slots[i].user and (self.slots[i].status & slotStatuses.NO_MAP) == 0:
+
+        for slot in self.slots:
+            if slot.user and (slot.status & slotStatuses.NO_MAP) == 0:
                 if firstTeam == -1:
-                    firstTeam = self.slots[i].team
-                elif firstTeam != self.slots[i].team:
+                    firstTeam = slot.team
+                elif firstTeam != slot.team:
                     return True
 
         log.warning(f"MPROOM{self.matchID}: Invalid teams!")
@@ -874,13 +902,18 @@ class match:
 
         # Set playing to ready players and set load, skip and complete to False
         # Make clients join playing stream
-        for i in range(16):
-            if self.slots[i].user in glob.tokens.tokens:
-                self.slots[i].status = slotStatuses.PLAYING
-                self.slots[i].loaded = False
-                self.slots[i].skip = False
-                self.slots[i].complete = False
-                glob.tokens.tokens[self.slots[i].user].joinStream(self.playingStreamName)
+        for slot in self.slots:
+            if slot.user is None:
+                continue
+
+            if slot.user in glob.tokens.tokens:
+                slot.status = slotStatuses.PLAYING
+                slot.loaded = False
+                slot.skip = False
+                slot.complete = False
+
+                user_token = glob.tokens.tokens[slot.user]
+                user_token.joinStream(self.playingStreamName)
 
         # Send match start packet
         glob.streams.broadcast(self.playingStreamName, serverPackets.matchStart(self.matchID))
@@ -968,5 +1001,6 @@ class match:
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
+                 traceback: Optional[TracebackType]) -> bool:
         self._lock.release()
+        return exc_value is not None
