@@ -1006,6 +1006,5 @@ class match:
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
+                 traceback: Optional[TracebackType]) -> None:
         self._lock.release()
-        return exc_value is not None
