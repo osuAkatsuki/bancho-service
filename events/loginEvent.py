@@ -284,7 +284,7 @@ def handle(
         userGMT = responseToken.staff
         userTournament = responseToken.privileges & privileges.USER_TOURNAMENT_STAFF > 0
 
-        #userSupporter = not restricted
+        # userSupporter = not restricted
         userSupporter = True
 
         # Server restarting check
@@ -358,7 +358,7 @@ def handle(
                     f'{glob.banchoConf.config["menuIcon"]}/u/{userID}'
                 )
             )
-            
+
         # Save token in redis
         glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
 
@@ -401,10 +401,16 @@ def handle(
         # Login failed error packet
         # (we don't use enqueue because we don't have a token since login has failed)
         responseData += serverPackets.loginFailed
+        responseData += serverPackets.notification(
+            "Akatsuki: You have entered an incorrect username or password. Please check your credentials and try again!"
+        )
     except exceptions.invalidArgumentsException:
         # Invalid POST data
         # (we don't use enqueue because we don't have a token since login has failed)
         responseData += serverPackets.loginFailed
+        responseData += serverPackets.notification(
+            "Akatsuki: Something went wrong during your login attempt... Please try again!"
+        )
     except exceptions.loginBannedException:
         # Login banned error packet
         responseData += serverPackets.loginBanned
