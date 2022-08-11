@@ -1,6 +1,17 @@
 from constants import dataTypes, slotStatuses
 from helpers import packetHelper
 
+""" Protocol v20 """
+
+
+def changeProtocolVersion(stream):
+    return packetHelper.readPacketData(stream, (
+        ("version", dataTypes.UINT32),
+    ))["data"]
+
+
+""" Protocol v19 """
+
 ACTION_CHANGE_FMT = (
     ("actionID", dataTypes.BYTE),
     ("actionText", dataTypes.STRING),

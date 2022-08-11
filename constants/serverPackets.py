@@ -178,9 +178,11 @@ def userStats(userID: int, force: bool = False) -> bytes:
 
     # Get userID's token from tokens list
     userToken = glob.tokens.getTokenFromUserID(userID)
+    if userToken is None:
+        return b''
 
     if not force:
-        if not userToken or (
+        if (
             userToken.restricted or
             userToken.irc or
             userToken.tournament

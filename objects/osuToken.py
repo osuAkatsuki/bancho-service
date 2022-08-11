@@ -46,6 +46,7 @@ class token:
         "matchID",
         "tillerino",
         "silenceEndTime",
+        "protocolVersion",
         "queue",
         "spamRate",
         "actionID",
@@ -138,6 +139,7 @@ class token:
         self.matchID = -1
         self.tillerino = [0, 0, -1.0]  # beatmap, mods, acc
         self.silenceEndTime = 0
+        self.protocolVersion = 19
         self.queue = bytearray()
 
         # Spam protection
