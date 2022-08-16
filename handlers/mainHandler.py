@@ -26,7 +26,7 @@ from events import (cantSpectateEvent, changeActionEvent, changeMatchModsEvent,
                     tournamentJoinMatchChannelEvent,
                     tournamentLeaveMatchChannelEvent,
                     tournamentMatchInfoRequestEvent, userPanelRequestEvent,
-                    userStatsRequestEvent)
+                    userStatsRequestEvent, changeProtocolVersionEvent)
 from objects import glob
 
 PACKET_PROTO = struct.Struct('<HxI')
@@ -81,6 +81,7 @@ bancho_packets = {
     packetIDs.client_tournamentMatchInfoRequest: tournamentMatchInfoRequestEvent.handle,
     packetIDs.client_tournamentJoinMatchChannel: tournamentJoinMatchChannelEvent.handle,
     packetIDs.client_tournamentLeaveMatchChannel: tournamentLeaveMatchChannelEvent.handle,
+    packetIDs.client_changeProtocolVersion: changeProtocolVersionEvent.handle,
 }
 
 # Packets processed if in restricted mode.
@@ -93,6 +94,7 @@ restricted_packets = {
     packetIDs.client_changeAction,
     packetIDs.client_channelJoin,
     packetIDs.client_channelPart,
+    packetIDs.client_changeProtocolVersion
 }
 
 HTML_PAGE = (

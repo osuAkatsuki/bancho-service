@@ -91,3 +91,6 @@ server_matchAbort = 106
 server_switchServer = 107
 client_tournamentJoinMatchChannel = 108
 client_tournamentLeaveMatchChannel = 109
+
+# custom
+client_changeProtocolVersion = 110
