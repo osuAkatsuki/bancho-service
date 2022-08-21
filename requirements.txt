@@ -1,5 +1,6 @@
 requests==2.20.0
 tornado==4.4.2
+cmyui==1.9.3
 mysqlclient==1.3.9
 psutil==5.2.2
 raven==6.10.0
