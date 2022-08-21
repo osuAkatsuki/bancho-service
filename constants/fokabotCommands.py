@@ -1265,24 +1265,25 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
     return "Your discord account has been successfully linked."
 
 
-@command(
-    trigger="!freeze",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
-    syntax="<target_name>",
-    hidden=True,
-)
-def freeze(fro: str, chan: str, message: list[str]) -> str:
-    """Freeze a specified player."""
-    target = message[0].lower()
+# XXX: disabled for now - was being overused
+# @command(
+#     trigger="!freeze",
+#     privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+#     syntax="<target_name>",
+#     hidden=True,
+# )
+# def freeze(fro: str, chan: str, message: list[str]) -> str:
+#     """Freeze a specified player."""
+#     target = message[0].lower()
 
-    if not (target_id := userUtils.getID(target)):
-        return "That user does not exist"
+#     if not (target_id := userUtils.getID(target)):
+#         return "That user does not exist"
 
-    if userUtils.getFreezeTime(target_id):
-        return "That user is already frozen."
+#     if userUtils.getFreezeTime(target_id):
+#         return "That user is already frozen."
 
-    userUtils.freeze(target_id, userUtils.getID(fro))
-    return f"Froze {target}."
+#     userUtils.freeze(target_id, userUtils.getID(fro))
+#     return f"Froze {target}."
 
 
 @command(
