@@ -99,8 +99,8 @@ def handle(
             day=int(rgx["ver"][6:8]),
         )
 
-        # disallow clients older than 4 months
-        if osuVersion < (dt.now() - td(120)):
+        # disallow clients older than 1 year
+        if osuVersion < (dt.now() - td(365)):
             log(f"Denied login from {osuVersionStr}.", Ansi.LYELLOW)
             raise exceptions.haxException()
 
