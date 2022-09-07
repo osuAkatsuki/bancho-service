@@ -670,17 +670,17 @@ class token:
 
     def addMessageInBuffer(self, chan: str, message: str) -> None:
         """
-        Add a message in messages buffer (10 messages, truncated at 50 chars).
+        Add a message in messages buffer (100 messages, truncated at 1000 chars).
         Used as proof when the user gets reported.
 
         :param chan: channel
         :param message: message content
         :return:
         """
-        if len(self.messagesBuffer) > 15:
+        if len(self.messagesBuffer) > 100:
             self.messagesBuffer = self.messagesBuffer[1:]
         self.messagesBuffer.append(
-            f"{strftime('%H:%M', localtime())} - {self.username}@{chan}: {message[:50]}"
+            f"{strftime('%H:%M', localtime())} - {self.username}@{chan}: {message[:1000]}"
         )
 
     def getMessagesBufferString(self) -> str:
