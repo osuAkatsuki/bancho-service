@@ -689,7 +689,18 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
 
     return chimuMessage(beatmapID)
 
-
+@command(
+    trigger="\x01ACTION is playing",
+    hidden=True,
+)
+@command(
+    trigger="\x01ACTION is editing",
+    hidden=True,
+)
+@command(
+    trigger="\x01ACTION is watching",
+    hidden=True,
+)
 @command(
     trigger="\x01ACTION is listening to",
     hidden=True,
