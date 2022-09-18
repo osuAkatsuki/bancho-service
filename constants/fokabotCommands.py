@@ -1580,7 +1580,16 @@ def announceContest(fro: str, chan: str, message: list[str]) -> None:
     ])))
 """
 
+from typing import TypedDict
+# {userids: previous_score}
 
+class PreviousScore(TypedDict):
+    table: str
+    mode: int
+    score: dict
+
+overwrite_safety_check: dict[int, PreviousScore] = {}
+NO_SCORES_FOUND = "It seems you don't have any scores.. Did you purchase supporter before setting a score? owo.."
 @command(trigger="!overwrite", hidden=True)
 def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     """Force your latest score to overwrite. (NOTE: this is possibly destructive)"""
@@ -1602,7 +1611,7 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
                 "The command has now been unlocked.",
             ]
         )
-
+    
     # Only allow the user to run it once / 10s.
     _time = int(time.time())
     print(_time)
@@ -1610,11 +1619,32 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     print(ratelimit)
     if ratelimit > _time - 10:
         return f"This command can only be run every 10 seconds (Cooldown: {10 - (_time - ratelimit)}s)."
+    
+    if userID not in overwrite_safety_check:
+        table = scoreUtils.get_users_recent_score_table(userID)
+        if table is None:
+            return NO_SCORES_FOUND
+        
+        mode = scoreUtils.get_users_recent_mode(userID)
+        user_recent_score = scoreUtils.get_user_recent_score(table, userID, mode)
+        overwrite_safety_check[userID] = {
+            "table": table,
+            "mode": mode,
+            "score": user_recent_score
+        }
+        return f"Are you sure you want to overwrite {user_recent_score['song_name']}" # TODO: finish this statement
+    else:
+        previous_score = overwrite_safety_check[userID]
+        overwrite = scoreUtils.overwritePreviousScore(
+            userID, 
+            previous_score["score"], 
+            previous_score["mode"], 
+            previous_score["table"],
+        )
+        if not overwrite:
+            return NO_SCORES_FOUND
 
-    if not (overwrite := scoreUtils.overwritePreviousScore(userID)):
-        return "It seems you don't have any scores.. Did you purchase supporter before setting a score? owo.."
-
-    return f"Your score on {overwrite} has been overwritten."
+        return f"Your score on {overwrite} has been overwritten."
 
 
 @command(trigger="!mp", syntax="<subcommand>", hidden=False)
