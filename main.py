@@ -1,4 +1,6 @@
 #!/usr/bin/env python3.9
+import ddtrace
+ddtrace.patch_all()
 
 import os
 import sys
