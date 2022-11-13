@@ -6,7 +6,6 @@ import ddtrace
 ddtrace.patch_all()
 
 import os
-import sys
 import threading
 from datetime import datetime as dt
 from multiprocessing.pool import ThreadPool
@@ -19,7 +18,6 @@ import tornado.web
 from raven.contrib.tornado import AsyncSentryClient
 
 from cmyui.logging import Ansi, log, printc
-from common import agpl, generalUtils
 from common.constants import bcolors
 from common.db import dbConnector
 from common.ddog import datadogClient
@@ -75,13 +73,6 @@ ASCII_LOGO = "\n".join(
 )
 
 if __name__ == "__main__":
-    # AGPL license agreement
-    try:
-        agpl.check_license("ripple", "pep.py")
-    except agpl.LicenseError as e:
-        print(str(e))
-        sys.exit(1)
-
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
