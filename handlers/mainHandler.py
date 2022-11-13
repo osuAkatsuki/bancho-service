@@ -9,7 +9,6 @@ import tornado.web
 
 import settings
 from common.log import logUtils as log
-from common.sentry import sentry
 from common.web import requestsManager
 from constants import exceptions
 from constants import packetIDs
@@ -148,7 +147,6 @@ HTML_PAGE = (
 class handler(requestsManager.asyncRequestHandler):
     @tornado.web.asynchronous
     @tornado.gen.engine
-    @sentry.captureTornado
     def asyncPost(self) -> None:
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")

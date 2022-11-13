@@ -30,10 +30,6 @@ MIRROR_API_KEY = os.environ["MIRROR_API_KEY"]
 
 DEBUG = os.environ["DEBUG"] == "1"
 
-SENTRY_ENABLE = os.environ["SENTRY_ENABLE"] == "1"
-SENTRY_BANCHO_DSN = os.environ["SENTRY_BANCHO_DSN"]
-SENTRY_IRC_DSN = os.environ["SENTRY_IRC_DSN"]
-
 DISCORD_ENABLE = os.environ["DISCORD_ENABLE"] == "1"
 DISCORD_BOT_URL = os.environ["DISCORD_BOT_URL"]
 DISCORD_DEV_GROUP = os.environ["DISCORD_DEV_GROUP"]

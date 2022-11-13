@@ -7,7 +7,6 @@ import tornado.gen
 import tornado.web
 
 import settings
-from common.sentry import sentry
 from common.web import requestsManager
 from constants import exceptions
 from helpers import chatHelper
@@ -17,7 +16,6 @@ from objects import glob
 class handler(requestsManager.asyncRequestHandler):
     @tornado.web.asynchronous
     @tornado.gen.engine
-    @sentry.captureTornado
     def asyncGet(self) -> None:
         statusCode = 400
         data: dict[str, Union[int, str]] = {"message": "unknown error"}

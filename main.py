@@ -15,7 +15,6 @@ import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-from raven.contrib.tornado import AsyncSentryClient
 
 from cmyui.logging import Ansi, log, printc
 from common.constants import bcolors
@@ -178,17 +177,6 @@ if __name__ == "__main__":
             log("Server running in debug mode.", Ansi.LYELLOW)
 
         glob.application = make_app()
-
-        # set up sentry
-        try:
-            if settings.SENTRY_ENABLE:
-                glob.application.sentry_client = AsyncSentryClient(
-                    settings.SENTRY_BANCHO_DSN,
-                    release=glob.VERSION,
-                )
-        except:
-            log("Error creating sentry client.", Ansi.LRED)
-            raise
 
         # set up datadog
         try:

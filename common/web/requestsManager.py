@@ -4,14 +4,13 @@ from typing import List
 
 import tornado.gen
 import tornado.web
-from raven.contrib.tornado import SentryMixin
 from tornado.ioloop import IOLoop
 
 from common.log import logUtils as log
 from objects import glob
 
 
-class asyncRequestHandler(SentryMixin, tornado.web.RequestHandler):
+class asyncRequestHandler(tornado.web.RequestHandler):
     """
     Tornado asynchronous request handler
     create a class that extends this one (requestHelper.asyncRequestHandler)

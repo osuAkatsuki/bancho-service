@@ -6,7 +6,6 @@ from typing import MutableMapping
 from typing import Optional
 
 from common.log import logUtils as log
-from common.sentry import sentry
 from constants import serverPackets
 from constants.exceptions import periodicLoopException
 from objects import glob
@@ -102,7 +101,6 @@ class matchList:
         del self.matches[matchID]
         log.info(f"MPROOM{_match.matchID}: Room disposed manually")
 
-    @sentry.capture()
     def cleanupLoop(self) -> None:
         """
         Start match cleanup loop.
@@ -133,8 +131,7 @@ class matchList:
                 except Exception as e:
                     exceptions.append(e)
                     log.error(
-                        "Something wrong happened while disposing a timed out match. Reporting to Sentry when "
-                        "the loop ends.",
+                        "Something wrong happened while disposing a timed out match.",
                     )
 
             # Re-raise exception if needed

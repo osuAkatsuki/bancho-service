@@ -12,7 +12,6 @@ import redis
 
 from common.log import logUtils as log
 from common.ripple import userUtils
-from common.sentry import sentry
 from constants import serverPackets
 from constants.exceptions import periodicLoopException
 from events import logoutEvent
@@ -249,7 +248,6 @@ class tokenList:
         for value in self.tokens.values():
             value.enqueue(packet)
 
-    @sentry.capture()
     def usersTimeoutCheckLoop(self) -> None:
         """
         Start timed out users disconnect loop.
@@ -289,8 +287,7 @@ class tokenList:
                 except Exception as e:
                     exceptions.append(e)
                     log.error(
-                        "Something wrong happened while disconnecting a timed out client. Reporting to Sentry "
-                        "when the loop ends.",
+                        "Something wrong happened while disconnecting a timed out client.",
                     )
             del timedOutTokens
 
@@ -301,7 +298,6 @@ class tokenList:
             # Schedule a new check (endless loop)
             threading.Timer(100, self.usersTimeoutCheckLoop).start()
 
-    @sentry.capture()
     def spamProtectionResetLoop(self) -> None:
         """
         Start spam protection reset loop.

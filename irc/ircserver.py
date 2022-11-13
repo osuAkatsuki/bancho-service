@@ -683,11 +683,6 @@ class Server:
 
         :return:
         """
-        # Sentry
-        sentryClient = None
-        if settings.SENTRY_ENABLE:
-            sentryClient = raven.Client(settings.SENTRY_IRC_DSN)
-
         serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -747,8 +742,6 @@ class Server:
                         traceback.format_exc(),
                     ),
                 )
-                if settings.SENTRY_ENABLE and sentryClient:
-                    sentryClient.captureException()
 
 
 def main(port: int = 6667) -> None:
