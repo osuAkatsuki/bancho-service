@@ -1,6 +1,10 @@
-from common.constants import actions, mods
+from __future__ import annotations
+
+from common.constants import actions
+from common.constants import mods
 from common.ripple import userUtils
-from constants import clientPackets, serverPackets
+from constants import clientPackets
+from constants import serverPackets
 from objects import glob
 from objects.osuToken import token
 

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from common.log import logUtils as log
-from constants import exceptions, serverPackets
+from constants import exceptions
+from constants import serverPackets
 from objects import glob
 from objects.osuToken import token
 
@@ -15,7 +18,7 @@ def handle(userToken: token, _):
 
         # Send the packet to host
         glob.tokens.tokens[userToken.spectating].enqueue(
-            serverPackets.noSongSpectator(userToken.userID)
+            serverPackets.noSongSpectator(userToken.userID),
         )
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found

@@ -1,12 +1,21 @@
-from threading import Lock, RLock
-from time import localtime, strftime, time
-from typing import TYPE_CHECKING, Optional
+from __future__ import annotations
+
+from threading import Lock
+from threading import RLock
+from time import localtime
+from time import strftime
+from time import time
+from typing import Optional
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from common.constants import actions, gameModes, privileges
+from common.constants import actions
+from common.constants import gameModes
+from common.constants import privileges
 from common.log import logUtils as log
 from common.ripple import userUtils
-from constants import exceptions, serverPackets
+from constants import exceptions
+from constants import serverPackets
 from events import logoutEvent
 from helpers import chatHelper as chat
 from objects import glob
@@ -205,7 +214,7 @@ class token:
                 self.queue += data
             else:
                 log.warning(
-                    f"{self.username}'s packets buffer is above 10M!! Lost some data!"
+                    f"{self.username}'s packets buffer is above 10M!! Lost some data!",
                 )
 
     def resetQueue(self) -> None:
@@ -213,7 +222,7 @@ class token:
         with self._bufferLock:
             self.queue.clear()
 
-    def joinChannel(self, channelObject: "channel.channel") -> None:
+    def joinChannel(self, channelObject: channel.channel) -> None:
         """
         Join a channel
 
@@ -242,7 +251,7 @@ class token:
         self.joinStream(f"chat/{channelObject.name}")
         self.enqueue(serverPackets.channelJoinSuccess(channelObject.clientName))
 
-    def partChannel(self, channelObject: "channel.channel") -> None:
+    def partChannel(self, channelObject: channel.channel) -> None:
         """
         Remove channel from joined channels list
 
@@ -260,7 +269,7 @@ class token:
         """
         self.location = (latitude, longitude)
 
-    def startSpectating(self, host: "osuToken.token") -> None:
+    def startSpectating(self, host: osuToken.token) -> None:
         """
         Set the spectating user to userID, join spectator stream and chat channel
         and send required packets to host
@@ -293,12 +302,15 @@ class token:
             if len(host.spectators) == 1:
                 # First spectator, send #spectator join to host too
                 chat.joinChannel(
-                    token=host, channel=f"#spect_{host.userID}", force=True
+                    token=host,
+                    channel=f"#spect_{host.userID}",
+                    force=True,
                 )
 
             # Send fellow spectator join to all clients
             glob.streams.broadcast(
-                streamName, serverPackets.fellowSpectatorJoined(self.userID)
+                streamName,
+                serverPackets.fellowSpectatorJoined(self.userID),
             )
 
             # Get current spectators list
@@ -306,8 +318,8 @@ class token:
                 if i != self.token and i in glob.tokens.tokens:
                     self.enqueue(
                         serverPackets.fellowSpectatorJoined(
-                            glob.tokens.tokens[i].userID
-                        )
+                            glob.tokens.tokens[i].userID,
+                        ),
                     )
 
     def stopSpectating(self) -> None:
@@ -414,7 +426,7 @@ class token:
         if match.isTourney:
             # Alert the user if we have just joined a tourney match
             self.enqueue(
-                serverPackets.notification("You are now in a tournament match.")
+                serverPackets.notification("You are now in a tournament match."),
             )
             # If an user joins, then the ready status of the match changes and
             # maybe not all users are ready.
@@ -432,7 +444,10 @@ class token:
 
         # Part #multiplayer channel and streams (/ and /playing)
         chat.partChannel(
-            token=self, channel=f"#multi_{self.matchID}", kick=True, force=True
+            token=self,
+            channel=f"#multi_{self.matchID}",
+            kick=True,
+            force=True,
         )
         self.leaveStream(f"multi/{self.matchID}")
         self.leaveStream(f"multi/{self.matchID}/playing")  # optional
@@ -680,7 +695,7 @@ class token:
         if len(self.messagesBuffer) > 100:
             self.messagesBuffer = self.messagesBuffer[1:]
         self.messagesBuffer.append(
-            f"{strftime('%H:%M', localtime())} - {self.username}@{chan}: {message[:1000]}"
+            f"{strftime('%H:%M', localtime())} - {self.username}@{chan}: {message[:1000]}",
         )
 
     def getMessagesBufferString(self) -> str:

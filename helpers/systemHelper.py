@@ -1,5 +1,11 @@
+from __future__ import annotations
+
 from math import floor
-from os import _exit, getloadavg, getpid, kill, name
+from os import _exit
+from os import getloadavg
+from os import getpid
+from os import kill
+from os import name
 from signal import SIGKILL
 from threading import Timer
 from time import time
@@ -24,6 +30,7 @@ def dispose() -> None:
     glob.fileBuffers.flushAll()
     consoleHelper.printColored("Goodbye!", bcolors.GREEN)
 
+
 def runningUnderUnix() -> bool:
     """
     Get if the server is running under UNIX or NT
@@ -32,9 +39,12 @@ def runningUnderUnix() -> bool:
     """
     return name == "posix"
 
+
 def scheduleShutdown(
-    sendRestartTime: int, restart: bool,
-    message: str = "", delay: int = 5
+    sendRestartTime: int,
+    restart: bool,
+    message: str = "",
+    delay: int = 5,
 ) -> None:
     """
     Schedule a server shutdown/restart
@@ -46,7 +56,9 @@ def scheduleShutdown(
     :return:
     """
     # Console output
-    log.info(f"pep.py will {'restart' if restart else 'shutdown'} in {sendRestartTime + delay} seconds!")
+    log.info(
+        f"pep.py will {'restart' if restart else 'shutdown'} in {sendRestartTime + delay} seconds!",
+    )
     log.info(f"Sending server restart packets in {sendRestartTime} seconds...")
 
     # Send notification if set
@@ -54,12 +66,17 @@ def scheduleShutdown(
         glob.streams.broadcast("main", serverPackets.notification(message))
 
     # Schedule server restart packet
-    Timer(sendRestartTime, glob.streams.broadcast, ["main", serverPackets.banchoRestart(delay * 2 * 1000)]).start()
+    Timer(
+        sendRestartTime,
+        glob.streams.broadcast,
+        ["main", serverPackets.banchoRestart(delay * 2 * 1000)],
+    ).start()
     glob.restarting = True
 
     # Schedule actual server shutdown/restart some seconds after server restart packet, so everyone gets it
     action = restartServer if restart else shutdownServer
     Timer(sendRestartTime + delay, action).start()
+
 
 def restartServer() -> NoReturn:
     """
@@ -71,7 +88,8 @@ def restartServer() -> NoReturn:
     dispose()
 
     # TODO: publish to redis to restart and update lets
-    _exit(0) # restart handled by script now
+    _exit(0)  # restart handled by script now
+
 
 def shutdownServer() -> NoReturn:
     """
@@ -81,8 +99,9 @@ def shutdownServer() -> NoReturn:
     """
     log.info("Shutting down pep.py...")
     dispose()
-    sig = SIGKILL# if runningUnderUnix() else CTRL_C_EVENT
+    sig = SIGKILL  # if runningUnderUnix() else CTRL_C_EVENT
     kill(getpid(), sig)
+
 
 def getSystemInfo() -> dict[str, object]:
     """
@@ -93,7 +112,7 @@ def getSystemInfo() -> dict[str, object]:
     data = {
         "unix": runningUnderUnix(),
         "connectedUsers": len(glob.tokens.tokens),
-        "matches": len(glob.matches.matches)
+        "matches": len(glob.matches.matches),
     }
 
     # General stats

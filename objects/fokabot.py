@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import threading
 from queue import Queue
@@ -7,7 +9,8 @@ from typing import TypedDict
 
 from common.constants import actions
 from common.ripple import userUtils
-from constants import fokabotCommands, serverPackets
+from constants import fokabotCommands
+from constants import serverPackets
 from objects import glob
 
 # Some common regexes, compiled to increase performance.
@@ -17,7 +20,7 @@ npRegex = re.compile(
     r"^https?://osu\.(?:akatsuki\.pw|akatest\.space|ppy\.sh)/beatmapsets/"
     r"(?P<set_id>\d{1,10})/?#/?"
     r"(?P<mode>osu|taiko|fruits|mania)?/?"
-    r"(?P<id>\d{1,10})/?$"
+    r"(?P<id>\d{1,10})/?$",
 )
 
 
@@ -42,7 +45,6 @@ def disconnect() -> None:
 # 	"""Reloads the Fokabot commands module."""
 #     # NOTE: this is not safe, will break references
 # 	reload(fokabotCommands)
-
 
 
 class CommandResponse(TypedDict):
@@ -105,7 +107,7 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
             queue = Queue()
             thread = threading.Thread(
                 target=lambda q, arg1, arg2, arg3: q.put(
-                    handle_command(cmd, arg1, arg2, arg3)
+                    handle_command(cmd, arg1, arg2, arg3),
                 ),
                 args=(queue, fro, chan, message_split[1:]),
                 daemon=True,

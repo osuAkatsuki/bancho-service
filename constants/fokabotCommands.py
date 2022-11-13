@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib
 import random
 import re
@@ -5,23 +7,33 @@ import secrets
 import subprocess
 import threading
 import time  # me so lazy
-from typing import Any, Callable, Optional
-
-import requests
+from typing import Any
+from typing import Callable
+from typing import Optional
 
 import orjson
-from common import generalUtils
-from common.constants import gameModes, mods, privileges
-from common.log import logUtils as log
-from common.ripple import scoreUtils, userUtils
-from common.web import discord
-from constants import (exceptions, matchModModes, matchScoringTypes,
-                       matchTeams, matchTeamTypes, serverPackets, slotStatuses)
-from helpers import chatHelper as chat
-from helpers import systemHelper
-from objects import fokabot, glob
+import requests
 
 import settings
+from common import generalUtils
+from common.constants import gameModes
+from common.constants import mods
+from common.constants import privileges
+from common.log import logUtils as log
+from common.ripple import scoreUtils
+from common.ripple import userUtils
+from common.web import discord
+from constants import exceptions
+from constants import matchModModes
+from constants import matchScoringTypes
+from constants import matchTeams
+from constants import matchTeamTypes
+from constants import serverPackets
+from constants import slotStatuses
+from helpers import chatHelper as chat
+from helpers import systemHelper
+from objects import fokabot
+from objects import glob
 
 """
 Commands callbacks
@@ -55,7 +67,7 @@ def command(
                 "syntax": syntax,
                 "hidden": hidden,
                 "callback": f,
-            }
+            },
         )
         return f
 
@@ -227,7 +239,8 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
 
     # Send silence packet to target if he's connected
     targetToken = glob.tokens.getTokenFromUsername(
-        userUtils.safeUsername(target), safe=True
+        userUtils.safeUsername(target),
+        safe=True,
     )
     if targetToken:
         # user online, silence both in db and with packet
@@ -308,7 +321,7 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"{fro} has banned [{target}](https://akatsuki.pw/u/{targetID}).",
                 f"**Reason**: {reason}",
-            ]
+            ],
         ),
         "ac_general",
     )
@@ -386,7 +399,7 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"{fro} has restricted [{target}](https://akatsuki.pw/u/{targetID}).",
                 f"**Reason**: {reason}",
-            ]
+            ],
         ),
         "ac_general",
     )
@@ -437,7 +450,7 @@ def _restartShutdown(restart: bool) -> str:
             "We are performing some maintenance",
             f"Akatsuki will {action} in 5 seconds.",
             "Thank you for your patience.",
-        ]
+        ],
     )
     systemHelper.scheduleShutdown(5, restart, msg)
     return msg
@@ -510,8 +523,8 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
                     [
                         "Akatsuki is currently in maintenance mode.",
                         "Please try to login again later.",
-                    ]
-                )
+                    ],
+                ),
             ),
         )
         glob.tokens.multipleEnqueue(serverPackets.loginError, who)
@@ -537,7 +550,7 @@ def systemStatus(fro: str, chan: str, message: list[str]) -> str:
 
     # Final message
     letsVersion = glob.redis.get("lets:version")
-    letsVersion = letsVersion.decode("utf-8") if letsVersion else "¯\_(ツ)_/¯"
+    letsVersion = letsVersion.decode("utf-8") if letsVersion else r"¯\_(ツ)_/¯"
 
     msg = [
         f"pep.py bancho server v{glob.VERSION}",
@@ -558,8 +571,8 @@ def systemStatus(fro: str, chan: str, message: list[str]) -> str:
                     f'Load average: {data["loadAverage"][0]}',
                     data["loadAverage"][1],
                     data["loadAverage"][2],
-                ]
-            )
+                ],
+            ),
         )
 
     return "\n".join(msg)
@@ -576,7 +589,8 @@ def getPPMessage(userID: int, just_data: bool = False) -> Any:
     # Send request to LESS api
     try:
         resp = requests.get(
-            f"http://127.0.0.1:7000/api/v1/pp?b={currentMap}&m={currentMods}", timeout=2
+            f"http://127.0.0.1:7000/api/v1/pp?b={currentMap}&m={currentMods}",
+            timeout=2,
         )
     except Exception as e:
         print(e)
@@ -617,8 +631,8 @@ def getPPMessage(userID: int, just_data: bool = False) -> Any:
                     f'98%: {data["pp"][2]:.2f}pp',
                     f'99%: {data["pp"][1]:.2f}pp',
                     f'100%: {data["pp"][0]:.2f}pp',
-                ]
-            )
+                ],
+            ),
         )
     else:
         msg.append(f'{token.tillerino[2]:.2f}%: {data["pp"][0]:.2f}pp')
@@ -654,8 +668,9 @@ def chimuMessage(beatmapID: int) -> str:
 
     ret.append(
         "[Chimu] [https://chimu.moe/d/{bsid} {sn}]".format(
-            bsid=beatmap["bsid"], sn=beatmap["sn"]
-        )
+            bsid=beatmap["bsid"],
+            sn=beatmap["sn"],
+        ),
     )
 
     return "\n".join(ret)
@@ -682,7 +697,8 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
             return "This command is only usable when either spectating a user, or playing multiplayer."
 
         spectatorHostToken = glob.tokens.getTokenFromUserID(
-            spectatorHostUserID, ignoreIRC=True
+            spectatorHostUserID,
+            ignoreIRC=True,
         )
         if not spectatorHostToken:
             return "The spectator host is offline. If this makes no sense, please report it to [https://akatsuki.pw/u/1001 cmyui]."
@@ -690,6 +706,7 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
         beatmapID = spectatorHostToken.beatmapID
 
     return chimuMessage(beatmapID)
+
 
 @command(
     trigger="\x01ACTION is playing",
@@ -716,7 +733,8 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if chan.startswith("#spect_"):
         spectatorHostUserID = glob.channels.getSpectatorHostUserIDFromChannel(chan)
         spectatorHostToken = glob.tokens.getTokenFromUserID(
-            spectatorHostUserID, ignoreIRC=True
+            spectatorHostUserID,
+            ignoreIRC=True,
         )
         return (
             chimuMessage(spectatorHostToken.beatmapID) if spectatorHostToken else None
@@ -1078,7 +1096,6 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     else:
         table = "scores"
 
-
     if not (
         data := glob.db.fetch(
             "SELECT {t}.*, b.song_name AS sn, "
@@ -1089,7 +1106,7 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
             "LEFT JOIN beatmaps b USING(beatmap_md5) "
             "LEFT JOIN users u ON u.id = {t}.userid "
             'WHERE u.username = "{f}" '
-            "ORDER BY {t}.time DESC LIMIT 1".format(t=table, f=fro)
+            "ORDER BY {t}.time DESC LIMIT 1".format(t=table, f=fro),
         )
     ):
         return "You'll need to submit a score first!"
@@ -1159,8 +1176,8 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     f'({data["accuracy"]:.2f}%, {rank.upper()}) {combo}',
                     f"{pp_or_score}, ★ {stars:.2f}",
                     f"{{ {accuracy_expanded} }}",
-                ]
-            )
+                ],
+            ),
         )
     else:  # CTB has specific stuff
         msg.append(
@@ -1169,8 +1186,8 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     f'({data["accuracy"]:.2f}%, {rank.upper()}) {combo}',
                     f'{data["score"]:,}, ★ {data[diffString]:.2f}',
                     f"{{ {accuracy_expanded} }}",
-                ]
-            )
+                ],
+            ),
         )
 
     return " ".join(msg)
@@ -1260,7 +1277,8 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
         return "Your osu! account has already been linked to a Discord account."
 
     res = glob.db.fetch(
-        "SELECT osu_id FROM aika_akatsuki WHERE discordid = %s", [discordID]
+        "SELECT osu_id FROM aika_akatsuki WHERE discordid = %s",
+        [discordID],
     )
 
     if res["osu_id"] is None:
@@ -1272,7 +1290,8 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 
     # Checks passed, they're ready to be linked.
     glob.db.execute(
-        "UPDATE aika_akatsuki SET osu_id = %s WHERE discordid = %s", [userID, discordID]
+        "UPDATE aika_akatsuki SET osu_id = %s WHERE discordid = %s",
+        [userID, discordID],
     )
 
     return "Your discord account has been successfully linked."
@@ -1330,8 +1349,8 @@ def updateServer(fro: str, chan: str, message: list[str]) -> None:
                     "Akatsuki is being updated, the server will restart now.",
                     "Average downtime is under 30 seconds.\n",
                     "Score submission will not be affected.",
-                ]
-            )
+                ],
+            ),
         ),
     )
 
@@ -1380,8 +1399,8 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
                 "You username has been changed.",
                 f'New: "{newUsername}"\n',
                 "Please relogin using that name.",
-            ]
-        )
+            ],
+        ),
     )
 
     for t in glob.tokens.getTokenFromUserID(userID, _all=True):
@@ -1459,7 +1478,8 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
     )
 
     for md5 in glob.db.fetchAll(
-        f"SELECT beatmap_md5 FROM beatmaps WHERE {scope} = %s", [rank_id]
+        f"SELECT beatmap_md5 FROM beatmaps WHERE {scope} = %s",
+        [rank_id],
     ):
         glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
 
@@ -1496,7 +1516,9 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
         )
 
     chat.sendMessage(
-        glob.BOT_NAME, "#announce", f"{fro} has {status_readable} {beatmap_url}"
+        glob.BOT_NAME,
+        "#announce",
+        f"{fro} has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
 
@@ -1594,7 +1616,8 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
 
     if not (ratelimit := userUtils.getOverwriteWaitRemainder(userID)):
         glob.db.execute(
-            "UPDATE users SET previous_overwrite = 1 WHERE id = %s", [userID]
+            "UPDATE users SET previous_overwrite = 1 WHERE id = %s",
+            [userID],
         )
         return "\n".join(
             [
@@ -1602,7 +1625,7 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
                 "This command allows you to force your most recent score to overwrite any previous scores you had on the map.",
                 "For example, say you just set some cool EZ score but you already had a nomod fc, and it didnt overwrite, you can use this to force it to overwrite the previous score.",
                 "The command has now been unlocked.",
-            ]
+            ],
         )
 
     # Only allow the user to run it once / 10s.
@@ -1626,7 +1649,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpAddRefer():
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp addref <user>"
+                "Incorrect syntax: !mp addref <user>",
             )
         match = glob.matches.getMatchFromChannel(chan)
         assert match is not None
@@ -1643,7 +1666,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpRemoveRefer():
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp addref <user>"
+                "Incorrect syntax: !mp addref <user>",
             )
 
         match = glob.matches.getMatchFromChannel(chan)
@@ -1674,14 +1697,21 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpMake() -> str:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp make <name>."
+                "Incorrect syntax: !mp make <name>.",
             )
 
         if not (matchName := " ".join(message[1:]).strip()):
             raise exceptions.invalidArgumentsException("Match name must not be empty!")
 
         matchID = glob.matches.createMatch(
-            matchName, secrets.token_hex(16), 0, "Tournament", "", 0, -1, isTourney=True
+            matchName,
+            secrets.token_hex(16),
+            0,
+            "Tournament",
+            "",
+            0,
+            -1,
+            isTourney=True,
         )
         match = glob.matches.getMatchFromChannel(chan)
         assert match is not None
@@ -1692,7 +1722,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpJoin() -> str:
         if len(message) < 2 or not message[1].isnumeric():
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp join <id>"
+                "Incorrect syntax: !mp join <id>",
             )
         matchID = int(message[1])
         userToken = glob.tokens.getTokenFromUsername(fro, ignoreIRC=True)
@@ -1700,7 +1730,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             raise exceptions.invalidArgumentsException(
                 f"No game clients found for {fro}, can't join the match. "
                 "If you're a referee and you want to join the chat "
-                f"channel from IRC, use /join #multi_{matchID} instead."
+                f"channel from IRC, use /join #multi_{matchID} instead.",
             )
         userToken.joinMatch(matchID)
         return f"Attempting to join match #{matchID}!"
@@ -1732,7 +1762,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             or int(message[1]) > 16
         ):
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp size <slots(2-16)>."
+                "Incorrect syntax: !mp size <slots(2-16)>.",
             )
         matchSize = int(message[1])
         match = glob.matches.getMatchFromChannel(chan)
@@ -1763,7 +1793,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             or int(message[2]) > 16
         ):
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp move <username> <slot>."
+                "Incorrect syntax: !mp move <username> <slot>.",
             )
 
         username = message[1]
@@ -1786,7 +1816,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpHost() -> str:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp host <username>."
+                "Incorrect syntax: !mp host <username>.",
             )
 
         if not (username := message[1].strip()):
@@ -1835,7 +1865,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else:
                 if not t % 10 or t <= 5:
                     chat.sendMessage(
-                        glob.BOT_NAME, chan, f"Match starts in {t} seconds."
+                        glob.BOT_NAME,
+                        chan,
+                        f"Match starts in {t} seconds.",
                     )
                 threading.Timer(1.00, _decreaseTimer, [t - 1]).start()
 
@@ -1878,7 +1910,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpInvite() -> str:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp invite <username>."
+                "Incorrect syntax: !mp invite <username>.",
             )
 
         if not (username := message[1].strip()):
@@ -1889,7 +1921,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         if not (token := glob.tokens.getTokenFromUserID(userID, ignoreIRC=True)):
             raise exceptions.invalidUserException(
-                "That user is not connected to Akatsuki right now."
+                "That user is not connected to Akatsuki right now.",
             )
 
         match = glob.matches.getMatchFromChannel(chan)
@@ -1900,8 +1932,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         token.enqueue(
             serverPackets.notification(
                 "Please accept the invite you've just received from "
-                f"{glob.BOT_NAME} to enter your tourney match."
-            )
+                f"{glob.BOT_NAME} to enter your tourney match.",
+            ),
         )
         return f"An invite to this match has been sent to {username}."
 
@@ -1912,7 +1944,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             or (len(message) == 3 and not message[2].isnumeric())
         ):
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp map <beatmapid> [<gamemode>]."
+                "Incorrect syntax: !mp map <beatmapid> [<gamemode>].",
             )
         beatmapID = int(message[1])
         gameMode = int(message[2]) if len(message) == 3 else 0
@@ -1926,7 +1958,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             raise exceptions.invalidArgumentsException(
                 "The beatmap you've selected couldn't be found in the database. "
                 "If the beatmap id is valid, please load the scoreboard first in "
-                "order to cache it, then try again."
+                "order to cache it, then try again.",
             )
 
         match = glob.matches.getMatchFromChannel(chan)
@@ -1948,7 +1980,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             or (len(message) >= 4 and not message[3].isnumeric())
         ):
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp set <teammode> [<scoremode>] [<size>]."
+                "Incorrect syntax: !mp set <teammode> [<scoremode>] [<size>].",
             )
 
         match = glob.matches.getMatchFromChannel(chan)
@@ -1960,11 +1992,11 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
         if not 0 <= matchTeamType <= 3:
             raise exceptions.invalidArgumentsException(
-                "Match team type must be between 0 and 3."
+                "Match team type must be between 0 and 3.",
             )
         if not 0 <= matchScoringType <= 3:
             raise exceptions.invalidArgumentsException(
-                "Match scoring type must be between 0 and 3."
+                "Match scoring type must be between 0 and 3.",
             )
         oldMatchTeamType = match.matchTeamType
         match.matchTeamType = matchTeamType
@@ -1992,7 +2024,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpKick() -> str:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp kick <username>."
+                "Incorrect syntax: !mp kick <username>.",
             )
 
         if not (username := message[1].strip()):
@@ -2006,7 +2038,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         if not (slotID := match.getUserSlotID(userID)):
             raise exceptions.userNotFoundException(
-                "The specified user is not in this match."
+                "The specified user is not in this match.",
             )
 
         for _ in range(2):
@@ -2033,7 +2065,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpMods() -> str:
         if len(message) != 2 or len(message[1]) % 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp mods <mods, e.g. hdhr>"
+                "Incorrect syntax: !mp mods <mods, e.g. hdhr>",
             )
 
         match = glob.matches.getMatchFromChannel(chan)
@@ -2089,7 +2121,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpTeam() -> str:
         if len(message) < 3:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp team <username> <colour>."
+                "Incorrect syntax: !mp team <username> <colour>.",
             )
 
         if not (username := message[1].strip()):
@@ -2097,7 +2129,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         if (colour := message[2].lower().strip()) not in {"red", "blue"}:
             raise exceptions.invalidArgumentsException(
-                "Team colour must be red or blue."
+                "Team colour must be red or blue.",
             )
 
         if not (userID := userUtils.getIDSafe(username)):
@@ -2107,7 +2139,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         assert match is not None
 
         match.changeTeam(
-            userID, matchTeams.BLUE if colour == "blue" else matchTeams.RED
+            userID,
+            matchTeams.BLUE if colour == "blue" else matchTeams.RED,
         )
 
         return f"{username} is now in {colour} team"
@@ -2152,7 +2185,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     if slot.mods > 0
                     else "",
                     nl=" | " if single else "\n",
-                )
+                ),
             )
 
         if empty:
@@ -2163,7 +2196,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpScoreV() -> str:
         if len(message) < 2 or message[1] not in {"1", "2"}:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp scorev <1|2>."
+                "Incorrect syntax: !mp scorev <1|2>.",
             )
 
         match = glob.matches.getMatchFromChannel(chan)
@@ -2242,7 +2275,10 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(
-    trigger="!fetus", privs=privileges.ADMIN_CAKER, syntax="<target_name>", hidden=True
+    trigger="!fetus",
+    privs=privileges.ADMIN_CAKER,
+    syntax="<target_name>",
+    hidden=True,
 )
 def crashClient(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 FREE = 1
 LOCKED = 2
 NOT_READY = 4

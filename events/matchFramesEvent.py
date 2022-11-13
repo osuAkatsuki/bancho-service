@@ -1,4 +1,7 @@
-from constants import clientPackets, serverPackets
+from __future__ import annotations
+
+from constants import clientPackets
+from constants import serverPackets
 from objects import glob
 from objects.osuToken import token
 
@@ -26,5 +29,6 @@ def handle(userToken: token, rawPacketData: bytes):
 
         # Enqueue frames to who's playing
         glob.streams.broadcast(
-            match.playingStreamName, serverPackets.matchFrames(slotID, rawPacketData)
+            match.playingStreamName,
+            serverPackets.matchFrames(slotID, rawPacketData),
         )

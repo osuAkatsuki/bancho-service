@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from common.log import logUtils as log
-from constants import clientPackets, exceptions, serverPackets
+from constants import clientPackets
+from constants import exceptions
+from constants import serverPackets
 from objects import glob
 from objects.osuToken import token
 

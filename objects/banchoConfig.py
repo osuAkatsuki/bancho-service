@@ -1,4 +1,6 @@
 # TODO: Rewrite this shit
+from __future__ import annotations
+
 from common import generalUtils
 from constants import serverPackets
 from objects import glob
@@ -9,7 +11,12 @@ class banchoConfig:
     Class that loads settings from bancho_settings db table
     """
 
-    config = {"banchoMaintenance": False, "freeDirect": True, "menuIcon": "", "loginNotification": ""}
+    config = {
+        "banchoMaintenance": False,
+        "freeDirect": True,
+        "menuIcon": "",
+        "loginNotification": "",
+    }
 
     def __init__(self, loadFromDB: bool = True) -> None:
         """
@@ -23,21 +30,31 @@ class banchoConfig:
             except:
                 raise
 
-
     def loadSettings(self) -> None:
         """
         (re)load bancho_settings from DB and set values in config array
         """
-        self.config["banchoMaintenance"] = generalUtils.stringToBool(glob.db.fetch("SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'")["value_int"])
-        self.config["freeDirect"] = generalUtils.stringToBool(glob.db.fetch("SELECT value_int FROM bancho_settings WHERE name = 'free_direct'")["value_int"])
-        mainMenuIcon = glob.db.fetch("SELECT file_id, url FROM main_menu_icons WHERE is_current = 1 LIMIT 1")
+        self.config["banchoMaintenance"] = generalUtils.stringToBool(
+            glob.db.fetch(
+                "SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'",
+            )["value_int"],
+        )
+        self.config["freeDirect"] = generalUtils.stringToBool(
+            glob.db.fetch(
+                "SELECT value_int FROM bancho_settings WHERE name = 'free_direct'",
+            )["value_int"],
+        )
+        mainMenuIcon = glob.db.fetch(
+            "SELECT file_id, url FROM main_menu_icons WHERE is_current = 1 LIMIT 1",
+        )
         if mainMenuIcon is None:
             self.config["menuIcon"] = ""
         else:
             imageURL = f"https://i.ppy.sh/{mainMenuIcon['file_id']}.png"
             self.config["menuIcon"] = f"{imageURL}|{mainMenuIcon['url']}"
-        self.config["loginNotification"] = glob.db.fetch("SELECT value_string FROM bancho_settings WHERE name = 'login_notification'")["value_string"]
-
+        self.config["loginNotification"] = glob.db.fetch(
+            "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
+        )["value_string"]
 
     def setMaintenance(self, maintenance: bool) -> None:
         """
@@ -46,7 +63,10 @@ class banchoConfig:
         maintenance -- if True, turn on maintenance mode. If false, turn it off
         """
         self.config["banchoMaintenance"] = maintenance
-        glob.db.execute("UPDATE bancho_settings SET value_int = %s WHERE name = 'bancho_maintenance'", [int(maintenance)])
+        glob.db.execute(
+            "UPDATE bancho_settings SET value_int = %s WHERE name = 'bancho_maintenance'",
+            [int(maintenance)],
+        )
 
     def reload(self) -> None:
         # Reload settings from bancho_settings
@@ -56,7 +76,10 @@ class banchoConfig:
         glob.channels.loadChannels()
 
         # Send new channels and new bottom icon to everyone
-        glob.streams.broadcast("main", serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
+        glob.streams.broadcast(
+            "main",
+            serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
+        )
         glob.streams.broadcast("main", serverPackets.channelInfoEnd)
         for key, value in glob.channels.channels.items():
             if value.publicRead and not value.hidden:

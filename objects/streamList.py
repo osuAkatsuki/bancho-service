@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from objects import glob, stream
+from objects import glob
+from objects import stream
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -9,7 +12,7 @@ if TYPE_CHECKING:
 
 # TODO: use *args and **kwargs
 class streamList:
-    __slots__ = ('streams',)
+    __slots__ = ("streams",)
 
     def __init__(self):
         self.streams = {}
@@ -37,10 +40,11 @@ class streamList:
                     glob.tokens.tokens[i].leaveStream(name)
             self.streams.pop(name)
 
-
     def join(
-        self, name: str, client: 'Optional[token]' = None,
-        token: 'Optional[str]' = None
+        self,
+        name: str,
+        client: Optional[token] = None,
+        token: Optional[str] = None,
     ) -> None:
         """
         Add a client to a stream
@@ -54,8 +58,10 @@ class streamList:
             self.streams[name].addClient(client=client, token=token)
 
     def leave(
-        self, name: str, client: 'Optional[token]' = None,
-        token: 'Optional[str]' = None
+        self,
+        name: str,
+        client: Optional[token] = None,
+        token: Optional[str] = None,
     ) -> None:
         """
         Remove a client from a stream
@@ -104,7 +110,7 @@ class streamList:
         if name in self.streams:
             self.streams[name].dispose(*args, **kwargs)
 
-    def getStream(self, name: str) -> 'Optional[stream.stream]':
+    def getStream(self, name: str) -> Optional[stream.stream]:
         """
         Returns name's stream object or None if it doesn't exist
 

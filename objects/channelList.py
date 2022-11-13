@@ -1,7 +1,12 @@
-from cmyui.logging import Ansi, log
+from __future__ import annotations
+
+from cmyui.logging import Ansi
+from cmyui.logging import log
+
 from constants import exceptions
 from helpers import chatHelper as chat
-from objects import channel, glob
+from objects import channel
+from objects import glob
 
 
 class channelList:
@@ -23,13 +28,17 @@ class channelList:
                     chan["name"],
                     chan["description"],
                     chan["public_read"] == 1,
-                    chan["public_write"] == 1
+                    chan["public_write"] == 1,
                 )
 
     def addChannel(
-        self, name: str, description: str,
-        publicRead: bool, publicWrite: bool,
-        temp: bool = False, hidden: bool = False
+        self,
+        name: str,
+        description: str,
+        publicRead: bool,
+        publicWrite: bool,
+        temp: bool = False,
+        hidden: bool = False,
     ) -> None:
         """
         Add a channel to channels list
@@ -43,8 +52,15 @@ class channelList:
         :return:
         """
         glob.streams.add(f"chat/{name}")
-        self.channels[name] = channel.channel(name, description, publicRead, publicWrite, temp, hidden)
-        log(f'Created channel {name}.')
+        self.channels[name] = channel.channel(
+            name,
+            description,
+            publicRead,
+            publicWrite,
+            temp,
+            hidden,
+        )
+        log(f"Created channel {name}.")
 
     def addTempChannel(self, name: str) -> None:
         """
@@ -59,11 +75,15 @@ class channelList:
 
         glob.streams.add(f"chat/{name}")
         self.channels[name] = channel.channel(
-            name=name, description="Chat", publicRead=True,
-            publicWrite=True, temp=True, hidden=True
+            name=name,
+            description="Chat",
+            publicRead=True,
+            publicWrite=True,
+            temp=True,
+            hidden=True,
         )
 
-        log(f'Created temp channel {name}.')
+        log(f"Created temp channel {name}.")
 
     def addHiddenChannel(self, name: str) -> None:
         """
@@ -78,11 +98,15 @@ class channelList:
 
         glob.streams.add(f"chat/{name}")
         self.channels[name] = channel.channel(
-            name=name, description="Chat", publicRead=True,
-            publicWrite=True, temp=False, hidden=True
+            name=name,
+            description="Chat",
+            publicRead=True,
+            publicWrite=True,
+            temp=False,
+            hidden=True,
         )
 
-        log(f'Created hidden channel {name}.')
+        log(f"Created hidden channel {name}.")
 
     def removeChannel(self, name: str) -> None:
         """
@@ -95,18 +119,22 @@ class channelList:
             log(f"{name} is not in channels list?", Ansi.LYELLOW)
             return
 
-        #glob.streams.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
+        # glob.streams.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
 
         stream = glob.streams.getStream(f"chat/{name}")
         if stream:
             for token in stream.clients:
                 if token in glob.tokens.tokens:
-                    chat.partChannel(channel=name, token=glob.tokens.tokens[token], kick=True)
+                    chat.partChannel(
+                        channel=name,
+                        token=glob.tokens.tokens[token],
+                        kick=True,
+                    )
 
         glob.streams.dispose(f"chat/{name}")
         glob.streams.remove(f"chat/{name}")
         self.channels.pop(name)
-        log(f'Removed channel {name}.')
+        log(f"Removed channel {name}.")
 
     @staticmethod
     def getMatchIDFromChannel(chan: str) -> int:

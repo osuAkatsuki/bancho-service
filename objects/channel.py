@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from constants import exceptions
@@ -5,12 +7,26 @@ from objects import glob
 
 
 class channel:
-    __slots__ = ('name', 'description', 'publicRead',
-                 'publicWrite', 'moderated', 'temp', 'hidden',
-                 'isSpecial', 'clientName')
+    __slots__ = (
+        "name",
+        "description",
+        "publicRead",
+        "publicWrite",
+        "moderated",
+        "temp",
+        "hidden",
+        "isSpecial",
+        "clientName",
+    )
+
     def __init__(
-        self, name: str, description: str, publicRead: bool,
-        publicWrite: bool, temp: bool, hidden: bool
+        self,
+        name: str,
+        description: str,
+        publicRead: bool,
+        publicWrite: bool,
+        temp: bool,
+        hidden: bool,
     ) -> None:
         """
         Create a new chat channel object

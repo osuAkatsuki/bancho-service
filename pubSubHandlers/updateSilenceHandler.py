@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from common.redis import generalPubSubHandler
 from objects import glob
 
@@ -11,5 +13,5 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
-        if (targetToken := glob.tokens.getTokenFromUserID(userID)):
+        if targetToken := glob.tokens.getTokenFromUserID(userID):
             targetToken.silence()

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 from dotenv import load_dotenv
@@ -51,4 +53,3 @@ WEBHOOK_NOW_RANKED = os.environ["WEBHOOK_NOW_RANKED"]
 WEBHOOK_RANK_REQUESTS = os.environ["WEBHOOK_RANK_REQUESTS"]
 WEBHOOK_AC_GENERAL = os.environ["WEBHOOK_AC_GENERAL"]
 WEBHOOK_AC_CONFIDENTIAL = os.environ["WEBHOOK_AC_CONFIDENTIAL"]
-

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3.9
+from __future__ import annotations
+
 import ddtrace
+
 ddtrace.patch_all()
 
 import os
@@ -21,37 +24,55 @@ from common.constants import bcolors
 from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
-from handlers import (apiFokabotMessageHandler, apiIsOnlineHandler,
-                      apiOnlineUsersHandler, apiServerStatusHandler,
-                      apiVerifiedStatusHandler, ciTriggerHandler, mainHandler)
+from handlers import (
+    apiFokabotMessageHandler,
+    apiIsOnlineHandler,
+    apiOnlineUsersHandler,
+    apiServerStatusHandler,
+    apiVerifiedStatusHandler,
+    ciTriggerHandler,
+    mainHandler,
+)
 from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig, fokabot, glob
-from pubSubHandlers import (banHandler, changeUsernameHandler,
-                            disconnectHandler, notificationHandler,
-                            unbanHandler, updateSilenceHandler,
-                            updateStatsHandler, wipeHandler)
+from pubSubHandlers import (
+    banHandler,
+    changeUsernameHandler,
+    disconnectHandler,
+    notificationHandler,
+    unbanHandler,
+    updateSilenceHandler,
+    updateStatsHandler,
+    wipeHandler,
+)
 import settings
 
-def make_app():
-    return tornado.web.Application([
-        (r'/', mainHandler.handler),
-        (r'/api/v1/isOnline', apiIsOnlineHandler.handler),
-        (r'/api/v1/onlineUsers', apiOnlineUsersHandler.handler),
-        (r'/api/v1/serverStatus', apiServerStatusHandler.handler),
-        (r'/api/v1/ciTrigger', ciTriggerHandler.handler),
-        (r'/api/v1/verifiedStatus', apiVerifiedStatusHandler.handler),
-        (r'/api/v1/fokabotMessage', apiFokabotMessageHandler.handler)
-    ])
 
-ASCII_LOGO = '\n'.join([
-    '      _/_/    _/                    _/                          _/        _/',
-    '   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/',
-    '  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/',
-    ' _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/',
-    '_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/'
-])
+def make_app():
+    return tornado.web.Application(
+        [
+            (r"/", mainHandler.handler),
+            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
+            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
+            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
+            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
+            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
+        ],
+    )
+
+
+ASCII_LOGO = "\n".join(
+    [
+        "      _/_/    _/                    _/                          _/        _/",
+        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/",
+        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/",
+        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/",
+        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/",
+    ],
+)
 
 if __name__ == "__main__":
     # AGPL license agreement
@@ -64,19 +85,19 @@ if __name__ == "__main__":
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f'Welcome to pep.py osu!bancho server v{glob.VERSION}', Ansi.LGREEN)
-        log('Made by the Ripple and Akatsuki teams', Ansi.LGREEN)
-        log(f'{bcolors.UNDERLINE}https://github.com/osuAkatsuki/pep.py', Ansi.LGREEN)
-        log('Press CTRL+C to exit\n', Ansi.LGREEN)
+        log(f"Welcome to pep.py osu!bancho server v{glob.VERSION}", Ansi.LGREEN)
+        log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
+        log(f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/pep.py", Ansi.LGREEN)
+        log("Press CTRL+C to exit\n", Ansi.LGREEN)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        log('Ensuring folders.', Ansi.LMAGENTA)
-        if not os.path.exists('.data'):
-            os.makedirs('.data', 0o770)
+        log("Ensuring folders.", Ansi.LMAGENTA)
+        if not os.path.exists(".data"):
+            os.makedirs(".data", 0o770)
 
         # Connect to db
         try:
-            log('Connecting to SQL.', Ansi.LMAGENTA)
+            log("Connecting to SQL.", Ansi.LMAGENTA)
             glob.db = dbConnector.db(
                 host=settings.DB_HOST,
                 username=settings.DB_USER,
@@ -84,13 +105,13 @@ if __name__ == "__main__":
                 database=settings.DB_NAME,
                 initialSize=settings.DB_WORKERS,
             )
-        except :
-            log(f'Error connecting to sql.', Ansi.LRED)
+        except:
+            log(f"Error connecting to sql.", Ansi.LRED)
             raise
 
         # Connect to redis
         try:
-            log('Connecting to redis.', Ansi.LMAGENTA)
+            log("Connecting to redis.", Ansi.LMAGENTA)
             glob.redis = redis.Redis(
                 settings.REDIS_HOST,
                 settings.REDIS_PORT,
@@ -99,7 +120,7 @@ if __name__ == "__main__":
             )
             glob.redis.ping()
         except:
-            log(f'Error connecting to redis.', Ansi.LRED)
+            log(f"Error connecting to redis.", Ansi.LRED)
             raise
 
         # Empty redis cache
@@ -118,7 +139,7 @@ if __name__ == "__main__":
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
         except:
-            log(f'Error loading bancho settings.', Ansi.LMAGENTA)
+            log(f"Error loading bancho settings.", Ansi.LMAGENTA)
             raise
 
         # Delete old bancho sessions
@@ -128,17 +149,20 @@ if __name__ == "__main__":
         try:
             glob.pool = ThreadPool(processes=settings.APP_THREADS)
         except ValueError:
-            log(f'Error creating threads pool.', Ansi.LRED)
+            log(f"Error creating threads pool.", Ansi.LRED)
             consoleHelper.printError()
-            consoleHelper.printColored("[!] Error while creating threads pool. Please check your config.ini and run the server again", bcolors.RED)
+            consoleHelper.printColored(
+                "[!] Error while creating threads pool. Please check your config.ini and run the server again",
+                bcolors.RED,
+            )
             raise
 
         # Get build date for login notifications
-        with open('build.date', 'r') as f:
+        with open("build.date") as f:
             timestamp = dt.utcfromtimestamp(int(f.read()))
-            glob.latestBuild = timestamp.strftime('%b %d %Y')
+            glob.latestBuild = timestamp.strftime("%b %d %Y")
 
-        log(f'Connecting {glob.BOT_NAME}', Ansi.LMAGENTA)
+        log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
         fokabot.connect()
 
         glob.channels.loadChannels()
@@ -147,20 +171,20 @@ if __name__ == "__main__":
         glob.streams.add("main")
         glob.streams.add("lobby")
 
-        log('Starting background loops.', Ansi.LMAGENTA)
+        log("Starting background loops.", Ansi.LMAGENTA)
 
         glob.tokens.usersTimeoutCheckLoop()
         glob.tokens.spamProtectionResetLoop()
         glob.matches.cleanupLoop()
 
         if not settings.LOCALIZE_ENABLE:
-            log('User localization is disabled.', Ansi.LYELLOW)
+            log("User localization is disabled.", Ansi.LYELLOW)
 
         if not settings.APP_GZIP:
-            log('Gzip compression is disabled.', Ansi.LYELLOW)
+            log("Gzip compression is disabled.", Ansi.LYELLOW)
 
         if settings.DEBUG:
-            log('Server running in debug mode.', Ansi.LYELLOW)
+            log("Server running in debug mode.", Ansi.LYELLOW)
 
         glob.application = make_app()
 
@@ -169,10 +193,10 @@ if __name__ == "__main__":
             if settings.SENTRY_ENABLE:
                 glob.application.sentry_client = AsyncSentryClient(
                     settings.SENTRY_BANCHO_DSN,
-                    release=glob.VERSION
+                    release=glob.VERSION,
                 )
         except:
-            log('Error creating sentry client.', Ansi.LRED)
+            log("Error creating sentry client.", Ansi.LRED)
             raise
 
         # set up datadog
@@ -182,51 +206,70 @@ if __name__ == "__main__":
                     apiKey=settings.DATADOG_API_KEY,
                     appKey=settings.DATADOG_APP_KEY,
                     periodicChecks=[
-                        datadogClient.periodicCheck("online_users", lambda: len(glob.tokens.tokens)),
-                        datadogClient.periodicCheck("multiplayer_matches", lambda: len(glob.matches.matches)),
-                        #datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
-                        #datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
-                        #datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
-                        #datadogClient.periodicCheck("ram_file_buffers", lambda: generalUtils.getTotalSize(glob.fileBuffers)),
-                        #datadogClient.periodicCheck("ram_file_locks", lambda: generalUtils.getTotalSize(glob.fLocks)),
-                        #datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
-                        #datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
-                        #datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),
-                        #datadogClient.periodicCheck("ram_tornado", lambda: generalUtils.getTotalSize(glob.application)),
-                        #datadogClient.periodicCheck("ram_db", lambda: generalUtils.getTotalSize(glob.db)),
-                    ])
+                        datadogClient.periodicCheck(
+                            "online_users",
+                            lambda: len(glob.tokens.tokens),
+                        ),
+                        datadogClient.periodicCheck(
+                            "multiplayer_matches",
+                            lambda: len(glob.matches.matches),
+                        ),
+                        # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
+                        # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
+                        # datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
+                        # datadogClient.periodicCheck("ram_file_buffers", lambda: generalUtils.getTotalSize(glob.fileBuffers)),
+                        # datadogClient.periodicCheck("ram_file_locks", lambda: generalUtils.getTotalSize(glob.fLocks)),
+                        # datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
+                        # datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
+                        # datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),
+                        # datadogClient.periodicCheck("ram_tornado", lambda: generalUtils.getTotalSize(glob.application)),
+                        # datadogClient.periodicCheck("ram_db", lambda: generalUtils.getTotalSize(glob.db)),
+                    ],
+                )
         except:
-            log('Error creating datadog client.', Ansi.LRED)
+            log("Error creating datadog client.", Ansi.LRED)
             raise
 
         # start irc server if configured
         if settings.IRC_ENABLE:
-            log(f'IRC server listening on 127.0.0.1:{settings.IRC_PORT}.', Ansi.LMAGENTA)
-            threading.Thread(target=lambda: ircserver.main(port=settings.IRC_PORT)).start()
+            log(
+                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
+                Ansi.LMAGENTA,
+            )
+            threading.Thread(
+                target=lambda: ircserver.main(port=settings.IRC_PORT),
+            ).start()
 
         # fetch priv groups (optimization by cmyui)
-        glob.groupPrivileges = {row['name'].lower(): row['privileges'] for row in
-            glob.db.fetchAll(
-                'SELECT name, privileges '
-                'FROM privileges_groups'
+        glob.groupPrivileges = {
+            row["name"].lower(): row["privileges"]
+            for row in glob.db.fetchAll(
+                "SELECT name, privileges " "FROM privileges_groups",
             )
         }
 
         # Server start message and console output
-        log(f'Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.', Ansi.LMAGENTA)
+        log(
+            f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
+            Ansi.LMAGENTA,
+        )
 
         # Connect to pubsub channels
-        pubSub.listener(glob.redis, {
-            "peppy:ban": banHandler.handler(),
-            "peppy:unban": unbanHandler.handler(),
-            "peppy:silence": updateSilenceHandler.handler(),
-            "peppy:disconnect": disconnectHandler.handler(),
-            "peppy:notification": notificationHandler.handler(),
-            "peppy:change_username": changeUsernameHandler.handler(),
-            "peppy:update_cached_stats": updateStatsHandler.handler(),
-            "peppy:wipe": wipeHandler.handler(),
-            "peppy:reload_settings": lambda x: x == b"reload" and glob.banchoConf.reload(),
-        }).start()
+        pubSub.listener(
+            glob.redis,
+            {
+                "peppy:ban": banHandler.handler(),
+                "peppy:unban": unbanHandler.handler(),
+                "peppy:silence": updateSilenceHandler.handler(),
+                "peppy:disconnect": disconnectHandler.handler(),
+                "peppy:notification": notificationHandler.handler(),
+                "peppy:change_username": changeUsernameHandler.handler(),
+                "peppy:update_cached_stats": updateStatsHandler.handler(),
+                "peppy:wipe": wipeHandler.handler(),
+                "peppy:reload_settings": lambda x: x == b"reload"
+                and glob.banchoConf.reload(),
+            },
+        ).start()
 
         # Start tornado
         glob.application.listen(settings.APP_PORT)
