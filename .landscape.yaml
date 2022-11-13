@@ -1,7 +1,0 @@
-python-targets:
-  - 3
-pep8:
-  none: true
-pylint:
-  disable:
-    - cyclic-import
