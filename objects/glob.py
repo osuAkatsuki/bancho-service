@@ -41,13 +41,6 @@ pool = None
 ircServer = None
 busyThreads = 0
 
-debug = False
-outputRequestTime = False
-outputPackets = False
-gzip = False
-localize = False
-sentry = False
-irc = False
 restarting = False
 
 startTime = int(time.time())

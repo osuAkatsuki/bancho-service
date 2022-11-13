@@ -4,7 +4,6 @@ import time
 
 import tornado.gen
 import tornado.web
-
 from common.log import logUtils as log
 from common.sentry import sentry
 from common.web import requestsManager
@@ -28,6 +27,7 @@ from events import (cantSpectateEvent, changeActionEvent, changeMatchModsEvent,
                     tournamentMatchInfoRequestEvent, userPanelRequestEvent,
                     userStatsRequestEvent, changeProtocolVersionEvent)
 from objects import glob
+import settings
 
 PACKET_PROTO = struct.Struct('<HxI')
 
@@ -151,10 +151,6 @@ class handler(requestsManager.asyncRequestHandler):
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
                 while pos < requestDataLen:
-                    if glob.outputRequestTime:
-                        # Time individual packets.
-                        st = time.time()
-
                     # Get packet from stack starting from new packet
                     leftData = requestData[pos:]
 
@@ -182,8 +178,7 @@ class handler(requestsManager.asyncRequestHandler):
                 responseData = bytes(userToken.queue)
                 userToken.resetQueue()
 
-                if glob.outputRequestTime:
-                    log.ac(f'{packetID:>3} took {(time.time() - st) * 1000:.3f}ms.')
+                log.debug(f'{packetID:>3} took {(time.time() - st) * 1000:.3f}ms.')
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
@@ -203,9 +198,9 @@ class handler(requestsManager.asyncRequestHandler):
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)
-        if glob.gzip:
+        if settings.APP_GZIP:
             # First, write the gzipped response
-            self.write(gzip.compress(responseData, glob.gziplevel))
+            self.write(gzip.compress(responseData, settings.APP_GZIP_LEVEL))
 
             # Then, add gzip headers
             self.add_header("Vary", "Accept-Encoding")

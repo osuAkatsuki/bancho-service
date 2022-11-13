@@ -22,7 +22,7 @@ from common.redis import pubSub
 from handlers import (apiFokabotMessageHandler, apiIsOnlineHandler,
                       apiOnlineUsersHandler, apiServerStatusHandler,
                       apiVerifiedStatusHandler, ciTriggerHandler, mainHandler)
-from helpers import configHelper, consoleHelper
+from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig, fokabot, glob
@@ -30,7 +30,7 @@ from pubSubHandlers import (banHandler, changeUsernameHandler,
                             disconnectHandler, notificationHandler,
                             unbanHandler, updateSilenceHandler,
                             updateStatsHandler, wipeHandler)
-
+import settings
 
 def make_app():
     return tornado.web.Application([
@@ -68,18 +68,6 @@ if __name__ == "__main__":
         log('Press CTRL+C to exit\n', Ansi.LGREEN)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        glob.conf = configHelper.config('config.ini')
-
-        if glob.conf.default:
-            # We have generated a default config.ini, quit server
-            log('A default config has been generated.', Ansi.LGREEN)
-            sys.exit()
-
-        # If we haven't generated a default config.ini, check if it's valid
-        if not glob.conf.checkConfig():
-            log('Invalid config file.', Ansi.LRED)
-            sys.exit()
-
         log('Ensuring folders.', Ansi.LMAGENTA)
         if not os.path.exists('.data'):
             os.makedirs('.data', 0o770)
@@ -88,11 +76,11 @@ if __name__ == "__main__":
         try:
             log('Connecting to SQL.', Ansi.LMAGENTA)
             glob.db = dbConnector.db(
-                glob.conf.config["db"]["host"],
-                glob.conf.config["db"]["username"],
-                glob.conf.config["db"]["password"],
-                glob.conf.config["db"]["database"],
-                int(glob.conf.config["db"]["workers"])
+                host=settings.DB_HOST,
+                username=settings.DB_USER,
+                password=settings.DB_PASS,
+                database=settings.DB_NAME,
+                initialSize=settings.DB_WORKERS,
             )
         except :
             log(f'Error connecting to sql.', Ansi.LRED)
@@ -102,10 +90,10 @@ if __name__ == "__main__":
         try:
             log('Connecting to redis.', Ansi.LMAGENTA)
             glob.redis = redis.Redis(
-                glob.conf.config["redis"]["host"],
-                glob.conf.config["redis"]["port"],
-                glob.conf.config["redis"]["database"],
-                glob.conf.config["redis"]["password"]
+                settings.REDIS_HOST,
+                settings.REDIS_PORT,
+                settings.REDIS_DB,
+                settings.REDIS_PASS,
             )
             glob.redis.ping()
         except:
@@ -136,7 +124,7 @@ if __name__ == "__main__":
 
         # Create threads pool
         try:
-            glob.pool = ThreadPool(int(glob.conf.config["server"]["threads"]))
+            glob.pool = ThreadPool(processes=settings.APP_THREADS)
         except ValueError:
             log(f'Error creating threads pool.', Ansi.LRED)
             consoleHelper.printError()
@@ -163,30 +151,23 @@ if __name__ == "__main__":
         glob.tokens.spamProtectionResetLoop()
         glob.matches.cleanupLoop()
 
-        glob.localize = generalUtils.stringToBool(glob.conf.config["localize"]["enable"])
-        if not glob.localize:
+        if not settings.LOCALIZE_ENABLE:
             log('User localization is disabled.', Ansi.LYELLOW)
 
-        glob.gzip = generalUtils.stringToBool(glob.conf.config["server"]["gzip"])
-        glob.gziplevel = int(glob.conf.config["server"]["gziplevel"])
-        if not glob.gzip:
+        if not settings.APP_GZIP:
             log('Gzip compression is disabled.', Ansi.LYELLOW)
 
-        glob.debug = generalUtils.stringToBool(glob.conf.config["debug"]["enable"])
-        glob.outputPackets = generalUtils.stringToBool(glob.conf.config["debug"]["packets"])
-        glob.outputRequestTime = generalUtils.stringToBool(glob.conf.config["debug"]["time"])
-        if glob.debug:
+        if settings.DEBUG:
             log('Server running in debug mode.', Ansi.LYELLOW)
 
         glob.application = make_app()
 
         # set up sentry
         try:
-            glob.sentry = generalUtils.stringToBool(glob.conf.config["sentry"]["enable"])
-            if glob.sentry:
+            if settings.SENTRY_ENABLE:
                 glob.application.sentry_client = AsyncSentryClient(
-                    glob.conf.config["sentry"]["banchodsn"],
-                    release = glob.VERSION
+                    settings.SENTRY_BANCHO_DSN,
+                    release=glob.VERSION
                 )
         except:
             log('Error creating sentry client.', Ansi.LRED)
@@ -194,14 +175,13 @@ if __name__ == "__main__":
 
         # set up datadog
         try:
-            if generalUtils.stringToBool(glob.conf.config["datadog"]["enable"]):
+            if settings.DATADOG_ENABLE:
                 glob.dog = datadogClient.datadogClient(
-                    glob.conf.config["datadog"]["apikey"],
-                    glob.conf.config["datadog"]["appkey"],
-                    [
+                    apiKey=settings.DATADOG_API_KEY,
+                    appKey=settings.DATADOG_APP_KEY,
+                    periodicChecks=[
                         datadogClient.periodicCheck("online_users", lambda: len(glob.tokens.tokens)),
                         datadogClient.periodicCheck("multiplayer_matches", lambda: len(glob.matches.matches)),
-
                         #datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
                         #datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
                         #datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
@@ -218,16 +198,9 @@ if __name__ == "__main__":
             raise
 
         # start irc server if configured
-        glob.irc = generalUtils.stringToBool(glob.conf.config["irc"]["enable"])
-        if glob.irc:
-            try:
-                ircPort = int(glob.conf.config["irc"]["port"])
-            except ValueError:
-                log('Invalid IRC port.', Ansi.LRED)
-                raise
-
-            log(f'IRC server listening on 127.0.0.1:{ircPort}.', Ansi.LMAGENTA)
-            threading.Thread(target = lambda: ircserver.main(port = ircPort)).start()
+        if settings.IRC_ENABLE:
+            log(f'IRC server listening on 127.0.0.1:{settings.IRC_PORT}.', Ansi.LMAGENTA)
+            threading.Thread(target=lambda: ircserver.main(port=settings.IRC_PORT)).start()
 
         # fetch priv groups (optimization by cmyui)
         glob.groupPrivileges = {row['name'].lower(): row['privileges'] for row in
@@ -237,33 +210,24 @@ if __name__ == "__main__":
             )
         }
 
-        try:
-            serverPort = int(glob.conf.config["server"]["port"])
-        except ValueError:
-            log(f'Invalid server port.', Ansi.LRED)
-            raise
-
         # Server start message and console output
-        log(f'Tornado listening for HTTP(s) clients on 127.0.0.1:{serverPort}.', Ansi.LMAGENTA)
+        log(f'Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.', Ansi.LMAGENTA)
 
         # Connect to pubsub channels
         pubSub.listener(glob.redis, {
             "peppy:ban": banHandler.handler(),
             "peppy:unban": unbanHandler.handler(),
             "peppy:silence": updateSilenceHandler.handler(),
-
             "peppy:disconnect": disconnectHandler.handler(),
             "peppy:notification": notificationHandler.handler(),
             "peppy:change_username": changeUsernameHandler.handler(),
             "peppy:update_cached_stats": updateStatsHandler.handler(),
-
             "peppy:wipe": wipeHandler.handler(),
-
             "peppy:reload_settings": lambda x: x == b"reload" and glob.banchoConf.reload(),
         }).start()
 
         # Start tornado
-        glob.application.listen(serverPort)
+        glob.application.listen(settings.APP_PORT)
         tornado.ioloop.IOLoop.instance().start()
     finally:
         system.dispose()

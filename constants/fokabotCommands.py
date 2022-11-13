@@ -21,6 +21,8 @@ from helpers import chatHelper as chat
 from helpers import systemHelper
 from objects import fokabot, glob
 
+import settings
+
 """
 Commands callbacks
 
@@ -1464,7 +1466,7 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
 
     discord.Webhook(
-        url=glob.conf.config["webhooks"]["now_ranked"],
+        url=settings.WEBHOOK_NOW_RANKED,
         title=f"This {message[1]} has recieved a status update.",
         colour=status_to_colour(status),
         author=res["song_name"],

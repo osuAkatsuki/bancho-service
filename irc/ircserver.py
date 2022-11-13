@@ -21,6 +21,7 @@ from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import glob
 
+import settings
 
 class Client:
     __linesep_regexp = re.compile(r"\r?\n")
@@ -560,7 +561,7 @@ class Client:
 
 class Server:
     def __init__(self, port: int):
-        self.host = glob.conf.config["irc"]["hostname"]
+        self.host = settings.IRC_HOSTNAME
         self.port = port
         self.clients = {}  # Socket - - > Client instance.
         self.motd = ["Welcome to pep.py's embedded IRC server!", "This is a VERY simple IRC server and it's still in beta.", "Expect things to crash and not work as expected :("]
@@ -646,8 +647,8 @@ class Server:
         """
         # Sentry
         sentryClient = None
-        if glob.sentry:
-            sentryClient = raven.Client(glob.conf.config["sentry"]["ircdsn"])
+        if settings.SENTRY_ENABLE:
+            sentryClient = raven.Client(settings.SENTRY_IRC_DSN)
 
         serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -697,7 +698,7 @@ class Server:
                     lastAliveCheck = now
             except:
                 log.error("[IRC] Unknown error!\n```\n{}\n{}```".format(sys.exc_info(), traceback.format_exc()))
-                if glob.sentry and sentryClient:
+                if settings.SENTRY_ENABLE and sentryClient:
                     sentryClient.captureException()
 
 def main(port: int = 6667) -> None:

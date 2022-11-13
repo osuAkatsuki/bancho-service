@@ -16,6 +16,8 @@ from helpers import chatHelper as chat
 from helpers import countryHelper, locationHelper
 from objects import glob
 
+import settings
+
 if TYPE_CHECKING:
     import tornado.web
 
@@ -369,7 +371,7 @@ def handle(
                     responseToken.enqueue(serverPackets.userPanel(token.userID))
 
         # Get location and country from ip.zxq.co or database. If the user is a donor, then yee
-        if glob.localize and (
+        if settings.LOCALIZE_ENABLE and (
             firstLogin or not responseToken.privileges & privileges.USER_DONOR
         ):
             # Get location and country from IP
