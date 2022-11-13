@@ -12,3 +12,4 @@ gitold/
 build.date
 .DS_Store
 .vscode/
+.env

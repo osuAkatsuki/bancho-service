@@ -9,3 +9,4 @@ dill==0.2.7.1
 redis==2.10.5
 datadog==0.14.0
 orjson
+python-dotenv

@@ -10,6 +10,7 @@ from constants import exceptions
 from helpers import chatHelper
 from objects import glob
 
+import settings
 
 class handler(requestsManager.asyncRequestHandler):
     @tornado.web.asynchronous
@@ -25,7 +26,7 @@ class handler(requestsManager.asyncRequestHandler):
 
             # Check ci key
             key = self.get_argument('k')
-            if not key or key != glob.conf.config['server']['cikey']:
+            if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
             chatHelper.sendMessage(
