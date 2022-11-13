@@ -1,53 +1,38 @@
 from __future__ import annotations
 
-from json import dumps
-from typing import Union
+from typing import Any
 
-import tornado.gen
-import tornado.web
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 import settings
-from common.web import requestsManager
 from constants import exceptions
 from helpers import chatHelper
 from objects import glob
 
 
-class handler(requestsManager.asyncRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncGet(self) -> None:
+router = APIRouter()
+
+
+@router.get("/api/v1/fokabotMessage")
+def send_bot_message(to: str, msg: str, key: str):
+    statusCode = 400
+    data: dict[str, Any] = {"message": "unknown error"}
+    try:
+        # Check ci key
+        if key != settings.APP_CI_KEY:
+            raise exceptions.invalidArgumentsException()
+
+        chatHelper.sendMessage(glob.BOT_NAME, to, msg)
+
+        # Status code and message
+        statusCode = 200
+        data["message"] = "ok"
+    except exceptions.invalidArgumentsException:
         statusCode = 400
-        data: dict[str, Union[int, str]] = {"message": "unknown error"}
-        try:
-            # Check arguments
-            if not requestsManager.checkArguments(
-                self.request.arguments,
-                ["k", "to", "msg"],
-            ):
-                raise exceptions.invalidArgumentsException()
+        data["message"] = "invalid parameters"
+    finally:
+        # Add status code to data
+        data["status"] = statusCode
 
-            # Check ci key
-            key = self.get_argument("k")
-            if not key or key != settings.APP_CI_KEY:
-                raise exceptions.invalidArgumentsException()
-
-            chatHelper.sendMessage(
-                glob.BOT_NAME,
-                self.get_argument("to").encode().decode("utf-8", "replace"),
-                self.get_argument("msg").encode().decode("utf-8", "replace"),
-            )
-
-            # Status code and message
-            statusCode = 200
-            data["message"] = "ok"
-        except exceptions.invalidArgumentsException:
-            statusCode = 400
-            data["message"] = "invalid parameters"
-        finally:
-            # Add status code to data
-            data["status"] = statusCode
-
-            # Send response
-            self.write(dumps(data))
-            self.set_status(statusCode)
+        return JSONResponse(content=data, status_code=statusCode)

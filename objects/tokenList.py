@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from types import TracebackType
@@ -248,16 +249,15 @@ class tokenList:
         for value in self.tokens.values():
             value.enqueue(packet)
 
-    def usersTimeoutCheckLoop(self) -> None:
+    async def usersTimeoutCheckLoop(self) -> None:
         """
         Start timed out users disconnect loop.
         This function will be called every `checkTime` seconds and so on, forever.
         CALL THIS FUNCTION ONLY ONCE!
         :return:
         """
-        try:
+        while True:
             log.debug("Checking timed out clients")
-            exceptions = []
             timedOutTokens = []  # timed out users
             timeoutLimit = int(time.time()) - 300  # (determined by osu)
 
@@ -282,23 +282,13 @@ class tokenList:
                         "Your connection to the server timed out.",
                     ),
                 )
-                try:
-                    logoutEvent.handle(self.tokens[i], None)
-                except Exception as e:
-                    exceptions.append(e)
-                    log.error(
-                        "Something wrong happened while disconnecting a timed out client.",
-                    )
+                # TODO: handle & log exceptions in this call gracefully?
+                logoutEvent.handle(self.tokens[i], None)
             del timedOutTokens
 
-            # Re-raise exceptions if needed
-            if exceptions:
-                raise periodicLoopException(exceptions)
-        finally:
-            # Schedule a new check (endless loop)
-            threading.Timer(100, self.usersTimeoutCheckLoop).start()
+            await asyncio.sleep(100)
 
-    def spamProtectionResetLoop(self) -> None:
+    async def spamProtectionResetLoop(self) -> None:
         """
         Start spam protection reset loop.
         Called every 10 seconds.
@@ -306,14 +296,12 @@ class tokenList:
 
         :return:
         """
-
-        try:
+        while True:
             # Reset spamRate for every token
             for value in self.tokens.values():
                 value.spamRate = 0
-        finally:
-            # Schedule a new check (endless loop)
-            threading.Timer(10, self.spamProtectionResetLoop).start()
+
+            await asyncio.sleep(10)
 
     def deleteBanchoSessions(self) -> None:
         """

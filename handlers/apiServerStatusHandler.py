@@ -1,32 +1,25 @@
 from __future__ import annotations
 
-from json import dumps
-from typing import Union
+from typing import Any
 
-import tornado.gen
-import tornado.web
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
-from common.web import requestsManager
 from objects import glob
 
 
-class handler(requestsManager.asyncRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncGet(self) -> None:
-        statusCode = 400
-        data: dict[str, Union[int, str]] = {"message": "unknown error"}
-        try:
-            # Get online users count
-            data["result"] = -1 if glob.restarting else 1
+router = APIRouter()
 
-            # Status code and message
-            statusCode = 200
-            data["message"] = "ok"
-        finally:
-            # Add status code to data
-            data["status"] = statusCode
 
-            # Send response
-            self.write(dumps(data))
-            self.set_status(statusCode)
+@router.get("/api/v1/serverStatus")
+def get_server_status():
+    statusCode = 400
+    data: dict[str, Any] = {"message": "unknown error"}
+    try:
+        data["result"] = -1 if glob.restarting else 1
+        statusCode = 200
+        data["message"] = "ok"
+    finally:
+        data["status"] = statusCode
+
+        return JSONResponse(content=data, status_code=statusCode)

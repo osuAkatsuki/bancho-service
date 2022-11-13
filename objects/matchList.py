@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from threading import Timer
+import asyncio
 from time import time
 from typing import MutableMapping
 from typing import Optional
@@ -101,7 +101,7 @@ class matchList:
         del self.matches[matchID]
         log.info(f"MPROOM{_match.matchID}: Room disposed manually")
 
-    def cleanupLoop(self) -> None:
+    async def cleanupLoop(self) -> None:
         """
         Start match cleanup loop.
         Empty matches that have been created more than 60 seconds ago will get deleted.
@@ -110,11 +110,10 @@ class matchList:
         This method starts an infinite loop, call it only once!
         :return:
         """
-        try:
+        while True:
             log.debug("Checking empty matches")
             t: int = int(time())
             emptyMatches: list[int] = []
-            exceptions: list[Exception] = []
 
             # Collect all empty matches
             for _, m in self.matches.items():
@@ -126,20 +125,10 @@ class matchList:
 
             # Dispose all empty matches
             for matchID in emptyMatches:
-                try:
-                    self.disposeMatch(matchID)
-                except Exception as e:
-                    exceptions.append(e)
-                    log.error(
-                        "Something wrong happened while disposing a timed out match.",
-                    )
+                # TODO: handle & log exceptions in this call gracefully?
+                self.disposeMatch(matchID)
 
-            # Re-raise exception if needed
-            if exceptions:
-                raise periodicLoopException(exceptions)
-        finally:
-            # Schedule a new check (endless loop)
-            Timer(30, self.cleanupLoop).start()
+            await asyncio.sleep(30)
 
     def matchExists(self, matchID: int) -> bool:
         return matchID in self.matches

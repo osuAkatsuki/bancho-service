@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import gzip
 import struct
-import time
+from typing import Optional
 
-import tornado.gen
-import tornado.web
+from fastapi import APIRouter
+from fastapi import Header
+from fastapi import Request
+from fastapi import Response
+from fastapi.responses import HTMLResponse
 
-import settings
-from common.log import logUtils as log
-from common.web import requestsManager
 from constants import exceptions
 from constants import packetIDs
 from constants import serverPackets
@@ -58,8 +57,6 @@ from events import tournamentMatchInfoRequestEvent
 from events import userPanelRequestEvent
 from events import userStatsRequestEvent
 from objects import glob
-
-PACKET_PROTO = struct.Struct("<HxI")
 
 # Packet map of all bancho related
 # interactions with the osu! client.
@@ -123,7 +120,7 @@ restricted_packets = {
     packetIDs.client_changeProtocolVersion,
 }
 
-HTML_PAGE = (
+HTML_PAGE_CONTENT = (
     "<html><head><title>Welcome to Akatsuki!</title><style type='text/css'>body{width:30%;background:#222;color:#fff;}</style></head><body><pre>"
     "      _/_/    _/                    _/                          _/        _/   <br>"
     "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/          <br>"
@@ -144,105 +141,89 @@ HTML_PAGE = (
 )
 
 
-class handler(requestsManager.asyncRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncPost(self) -> None:
-        # Client's token string and request data
-        requestTokenString = self.request.headers.get("osu-token")
-        requestData = self.request.body
+router = APIRouter()
 
-        # Server's token string and request data
-        responseTokenString = "ayy"
-        responseData = b""
 
-        if requestTokenString is None:
-            # No token, first request. Handle login.
-            responseTokenString, responseData = loginEvent.handle(self)
-        else:
-            userToken = None  # default value
-            try:
-                # This is not the first packet, send response based on client's request
-                # Packet start position, used to read stacked packets
-                pos = 0
+@router.get("/")
+def get_html_page():
+    return HTMLResponse(HTML_PAGE_CONTENT)
 
-                # Make sure the token exists
-                if requestTokenString not in glob.tokens.tokens:
-                    raise exceptions.tokenNotFoundException()
 
-                # Token exists, get its object and lock it
-                userToken = glob.tokens.tokens[requestTokenString]
-                userToken.processingLock.acquire()
+@router.post("/")
+async def asyncPost(
+    request: Request,
+    requestTokenString: Optional[str] = Header(None, alias="osu-token"),
+):
+    # Client's token string and request data
 
-                # Keep reading packets until everything has been read
-                requestDataLen = len(requestData)
-                while pos < requestDataLen:
-                    # Get packet from stack starting from new packet
-                    leftData = requestData[pos:]
+    # Server's token string and request data
+    responseTokenString = "ayy"
+    responseData = b""
 
-                    # Get packet ID, data length and data
-                    packetID, dataLength = PACKET_PROTO.unpack(leftData[:7])
-                    packetData = leftData[: dataLength + 7]
+    if requestTokenString is None:
+        # No token, first request. Handle login.
+        responseTokenString, responseData = await loginEvent.handle(request)
+    else:
+        userToken = None  # default value
+        try:
+            # This is not the first packet, send response based on client's request
+            # Packet start position, used to read stacked packets
+            pos = 0
 
-                    # Process/ignore packet
-                    if packetID != 4:
-                        if packetID in bancho_packets:
-                            if (
-                                not userToken.restricted
-                                or packetID in restricted_packets
-                            ):
-                                bancho_packets[packetID](userToken, packetData)
-                        # else:
-                        # 	#log.warning(f"Unhandled: {packetID}")
+            # Make sure the token exists
+            if requestTokenString not in glob.tokens.tokens:
+                raise exceptions.tokenNotFoundException()
 
-                    # Update pos so we can read the next stacked packet
-                    # +7 because we add packet ID bytes, unused byte and data length bytes
-                    pos += dataLength + 7
+            # Token exists, get its object and lock it
+            userToken = glob.tokens.tokens[requestTokenString]
+            userToken.processingLock.acquire()
 
-                # Token queue built, send it
-                responseTokenString = userToken.token
-                responseData = bytes(userToken.queue)
-                userToken.resetQueue()
+            requestData = await request.body()
+            # Keep reading packets until everything has been read
+            requestDataLen = len(requestData)
+            while pos < requestDataLen:
+                # Get packet from stack starting from new packet
+                leftData = requestData[pos:]
 
-            except exceptions.tokenNotFoundException:
-                # Client thinks it's logged in when it's
-                # not; we probably restarted the server.
-                responseData = serverPackets.notification(
-                    "Server has restarted.",
-                ) + serverPackets.banchoRestart(0)
-            finally:
-                # Unlock token
-                if userToken:
-                    # Update ping time for timeout
-                    userToken.updatePingTime()
-                    # Release processing lock
-                    userToken.processingLock.release()
-                    # Delete token if kicked
-                    if userToken.kicked:
-                        glob.tokens.deleteToken(userToken)
+                # Get packet ID, data length and data
+                packetID, dataLength = struct.unpack("<HxI", leftData[:7])
+                packetData = leftData[: dataLength + 7]
 
-        # Send server's response to client
-        # We don't use token object because we might not have a token (failed login)
-        if settings.APP_GZIP:
-            # First, write the gzipped response
-            self.write(gzip.compress(responseData, settings.APP_GZIP_LEVEL))
+                # Process/ignore packet
+                if packetID != 4:
+                    if packetID in bancho_packets:
+                        if not userToken.restricted or packetID in restricted_packets:
+                            bancho_packets[packetID](userToken, packetData)
+                    # else:
+                    # 	#log.warning(f"Unhandled: {packetID}")
 
-            # Then, add gzip headers
-            self.add_header("Vary", "Accept-Encoding")
-            self.add_header("Content-Encoding", "gzip")
-        else:
-            # First, write the response
-            self.write(responseData)
+                # Update pos so we can read the next stacked packet
+                # +7 because we add packet ID bytes, unused byte and data length bytes
+                pos += dataLength + 7
 
-        # Add all the headers AFTER the response has been written
-        self.set_status(200)
-        self.add_header("cho-token", responseTokenString)
-        # self.add_header("cho-protocol", "19")
-        # self.add_header("Connection", "keep-alive")
-        # self.add_header("Keep-Alive", "timeout=5, max=100")
-        self.add_header("Content-Type", "text/html; charset=UTF-8")
+            # Token queue built, send it
+            responseTokenString = userToken.token
+            responseData = bytes(userToken.queue)
+            userToken.resetQueue()
 
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncGet(self) -> None:
-        self.write(HTML_PAGE)
+        except exceptions.tokenNotFoundException:
+            # Client thinks it's logged in when it's
+            # not; we probably restarted the server.
+            responseData = serverPackets.notification(
+                "Server has restarted.",
+            ) + serverPackets.banchoRestart(0)
+        finally:
+            # Unlock token
+            if userToken:
+                # Update ping time for timeout
+                userToken.updatePingTime()
+                # Release processing lock
+                userToken.processingLock.release()
+                # Delete token if kicked
+                if userToken.kicked:
+                    glob.tokens.deleteToken(userToken.token)
+
+    return Response(
+        content=responseData,
+        headers={"cho-token": responseTokenString},
+    )

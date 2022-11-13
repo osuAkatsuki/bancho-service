@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from cmyui.logging import Ansi
 from cmyui.logging import log
+from fastapi import Request
 
 import settings
 from common import generalUtils
@@ -23,30 +24,33 @@ from helpers import countryHelper
 from helpers import locationHelper
 from objects import glob
 
-if TYPE_CHECKING:
-    import tornado.web
-
 osu_ver_regex = re.compile(
     r"^b(?P<ver>\d{8})(?:\.(?P<subver>\d))?"
     r"(?P<stream>beta|cuttingedge|dev|tourney)?$",
 )
 
 
-def handle(
-    web_handler: tornado.web.RequestHandler,
+async def handle(
+    request: Request,
 ) -> tuple[str, bytes]:  # token, data
-    # Data to return
-    responseToken = None
-    responseTokenString = "ayy"
-    responseData = bytearray()
-
-    # Get IP from tornado request
-    requestIP = web_handler.getRequestIP()
-
-    # Split POST body so we can get username/password/hardware data
-    loginData = web_handler.request.body.decode()[:-1].split("\n")
-
     try:
+        # Data to return
+        responseToken = None
+        responseTokenString = "ayy"
+        responseData = bytearray()
+
+        # Get IP from tornado request
+        if "CF-Connecting-IP" in request.headers:
+            requestIP = request.headers.get("CF-Connecting-IP")
+        elif "X-Forwarded-For" in request.headers:
+            requestIP = request.headers.get("X-Forwarded-For")
+        else:
+            print("No IP provided?")
+            raise exceptions.invalidArgumentsException()
+
+        # Split POST body so we can get username/password/hardware data
+        loginData = (await request.body()).decode()[:-1].split("\n")
+
         # Make sure loginData is valid
         if len(loginData) < 3:
             raise exceptions.invalidArgumentsException()
@@ -94,7 +98,7 @@ def handle(
 
         restricted = priv & privileges.USER_PUBLIC == 0
 
-        if v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr:
+        if v_argstr in request.request.arguments or osuVersionStr == v_argverstr:
             raise exceptions.haxException()
 
         if not (rgx := osu_ver_regex.match(osuVersionStr)):
@@ -465,7 +469,7 @@ def handle(
         )
 
         if not restricted and (
-            v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
+            v_argstr in request.request.arguments or osuVersionStr == v_argverstr
         ):
             logUtils.ac(
                 f"**[{username}](https://akatsuki.pw/u/{userID})** has attempted to login with the {v_argstr} client.",

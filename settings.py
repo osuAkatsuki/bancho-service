@@ -20,8 +20,6 @@ REDIS_PASS = os.environ["REDIS_PASS"]
 
 APP_PORT = int(os.environ["APP_PORT"])
 APP_THREADS = int(os.environ["APP_THREADS"])
-APP_GZIP = os.environ["APP_GZIP"] == "1"
-APP_GZIP_LEVEL = int(os.environ["APP_GZIP_LEVEL"])
 APP_CI_KEY = os.environ["APP_CI_KEY"]
 APP_API_KEY = os.environ["APP_API_KEY"]
 

@@ -6,18 +6,13 @@ import ddtrace
 ddtrace.patch_all()
 
 import os
+import asyncio
 import threading
 from datetime import datetime as dt
-from multiprocessing.pool import ThreadPool
 
 import redis
-import tornado.gen
-import tornado.httpserver
-import tornado.ioloop
-import tornado.web
 
-from cmyui.logging import Ansi, log, printc
-from common.constants import bcolors
+from cmyui.logging import Ansi, log
 from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
@@ -26,11 +21,8 @@ from handlers import (
     apiIsOnlineHandler,
     apiOnlineUsersHandler,
     apiServerStatusHandler,
-    apiVerifiedStatusHandler,
-    ciTriggerHandler,
     mainHandler,
 )
-from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig, fokabot, glob
@@ -45,84 +37,42 @@ from pubSubHandlers import (
     wipeHandler,
 )
 import settings
+from fastapi import FastAPI
+
+# TODO: check if this is still needed
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 
 def make_app():
-    return tornado.web.Application(
-        [
-            (r"/", mainHandler.handler),
-            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
-            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
-            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
-            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
-            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
-            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
-        ],
-    )
+    app = FastAPI()
+    app.include_router(mainHandler.router)
+    app.include_router(apiIsOnlineHandler.router)
+    app.include_router(apiOnlineUsersHandler.router)
+    app.include_router(apiServerStatusHandler.router)
+    app.include_router(apiFokabotMessageHandler.router)
 
+    @app.on_event("startup")
+    async def on_startup():
+        # set up sql db
+        glob.db = dbConnector.db(
+            host=settings.DB_HOST,
+            username=settings.DB_USER,
+            password=settings.DB_PASS,
+            database=settings.DB_NAME,
+            initialSize=settings.DB_WORKERS,
+        )
 
-ASCII_LOGO = "\n".join(
-    [
-        "      _/_/    _/                    _/                          _/        _/",
-        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/",
-        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/",
-        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/",
-        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/",
-    ],
-)
-
-if __name__ == "__main__":
-    try:
-        # Server start
-        printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to pep.py osu!bancho server v{glob.VERSION}", Ansi.LGREEN)
-        log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
-        log(f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/pep.py", Ansi.LGREEN)
-        log("Press CTRL+C to exit\n", Ansi.LGREEN)
-        os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
-        log("Ensuring folders.", Ansi.LMAGENTA)
-        if not os.path.exists(".data"):
-            os.makedirs(".data", 0o770)
-
-        # Connect to db
-        try:
-            log("Connecting to SQL.", Ansi.LMAGENTA)
-            glob.db = dbConnector.db(
-                host=settings.DB_HOST,
-                username=settings.DB_USER,
-                password=settings.DB_PASS,
-                database=settings.DB_NAME,
-                initialSize=settings.DB_WORKERS,
-            )
-        except:
-            log(f"Error connecting to sql.", Ansi.LRED)
-            raise
-
-        # Connect to redis
-        try:
-            log("Connecting to redis.", Ansi.LMAGENTA)
-            glob.redis = redis.Redis(
-                settings.REDIS_HOST,
-                settings.REDIS_PORT,
-                settings.REDIS_DB,
-                settings.REDIS_PASS,
-            )
-            glob.redis.ping()
-        except:
-            log(f"Error connecting to redis.", Ansi.LRED)
-            raise
-
-        # Empty redis cache
-        try:
-            glob.redis.set("ripple:online_users", 0)
-            glob.redis.delete(*glob.redis.keys("peppy:*"))
-            glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
-        except redis.exceptions.ResponseError:
-            # Script returns error if there are no keys starting with peppy:*
-            pass
-
-        # Save peppy version in redis
+        # set up redis
+        glob.redis = redis.Redis(
+            settings.REDIS_HOST,
+            settings.REDIS_PORT,
+            settings.REDIS_DB,
+            settings.REDIS_PASS,
+        )
+        glob.redis.ping()
+        glob.redis.set("ripple:online_users", 0)
+        glob.redis.delete(*glob.redis.keys("peppy:*"))
+        glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
         glob.redis.set("peppy:version", glob.VERSION)
 
         # Load bancho_settings
@@ -135,22 +85,9 @@ if __name__ == "__main__":
         # Delete old bancho sessions
         glob.tokens.deleteBanchoSessions()
 
-        # Create threads pool
-        try:
-            glob.pool = ThreadPool(processes=settings.APP_THREADS)
-        except ValueError:
-            log(f"Error creating threads pool.", Ansi.LRED)
-            consoleHelper.printError()
-            consoleHelper.printColored(
-                "[!] Error while creating threads pool. Please check your config.ini and run the server again",
-                bcolors.RED,
-            )
-            raise
-
-        # Get build date for login notifications
-        with open("build.date") as f:
-            timestamp = dt.utcfromtimestamp(int(f.read()))
-            glob.latestBuild = timestamp.strftime("%b %d %Y")
+        asyncio.create_task(glob.tokens.usersTimeoutCheckLoop())
+        asyncio.create_task(glob.tokens.spamProtectionResetLoop())
+        asyncio.create_task(glob.matches.cleanupLoop())
 
         log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
         fokabot.connect()
@@ -161,53 +98,31 @@ if __name__ == "__main__":
         glob.streams.add("main")
         glob.streams.add("lobby")
 
-        log("Starting background loops.", Ansi.LMAGENTA)
-
-        glob.tokens.usersTimeoutCheckLoop()
-        glob.tokens.spamProtectionResetLoop()
-        glob.matches.cleanupLoop()
-
-        if not settings.LOCALIZE_ENABLE:
-            log("User localization is disabled.", Ansi.LYELLOW)
-
-        if not settings.APP_GZIP:
-            log("Gzip compression is disabled.", Ansi.LYELLOW)
-
-        if settings.DEBUG:
-            log("Server running in debug mode.", Ansi.LYELLOW)
-
-        glob.application = make_app()
-
-        # set up datadog
-        try:
-            if settings.DATADOG_ENABLE:
-                glob.dog = datadogClient.datadogClient(
-                    apiKey=settings.DATADOG_API_KEY,
-                    appKey=settings.DATADOG_APP_KEY,
-                    periodicChecks=[
-                        datadogClient.periodicCheck(
-                            "online_users",
-                            lambda: len(glob.tokens.tokens),
-                        ),
-                        datadogClient.periodicCheck(
-                            "multiplayer_matches",
-                            lambda: len(glob.matches.matches),
-                        ),
-                        # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
-                        # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
-                        # datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
-                        # datadogClient.periodicCheck("ram_file_buffers", lambda: generalUtils.getTotalSize(glob.fileBuffers)),
-                        # datadogClient.periodicCheck("ram_file_locks", lambda: generalUtils.getTotalSize(glob.fLocks)),
-                        # datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
-                        # datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
-                        # datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),
-                        # datadogClient.periodicCheck("ram_tornado", lambda: generalUtils.getTotalSize(glob.application)),
-                        # datadogClient.periodicCheck("ram_db", lambda: generalUtils.getTotalSize(glob.db)),
-                    ],
-                )
-        except:
-            log("Error creating datadog client.", Ansi.LRED)
-            raise
+        if settings.DATADOG_ENABLE:
+            glob.dog = datadogClient.datadogClient(
+                apiKey=settings.DATADOG_API_KEY,
+                appKey=settings.DATADOG_APP_KEY,
+                periodicChecks=[
+                    datadogClient.periodicCheck(
+                        "online_users",
+                        lambda: len(glob.tokens.tokens),
+                    ),
+                    datadogClient.periodicCheck(
+                        "multiplayer_matches",
+                        lambda: len(glob.matches.matches),
+                    ),
+                    # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
+                    # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
+                    # datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
+                    # datadogClient.periodicCheck("ram_file_buffers", lambda: generalUtils.getTotalSize(glob.fileBuffers)),
+                    # datadogClient.periodicCheck("ram_file_locks", lambda: generalUtils.getTotalSize(glob.fLocks)),
+                    # datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
+                    # datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
+                    # datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),
+                    # datadogClient.periodicCheck("ram_tornado", lambda: generalUtils.getTotalSize(glob.application)),
+                    # datadogClient.periodicCheck("ram_db", lambda: generalUtils.getTotalSize(glob.db)),
+                ],
+            )
 
         # start irc server if configured
         if settings.IRC_ENABLE:
@@ -250,8 +165,28 @@ if __name__ == "__main__":
             },
         ).start()
 
-        # Start tornado
-        glob.application.listen(settings.APP_PORT)
-        tornado.ioloop.IOLoop.instance().start()
-    finally:
+    @app.on_event("shutdown")
+    async def on_shutdown():
+        glob.redis.close()
         system.dispose()
+
+    return app
+
+
+def main() -> int:
+    log("Ensuring folders.", Ansi.LMAGENTA)
+    if not os.path.exists(".data"):
+        os.makedirs(".data", 0o770)
+
+    # Get build date for login notifications
+    with open("build.date") as f:
+        timestamp = dt.utcfromtimestamp(int(f.read()))
+        glob.latestBuild = timestamp.strftime("%b %d %Y")
+
+    return 0
+
+
+app = make_app()
+
+if __name__ == "__main__":
+    raise SystemExit(main())
