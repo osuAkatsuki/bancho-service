@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import settings
 from common.constants import mods
 from common.constants import privileges
 from common.log import logUtils as log
@@ -59,7 +60,7 @@ def joinChannel(
         token.joinChannel(channelObject)
 
         # Send channel joined (IRC)
-        if glob.irc and not toIRC:
+        if settings.IRC_ENABLE and not toIRC:
             glob.ircServer.banchoJoinChannel(token.username, channel)
 
         # Console output
@@ -165,7 +166,7 @@ def partChannel(
             token.enqueue(serverPackets.channelKicked(channelClient))
 
         # IRC part
-        if glob.irc and toIRC:
+        if settings.IRC_ENABLE and toIRC:
             glob.ircServer.banchoPartChannel(token.username, channel)
 
         # Console output

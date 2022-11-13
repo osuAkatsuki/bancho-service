@@ -6,6 +6,7 @@ import orjson
 from cmyui.logging import Ansi
 from cmyui.logging import log
 
+import settings
 from constants import serverPackets
 from helpers import chatHelper as chat
 from objects import glob
@@ -34,7 +35,7 @@ def handle(userToken, _=None, deleteToken=True):
         glob.streams.broadcast("main", serverPackets.userLogout(userToken.userID))
 
         # Disconnect from IRC if needed
-        if userToken.irc and glob.irc:
+        if userToken.irc and settings.IRC_ENABLE:
             glob.ircServer.forceDisconnection(userToken.username)
 
         # Delete token

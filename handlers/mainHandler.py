@@ -206,8 +206,6 @@ class handler(requestsManager.asyncRequestHandler):
                 responseData = bytes(userToken.queue)
                 userToken.resetQueue()
 
-                log.debug(f"{packetID:>3} took {(time.time() - st) * 1000:.3f}ms.")
-
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
                 # not; we probably restarted the server.
