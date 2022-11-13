@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import time
 
 import orjson
-from cmyui.logging import Ansi, log
+from cmyui.logging import Ansi
+from cmyui.logging import log
+
 from constants import serverPackets
 from helpers import chatHelper as chat
 from objects import glob
@@ -12,10 +16,7 @@ def handle(userToken, _=None, deleteToken=True):
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login
     # if the user logs out before 2 seconds, he will be disconnected later with timeout check
-    if (
-        time.time() - userToken.loginTime >= 2 or
-        userToken.irc
-    ):
+    if time.time() - userToken.loginTime >= 2 or userToken.irc:
         # Stop spectating
         userToken.stopSpectating()
 
@@ -43,17 +44,30 @@ def handle(userToken, _=None, deleteToken=True):
             userToken.kicked = True
 
         # Change username if needed
-        newUsername = glob.redis.get(f"ripple:change_username_pending:{userToken.userID}")
+        newUsername = glob.redis.get(
+            f"ripple:change_username_pending:{userToken.userID}",
+        )
         if newUsername:
             log(f"Sending username change request for {userToken.username}.")
-            glob.redis.publish("peppy:change_username", orjson.dumps({
-                "userID": userToken.userID,
-                "newUsername": newUsername.decode("utf-8")
-            }))
-            
+            glob.redis.publish(
+                "peppy:change_username",
+                orjson.dumps(
+                    {
+                        "userID": userToken.userID,
+                        "newUsername": newUsername.decode("utf-8"),
+                    },
+                ),
+            )
+
         # Expire token in redis
-        glob.redis.expire(f"akatsuki:sessions:{userToken.token}", 60 * 60) # expire in 1 hour (60 minutes)
+        glob.redis.expire(
+            f"akatsuki:sessions:{userToken.token}",
+            60 * 60,
+        )  # expire in 1 hour (60 minutes)
 
         # Console output
-        log(f'{userToken.username} ({userToken.userID}) logged out. '
-            f'({len(glob.tokens.tokens) - 1} online)', Ansi.LBLUE)
+        log(
+            f"{userToken.username} ({userToken.userID}) logged out. "
+            f"({len(glob.tokens.tokens) - 1} online)",
+            Ansi.LBLUE,
+        )

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from objects import glob
@@ -7,8 +9,10 @@ if TYPE_CHECKING:
 
     from objects.osuToken import token
 
+
 class stream:
-    __slots__ = ('name', 'clients')
+    __slots__ = ("name", "clients")
+
     def __init__(self, name: str) -> None:
         """
         Initialize a stream object
@@ -19,8 +23,9 @@ class stream:
         self.clients = []
 
     def addClient(
-        self, client: 'Optional[token]' = None,
-        token: 'Optional[str]' = None
+        self,
+        client: Optional[token] = None,
+        token: Optional[str] = None,
     ) -> None:
         """
         Add a client to this stream if not already in
@@ -36,12 +41,13 @@ class stream:
             token = client.token
 
         if token not in self.clients:
-            #log.info("{} has joined stream {}.".format(token, self.name))
+            # log.info("{} has joined stream {}.".format(token, self.name))
             self.clients.append(token)
 
     def removeClient(
-        self, client: 'Optional[token]' = None,
-        token: 'Optional[str]' = None
+        self,
+        client: Optional[token] = None,
+        token: Optional[str] = None,
     ) -> None:
         """
         Remove a client from this stream if in
@@ -57,7 +63,7 @@ class stream:
             token = client.token
 
         if token in self.clients:
-            #log.info("{} has left stream {}.".format(token, self.name))
+            # log.info("{} has left stream {}.".format(token, self.name))
             self.clients.remove(token)
 
     def broadcast(self, data: bytes, but: list[str] = []) -> None:

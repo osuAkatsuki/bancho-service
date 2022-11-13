@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import threading
 import time
 from types import TracebackType
-from typing import Literal, MutableMapping, Optional, overload
+from typing import Literal
+from typing import MutableMapping
+from typing import Optional
+from typing import overload
 
 import redis
 
@@ -11,29 +16,37 @@ from common.sentry import sentry
 from constants import serverPackets
 from constants.exceptions import periodicLoopException
 from events import logoutEvent
-from objects import glob, osuToken
+from objects import glob
+from objects import osuToken
 
 
 class tokenList:
-    __slots__ = ('tokens', '_lock')
+    __slots__ = ("tokens", "_lock")
 
     def __init__(self) -> None:
         self.tokens: MutableMapping[str, osuToken.token] = {}
         self._lock = threading.Lock()
 
-    def __enter__(self) -> 'tokenList':
+    def __enter__(self) -> tokenList:
         self._lock.acquire()
         return self
 
-    def __exit__(self, exc_type: Optional[type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> bool:
         self._lock.release()
         return exc_value is not None
 
     def addToken(
-        self, userID: int, ip: str = "", irc: bool = False,
-        timeOffset: int = 0, tournament: bool = False
+        self,
+        userID: int,
+        ip: str = "",
+        irc: bool = False,
+        timeOffset: int = 0,
+        tournament: bool = False,
     ) -> osuToken.token:
         """
         Add a token object to tokens list
@@ -45,7 +58,13 @@ class tokenList:
         :param tournament: if True, flag this client as a tournement client. Default: True.
         :return: token object
         """
-        newToken = osuToken.token(userID, ip=ip, irc=irc, timeOffset=timeOffset, tournament=tournament)
+        newToken = osuToken.token(
+            userID,
+            ip=ip,
+            irc=irc,
+            timeOffset=timeOffset,
+            tournament=tournament,
+        )
         self.tokens[newToken.token] = newToken
         glob.redis.incr("ripple:online_users")
         return newToken
@@ -59,7 +78,10 @@ class tokenList:
         """
         if token in self.tokens:
             if self.tokens[token].ip:
-                userUtils.deleteBanchoSessions(self.tokens[token].userID, self.tokens[token].ip)
+                userUtils.deleteBanchoSessions(
+                    self.tokens[token].userID,
+                    self.tokens[token].ip,
+                )
             t = self.tokens.pop(token)
             del t
             glob.redis.decr("ripple:online_users")
@@ -75,13 +97,29 @@ class tokenList:
             return self.tokens[token].userID
 
     @overload
-    def getTokenFromUserID(self, userID: int, ignoreIRC: bool = ..., _all: Literal[False] = ...) -> Optional[osuToken.token]:
-        ...
-    @overload
-    def getTokenFromUserID(self, userID: int, ignoreIRC: bool = ..., _all: Literal[True] = ...) -> list[osuToken.token]:
+    def getTokenFromUserID(
+        self,
+        userID: int,
+        ignoreIRC: bool = ...,
+        _all: Literal[False] = ...,
+    ) -> Optional[osuToken.token]:
         ...
 
-    def getTokenFromUserID(self, userID: int, ignoreIRC: bool = False, _all: bool = False):
+    @overload
+    def getTokenFromUserID(
+        self,
+        userID: int,
+        ignoreIRC: bool = ...,
+        _all: Literal[True] = ...,
+    ) -> list[osuToken.token]:
+        ...
+
+    def getTokenFromUserID(
+        self,
+        userID: int,
+        ignoreIRC: bool = False,
+        _all: bool = False,
+    ):
         """
         Get token from a user ID
 
@@ -107,15 +145,31 @@ class tokenList:
             return ret
 
     @overload
-    def getTokenFromUsername(self, username: str, ignoreIRC: bool = ..., safe: bool = False, _all: Literal[False] = ...) -> Optional[osuToken.token]:
+    def getTokenFromUsername(
+        self,
+        username: str,
+        ignoreIRC: bool = ...,
+        safe: bool = False,
+        _all: Literal[False] = ...,
+    ) -> Optional[osuToken.token]:
         ...
+
     @overload
-    def getTokenFromUsername(self, username: str, ignoreIRC: bool = ..., safe: bool = False, _all: Literal[True] = ...) -> list[osuToken.token]:
+    def getTokenFromUsername(
+        self,
+        username: str,
+        ignoreIRC: bool = ...,
+        safe: bool = False,
+        _all: Literal[True] = ...,
+    ) -> list[osuToken.token]:
         ...
 
     def getTokenFromUsername(
-        self, username: str, ignoreIRC: bool = False,
-        safe: bool = False, _all: bool = False
+        self,
+        username: str,
+        ignoreIRC: bool = False,
+        safe: bool = False,
+        _all: bool = False,
     ):
         """
         Get an osuToken object from an username
@@ -134,8 +188,9 @@ class tokenList:
         # Make sure the token exists
         ret = []
         for value in self.tokens.values():
-            if (not safe and value.username.lower() == who) \
-            or (safe and value.safeUsername == who):
+            if (not safe and value.username.lower() == who) or (
+                safe and value.safeUsername == who
+            ):
                 if ignoreIRC and value.irc:
                     continue
                 if _all:
@@ -159,7 +214,7 @@ class tokenList:
         for key, value in list(self.tokens.items()):
             if value.userID == userID:
                 # Delete this token from the dictionary
-                #self.tokens[key].kick("You have logged in from somewhere else. You can't connect to Bancho/IRC from more than one device at the same time.", "kicked, multiple clients")
+                # self.tokens[key].kick("You have logged in from somewhere else. You can't connect to Bancho/IRC from more than one device at the same time.", "kicked, multiple clients")
                 delete.append(self.tokens[key])
 
         for i in delete:
@@ -205,16 +260,16 @@ class tokenList:
         try:
             log.debug("Checking timed out clients")
             exceptions = []
-            timedOutTokens = []		# timed out users
-            timeoutLimit = int(time.time()) - 300 # (determined by osu)
+            timedOutTokens = []  # timed out users
+            timeoutLimit = int(time.time()) - 300  # (determined by osu)
 
             for key, value in self.tokens.items():
                 # Check timeout (fokabot is ignored)
                 if (
-                    value.pingTime < timeoutLimit and
-                    value.userID != 999 and
-                    not value.irc and
-                    not value.tournament
+                    value.pingTime < timeoutLimit
+                    and value.userID != 999
+                    and not value.irc
+                    and not value.tournament
                 ):
                     # That user has timed out, add to disconnected tokens
                     # We can't delete it while iterating or items() throws an error
@@ -224,14 +279,18 @@ class tokenList:
             # i is token string (dictionary key)
             for i in timedOutTokens:
                 log.warning(f"{self.tokens[i].username} timed out!!")
-                self.tokens[i].enqueue(serverPackets.notification("Your connection to the server timed out."))
+                self.tokens[i].enqueue(
+                    serverPackets.notification(
+                        "Your connection to the server timed out.",
+                    ),
+                )
                 try:
                     logoutEvent.handle(self.tokens[i], None)
                 except Exception as e:
                     exceptions.append(e)
                     log.error(
                         "Something wrong happened while disconnecting a timed out client. Reporting to Sentry "
-                        "when the loop ends."
+                        "when the loop ends.",
                     )
             del timedOutTokens
 
@@ -269,11 +328,19 @@ class tokenList:
         """
         try:
             # TODO: Make function or some redis meme
-            glob.redis.eval("return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, "peppy:sessions:*")
+            glob.redis.eval(
+                "return redis.call('del', unpack(redis.call('keys', ARGV[1])))",
+                0,
+                "peppy:sessions:*",
+            )
         except redis.RedisError:
             pass
 
-    def tokenExists(self, username: Optional[str] = None, userID: Optional[int] = None) -> bool:
+    def tokenExists(
+        self,
+        username: Optional[str] = None,
+        userID: Optional[int] = None,
+    ) -> bool:
         """
         Check if a token exists
         Use username or userid, not both at the same time.

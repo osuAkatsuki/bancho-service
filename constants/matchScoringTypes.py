@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 SCORE = 0
 ACCURACY = 1
 COMBO = 2

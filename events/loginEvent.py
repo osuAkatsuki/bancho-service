@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import time
 from datetime import datetime as dt
@@ -6,29 +8,32 @@ from sys import exc_info
 from traceback import format_exc
 from typing import TYPE_CHECKING
 
-from cmyui.logging import Ansi, log
+from cmyui.logging import Ansi
+from cmyui.logging import log
+
+import settings
 from common import generalUtils
 from common.constants import privileges
 from common.log import logUtils
 from common.ripple import userUtils
-from constants import exceptions, serverPackets
+from constants import exceptions
+from constants import serverPackets
 from helpers import chatHelper as chat
-from helpers import countryHelper, locationHelper
+from helpers import countryHelper
+from helpers import locationHelper
 from objects import glob
-
-import settings
 
 if TYPE_CHECKING:
     import tornado.web
 
 osu_ver_regex = re.compile(
     r"^b(?P<ver>\d{8})(?:\.(?P<subver>\d))?"
-    r"(?P<stream>beta|cuttingedge|dev|tourney)?$"
+    r"(?P<stream>beta|cuttingedge|dev|tourney)?$",
 )
 
 
 def handle(
-    web_handler: "tornado.web.RequestHandler",
+    web_handler: tornado.web.RequestHandler,
 ) -> tuple[str, bytes]:  # token, data
     # Data to return
     responseToken = None
@@ -119,7 +124,8 @@ def handle(
             else:
                 # Multiaccount detected
                 log(
-                    f"{username} ({userID}) tried to create another account.", Ansi.LRED
+                    f"{username} ({userID}) tried to create another account.",
+                    Ansi.LRED,
                 )
                 glob.verifiedCache[str(userID)] = 0
                 raise exceptions.loginBannedException()
@@ -143,7 +149,10 @@ def handle(
             if not isTournament:
                 glob.tokens.deleteOldTokens(userID)
             responseToken = glob.tokens.addToken(
-                userID, requestIP, timeOffset=timeOffset, tournament=isTournament
+                userID,
+                requestIP,
+                timeOffset=timeOffset,
+                tournament=isTournament,
             )
         responseToken.blockNonFriendsDM = blockNonFriendsDM
         responseTokenString = responseToken.token
@@ -186,7 +195,7 @@ def handle(
                             "-------------",
                             "If you have any questions or are ready to liveplay, please contact an (Akatsuki Administrator)[https://akatsuki.pw/team] {ingame, (Discord)[https://akatsuki.pw/discord], etc.}",
                             f"Time until account restriction: {td(seconds = freeze_timestamp - current_time)}.",
-                        ]
+                        ],
                     ),
                 )
 
@@ -202,12 +211,13 @@ def handle(
                             [
                                 "Your account has been automatically restricted due to an account freeze being left unhandled for over 7 days.",
                                 "You are still welcome to liveplay, although your account will remain in restricted mode unless this is handled.",
-                            ]
-                        )
-                    )
+                            ],
+                        ),
+                    ),
                 )
                 logUtils.rap(
-                    userID, "has been automatically restricted due to a pending freeze."
+                    userID,
+                    "has been automatically restricted due to a pending freeze.",
                 )
                 logUtils.ac(
                     f"[{username}](https://akatsuki.pw/u/{userID}) has been automatically restricted due to a pending freeze.",
@@ -238,7 +248,8 @@ def handle(
                         badge
                     ) in badges:  # Iterate through user badges, deleting them all
                         glob.db.execute(
-                            "DELETE FROM user_badges WHERE id = %s", [badge["id"]]
+                            "DELETE FROM user_badges WHERE id = %s",
+                            [badge["id"]],
                         )
 
                 # Remove their custom privileges
@@ -261,9 +272,9 @@ def handle(
                                 "Whether you continue to support us or not, we'd like to thank you "
                                 "to the moon and back for your support so far - it really means everything to us.",
                                 "- cmyui, and the Akatsuki Team",
-                            ]
-                        )
-                    )
+                            ],
+                        ),
+                    ),
                 )
 
             elif (
@@ -272,8 +283,8 @@ def handle(
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
                 responseToken.enqueue(
                     serverPackets.notification(
-                        f"Your {rolename} tag expires in {expireIn}."
-                    )
+                        f"Your {rolename} tag expires in {expireIn}.",
+                    ),
                 )
 
         # Set silence end UNIX time in token
@@ -298,9 +309,9 @@ def handle(
             responseToken.enqueue(
                 serverPackets.notification(
                     glob.banchoConf.config["loginNotification"].format(
-                        BUILD_VER=glob.latestBuild
-                    )
-                )
+                        BUILD_VER=glob.latestBuild,
+                    ),
+                ),
             )
 
         # Maintenance check
@@ -314,8 +325,8 @@ def handle(
                 responseToken.enqueue(
                     serverPackets.notification(
                         "Akatsuki is currently in maintenance mode. Only admins have full access to the server.\n"
-                        "Type '!system maintenance off' in chat to turn off maintenance mode."
-                    )
+                        "Type '!system maintenance off' in chat to turn off maintenance mode.",
+                    ),
                 )
 
         # Send all needed login packets
@@ -323,7 +334,7 @@ def handle(
         responseToken.enqueue(serverPackets.userID(userID))
         responseToken.enqueue(serverPackets.silenceEndTime(silenceSeconds))
         responseToken.enqueue(
-            serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament)
+            serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
         )
         responseToken.enqueue(serverPackets.userPanel(userID, force=True))
         responseToken.enqueue(serverPackets.userStats(userID, force=True))
@@ -357,8 +368,8 @@ def handle(
         if glob.banchoConf.config["menuIcon"]:
             responseToken.enqueue(
                 serverPackets.mainMenuIcon(
-                    f'{glob.banchoConf.config["menuIcon"]}/u/{userID}'
-                )
+                    f'{glob.banchoConf.config["menuIcon"]}/u/{userID}',
+                ),
             )
 
         # Save token in redis
@@ -404,14 +415,14 @@ def handle(
         # (we don't use enqueue because we don't have a token since login has failed)
         responseData += serverPackets.loginFailed
         responseData += serverPackets.notification(
-            "Akatsuki: You have entered an incorrect username or password. Please check your credentials and try again!"
+            "Akatsuki: You have entered an incorrect username or password. Please check your credentials and try again!",
         )
     except exceptions.invalidArgumentsException:
         # Invalid POST data
         # (we don't use enqueue because we don't have a token since login has failed)
         responseData += serverPackets.loginFailed
         responseData += serverPackets.notification(
-            "Akatsuki: Something went wrong during your login attempt... Please try again!"
+            "Akatsuki: Something went wrong during your login attempt... Please try again!",
         )
     except exceptions.loginBannedException:
         # Login banned error packet
@@ -427,13 +438,13 @@ def handle(
         else:
             responseData.clear()
         responseData += serverPackets.notification(
-            "Akatsuki is currently in maintenance mode. Please try to login again later."
+            "Akatsuki is currently in maintenance mode. Please try to login again later.",
         )
         responseData += serverPackets.loginFailed
     except exceptions.banchoRestartingException:
         # Bancho is restarting
         responseData += serverPackets.notification(
-            "Akatsuki is restarting. Try again in a few minutes."
+            "Akatsuki is restarting. Try again in a few minutes.",
         )
         responseData += serverPackets.loginFailed
     # except exceptions.need2FAException:
@@ -449,8 +460,8 @@ def handle(
                     "The osu! client you're trying to use is out of date.",
                     "Custom/out of date osu! clients are not permitted on Akatsuki.",
                     "Please relogin using the current osu! client - no fallback, sorry!",
-                ]
-            )
+                ],
+            ),
         )
 
         if not restricted and (

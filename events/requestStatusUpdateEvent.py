@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from constants import serverPackets
 from objects.osuToken import token
 

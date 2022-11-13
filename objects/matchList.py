@@ -1,25 +1,36 @@
+from __future__ import annotations
+
 from threading import Timer
 from time import time
-from typing import MutableMapping, Optional
+from typing import MutableMapping
+from typing import Optional
 
 from common.log import logUtils as log
 from common.sentry import sentry
 from constants import serverPackets
 from constants.exceptions import periodicLoopException
-from objects import glob, match
+from objects import glob
+from objects import match
 
 
 class matchList:
-    __slots__ = ('matches', 'lastID')
+    __slots__ = ("matches", "lastID")
+
     def __init__(self) -> None:
         """Initialize a matchList object"""
         self.matches: MutableMapping[int, match.match] = {}
         self.lastID: int = 1
 
     def createMatch(
-        self, matchName: str, matchPassword: str,
-        beatmapID: int, beatmapName: str, beatmapMD5: str,
-        gameMode: int, hostUserID: int, isTourney: bool = False
+        self,
+        matchName: str,
+        matchPassword: str,
+        beatmapID: int,
+        beatmapName: str,
+        beatmapMD5: str,
+        gameMode: int,
+        hostUserID: int,
+        isTourney: bool = False,
     ) -> int:
         """
         Add a new match to matches list
@@ -37,9 +48,15 @@ class matchList:
         matchID = self.lastID
         self.lastID += 1
         self.matches[matchID] = match.match(
-            matchID, matchName, matchPassword,
-            beatmapID, beatmapName, beatmapMD5,
-            gameMode, hostUserID, isTourney
+            matchID,
+            matchName,
+            matchPassword,
+            beatmapID,
+            beatmapName,
+            beatmapMD5,
+            gameMode,
+            hostUserID,
+            isTourney,
         )
         return matchID
 
@@ -60,13 +77,19 @@ class matchList:
             _token = glob.tokens.getTokenFromUserID(slot.userID, ignoreIRC=True)
             if _token is None:
                 continue
-            _match.userLeft(_token, disposeMatch=False)	# don't dispose the match twice when we remove all players
+            _match.userLeft(
+                _token,
+                disposeMatch=False,
+            )  # don't dispose the match twice when we remove all players
 
         # Delete chat channel
         glob.channels.removeChannel(f"#multi_{_match.matchID}")
 
         # Send matchDisposed packet before disposing streams
-        glob.streams.broadcast(_match.streamName, serverPackets.disposeMatch(_match.matchID))
+        glob.streams.broadcast(
+            _match.streamName,
+            serverPackets.disposeMatch(_match.matchID),
+        )
 
         # Dispose all streams
         glob.streams.dispose(_match.streamName)
@@ -111,7 +134,7 @@ class matchList:
                     exceptions.append(e)
                     log.error(
                         "Something wrong happened while disposing a timed out match. Reporting to Sentry when "
-                        "the loop ends."
+                        "the loop ends.",
                     )
 
             # Re-raise exception if needed
@@ -125,11 +148,11 @@ class matchList:
         return matchID in self.matches
 
     def getMatchByID(self, matchID: int) -> Optional[match.match]:
-        log.debug(f'call: getMatchByID,id={matchID}')
+        log.debug(f"call: getMatchByID,id={matchID}")
         if self.matchExists(matchID):
             return self.matches[matchID]
 
-    #this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
+    # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
     def getMatchFromChannel(self, chan: str) -> Optional[match.match]:
-        log.debug(f'call: getMatchFromChannel,channel={chan}')
+        log.debug(f"call: getMatchFromChannel,channel={chan}")
         return self.getMatchByID(glob.channels.getMatchIDFromChannel(chan))

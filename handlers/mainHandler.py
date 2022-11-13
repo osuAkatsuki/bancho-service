@@ -1,35 +1,66 @@
+from __future__ import annotations
+
 import gzip
 import struct
 import time
 
 import tornado.gen
 import tornado.web
+
+import settings
 from common.log import logUtils as log
 from common.sentry import sentry
 from common.web import requestsManager
-from constants import exceptions, packetIDs, serverPackets
-from events import (cantSpectateEvent, changeActionEvent, changeMatchModsEvent,
-                    changeMatchPasswordEvent, changeMatchSettingsEvent,
-                    changeSlotEvent, channelJoinEvent, channelPartEvent,
-                    createMatchEvent, friendAddEvent, friendRemoveEvent,
-                    joinLobbyEvent, joinMatchEvent, loginEvent, logoutEvent,
-                    matchChangeTeamEvent, matchCompleteEvent, matchFailedEvent,
-                    matchFramesEvent, matchHasBeatmapEvent, matchInviteEvent,
-                    matchLockEvent, matchNoBeatmapEvent, matchPlayerLoadEvent,
-                    matchReadyEvent, matchSkipEvent, matchStartEvent,
-                    matchTransferHostEvent, partLobbyEvent, partMatchEvent,
-                    requestStatusUpdateEvent, sendPrivateMessageEvent,
-                    sendPublicMessageEvent, setAwayMessageEvent,
-                    setBlockingDMsEvent, spectateFramesEvent,
-                    startSpectatingEvent, stopSpectatingEvent,
-                    tournamentJoinMatchChannelEvent,
-                    tournamentLeaveMatchChannelEvent,
-                    tournamentMatchInfoRequestEvent, userPanelRequestEvent,
-                    userStatsRequestEvent, changeProtocolVersionEvent)
+from constants import exceptions
+from constants import packetIDs
+from constants import serverPackets
+from events import cantSpectateEvent
+from events import changeActionEvent
+from events import changeMatchModsEvent
+from events import changeMatchPasswordEvent
+from events import changeMatchSettingsEvent
+from events import changeProtocolVersionEvent
+from events import changeSlotEvent
+from events import channelJoinEvent
+from events import channelPartEvent
+from events import createMatchEvent
+from events import friendAddEvent
+from events import friendRemoveEvent
+from events import joinLobbyEvent
+from events import joinMatchEvent
+from events import loginEvent
+from events import logoutEvent
+from events import matchChangeTeamEvent
+from events import matchCompleteEvent
+from events import matchFailedEvent
+from events import matchFramesEvent
+from events import matchHasBeatmapEvent
+from events import matchInviteEvent
+from events import matchLockEvent
+from events import matchNoBeatmapEvent
+from events import matchPlayerLoadEvent
+from events import matchReadyEvent
+from events import matchSkipEvent
+from events import matchStartEvent
+from events import matchTransferHostEvent
+from events import partLobbyEvent
+from events import partMatchEvent
+from events import requestStatusUpdateEvent
+from events import sendPrivateMessageEvent
+from events import sendPublicMessageEvent
+from events import setAwayMessageEvent
+from events import setBlockingDMsEvent
+from events import spectateFramesEvent
+from events import startSpectatingEvent
+from events import stopSpectatingEvent
+from events import tournamentJoinMatchChannelEvent
+from events import tournamentLeaveMatchChannelEvent
+from events import tournamentMatchInfoRequestEvent
+from events import userPanelRequestEvent
+from events import userStatsRequestEvent
 from objects import glob
-import settings
 
-PACKET_PROTO = struct.Struct('<HxI')
+PACKET_PROTO = struct.Struct("<HxI")
 
 # Packet map of all bancho related
 # interactions with the osu! client.
@@ -41,19 +72,16 @@ bancho_packets = {
     packetIDs.client_userStatsRequest: userStatsRequestEvent.handle,
     packetIDs.client_requestStatusUpdate: requestStatusUpdateEvent.handle,
     packetIDs.client_userPanelRequest: userPanelRequestEvent.handle,
-
     packetIDs.client_channelJoin: channelJoinEvent.handle,
     packetIDs.client_channelPart: channelPartEvent.handle,
     packetIDs.client_sendPublicMessage: sendPublicMessageEvent.handle,
     packetIDs.client_sendPrivateMessage: sendPrivateMessageEvent.handle,
     packetIDs.client_setAwayMessage: setAwayMessageEvent.handle,
     packetIDs.client_userBlockNonFriendsDM: setBlockingDMsEvent.handle,
-
     packetIDs.client_startSpectating: startSpectatingEvent.handle,
     packetIDs.client_stopSpectating: stopSpectatingEvent.handle,
     packetIDs.client_cantSpectate: cantSpectateEvent.handle,
     packetIDs.client_spectateFrames: spectateFramesEvent.handle,
-
     packetIDs.client_joinLobby: joinLobbyEvent.handle,
     packetIDs.client_partLobby: partLobbyEvent.handle,
     packetIDs.client_createMatch: createMatchEvent.handle,
@@ -77,7 +105,6 @@ bancho_packets = {
     packetIDs.client_matchFailed: matchFailedEvent.handle,
     packetIDs.client_matchChangeTeam: matchChangeTeamEvent.handle,
     packetIDs.client_invite: matchInviteEvent.handle,
-
     packetIDs.client_tournamentMatchInfoRequest: tournamentMatchInfoRequestEvent.handle,
     packetIDs.client_tournamentJoinMatchChannel: tournamentJoinMatchChannelEvent.handle,
     packetIDs.client_tournamentLeaveMatchChannel: tournamentLeaveMatchChannelEvent.handle,
@@ -94,7 +121,7 @@ restricted_packets = {
     packetIDs.client_changeAction,
     packetIDs.client_channelJoin,
     packetIDs.client_channelPart,
-    packetIDs.client_changeProtocolVersion
+    packetIDs.client_changeProtocolVersion,
 }
 
 HTML_PAGE = (
@@ -111,11 +138,12 @@ HTML_PAGE = (
     "                        oo...<br>"
     "                    __[]__<br>"
     "    cmyui--> _\\:D/_/o_o_o_|__     <span style=\"font-family: 'Comic Sans MS'; font-size: 8pt;\">u wot m8</span><br>"
-    "             \\\"\"\"\"\"\"\"\"\"\"\"\"\"\"/<br>"
+    '             \\""""""""""""""/<br>'
     "              \\ . ..  .. . /<br>"
     "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^<br>"
     "</marquee><br><strike>Serving one handed osu! gamers since the dawn of time<i>&copy; Ripple & Akatsuki, 2020</i></pre></body></html>"
 )
+
 
 class handler(requestsManager.asyncRequestHandler):
     @tornado.web.asynchronous
@@ -128,13 +156,13 @@ class handler(requestsManager.asyncRequestHandler):
 
         # Server's token string and request data
         responseTokenString = "ayy"
-        responseData = b''
+        responseData = b""
 
         if requestTokenString is None:
             # No token, first request. Handle login.
             responseTokenString, responseData = loginEvent.handle(self)
         else:
-            userToken = None # default value
+            userToken = None  # default value
             try:
                 # This is not the first packet, send response based on client's request
                 # Packet start position, used to read stacked packets
@@ -156,18 +184,18 @@ class handler(requestsManager.asyncRequestHandler):
 
                     # Get packet ID, data length and data
                     packetID, dataLength = PACKET_PROTO.unpack(leftData[:7])
-                    packetData = leftData[:dataLength + 7]
+                    packetData = leftData[: dataLength + 7]
 
                     # Process/ignore packet
                     if packetID != 4:
                         if packetID in bancho_packets:
                             if (
-                                not userToken.restricted or
-                                packetID in restricted_packets
+                                not userToken.restricted
+                                or packetID in restricted_packets
                             ):
                                 bancho_packets[packetID](userToken, packetData)
-                        #else:
-                        #	#log.warning(f"Unhandled: {packetID}")
+                        # else:
+                        # 	#log.warning(f"Unhandled: {packetID}")
 
                     # Update pos so we can read the next stacked packet
                     # +7 because we add packet ID bytes, unused byte and data length bytes
@@ -178,13 +206,14 @@ class handler(requestsManager.asyncRequestHandler):
                 responseData = bytes(userToken.queue)
                 userToken.resetQueue()
 
-                log.debug(f'{packetID:>3} took {(time.time() - st) * 1000:.3f}ms.')
+                log.debug(f"{packetID:>3} took {(time.time() - st) * 1000:.3f}ms.")
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
                 # not; we probably restarted the server.
-                responseData = (serverPackets.notification('Server has restarted.') +
-                                serverPackets.banchoRestart(0))
+                responseData = serverPackets.notification(
+                    "Server has restarted.",
+                ) + serverPackets.banchoRestart(0)
             finally:
                 # Unlock token
                 if userToken:
@@ -212,9 +241,9 @@ class handler(requestsManager.asyncRequestHandler):
         # Add all the headers AFTER the response has been written
         self.set_status(200)
         self.add_header("cho-token", responseTokenString)
-        #self.add_header("cho-protocol", "19")
-        #self.add_header("Connection", "keep-alive")
-        #self.add_header("Keep-Alive", "timeout=5, max=100")
+        # self.add_header("cho-protocol", "19")
+        # self.add_header("Connection", "keep-alive")
+        # self.add_header("Keep-Alive", "timeout=5, max=100")
         self.add_header("Content-Type", "text/html; charset=UTF-8")
 
     @tornado.web.asynchronous

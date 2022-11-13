@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from objects import glob
 from objects.osuToken import token
 

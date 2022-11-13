@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from common.log import logUtils as log
 from constants import serverPackets
 from objects import glob
@@ -9,5 +11,5 @@ def handle(userToken: token, rawPacketData: bytes):
     streamName = f"spect/{userToken.userID}"
     glob.streams.broadcast(streamName, serverPackets.spectatorFrames(rawPacketData[7:]))
     log.debug(
-        f"Broadcasting {userToken.userID}'s frames to {len(glob.streams.streams[streamName].clients)} clients."
+        f"Broadcasting {userToken.userID}'s frames to {len(glob.streams.streams[streamName].clients)} clients.",
     )

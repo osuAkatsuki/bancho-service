@@ -1,12 +1,16 @@
-import struct
-from typing import Any, Mapping
-from typing import TypedDict
+from __future__ import annotations
 
-# NOTE: removed cython 2022-06-26
+import struct
+from typing import Any
+from typing import Mapping
+from typing import TypedDict
 
 from constants import dataTypes
 
-def uleb128Encode(num: int) ->  bytearray:
+# NOTE: removed cython 2022-06-26
+
+
+def uleb128Encode(num: int) -> bytearray:
     """
     Encode an int to uleb128
 
@@ -37,7 +41,7 @@ def uleb128Decode(num: bytes) -> list[int]:
     :return: (total, length)
     """
     shift = 0
-    arr = [0,0] # total, length
+    arr = [0, 0]  # total, length
 
     while True:
         b = num[arr[1]]
@@ -53,18 +57,19 @@ def uleb128Decode(num: bytes) -> list[int]:
 
 
 _default_packs = {
-    dataTypes.UINT16: struct.Struct('<H'),
-    dataTypes.SINT16: struct.Struct('<h'),
-    dataTypes.UINT32: struct.Struct('<L'),
-    dataTypes.SINT32: struct.Struct('<l'),
-    dataTypes.UINT64: struct.Struct('<Q'),
-    dataTypes.SINT64: struct.Struct('<q'),
-    dataTypes.STRING: struct.Struct('<s'),
-    dataTypes.FFLOAT: struct.Struct('<f'),
-    dataTypes.BYTE:   struct.Struct('<B')
+    dataTypes.UINT16: struct.Struct("<H"),
+    dataTypes.SINT16: struct.Struct("<h"),
+    dataTypes.UINT32: struct.Struct("<L"),
+    dataTypes.SINT32: struct.Struct("<l"),
+    dataTypes.UINT64: struct.Struct("<Q"),
+    dataTypes.SINT64: struct.Struct("<q"),
+    dataTypes.STRING: struct.Struct("<s"),
+    dataTypes.FFLOAT: struct.Struct("<f"),
+    dataTypes.BYTE: struct.Struct("<B"),
 }
 
-def unpackData(data: bytes,  dataType: int):
+
+def unpackData(data: bytes, dataType: int):
     """
     Unpacks a single section of a packet.
 
@@ -74,7 +79,6 @@ def unpackData(data: bytes,  dataType: int):
     """
     return _default_packs[dataType].unpack(data)[0]
 
-
     """
     Packs a single section of a packet.
 
@@ -82,37 +86,39 @@ def unpackData(data: bytes,  dataType: int):
     :param dataType: data type
     :return: packed bytes
     """
-    if dataType == dataTypes.BBYTES: # current mood
+    if dataType == dataTypes.BBYTES:  # current mood
         return __data
 
-    data = bytearray() # data to return
+    data = bytearray()  # data to return
 
     # Get right pack Type
     if dataType == dataTypes.INT_LIST:
         # 2 bytes length, 4 bytes each element
-        data += len(__data).to_bytes(2, 'little')
+        data += len(__data).to_bytes(2, "little")
         for i in __data:
-            data += i.to_bytes(4, 'little', signed=True)
+            data += i.to_bytes(4, "little", signed=True)
     elif dataType == dataTypes.STRING:
         if __data:
             # real string; \x0b[uleb][string]
             encoded = __data.encode()
-            data += b'\x0b'
+            data += b"\x0b"
             data += uleb128Encode(len(encoded))
             data += encoded
         else:
             # empty string; \x00
-            data += b'\x00'
+            data += b"\x00"
     else:
         # default types, use struct pack.
         data += _default_packs[dataType].pack(__data)
 
     return bytes(data)
 
-PKT_HDR_START = struct.Struct('<Hx')
-PKT_HDR_END = struct.Struct('<I')
 
-def  buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
+PKT_HDR_START = struct.Struct("<Hx")
+PKT_HDR_END = struct.Struct("<I")
+
+
+def buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
     """
     Builds a packet
 
@@ -158,12 +164,12 @@ def readPacketData(
         start = end
         if i[1] == dataTypes.INT_LIST:
             # 2 bytes length, 4 bytes each element
-            length = int.from_bytes(stream[start:start+2], 'little')
+            length = int.from_bytes(stream[start : start + 2], "little")
 
             data[i[0]] = []
             for j in range(length):
                 offs = start + 2 + (4 * j)
-                data[i[0]].append(int.from_bytes(stream[offs:offs+4], 'little'))
+                data[i[0]].append(int.from_bytes(stream[offs : offs + 4], "little"))
 
             # Update end
             end = start + 2 + (4 * length)
@@ -171,10 +177,10 @@ def readPacketData(
             # Check empty string
             if stream[start] != 0:
                 # real string; \x0b[uleb][string]
-                length = uleb128Decode(stream[start + 1:])
+                length = uleb128Decode(stream[start + 1 :])
                 end = start + length[0] + length[1] + 1
 
-                data[i[0]] = stream[start + 1 + length[1]:end].decode()
+                data[i[0]] = stream[start + 1 + length[1] : end].decode()
             else:
                 # empty string; \x00
                 data[i[0]] = ""

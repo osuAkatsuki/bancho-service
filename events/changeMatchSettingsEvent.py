@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from common.constants import mods
-from constants import clientPackets, matchModModes, matchTeamTypes
+from constants import clientPackets
+from constants import matchModModes
+from constants import matchTeamTypes
 from objects import glob
 from objects.osuToken import token
 

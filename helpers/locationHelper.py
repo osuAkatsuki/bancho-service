@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 from json import loads
 from urllib.request import urlopen
 
+import settings
 from common.log import logUtils as log
 from objects import glob
-
-import settings
 
 
 def getCountry(ip: str) -> str:
@@ -16,11 +17,14 @@ def getCountry(ip: str) -> str:
     """
     try:
         # Try to get country from Pikolo Aul's Go-Sanic ip API
-        result = loads(urlopen(f'{settings.LOCALIZE_IP_API_URL}/{ip}', timeout=3).read().decode())["country"]
+        result = loads(
+            urlopen(f"{settings.LOCALIZE_IP_API_URL}/{ip}", timeout=3).read().decode(),
+        )["country"]
         return result.upper()
     except:
         log.error("Error in get country")
         return "XX"
+
 
 def getLocation(ip: str) -> tuple[float, float]:
     """
@@ -31,18 +35,23 @@ def getLocation(ip: str) -> tuple[float, float]:
     """
     try:
         # Try to get position from Pikolo Aul's Go-Sanic ip API
-        result = loads(urlopen(f'{settings.LOCALIZE_IP_API_URL}/{ip}', timeout=3).read().decode())["loc"].split(",")
+        result = loads(
+            urlopen(f"{settings.LOCALIZE_IP_API_URL}/{ip}", timeout=3).read().decode(),
+        )["loc"].split(",")
         return float(result[0]), float(result[1])
     except:
         log.error("Error in get position")
         return 0.0, 0.0
 
+
 def getGeoloc(ip: str) -> tuple[str, tuple[float, float]]:
     # both functions in one cuz why are they even split lol
     try:
-        result = loads(urlopen(f'{settings.LOCALIZE_IP_API_URL}/{ip}', timeout=3).read().decode())
-        country = result['country']
-        loc = result['loc'].split(',')
-        return (country, (float(loc[0]), float(loc[1]))) # lat, lon
+        result = loads(
+            urlopen(f"{settings.LOCALIZE_IP_API_URL}/{ip}", timeout=3).read().decode(),
+        )
+        country = result["country"]
+        loc = result["loc"].split(",")
+        return (country, (float(loc[0]), float(loc[1])))  # lat, lon
     except:
-        return ('XX', (0.0, 0.0))
+        return ("XX", (0.0, 0.0))

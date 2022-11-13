@@ -1,4 +1,6 @@
 # TODO: Update countries list
+from __future__ import annotations
+
 countryCodes: dict[str, int] = {
     "IO": 104,
     "PS": 178,
@@ -249,8 +251,9 @@ countryCodes: dict[str, int] = {
     "MD": 136,
     "ES": 67,
     "CL": 46,
-    "MH": 138
+    "MH": 138,
 }
+
 
 def getCountryID(code: str) -> int:
     """
@@ -260,6 +263,7 @@ def getCountryID(code: str) -> int:
     :return: country osu code
     """
     return countryCodes[code] if code in countryCodes else 0
+
 
 def getCountryLetters(code: int) -> str:
     """
@@ -271,4 +275,4 @@ def getCountryLetters(code: int) -> str:
     for key, value in countryCodes.items():
         if value == code:
             return key
-    return 'XX'
+    return "XX"

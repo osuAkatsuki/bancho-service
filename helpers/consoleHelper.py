@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from common.constants import bcolors
 from objects import glob
 
@@ -12,18 +14,26 @@ def printServerStartHeader(asciiArt: bool = True) -> None:
     if asciiArt:
         print(
             bcolors.GREEN,
-            '      _/_/    _/                    _/                          _/        _/',
-            '   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/',
-            '  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/',
-            ' _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/',
-            '_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/',
-            bcolors.ENDC, sep='\n'
+            "      _/_/    _/                    _/                          _/        _/",
+            "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/",
+            "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/",
+            " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/",
+            "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/",
+            bcolors.ENDC,
+            sep="\n",
         )
 
-    printColored(f"> Welcome to pep.py osu!bancho server v{glob.VERSION}", bcolors.GREEN)
+    printColored(
+        f"> Welcome to pep.py osu!bancho server v{glob.VERSION}",
+        bcolors.GREEN,
+    )
     printColored("> Made by the Ripple and Akatsuki teams", bcolors.GREEN)
-    printColored(f"> {bcolors.UNDERLINE}https://github.com/osuAkatsuki/pep.py", bcolors.GREEN)
+    printColored(
+        f"> {bcolors.UNDERLINE}https://github.com/osuAkatsuki/pep.py",
+        bcolors.GREEN,
+    )
     printColored("> Press CTRL+C to exit\n", bcolors.GREEN)
+
 
 def printNoNl(string: str) -> None:
     """
@@ -32,7 +42,8 @@ def printNoNl(string: str) -> None:
     :param string: string to print
     :return:
     """
-    print(string, end='')
+    print(string, end="")
+
 
 def printColored(string: str, color: str) -> None:
     """
@@ -44,6 +55,7 @@ def printColored(string: str, color: str) -> None:
     """
     print(f"{color}{string}{bcolors.ENDC}")
 
+
 def printError() -> None:
     """
     Print a red "Error"
@@ -52,6 +64,7 @@ def printError() -> None:
     """
     printColored("Error", bcolors.RED)
 
+
 def printDone() -> None:
     """
     Print a green "Done"
@@ -59,6 +72,7 @@ def printDone() -> None:
     :return:
     """
     printColored("Done", bcolors.GREEN)
+
 
 def printWarning() -> None:
     """

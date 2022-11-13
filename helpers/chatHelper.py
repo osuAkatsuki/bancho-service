@@ -1,23 +1,29 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from common.constants import mods, privileges
+from common.constants import mods
+from common.constants import privileges
 from common.log import logUtils as log
 from common.ripple import userUtils
-from constants import exceptions, serverPackets
+from constants import exceptions
+from constants import serverPackets
 from events import logoutEvent
-from objects import fokabot, glob
+from objects import fokabot
+from objects import glob
 
 if TYPE_CHECKING:
     from typing import Optional
 
     from objects.osuToken import token
 
+
 def joinChannel(
     userID: int = 0,
     channel: str = "",
-    token: 'Optional[token]' = None,
+    token: Optional[token] = None,
     toIRC: bool = True,
-    force: bool = False
+    force: bool = False,
 ) -> int:
     """
     Join a channel
@@ -57,30 +63,35 @@ def joinChannel(
             glob.ircServer.banchoJoinChannel(token.username, channel)
 
         # Console output
-        #log.info(f"{token.username} joined channel {channel}")
+        # log.info(f"{token.username} joined channel {channel}")
 
         # IRC code return
         return 0
     except exceptions.channelNoPermissionsException:
-        log.warning(f"{token.username} attempted to join channel {channel}, but they have no read permissions.")
+        log.warning(
+            f"{token.username} attempted to join channel {channel}, but they have no read permissions.",
+        )
         return 403
     except exceptions.channelUnknownException:
-        log.warning(f"{token.username} attempted to join an unknown channel ({channel}).")
+        log.warning(
+            f"{token.username} attempted to join an unknown channel ({channel}).",
+        )
         return 403
     except exceptions.userAlreadyInChannelException:
         log.warning(f"User {token.username} already in channel {channel}.")
         return 403
     except exceptions.userNotFoundException:
         log.warning("User not connected to IRC/Bancho.")
-        return 403	# idk
+        return 403  # idk
+
 
 def partChannel(
     userID: int = 0,
     channel: str = "",
-    token: 'Optional[token]' = None,
+    token: Optional[token] = None,
     toIRC: bool = True,
     kick: bool = False,
-    force: bool = False
+    force: bool = False,
 ) -> int:
     """
     Part a channel
@@ -141,7 +152,11 @@ def partChannel(
 
         # Delete temporary channel if everyone left
         if f"chat/{channelObject.name}" in glob.streams.streams:
-            if channelObject.temp and len(glob.streams.streams[f"chat/{channelObject.name}"].clients) - 1 == 0:
+            if (
+                channelObject.temp
+                and len(glob.streams.streams[f"chat/{channelObject.name}"].clients) - 1
+                == 0
+            ):
                 glob.channels.removeChannel(channelObject.name)
 
         # Force close tab if needed
@@ -154,19 +169,24 @@ def partChannel(
             glob.ircServer.banchoPartChannel(token.username, channel)
 
         # Console output
-        #log.info(f"{token.username} parted channel {channel} ({channelClient}).")
+        # log.info(f"{token.username} parted channel {channel} ({channelClient}).")
 
         # Return IRC code
         return 0
     except exceptions.channelUnknownException:
-        log.warning(f"{token.username} attempted to part an unknown channel ({channel}).")
+        log.warning(
+            f"{token.username} attempted to part an unknown channel ({channel}).",
+        )
         return 403
     except exceptions.userNotInChannelException:
-        log.warning(f"{token.username} attempted to part {channel}, but he's not in that channel.")
+        log.warning(
+            f"{token.username} attempted to part {channel}, but he's not in that channel.",
+        )
         return 442
     except exceptions.userNotFoundException:
         log.warning("User not connected to IRC/Bancho.")
-        return 442	# idk
+        return 442  # idk
+
 
 gamer_ids = [
     [99, 104, 101, 97, 116, 32],
@@ -178,15 +198,16 @@ gamer_ids = [
     [109, 117, 108, 116, 105, 97, 99, 99],
     [109, 112, 103, 104],
     [107, 97, 119, 97, 116, 97],
-    [104, 97, 99, 107]
+    [104, 97, 99, 107],
 ]
 
+
 def sendMessage(
-    fro: 'Optional[str]' = '',
-    to: str = '',
-    message: str = '',
-    token: 'Optional[token]' = None,
-    toIRC: bool = True
+    fro: Optional[str] = "",
+    to: str = "",
+    message: str = "",
+    token: Optional[token] = None,
+    toIRC: bool = True,
 ) -> int:
     """
     Send a message to osu!bancho and IRC server
@@ -199,7 +220,7 @@ def sendMessage(
     :return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
     """
     try:
-        #tokenString = ""
+        # tokenString = ""
         # Get token object if not passed
         if token is None:
             token = glob.tokens.getTokenFromUsername(fro)
@@ -208,7 +229,7 @@ def sendMessage(
         else:
             # token object alredy passed, get its string and its username (fro)
             fro = token.username
-            #tokenString = token.token
+            # tokenString = token.token
 
         # Make sure this is not a tournament client
         if token.tournament:
@@ -242,7 +263,7 @@ def sendMessage(
         elif to.startswith("#multi_"):
             toClient = "#multiplayer"
 
-        isChannel = to[0] == '#'
+        isChannel = to[0] == "#"
 
         # Make sure the message is valid
         if not message.strip():
@@ -250,9 +271,9 @@ def sendMessage(
 
         # Truncate really long messages
         if len(message) > 1024:
-            message = f'{message[:1024]}... (truncated)'
+            message = f"{message[:1024]}... (truncated)"
 
-        action_msg = message.startswith('\x01ACTION')
+        action_msg = message.startswith("\x01ACTION")
 
         # Send the message
         if isChannel:
@@ -273,100 +294,107 @@ def sendMessage(
 
             # Make sure we have write permissions.
             if (
-                (to == '#premium' and token.privileges & privileges.USER_PREMIUM == 0) and
-                (to == '#supporter' and token.privileges & privileges.USER_DONOR == 0) and
-                not (glob.channels.channels[to].publicWrite or token.staff)
+                (to == "#premium" and token.privileges & privileges.USER_PREMIUM == 0)
+                and (
+                    to == "#supporter" and token.privileges & privileges.USER_DONOR == 0
+                )
+                and not (glob.channels.channels[to].publicWrite or token.staff)
             ):
                 raise exceptions.channelNoPermissionsException()
 
-             # Check message for commands
+            # Check message for commands
             if not action_msg:
                 fokaMessage = fokabot.fokabotResponse(token.username, to, message)
             else:
                 fokaMessage = None
 
                 # check for /np (rly bad lol)
-                npmsg = message.split(' ')[1:]
-                if npmsg[1] in ('playing', 'watching', 'editing'):
+                npmsg = message.split(" ")[1:]
+                if npmsg[1] in ("playing", "watching", "editing"):
                     has_mods = True
                     index = 2
-                elif npmsg[1] == 'listening':
+                elif npmsg[1] == "listening":
                     has_mods = False
                     index = 3
                 else:
                     index = None
 
                 if index is not None:
-                    if not (beatmapURL := npmsg[index][1:]).startswith('https://'):
+                    if not (beatmapURL := npmsg[index][1:]).startswith("https://"):
                         return
 
                     _mods = 0
 
                     if has_mods:
                         mapping = {
-                            '-Easy': mods.EASY,
-                            '-NoFail': mods.NOFAIL,
-                            '+Hidden': mods.HIDDEN,
-                            '+HardRock': mods.HARDROCK,
-                            '+Nightcore': mods.NIGHTCORE,
-                            '+DoubleTime': mods.DOUBLETIME,
-                            '-HalfTime': mods.HALFTIME,
-                            '+Flashlight': mods.FLASHLIGHT,
-                            '-SpunOut': mods.SPUNOUT,
-                            '~Relax~': mods.RELAX
+                            "-Easy": mods.EASY,
+                            "-NoFail": mods.NOFAIL,
+                            "+Hidden": mods.HIDDEN,
+                            "+HardRock": mods.HARDROCK,
+                            "+Nightcore": mods.NIGHTCORE,
+                            "+DoubleTime": mods.DOUBLETIME,
+                            "-HalfTime": mods.HALFTIME,
+                            "+Flashlight": mods.FLASHLIGHT,
+                            "-SpunOut": mods.SPUNOUT,
+                            "~Relax~": mods.RELAX,
                         }
 
-                        npmsg[-1] = npmsg[-1].replace('\x01', '')
+                        npmsg[-1] = npmsg[-1].replace("\x01", "")
 
-                        for i in npmsg[index + 1:]:
+                        for i in npmsg[index + 1 :]:
                             if i in mapping.keys():
                                 _mods |= mapping[i]
 
                     match = fokabot.npRegex.match(beatmapURL)
 
-                    if match: # should always match?
+                    if match:  # should always match?
                         # Get beatmap id from URL
-                        beatmapID = int(match['id'])
+                        beatmapID = int(match["id"])
 
                         # Return tillerino message
                         token.tillerino = [beatmapID, _mods, -1.0]
                     else:
-                        log.error('failed to parse beatmap url? (chatHelper)')
+                        log.error("failed to parse beatmap url? (chatHelper)")
 
             msg_packet = serverPackets.sendMessage(
                 fro=token.username,
                 to=toClient,
                 message=message,
-                fro_id=token.userID
+                fro_id=token.userID,
             )
 
             if fokaMessage:
-                if fokaMessage['hidden']: # Send to user & gmt+
-                    with glob.tokens: # Generate admin token list
+                if fokaMessage["hidden"]:  # Send to user & gmt+
+                    with glob.tokens:  # Generate admin token list
                         send_to = {
-                            i.token for i in glob.tokens.tokens.values()
+                            i.token
+                            for i in glob.tokens.tokens.values()
                             if i != token and i.staff and i.userID != 999
                         }
 
                     # Send their command
-                    glob.streams.broadcast_limited(f'chat/{to}', msg_packet, send_to)
+                    glob.streams.broadcast_limited(f"chat/{to}", msg_packet, send_to)
 
                     # Send Aika's response
                     send_to.add(token.token)
                     response_packet = serverPackets.sendMessage(
                         fro=glob.BOT_NAME,
                         to=toClient,
-                        message=fokaMessage['response'],
-                        fro_id=999
+                        message=fokaMessage["response"],
+                        fro_id=999,
                     )
-                    glob.streams.broadcast_limited(f'chat/{to}', response_packet, send_to)
-                else: # Send to all streams
+                    glob.streams.broadcast_limited(
+                        f"chat/{to}",
+                        response_packet,
+                        send_to,
+                    )
+                else:  # Send to all streams
                     token.addMessageInBuffer(to, message)
-                    glob.streams.broadcast(f'chat/{to}', msg_packet, but=[token.token])
-                    sendMessage(glob.BOT_NAME, to, fokaMessage['response'])
+                    glob.streams.broadcast(f"chat/{to}", msg_packet, but=[token.token])
+                    sendMessage(glob.BOT_NAME, to, fokaMessage["response"])
             else:
                 token.addMessageInBuffer(to, message)
-                glob.streams.broadcast(f'chat/{to}', msg_packet, but=[token.token])
+                glob.streams.broadcast(f"chat/{to}", msg_packet, but=[token.token])
         else:
             # USER
             # Make sure recipient user is connected
@@ -380,11 +408,13 @@ def sendMessage(
 
             # Notify the sender that the recipient is silenced.
             if recipientToken.isSilenced():
-                token.enqueue(serverPackets.targetSilenced(
-                    to=to,
-                    fro=token.username,
-                    fro_id=token.userID
-                ))
+                token.enqueue(
+                    serverPackets.targetSilenced(
+                        to=to,
+                        fro=token.username,
+                        fro_id=token.userID,
+                    ),
+                )
 
             if token.username != glob.BOT_NAME:
                 # Make sure the recipient is not restricted or we are bot
@@ -393,32 +423,39 @@ def sendMessage(
 
                 # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
                 if (
-                    recipientToken.blockNonFriendsDM and
-                    token.userID not in userUtils.getFriendList(recipientToken.userID)
+                    recipientToken.blockNonFriendsDM
+                    and token.userID
+                    not in userUtils.getFriendList(recipientToken.userID)
                 ):
-                    token.enqueue(serverPackets.targetBlockingDMs(
-                        to=to,
-                        fro=token.username,
-                        fro_id=token.userID
-                    ))
+                    token.enqueue(
+                        serverPackets.targetBlockingDMs(
+                            to=to,
+                            fro=token.username,
+                            fro_id=token.userID,
+                        ),
+                    )
                     raise exceptions.userBlockingDMsException
 
             # Away check
             if recipientToken.awayCheck(token.userID):
-                sendMessage(to, fro, f"\x01ACTION is away: {recipientToken.awayMessage}\x01")
+                sendMessage(
+                    to,
+                    fro,
+                    f"\x01ACTION is away: {recipientToken.awayMessage}\x01",
+                )
 
             if to == glob.BOT_NAME:
                 # Check message for commands
                 fokaMessage = fokabot.fokabotResponse(token.username, to, message)
 
                 if fokaMessage:
-                    sendMessage(glob.BOT_NAME, fro, fokaMessage['response'])
+                    sendMessage(glob.BOT_NAME, fro, fokaMessage["response"])
             else:
                 packet = serverPackets.sendMessage(
                     fro=token.username,
                     to=toClient,
                     message=message,
-                    fro_id=token.userID
+                    fro_id=token.userID,
                 )
                 recipientToken.enqueue(packet)
 
@@ -427,11 +464,11 @@ def sendMessage(
             token.spamProtection()
 
         if (
-            any([bytes(gid).decode() in message for gid in gamer_ids]) and
-            not action_msg and
-            not token.staff
+            any([bytes(gid).decode() in message for gid in gamer_ids])
+            and not action_msg
+            and not token.staff
         ):
-            webhook = 'ac_confidential'
+            webhook = "ac_confidential"
         else:
             webhook = None
 
@@ -441,7 +478,7 @@ def sendMessage(
             else:
                 log.chat(f"{token.username} @ {to}: {message}")
         else:
-            log.pm(f'{fro} @ {to}: {message}', webhook)
+            log.pm(f"{fro} @ {to}: {message}", webhook)
 
         return 0
     except exceptions.userSilencedException:
@@ -449,34 +486,48 @@ def sendMessage(
         log.warning(f"{token.username} tried to send a message during silence.")
         return 404
     except exceptions.channelModeratedException:
-        log.warning(f"{token.username} tried to send a message to a channel that is in moderated mode ({to}).")
+        log.warning(
+            f"{token.username} tried to send a message to a channel that is in moderated mode ({to}).",
+        )
         return 404
     except exceptions.channelUnknownException:
-        log.warning(f"{token.username} tried to send a message to an unknown channel ({to}).")
+        log.warning(
+            f"{token.username} tried to send a message to an unknown channel ({to}).",
+        )
         return 403
     except exceptions.channelNoPermissionsException:
-        log.warning(f"{token.username} tried to send a message to channel {to}, but they have no write permissions.")
+        log.warning(
+            f"{token.username} tried to send a message to channel {to}, but they have no write permissions.",
+        )
         return 404
     except exceptions.userRestrictedException:
-        log.warning(f"{token.username} tried to send a message {to}, but the recipient is in restricted mode.")
+        log.warning(
+            f"{token.username} tried to send a message {to}, but the recipient is in restricted mode.",
+        )
         return 404
     except exceptions.userTournamentException:
-        log.warning(f"{token.username} tried to send a message {to}, but the recipient is a tournament client.")
+        log.warning(
+            f"{token.username} tried to send a message {to}, but the recipient is a tournament client.",
+        )
         return 404
     except exceptions.userNotFoundException:
         log.warning("User not connected to IRC/Bancho.")
         return 401
     except exceptions.userBlockingDMsException:
-        log.warning(f'{token.username} tried to send a message to {to}, but the recipient is blocking non-friends dms.')
+        log.warning(
+            f"{token.username} tried to send a message to {to}, but the recipient is blocking non-friends dms.",
+        )
         return 404
     except exceptions.invalidArgumentsException:
         log.warning(f"{token.username} tried to send an invalid message to {to}.")
         return 404
-    except Exception as e: # unhandled
-        log.warning(f'chatHelper {e}')
+    except Exception as e:  # unhandled
+        log.warning(f"chatHelper {e}")
 
 
 """ IRC-Bancho Connect/Disconnect/Join/Part interfaces"""
+
+
 def fixUsernameForBancho(username: str) -> str:
     """
     Convert username from IRC format (without spaces) to Bancho format (with spaces)
@@ -486,21 +537,20 @@ def fixUsernameForBancho(username: str) -> str:
     """
     # If there are no spaces or underscores in the name
     # return it
-    if not (' ' in username and '_' in username):
+    if not (" " in username and "_" in username):
         return username
 
     # Exact match first
     result = glob.db.fetch(
-        "SELECT id "
-        "FROM users "
-        "WHERE username = %s LIMIT 1",
-        [username]
+        "SELECT id " "FROM users " "WHERE username = %s LIMIT 1",
+        [username],
     )
     if result:
         return username
 
     # Username not found, replace _ with space
     return username.replace("_", " ")
+
 
 def fixUsernameForIRC(username: str) -> str:
     """
@@ -510,6 +560,7 @@ def fixUsernameForIRC(username: str) -> str:
     :return: converted username
     """
     return username.replace(" ", "_")
+
 
 def IRCConnect(username: str) -> None:
     """
@@ -531,6 +582,7 @@ def IRCConnect(username: str) -> None:
     glob.streams.broadcast("main", serverPackets.userPanel(userID))
     log.info(f"{username} logged in from IRC.")
 
+
 def IRCDisconnect(username: str) -> None:
     """
     Handle IRC logout bancho-side.
@@ -547,7 +599,8 @@ def IRCDisconnect(username: str) -> None:
     logoutEvent.handle(token)
     log.info(f"{username} disconnected from IRC.")
 
-def IRCJoinChannel(username: str, channel: str) -> 'Optional[int]':
+
+def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
     """
     Handle IRC channel join bancho-side.
 
@@ -565,7 +618,8 @@ def IRCJoinChannel(username: str, channel: str) -> 'Optional[int]':
     # Will test this later
     return joinChannel(userID, channel)
 
-def IRCPartChannel(username: str, channel: str) -> 'Optional[int]':
+
+def IRCPartChannel(username: str, channel: str) -> Optional[int]:
     """
     Handle IRC channel part bancho-side.
 
@@ -580,7 +634,8 @@ def IRCPartChannel(username: str, channel: str) -> 'Optional[int]':
 
     return partChannel(userID, channel)
 
-def IRCAway(username: str, message: str) -> 'Optional[int]':
+
+def IRCAway(username: str, message: str) -> Optional[int]:
     """
     Handle IRC away command bancho-side.
 

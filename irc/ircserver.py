@@ -6,6 +6,8 @@ by Joel Rosdahl, licensed under the GNU GPL 2 License.
 Most of the reference code from miniircd was used for the low-level logic.
 The high-level code has been rewritten to make it compatible with pep.py.
 """
+from __future__ import annotations
+
 import hashlib
 import re
 import select
@@ -16,12 +18,12 @@ import traceback
 
 import raven
 
+import settings
 from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import glob
 
-import settings
 
 class Client:
     __linesep_regexp = re.compile(r"\r?\n")
@@ -65,7 +67,6 @@ class Client:
         """
         self.__writebuffer += msg + "\r\n"
 
-
     def writeBufferSize(self) -> int:
         """
         Return this client's write buffer size
@@ -73,7 +74,6 @@ class Client:
         :return: write buffer size
         """
         return len(self.__writebuffer)
-
 
     def reply(self, msg: str) -> None:
         """
@@ -84,8 +84,13 @@ class Client:
         """
         self.message(f":{self.server.host} {msg}")
 
-
-    def replyCode(self, code: int, message: str, nickname: str = "", channel: str = "") -> None:
+    def replyCode(
+        self,
+        code: int,
+        message: str,
+        nickname: str = "",
+        channel: str = "",
+    ) -> None:
         """
         Add an IRC-like message to client buffer with code
 
@@ -98,9 +103,8 @@ class Client:
         if nickname == "":
             nickname = self.IRCUsername
         if channel != "":
-            channel = " "+channel
+            channel = " " + channel
         self.reply(f"{code:03d} {nickname}{channel} :{message}")
-
 
     def reply403(self, channel: str) -> None:
         """
@@ -111,7 +115,6 @@ class Client:
         """
         self.replyCode(403, f"{channel} :No such channel")
 
-
     def reply461(self, command: str) -> None:
         """
         Add a 461 reply (not enough parameters) to client buffer
@@ -120,7 +123,6 @@ class Client:
         :return:
         """
         self.replyCode(403, f"{command} :Not enough parameters")
-
 
     def disconnect(self, quitmsg: str = "Client quit", callLogout: bool = True) -> None:
         """
@@ -133,7 +135,9 @@ class Client:
         # Send error to client and close socket
         self.message(f"ERROR :{quitmsg}")
         self.socket.close()
-        log.info(f"[IRC] Disconnected connection from {self.ip}:{self.port} ({quitmsg})")
+        log.info(
+            f"[IRC] Disconnected connection from {self.ip}:{self.port} ({quitmsg})",
+        )
 
         # Remove socket from server
         self.server.removeClient(self, quitmsg)
@@ -141,7 +145,6 @@ class Client:
         # Bancho logout
         if callLogout and self.banchoUsername != "":
             chat.IRCDisconnect(self.IRCUsername)
-
 
     def readSocket(self) -> None:
         """
@@ -151,12 +154,12 @@ class Client:
         """
         try:
             # Try to read incoming data from socket
-            data = self.socket.recv(2 ** 10)
+            data = self.socket.recv(2**10)
             log.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
             quitmsg = "EOT"
-        except socket.error as x:
+        except OSError as x:
             # Error while reading data, this client will be disconnected
-            data = b''
+            data = b""
             quitmsg = x
 
         if data:
@@ -168,7 +171,6 @@ class Client:
         else:
             # No data, disconnect this socket
             self.disconnect(quitmsg)
-
 
     def parseBuffer(self) -> None:
         """
@@ -210,7 +212,6 @@ class Client:
             # Handle command with its arguments
             self.__handleCommand(command, arguments)
 
-
     def writeSocket(self) -> None:
         """
         Write buffer to socket
@@ -221,7 +222,7 @@ class Client:
             sent = self.socket.send(self.__writebuffer.encode())
             log.debug(f"[IRC] [{self.ip}:{self.port}] <- {self.__writebuffer[:sent]}")
             self.__writebuffer = self.__writebuffer[sent:]
-        except socket.error as x:
+        except OSError as x:
             self.disconnect(str(x))
 
     def checkAlive(self) -> None:
@@ -244,14 +245,16 @@ class Client:
                 # Not registered.
                 self.disconnect("ping timeout")
 
-
     def sendLusers(self) -> None:
         """
         Send lusers response to this client
 
         :return:
         """
-        self.replyCode(251, f"There are {len(glob.tokens.tokens)} users and 0 services on 1 server")
+        self.replyCode(
+            251,
+            f"There are {len(glob.tokens.tokens)} users and 0 services on 1 server",
+        )
 
     def sendMotd(self) -> None:
         """
@@ -267,9 +270,10 @@ class Client:
                 self.replyCode(372, f"- {i}")
         self.replyCode(376, "End of MOTD command")
 
-    """""""""
+    """""" """
     HANDLERS
-    """""""""
+    """ """"""
+
     def dummyHandler(self, command: str, arguments: list[str]) -> None:
         pass
 
@@ -283,9 +287,14 @@ class Client:
                 m = hashlib.md5()
                 m.update(arguments[0].encode("utf-8"))
                 tokenHash = m.hexdigest()
-                supposedUser = glob.db.fetch("SELECT users.username, users.id FROM users LEFT JOIN irc_tokens ON users.id = irc_tokens.userid WHERE irc_tokens.token = %s LIMIT 1", [tokenHash])
+                supposedUser = glob.db.fetch(
+                    "SELECT users.username, users.id FROM users LEFT JOIN irc_tokens ON users.id = irc_tokens.userid WHERE irc_tokens.token = %s LIMIT 1",
+                    [tokenHash],
+                )
                 if supposedUser:
-                    self.supposedUsername = chat.fixUsernameForIRC(supposedUser["username"])
+                    self.supposedUsername = chat.fixUsernameForIRC(
+                        supposedUser["username"],
+                    )
                     self.supposedUserID = supposedUser["id"]
                     self.__handleCommand = self.registerHandler
                 else:
@@ -293,7 +302,6 @@ class Client:
                     self.reply("464 :Password incorrect")
         elif command == "QUIT":
             self.disconnect()
-
 
     def registerHandler(self, command: str, arguments: list[str]) -> None:
         """NICK and USER commands handler"""
@@ -320,18 +328,26 @@ class Client:
                 return
 
             # Make sure we are not connected to Bancho
-            token = glob.tokens.getTokenFromUsername(chat.fixUsernameForBancho(nick), True)
+            token = glob.tokens.getTokenFromUsername(
+                chat.fixUsernameForBancho(nick),
+                True,
+            )
             if token:
                 self.reply(f"433 * {nick} :Nickname is already in use")
                 return
 
             # Everything seems fine, set username (nickname)
-            self.IRCUsername = nick	# username for IRC
-            self.banchoUsername = chat.fixUsernameForBancho(self.IRCUsername)	# username for bancho
+            self.IRCUsername = nick  # username for IRC
+            self.banchoUsername = chat.fixUsernameForBancho(
+                self.IRCUsername,
+            )  # username for bancho
 
             # Disconnect other IRC clients from the same user
             for value in self.server.clients.values():
-                if value.IRCUsername.lower() == self.IRCUsername.lower() and value != self:
+                if (
+                    value.IRCUsername.lower() == self.IRCUsername.lower()
+                    and value != self
+                ):
                     value.disconnect(quitmsg="Connected from another client")
                     return
         elif command == "USER":
@@ -352,7 +368,10 @@ class Client:
 
             # IRC reply
             self.replyCode(1, "Welcome to the Internet Relay Network")
-            self.replyCode(2, f"Your host is {self.server.host}, running version pep.py-{glob.VERSION}")
+            self.replyCode(
+                2,
+                f"Your host is {self.server.host}, running version pep.py-{glob.VERSION}",
+            )
             self.replyCode(3, "This server was created since the beginning")
             self.replyCode(4, f"{self.server.host} pep.py-{glob.VERSION} o o")
             self.sendLusers()
@@ -376,12 +395,12 @@ class Client:
 
         # TODO: Part all channels
         if arguments[0] == "0":
-            '''for (channelname, channel) in self.channels.items():
+            """for (channelname, channel) in self.channels.items():
                 self.message_channel(channel, "PART", channelname, True)
                 self.channel_log(channel, "left", meta=True)
                 server.remove_member_from_channel(self, channelname)
             self.channels = {}
-            return'''
+            return"""
             return
 
         # Get channels to join list
@@ -419,7 +438,9 @@ class Client:
                 for user in users:
                     if user not in glob.tokens.tokens:
                         continue
-                    usernames.append(chat.fixUsernameForIRC(glob.tokens.tokens[user].username))
+                    usernames.append(
+                        chat.fixUsernameForIRC(glob.tokens.tokens[user].username),
+                    )
                 usernames = " ".join(usernames)
 
                 # Send IRC users list
@@ -461,7 +482,6 @@ class Client:
             elif response == 442:
                 self.replyCode(442, "You're not on that channel", channel=channel)
 
-
     def noticePrivmsgHandler(self, command: str, arguments: list[str]) -> None:
         """NOTICE and PRIVMSG commands handler (same syntax)"""
         # Syntax check
@@ -479,7 +499,12 @@ class Client:
             recipientBancho = chat.fixUsernameForBancho(recipientIRC)
         else:
             recipientBancho = recipientIRC
-        response = chat.sendMessage(self.banchoUsername, recipientBancho, message, toIRC=False)
+        response = chat.sendMessage(
+            self.banchoUsername,
+            recipientBancho,
+            message,
+            toIRC=False,
+        )
         if response == 404:
             self.replyCode(404, "Cannot send to channel", channel=recipientIRC)
             return
@@ -498,12 +523,16 @@ class Client:
                 return
             for value in self.server.clients.values():
                 if recipientIRC in value.joinedChannels and value != self:
-                    value.message(f":{self.IRCUsername} PRIVMSG {recipientIRC} :{message}")
+                    value.message(
+                        f":{self.IRCUsername} PRIVMSG {recipientIRC} :{message}",
+                    )
         else:
             # Private message (IRC)
             for value in self.server.clients.values():
                 if value.IRCUsername == recipientIRC:
-                    value.message(f":{self.IRCUsername} PRIVMSG {recipientIRC} :{message}")
+                    value.message(
+                        f":{self.IRCUsername} PRIVMSG {recipientIRC} :{message}",
+                    )
 
     def motdHandler(self, command: str, arguments: list[str]) -> None:
         """MOTD command handler"""
@@ -526,7 +555,12 @@ class Client:
     def awayHandler(self, _, arguments: list[str]) -> None:
         """AWAY command handler"""
         response = chat.IRCAway(self.banchoUsername, " ".join(arguments))
-        self.replyCode(response, "You are no longer marked as being away" if response == 305 else "You have been marked as being away")
+        self.replyCode(
+            response,
+            "You are no longer marked as being away"
+            if response == 305
+            else "You have been marked as being away",
+        )
 
     def mainHandler(self, command: str, arguments: list[str]) -> None:
         """
@@ -534,23 +568,23 @@ class Client:
         """
         handlers = {
             "AWAY": self.awayHandler,
-            #"ISON": ison_handler,
+            # "ISON": ison_handler,
             "JOIN": self.joinHandler,
-            #"LIST": list_handler,
+            # "LIST": list_handler,
             "LUSERS": self.lusersHandler,
-            #"MODE": mode_handler,
+            # "MODE": mode_handler,
             "MOTD": self.motdHandler,
-            #"NICK": nick_handler,
-            #"NOTICE": notice_and_privmsg_handler,
+            # "NICK": nick_handler,
+            # "NOTICE": notice_and_privmsg_handler,
             "PART": self.partHandler,
             "PING": self.pingHandler,
             "PONG": self.pongHandler,
             "PRIVMSG": self.noticePrivmsgHandler,
             "QUIT": self.quitHandler,
-            #"TOPIC": topic_handler,
-            #"WALLOPS": wallops_handler,
-            #"WHO": who_handler,
-            #"WHOIS": whois_handler,
+            # "TOPIC": topic_handler,
+            # "WALLOPS": wallops_handler,
+            # "WHO": who_handler,
+            # "WHOIS": whois_handler,
             "USER": self.dummyHandler,
         }
         try:
@@ -564,7 +598,11 @@ class Server:
         self.host = settings.IRC_HOSTNAME
         self.port = port
         self.clients = {}  # Socket - - > Client instance.
-        self.motd = ["Welcome to pep.py's embedded IRC server!", "This is a VERY simple IRC server and it's still in beta.", "Expect things to crash and not work as expected :("]
+        self.motd = [
+            "Welcome to pep.py's embedded IRC server!",
+            "This is a VERY simple IRC server and it's still in beta.",
+            "Expect things to crash and not work as expected :(",
+        ]
 
     def forceDisconnection(self, username: str, isBanchoUsername: bool = True) -> None:
         """
@@ -575,10 +613,11 @@ class Server:
         :return:
         """
         for value in self.clients.values():
-            if (value.IRCUsername == username and not isBanchoUsername) \
-            or (value.banchoUsername == username and isBanchoUsername):
+            if (value.IRCUsername == username and not isBanchoUsername) or (
+                value.banchoUsername == username and isBanchoUsername
+            ):
                 value.disconnect(callLogout=False)
-                break # or dictionary changes size during iteration
+                break  # or dictionary changes size during iteration
 
     def banchoJoinChannel(self, username: str, channel: str) -> None:
         """
@@ -628,7 +667,6 @@ class Server:
                 if value.IRCUsername == to and value.IRCUsername != fro:
                     value.message(f":{fro} PRIVMSG {to} :{message}")
 
-
     def removeClient(self, client, _) -> None:
         """
         Remove a client from connected clients
@@ -654,7 +692,7 @@ class Server:
         serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             serversocket.bind(("0.0.0.0", self.port))
-        except socket.error as e:
+        except OSError as e:
             log.error(f"[IRC] Could not bind port {self.port}:{e}")
             sys.exit(1)
         serversocket.listen(5)
@@ -665,10 +703,14 @@ class Server:
             try:
                 (iwtd, owtd, ewtd) = select.select(
                     [serversocket] + [x.socket for x in self.clients.values()],
-                    [x.socket for x in self.clients.values()
-                     if x.writeBufferSize() > 0],
+                    [
+                        x.socket
+                        for x in self.clients.values()
+                        if x.writeBufferSize() > 0
+                    ],
                     [],
-                    1)
+                    1,
+                )
 
                 # Handle incoming connections
                 for x in iwtd:
@@ -678,8 +720,10 @@ class Server:
                         conn, addr = x.accept()
                         try:
                             self.clients[conn] = Client(self, conn)
-                            log.info(f"[IRC] Accepted connection from {addr[0]}:{addr[1]}")
-                        except socket.error:
+                            log.info(
+                                f"[IRC] Accepted connection from {addr[0]}:{addr[1]}",
+                            )
+                        except OSError:
                             try:
                                 conn.close()
                             except:
@@ -697,9 +741,15 @@ class Server:
                         client.checkAlive()
                     lastAliveCheck = now
             except:
-                log.error("[IRC] Unknown error!\n```\n{}\n{}```".format(sys.exc_info(), traceback.format_exc()))
+                log.error(
+                    "[IRC] Unknown error!\n```\n{}\n{}```".format(
+                        sys.exc_info(),
+                        traceback.format_exc(),
+                    ),
+                )
                 if settings.SENTRY_ENABLE and sentryClient:
                     sentryClient.captureException()
+
 
 def main(port: int = 6667) -> None:
     """
