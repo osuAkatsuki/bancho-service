@@ -75,9 +75,12 @@ if __name__ == "__main__":
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to pep.py osu!bancho server v{glob.VERSION}", Ansi.LGREEN)
+        log(f"Welcome to Akatsuki's bancho-service v{glob.VERSION}", Ansi.LGREEN)
         log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
-        log(f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/pep.py", Ansi.LGREEN)
+        log(
+            f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/bancho-service",
+            Ansi.LGREEN,
+        )
         log("Press CTRL+C to exit\n", Ansi.LGREEN)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 

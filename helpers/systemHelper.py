@@ -57,7 +57,7 @@ def scheduleShutdown(
     """
     # Console output
     log.info(
-        f"pep.py will {'restart' if restart else 'shutdown'} in {sendRestartTime + delay} seconds!",
+        f"bancho-service will {'restart' if restart else 'shutdown'} in {sendRestartTime + delay} seconds!",
     )
     log.info(f"Sending server restart packets in {sendRestartTime} seconds...")
 
@@ -80,11 +80,11 @@ def scheduleShutdown(
 
 def restartServer() -> NoReturn:
     """
-    Restart pep.py
+    Restart bancho-service
 
     :return:
     """
-    log.info("Restarting pep.py...")
+    log.info("Restarting bancho-service...")
     dispose()
 
     # TODO: publish to redis to restart and update lets
@@ -93,11 +93,11 @@ def restartServer() -> NoReturn:
 
 def shutdownServer() -> NoReturn:
     """
-    Shutdown pep.py
+    Shutdown bancho-service
 
     :return:
     """
-    log.info("Shutting down pep.py...")
+    log.info("Shutting down bancho-service...")
     dispose()
     sig = SIGKILL  # if runningUnderUnix() else CTRL_C_EVENT
     kill(getpid(), sig)

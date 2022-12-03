@@ -443,7 +443,7 @@ def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
 # used immediately below
 def _restartShutdown(restart: bool) -> str:
-    """Restart (if restart = True) or shutdown (if restart = False) pep.py safely"""
+    """Restart (if restart = True) or shutdown (if restart = False) the service safely"""
     action = "restart" if restart else "shutdown"
     msg = " ".join(
         [
@@ -553,7 +553,7 @@ def systemStatus(fro: str, chan: str, message: list[str]) -> str:
     letsVersion = letsVersion.decode("utf-8") if letsVersion else r"¯\_(ツ)_/¯"
 
     msg = [
-        f"pep.py bancho server v{glob.VERSION}",
+        f"bancho-service v{glob.VERSION}",
         "made by the Akatsuki, and Ripple teams\n",
         "=== BANCHO STATS ===",
         f'Connected users: {data["connectedUsers"]}',

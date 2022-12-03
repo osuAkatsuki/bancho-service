@@ -4,7 +4,7 @@ miniircd (https://github.com/jrosdahl/miniircd)
 by Joel Rosdahl, licensed under the GNU GPL 2 License.
 
 Most of the reference code from miniircd was used for the low-level logic.
-The high-level code has been rewritten to make it compatible with pep.py.
+The high-level code has been rewritten to make it compatible with bancho-service.
 """
 from __future__ import annotations
 
@@ -370,10 +370,10 @@ class Client:
             self.replyCode(1, "Welcome to the Internet Relay Network")
             self.replyCode(
                 2,
-                f"Your host is {self.server.host}, running version pep.py-{glob.VERSION}",
+                f"Your host is {self.server.host}, running version bancho-service-{glob.VERSION}",
             )
             self.replyCode(3, "This server was created since the beginning")
-            self.replyCode(4, f"{self.server.host} pep.py-{glob.VERSION} o o")
+            self.replyCode(4, f"{self.server.host} bancho-service-{glob.VERSION} o o")
             self.sendLusers()
             self.sendMotd()
             self.__handleCommand = self.mainHandler
@@ -599,7 +599,7 @@ class Server:
         self.port = port
         self.clients = {}  # Socket - - > Client instance.
         self.motd = [
-            "Welcome to pep.py's embedded IRC server!",
+            "Welcome to bancho-service's embedded IRC server!",
             "This is a VERY simple IRC server and it's still in beta.",
             "Expect things to crash and not work as expected :(",
         ]
