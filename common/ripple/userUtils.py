@@ -1514,10 +1514,12 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
         # Running under wine, check by unique id
         log.debug("Logging Linux/Mac hardware")
         banned = glob.db.fetchAll(
-            """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
+            """SELECT users.id as userid, SUM(hw_user.occurencies) AS occurencies, users.username, hw_user.unique_id
+            FROM hw_user
             LEFT JOIN users ON users.id = hw_user.userid
             WHERE hw_user.userid != %(userid)s
             AND hw_user.unique_id = %(uid)s
+            GROUP BY unique_id, userid
             """,
             {
                 "userid": userID,
@@ -1528,11 +1530,14 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
         # Weird '0' disk case, check by MAC and unique id
         log.debug("Logging Windows hardware (without disk, '0' case)")
         banned = glob.db.fetchAll(
-            """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
+            """SELECT users.id as userid, SUM(hw_user.occurencies) AS occurencies, users.username,
+            hw_user.mac, hw_user.unique_id
+            FROM hw_user
             LEFT JOIN users ON users.id = hw_user.userid
             WHERE hw_user.userid != %(userid)s
             AND hw_user.mac = %(mac)s
             AND hw_user.unique_id = %(uid)s
+            GROUP BY mac, unique_id, userid
             """,
             {
                 "userid": userID,
@@ -1544,12 +1549,15 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
         # Running under windows, do all checks
         log.debug("Logging Windows hardware")
         banned = glob.db.fetchAll(
-            """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
+            """SELECT users.id as userid, SUM(hw_user.occurencies) AS occurencies, users.username,
+            hw_user.mac, hw_user.unique_id, hw_user.disk_id
+            FROM hw_user
             LEFT JOIN users ON users.id = hw_user.userid
             WHERE hw_user.userid != %(userid)s
             AND hw_user.mac = %(mac)s
             AND hw_user.unique_id = %(uid)s
             AND hw_user.disk_id = %(diskid)s
+            GROUP BY mac, unique_id, disk_id, userid
             """,
             {
                 "userid": userID,
