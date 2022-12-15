@@ -1501,73 +1501,84 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
             )
             return False
 
-    # Run some HWID checks on that user if he is not restricted
-    if not isRestricted(userID):
-        """
-        compare_ids = compareHWID(userID, hashes[2], hashes[3], hashes[4])
+    """
+    compare_ids = compareHWID(userID, hashes[2], hashes[3], hashes[4])
 
-        if not compare_ids: # Remove cmyui permissions if on a HWID different than usual.. Just safety procautions..
-            log.anticheat("{}: Unusual login detected.\n\nHashes:\nMAC: {}\nUnique: {}\nDisk: {}\n\nTheir login has been disallowed.".format(userID, hashes[2], hashes[3], hashes[4]), 'ac_confidential')
-            return False
-        """
+    if not compare_ids: # Remove cmyui permissions if on a HWID different than usual.. Just safety procautions..
+        log.anticheat("{}: Unusual login detected.\n\nHashes:\nMAC: {}\nUnique: {}\nDisk: {}\n\nTheir login has been disallowed.".format(userID, hashes[2], hashes[3], hashes[4]), 'ac_confidential')
+        return False
+    """
 
-        # Get the list of banned or restricted users that have logged in from this or similar HWID hash set
-        if hashes[2] == "b4ec3c4334a0249dae95c284ec5983df":
-            # Running under wine, check by unique id
-            log.debug("Logging Linux/Mac hardware")
-            banned = glob.db.fetchAll(
-                """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
-                LEFT JOIN users ON users.id = hw_user.userid
-                WHERE hw_user.userid != %(userid)s
-                AND hw_user.unique_id = %(uid)s
-                AND (users.privileges & 3 != 3)""",
-                {
-                    "userid": userID,
-                    "uid": hashes[3],
-                },
-            )
+    # Get the list of users that have logged in from this or similar HWID hash set
+    if hashes[2] == "b4ec3c4334a0249dae95c284ec5983df":
+        # Running under wine, check by unique id
+        log.debug("Logging Linux/Mac hardware")
+        banned = glob.db.fetchAll(
+            """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
+            LEFT JOIN users ON users.id = hw_user.userid
+            WHERE hw_user.userid != %(userid)s
+            AND hw_user.unique_id = %(uid)s
+            """,
+            {
+                "userid": userID,
+                "uid": hashes[3],
+            },
+        )
+    elif hashes[4] == "dcfcd07e645d245babe887e5e2daa016":
+        # Weird '0' disk case, check by MAC and unique id
+        log.debug("Logging Windows hardware (without disk, '0' case)")
+        banned = glob.db.fetchAll(
+            """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
+            LEFT JOIN users ON users.id = hw_user.userid
+            WHERE hw_user.userid != %(userid)s
+            AND hw_user.mac = %(mac)s
+            AND hw_user.unique_id = %(uid)s
+            """,
+            {
+                "userid": userID,
+                "mac": hashes[2],
+                "uid": hashes[3],
+            },
+        )
+    else:
+        # Running under windows, do all checks
+        log.debug("Logging Windows hardware")
+        banned = glob.db.fetchAll(
+            """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
+            LEFT JOIN users ON users.id = hw_user.userid
+            WHERE hw_user.userid != %(userid)s
+            AND hw_user.mac = %(mac)s
+            AND hw_user.unique_id = %(uid)s
+            AND hw_user.disk_id = %(diskid)s
+            """,
+            {
+                "userid": userID,
+                "mac": hashes[2],
+                "uid": hashes[3],
+                "diskid": hashes[4],
+            },
+        )
+
+    for i in banned:
+        if activation:
+            action = "restricted"
+            restrict(userID)
+
+            # Ban the multiaccount.
+            ban(i["userid"])
         else:
-            # Running under windows, do all checks
-            log.debug("Logging Windows hardware")
-            banned = glob.db.fetchAll(
-                """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
-                LEFT JOIN users ON users.id = hw_user.userid
-                WHERE hw_user.userid != %(userid)s
-                AND hw_user.mac = %(mac)s
-                AND hw_user.unique_id = %(uid)s
-                AND hw_user.disk_id = %(diskid)s
-                AND (users.privileges & 3 != 3)""",
-                {
-                    "userid": userID,
-                    "mac": hashes[2],
-                    "uid": hashes[3],
-                    "diskid": hashes[4],
-                },
-            )
+            # If it's not the first login, we flag as it could be innocent e.g LAN party
+            # so no immediate restriction
+            action = "flagged"
 
-        for i in banned:
-            # Get the total numbers of logins
-            total = glob.db.fetch(
-                "SELECT COUNT(*) AS count FROM hw_user WHERE userid = %s",
-                [userID],
-            )
-            # and make sure it is valid
-            if not total:
-                continue
-            total = total["count"]
-
-            # Calculate 10% of total
-            if i["occurencies"] >= (total * 10) / 100:
-                # If the banned user has logged in more than 10% of the times from this user, restrict this user
-                restrict(userID)
-                appendNotes(
-                    userID,
-                    f'Logged in from HWID set used more than 10% from user {i["username"],} ({i["userid"]}), who is banned/restricted.',
-                )
-                log.warning(
-                    f'[{username}](https://akatsuki.pw/u/{userID}) has been restricted because he has logged in from HWID set used more than 10% from banned/restricted user [{i["username"]}](https://akatsuki.pw/u/{i["userid"]}), **possible multiaccount**.',
-                    "ac_general",
-                )
+        appendNotes(
+            userID,
+            f'Logged in from HWID set {i["username"],} ({i["userid"]}).',
+        )
+        log.warning(
+            f'[{username}](https://akatsuki.pw/u/{userID}) has been {action} because he has logged in from HWID set from user [{i["username"]}](https://akatsuki.pw/u/{i["userid"]}), **possible multiaccount**.',
+            "ac_general",
+        )
 
     # Update hash set occurencies
     glob.db.execute(
@@ -1651,6 +1662,13 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
         match = glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE unique_id = %(uid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"uid": hashes[3], "userid": userID},
+        )
+    elif hashes[4] == "dcfcd07e645d245babe887e5e2daa016":
+        # Running under windows, without disk as '0' disk case
+        log.debug("Veryfing with Windows hardware")
+        match = glob.db.fetchAll(
+            "SELECT userid FROM hw_user WHERE mac = %(mac)s AND unique_id = %(uid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
+            {"mac": hashes[2], "uid": hashes[3], "userid": userID},
         )
     else:
         # Running under windows, full check

@@ -113,6 +113,15 @@ def handle(
 
         """ No login errors! """
 
+        # Save HWID in db for multiaccount detection
+        hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
+
+        # This is false only if HWID is empty
+        # if HWID is banned, we get restricted so there's no
+        # need to deny bancho access
+        if not hwAllowed:
+            raise exceptions.haxException()
+
         # Verify this user (if pending activation)
         firstLogin = False
         if pending_verification or not userUtils.hasVerifiedHardware(userID):
@@ -129,15 +138,6 @@ def handle(
                 )
                 glob.verifiedCache[str(userID)] = 0
                 raise exceptions.loginBannedException()
-
-        # Save HWID in db for multiaccount detection
-        hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
-
-        # This is false only if HWID is empty
-        # if HWID is banned, we get restricted so there's no
-        # need to deny bancho access
-        if not hwAllowed:
-            raise exceptions.haxException()
 
         # Log user IP
         userUtils.logIP(userID, requestIP)
