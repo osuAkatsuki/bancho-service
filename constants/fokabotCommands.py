@@ -2300,20 +2300,49 @@ def crashClient(fro: str, chan: str, message: list[str]) -> str:
     return "deletus"
 
 
-# @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
-# def runPython(fro: str, chan: str, message: list[str]) -> str:
-#     # NOTE: not documented on purpose
-#     lines = " ".join(message).split(r"\n")
-#     definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
+@command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
+def runPython(fro: str, chan: str, message: list[str]) -> str:
+    if fro != 'cmyui':
+        return 'no :)'
 
-#     try:
-#         exec(definition)  # define function
-#         ret = str(locals()["__py"](fro, chan, message))  # run it
-#     except Exception as e:
-#         ret = f"{e.__class__}: {e}"
+    # NOTE: not documented on purpose
+    lines = " ".join(message).split(r"\n")
+    definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
 
-#     return ret
+    try:
+        exec(definition)  # define function
+        ret = str(locals()["__py"](fro, chan, message))  # run it
+    except Exception as e:
+        ret = f"{e.__class__}: {e}"
 
+    return ret
+
+# NOTE: this is dangerous, namely because ids of singletons (and other object)
+# will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
+@command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
+def reload(fro: str, chan: str, message: list[str]) -> str:
+    """Reload a python module, by name (relative to pep.py)."""
+    if fro != 'cmyui':
+        return 'no :)'
+
+    if len(message) != 1:
+        return "Invalid syntax: !reload <module>"
+
+    parent, *children = message[0].split(".")
+
+    try:
+        mod = __import__(parent)
+    except ModuleNotFoundError:
+        return "Module not found."
+
+    try:
+        for child in children:
+            mod = getattr(mod, child)
+    except AttributeError:
+        return f"Failed at {child}."
+
+    mod = importlib.reload(mod)
+    return f"Reloaded {mod.__name__}"
 
 # used in fokabot.py, here so we can !reload constants.fokabotCommands
 _commands = {
