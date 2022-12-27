@@ -79,6 +79,8 @@ def unpackData(data: bytes, dataType: int):
     """
     return _default_packs[dataType].unpack(data)[0]
 
+
+def packData(__data: Any, dataType: int) -> bytes:
     """
     Packs a single section of a packet.
 
