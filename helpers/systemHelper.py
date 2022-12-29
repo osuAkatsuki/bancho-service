@@ -28,7 +28,6 @@ def dispose() -> None:
     :return:
     """
     print("> Disposing server...")
-    glob.fileBuffers.flushAll()
     consoleHelper.printColored("Goodbye!", bcolors.GREEN)
 
 

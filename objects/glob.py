@@ -5,8 +5,6 @@ import time
 from typing import TYPE_CHECKING
 
 from common.ddog import datadogClient
-from common.files import fileBuffer
-from common.files import fileLocks
 from common.web import schiavo
 from objects import channelList
 from objects import matchList
@@ -36,8 +34,6 @@ banchoConf = None
 tokens = tokenList.tokenList()
 channels = channelList.channelList()
 matches = matchList.matchList()
-fLocks = fileLocks.fileLocks()
-fileBuffers = fileBuffer.buffersList()
 schiavo = schiavo.schiavo()
 dog = datadogClient.datadogClient()
 verifiedCache = {}

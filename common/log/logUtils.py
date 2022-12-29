@@ -18,7 +18,6 @@ def logMessage(
     alertType: str = "INFO",
     messageColor: Optional[str] = bcolors.ENDC,
     discord: Optional[str] = None,
-    out_file: Optional[str] = None,
     stdout: bool = True,
 ) -> None:
     """
@@ -76,10 +75,7 @@ def logMessage(
         else:
             error(f"Unknown discord webhook {discord}")
 
-    if out_file is not None:
-        # send to file, if provided
-        file_msg = f"[{generalUtils.getTimestamp(full=True)}] {alertType} - {message}"
-        glob.fileBuffers.write(f".data/{out_file}", f"{file_msg}{ENDL}")
+    # TODO: save to s3
 
 
 def warning(message: str, discord: Optional[str] = None) -> None:
@@ -135,7 +131,7 @@ def chat(message: str, discord: Optional[str] = None) -> None:
     :param discord: if True, send the message to discord
     :return:
     """
-    logMessage(message, "CHAT", bcolors.BLUE, discord, out_file="chatlog_public.txt")
+    logMessage(message, "CHAT", bcolors.BLUE, discord)
 
 
 def pm(message: str, discord: Optional[str] = None) -> None:
@@ -151,7 +147,6 @@ def pm(message: str, discord: Optional[str] = None) -> None:
         "CHAT",
         None,
         discord,
-        out_file="chatlog_private.txt",
         stdout=False,
     )
 

@@ -194,8 +194,6 @@ if __name__ == "__main__":
                         # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
                         # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
                         # datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
-                        # datadogClient.periodicCheck("ram_file_buffers", lambda: generalUtils.getTotalSize(glob.fileBuffers)),
-                        # datadogClient.periodicCheck("ram_file_locks", lambda: generalUtils.getTotalSize(glob.fLocks)),
                         # datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
                         # datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
                         # datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),

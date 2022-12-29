@@ -31,7 +31,7 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
 from objects import fokabot
-from objects import glob, stream
+from objects import glob, stream,streamList
 
 """
 Commands callbacks
@@ -116,7 +116,7 @@ def alert(fro: str, chan: str, message: list[str]) -> None:
     if not (msg := " ".join(message).strip()):
         return
 
-    stream.broadcast("main", serverPackets.notification(msg))
+    streamList.broadcast("main", serverPackets.notification(msg))
 
 
 @command(
@@ -514,7 +514,7 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
                 if not value.staff:
                     who.append(value.userID)
 
-        stream.broadcast(
+        streamList.broadcast(
             "main",
             serverPackets.notification(
                 " ".join(
@@ -1339,7 +1339,7 @@ def unfreeze(fro: str, chan: str, message: list[str]) -> str:
 @command(trigger="!update", privs=privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
 def updateServer(fro: str, chan: str, message: list[str]) -> None:
     """Broadcast a notification to all online players, and reboot the server after a short delay."""
-    stream.broadcast(
+    streamList.broadcast(
         "main",
         serverPackets.notification(
             "\n".join(
@@ -1595,7 +1595,7 @@ def competitionMap(fro: str, chan: str, message: list[str]) -> str:
     return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(userUtils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
 
 def announceContest(fro: str, chan: str, message: list[str]) -> None:
-    stream.broadcast("main", serverPackets.notification('\n'.join([
+    streamList.broadcast("main", serverPackets.notification('\n'.join([
         'A new contest has begun!',
         'To view details, please use the !contest command.\n',
         'Best of luck!'
