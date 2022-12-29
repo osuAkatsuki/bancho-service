@@ -8,7 +8,6 @@ from common.ddog import datadogClient
 from common.web import schiavo
 from objects import channelList
 from objects import matchList
-from objects import streamList
 from objects import tokenList
 
 if TYPE_CHECKING:
