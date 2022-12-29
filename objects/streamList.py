@@ -10,10 +10,6 @@ if TYPE_CHECKING:
 
     from objects.osuToken import token
 
-
-# def __init__(self):
-#     self.streams = {}
-
 def make_key() -> str:
     return f"bancho:streams"
 
