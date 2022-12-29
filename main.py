@@ -1,9 +1,9 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
-import ddtrace
+# import ddtrace
 
-ddtrace.patch_all()
+# ddtrace.patch_all()
 
 import os
 import threading
@@ -33,7 +33,7 @@ from handlers import (
 from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
-from objects import banchoConfig, fokabot, glob
+from objects import banchoConfig, fokabot, glob, streamList
 from pubSubHandlers import (
     banHandler,
     changeUsernameHandler,
@@ -150,19 +150,14 @@ if __name__ == "__main__":
             )
             raise
 
-        # Get build date for login notifications
-        with open("build.date") as f:
-            timestamp = dt.utcfromtimestamp(int(f.read()))
-            glob.latestBuild = timestamp.strftime("%b %d %Y")
-
         log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
         fokabot.connect()
 
         glob.channels.loadChannels()
 
         # Initialize stremas
-        glob.streams.add("main")
-        glob.streams.add("lobby")
+        streamList.add("main")
+        streamList.add("lobby")
 
         log("Starting background loops.", Ansi.LMAGENTA)
 

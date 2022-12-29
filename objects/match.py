@@ -19,6 +19,7 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from objects import glob
 from objects.osuToken import token
+from objects import stream,streamList
 
 
 class slot:
@@ -133,8 +134,8 @@ class match:
         self.slots = [slot() for _ in range(16)]
 
         # Create streams
-        glob.streams.add(self.streamName)
-        glob.streams.add(self.playingStreamName)
+        streamList.add(self.streamName)
+        streamList.add(self.playingStreamName)
 
         # Create #multiplayer channel
         glob.channels.addHiddenChannel(f"#multi_{self.matchID}")
@@ -394,7 +395,7 @@ class match:
 
         :return:
         """
-        glob.streams.broadcast(self.playingStreamName, serverPackets.allPlayersLoaded)
+        streamList.broadcast(self.playingStreamName, serverPackets.allPlayersLoaded)
 
     def playerSkip(self, userID: int) -> None:
         """
@@ -411,7 +412,7 @@ class match:
         self.slots[slotID].skip = True
 
         # Send skip packet to every playing user
-        glob.streams.broadcast(
+        streamList.broadcast(
             self.playingStreamName,
             serverPackets.playerSkipped(slotID),
         )
@@ -434,7 +435,7 @@ class match:
 
         :return:
         """
-        glob.streams.broadcast(self.playingStreamName, serverPackets.allPlayersSkipped)
+        streamList.broadcast(self.playingStreamName, serverPackets.allPlayersSkipped)
 
     def updateScore(self, slotID: int, score: int) -> None:
         """
@@ -522,11 +523,11 @@ class match:
         self.sendUpdates()
 
         # Send match complete
-        glob.streams.broadcast(self.streamName, serverPackets.matchComplete)
+        streamList.broadcast(self.streamName, serverPackets.matchComplete)
 
         # Destroy playing stream
-        glob.streams.dispose(self.playingStreamName)
-        glob.streams.remove(self.playingStreamName)
+        streamList.dispose(self.playingStreamName)
+        streamList.remove(self.playingStreamName)
 
         # Console output
         # log.info("MPROOM{}: Match completed".format(self.matchID))
@@ -759,7 +760,7 @@ class match:
         self.matchPassword = newPassword
 
         # Send password change to every user in match
-        glob.streams.broadcast(
+        streamList.broadcast(
             self.streamName,
             serverPackets.changeMatchPassword(self.matchPassword),
         )
@@ -828,7 +829,7 @@ class match:
         self.slots[slotID].passed = False
 
         # Send packet to everyone
-        glob.streams.broadcast(
+        streamList.broadcast(
             self.playingStreamName,
             serverPackets.playerFailed(slotID),
         )
@@ -914,9 +915,9 @@ class match:
         self.matchDataCache = serverPackets.updateMatch(self.matchID)
         censoredDataCache = serverPackets.updateMatch(self.matchID, censored=True)
         if self.matchDataCache:
-            glob.streams.broadcast(self.streamName, self.matchDataCache)
+            streamList.broadcast(self.streamName, self.matchDataCache)
         if censoredDataCache:
-            glob.streams.broadcast("lobby", censoredDataCache)
+            streamList.broadcast("lobby", censoredDataCache)
         else:
             log.error(
                 f"MPROOM{self.matchID}: Can't send match update packet, match data is None!!!",
@@ -963,7 +964,7 @@ class match:
             return False
 
         # Create playing channel
-        glob.streams.add(self.playingStreamName)
+        streamList.add(self.playingStreamName)
 
         # Change inProgress value
         self.inProgress = True
@@ -984,7 +985,7 @@ class match:
                 user_token.joinStream(self.playingStreamName)
 
         # Send match start packet
-        glob.streams.broadcast(
+        streamList.broadcast(
             self.playingStreamName,
             serverPackets.matchStart(self.matchID),
         )
@@ -1009,9 +1010,9 @@ class match:
         self.isStarting = False
         self.resetSlots()
         self.sendUpdates()
-        glob.streams.broadcast(self.playingStreamName, serverPackets.matchAbort)
-        glob.streams.dispose(self.playingStreamName)
-        glob.streams.remove(self.playingStreamName)
+        streamList.broadcast(self.playingStreamName, serverPackets.matchAbort)
+        streamList.dispose(self.playingStreamName)
+        streamList.remove(self.playingStreamName)
 
     def initializeTeams(self) -> None:
         if self.matchTeamType in {matchTeamTypes.TEAM_VS, matchTeamTypes.TAG_TEAM_VS}:

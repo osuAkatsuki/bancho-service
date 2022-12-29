@@ -10,8 +10,8 @@ from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
-from objects import fokabot
-from objects import glob
+from objects import fokabot, stream
+from objects import glob, streamList
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -152,10 +152,11 @@ def partChannel(
         token.partChannel(channelObject)
 
         # Delete temporary channel if everyone left
-        if f"chat/{channelObject.name}" in glob.streams.streams:
+        key = f"chat/{channelObject.name}"
+        if key in streamList.getStreams():
             if (
                 channelObject.temp
-                and len(glob.streams.streams[f"chat/{channelObject.name}"].clients) - 1
+                and stream.getClientCount(key) - 1
                 == 0
             ):
                 glob.channels.removeChannel(channelObject.name)
@@ -374,7 +375,7 @@ def sendMessage(
                         }
 
                     # Send their command
-                    glob.streams.broadcast_limited(f"chat/{to}", msg_packet, send_to)
+                    streamList.broadcast_limited(f"chat/{to}", msg_packet, send_to)
 
                     # Send Aika's response
                     send_to.add(token.token)
@@ -384,18 +385,18 @@ def sendMessage(
                         message=fokaMessage["response"],
                         fro_id=999,
                     )
-                    glob.streams.broadcast_limited(
+                    streamList.broadcast_limited(
                         f"chat/{to}",
                         response_packet,
                         send_to,
                     )
                 else:  # Send to all streams
                     token.addMessageInBuffer(to, message)
-                    glob.streams.broadcast(f"chat/{to}", msg_packet, but=[token.token])
+                    streamList.broadcast(f"chat/{to}", msg_packet, but=[token.token])
                     sendMessage(glob.BOT_NAME, to, fokaMessage["response"])
             else:
                 token.addMessageInBuffer(to, message)
-                glob.streams.broadcast(f"chat/{to}", msg_packet, but=[token.token])
+                streamList.broadcast(f"chat/{to}", msg_packet, but=[token.token])
         else:
             # USER
             # Make sure recipient user is connected
@@ -580,7 +581,7 @@ def IRCConnect(username: str) -> None:
         glob.tokens.deleteOldTokens(userID)
         glob.tokens.addToken(userID, irc=True)
 
-    glob.streams.broadcast("main", serverPackets.userPanel(userID))
+    streamList.broadcast("main", serverPackets.userPanel(userID))
     log.info(f"{username} logged in from IRC.")
 
 

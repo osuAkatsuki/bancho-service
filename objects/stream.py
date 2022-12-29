@@ -9,99 +9,115 @@ if TYPE_CHECKING:
 
     from objects.osuToken import token
 
+def make_key(stream_name: str) -> str:
+    return f"bancho:streams:{stream_name}"
 
-class stream:
-    __slots__ = ("name", "clients")
+def getClients(stream_name: str) -> list:
+    """
+    Get all clients in this stream
 
-    def __init__(self, name: str) -> None:
-        """
-        Initialize a stream object
+    :return: list of clients
+    """
+    return glob.redis.smembers(make_key(stream_name))
 
-        :param name: stream name
-        """
-        self.name = name
-        self.clients = []
+def getClientCount(stream_name: str) -> int:
+    """
+    Get the amount of clients in this stream
 
-    def addClient(
-        self,
-        client: Optional[token] = None,
-        token: Optional[str] = None,
-    ) -> None:
-        """
-        Add a client to this stream if not already in
+    :return: amount of clients
+    """
+    return glob.redis.scard(make_key(stream_name))
 
-        :param client: client (osuToken) object
-        :param token: client uuid string
-        :return:
-        """
-        if not (client or token):
-            return
+def addClient(
+    stream_name: str,
+    client: Optional[token] = None,
+    token: Optional[str] = None,
+) -> None:
+    """
+    Add a client to this stream if not already in
 
-        if client:
-            token = client.token
+    :param client: client (osuToken) object
+    :param token: client uuid string
+    :return:
+    """
+    if not (client or token):
+        return
 
-        if token not in self.clients:
-            # log.info("{} has joined stream {}.".format(token, self.name))
-            self.clients.append(token)
+    if client:
+        token = client.token
 
-    def removeClient(
-        self,
-        client: Optional[token] = None,
-        token: Optional[str] = None,
-    ) -> None:
-        """
-        Remove a client from this stream if in
+    current_tokens = getClients(stream_name)
 
-        :param client: client (osuToken) object
-        :param token: client uuid string
-        :return:
-        """
-        if not (client or token):
-            return
+    if token not in current_tokens:
+        # log.info("{} has joined stream {}.".format(token, self.name))
+        glob.redis.sadd(make_key(stream_name), token)
 
-        if client:
-            token = client.token
+def removeClient(
+    stream_name: str,
+    client: Optional[token] = None,
+    token: Optional[str] = None,
+) -> None:
+    """
+    Remove a client from this stream if in
 
-        if token in self.clients:
-            # log.info("{} has left stream {}.".format(token, self.name))
-            self.clients.remove(token)
+    :param client: client (osuToken) object
+    :param token: client uuid string
+    :return:
+    """
+    if not (client or token):
+        return
 
-    def broadcast(self, data: bytes, but: list[str] = []) -> None:
-        """
-        Send some data to all (or some) clients connected to this stream
+    if client:
+        token = client.token
 
-        :param data: data to send
-        :param but: array of tokens to ignore. Default: None (send to everyone)
-        :return:
-        """
-        for i in self.clients:
-            if i in glob.tokens.tokens:
-                if i not in but:
-                    glob.tokens.tokens[i].enqueue(data)
-            else:
-                self.removeClient(token=i)
+    current_tokens = getClients(stream_name)
 
-    def broadcast_limited(self, data: bytes, users: list[str]) -> None:
-        """
-        Send some data to specific clients connected to this stream
+    if token in current_tokens:
+        key = make_key(stream_name, token)
+        glob.redis.srem(key, token)
 
-        :param data: data to send
-        :param users: array of tokens broadcast to.
-        :return:
-        """
-        for i in self.clients:
-            if i in glob.tokens.tokens:
-                if i in users:
-                    glob.tokens.tokens[i].enqueue(data)
-            else:
-                self.removeClient(token=i)
+def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
+    """
+    Send some data to all (or some) clients connected to this stream
 
-    def dispose(self) -> None:
-        """
-        Tell every client in this stream to leave the stream
+    :param data: data to send
+    :param but: array of tokens to ignore. Default: None (send to everyone)
+    :return:
+    """
+    current_tokens = getClients(stream_name)
 
-        :return:
-        """
-        for i in self.clients:
-            if i in glob.tokens.tokens:
-                glob.tokens.tokens[i].leaveStream(self.name)
+    for i in current_tokens:
+        if i in glob.tokens.tokens:
+            if i not in but:
+                glob.tokens.tokens[i].enqueue(data)
+        else:
+            removeClient(token=i)
+
+def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
+    """
+    Send some data to specific clients connected to this stream
+
+    :param data: data to send
+    :param users: array of tokens broadcast to.
+    :return:
+    """
+    current_tokens = getClients(stream_name)
+
+    for i in current_tokens:
+        if i in glob.tokens.tokens:
+            if i in users:
+                glob.tokens.tokens[i].enqueue(data)
+        else:
+            removeClient(token=i)
+
+def dispose(stream_name: str) -> None:
+    """
+    Tell every client in this stream to leave the stream
+
+    :return:
+    """
+    current_tokens = getClients(stream_name)
+
+    for i in current_tokens:
+        if i in glob.tokens.tokens:
+            glob.tokens.tokens[i].leaveStream(stream_name)

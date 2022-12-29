@@ -10,6 +10,7 @@ from constants import serverPackets
 from constants.exceptions import periodicLoopException
 from objects import glob
 from objects import match
+from objects import streamList
 
 
 class matchList:
@@ -85,19 +86,19 @@ class matchList:
         glob.channels.removeChannel(f"#multi_{_match.matchID}")
 
         # Send matchDisposed packet before disposing streams
-        glob.streams.broadcast(
+        streamList.broadcast(
             _match.streamName,
             serverPackets.disposeMatch(_match.matchID),
         )
 
         # Dispose all streams
-        glob.streams.dispose(_match.streamName)
-        glob.streams.dispose(_match.playingStreamName)
-        glob.streams.remove(_match.streamName)
-        glob.streams.remove(_match.playingStreamName)
+        streamList.dispose(_match.streamName)
+        streamList.dispose(_match.playingStreamName)
+        streamList.remove(_match.streamName)
+        streamList.remove(_match.playingStreamName)
 
         # Send match dispose packet to everyone in lobby
-        glob.streams.broadcast("lobby", serverPackets.disposeMatch(matchID))
+        streamList.broadcast("lobby", serverPackets.disposeMatch(matchID))
         del self.matches[matchID]
         log.info(f"MPROOM{_match.matchID}: Room disposed manually")
 

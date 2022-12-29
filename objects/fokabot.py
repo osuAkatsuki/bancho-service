@@ -11,7 +11,7 @@ from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob
+from objects import glob,streamList
 
 # Some common regexes, compiled to increase performance.
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
@@ -27,10 +27,11 @@ npRegex = re.compile(
 def connect() -> None:
     with glob.tokens:
         token = glob.tokens.addToken(999)
+        assert token is not None
 
     token.actionID = actions.IDLE
-    glob.streams.broadcast("main", serverPackets.userPanel(999))
-    glob.streams.broadcast("main", serverPackets.userStats(999))
+    streamList.broadcast("main", serverPackets.userPanel(999))
+    streamList.broadcast("main", serverPackets.userStats(999))
 
 
 def disconnect() -> None:

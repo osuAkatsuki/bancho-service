@@ -7,7 +7,7 @@ from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
 from helpers import packetHelper
-from objects import glob
+from objects import glob, stream
 
 
 def notification(message: str) -> bytes:
@@ -298,7 +298,8 @@ def channelInfo(chan: str) -> bytes:
         return b""
 
     channel = glob.channels.channels[chan]
-    client_count = len(glob.streams.streams[f"chat/{chan}"].clients)
+    key = f"chat/{chan}"
+    client_count = stream.getClientCount(key)
 
     return packetHelper.buildPacket(
         packetIDs.server_channelInfo,

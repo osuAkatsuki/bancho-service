@@ -10,112 +10,132 @@ if TYPE_CHECKING:
 
     from objects.osuToken import token
 
+
+# def __init__(self):
+#     self.streams = {}
+
+def make_key() -> str:
+    return f"bancho:streams"
+
+
 # TODO: use *args and **kwargs
-class streamList:
-    __slots__ = ("streams",)
 
-    def __init__(self):
-        self.streams = {}
+def getStreams() -> list[str]:
+    """
+    Returns a list of all streams
 
-    def add(self, name: str) -> None:
-        """
-        Create a new stream list if it doesn't already exist
+    :return:
+    """
+    return glob.redis.smembers(make_key())
 
-        :param name: stream name
-        :return:
-        """
-        if name not in self.streams:
-            self.streams[name] = stream.stream(name)
+def add(name: str) -> None:
+    """
+    Create a new stream list if it doesn't already exist
 
-    def remove(self, name: str) -> None:
-        """
-        Removes an existing stream and kick every user in it
+    :param name: stream name
+    :return:
+    """
 
-        :param name: stream name
-        :return:
-        """
-        if name in self.streams:
-            for i in self.streams[name].clients:
-                if i in glob.tokens.tokens:
-                    glob.tokens.tokens[i].leaveStream(name)
-            self.streams.pop(name)
+    current_streams = getStreams()
+    if name not in current_streams:
+        glob.redis.sadd(make_key(), name)
 
-    def join(
-        self,
-        name: str,
-        client: Optional[token] = None,
-        token: Optional[str] = None,
-    ) -> None:
-        """
-        Add a client to a stream
+def remove(name: str) -> None:
+    """
+    Removes an existing stream and kick every user in it
 
-        :param name: stream name
-        :param client: client (osuToken) object
-        :param token: client uuid string
-        :return:
-        """
-        if name in self.streams:
-            self.streams[name].addClient(client=client, token=token)
+    :param name: stream name
+    :return:
+    """
+    current_streams = getStreams()
 
-    def leave(
-        self,
-        name: str,
-        client: Optional[token] = None,
-        token: Optional[str] = None,
-    ) -> None:
-        """
-        Remove a client from a stream
+    if name in current_streams:
+        current_clients = stream.getClients(name)
+        for i in current_clients:
+            if i in glob.tokens.tokens:
+                glob.tokens.tokens[i].leaveStream(name)
 
-        :param name: stream name
-        :param client: client (osuToken) object
-        :param token: client uuid string
-        :return:
-        """
-        if name in self.streams:
-            self.streams[name].removeClient(client=client, token=token)
+        #self.streams.pop(name)
+        previous_members = stream.getClients(name)
+        for token in previous_members:
+            stream.removeClient(name, token=token)
+        glob.redis.srem(make_key(), name)
 
-    def broadcast(self, name: str, data: bytes, but: list[str] = []) -> None:
-        """
-        Send some data to all clients in a stream
 
-        :param name: stream name
-        :param data: data to send
-        :param but: array of tokens to ignore. Default: None (send to everyone)
-        :return:
-        """
-        if name in self.streams:
-            self.streams[name].broadcast(data, but)
+def join(
+    name: str,
+    client: Optional[token] = None,
+    token: Optional[str] = None,
+) -> None:
+    """
+    Add a client to a stream
 
-    def broadcast_limited(self, name: str, data: bytes, users: list[str]) -> None:
-        """
-        Send some data to specific clients in a stream
+    :param name: stream name
+    :param client: client (osuToken) object
+    :param token: client uuid string
+    :return:
+    """
 
-        :param name: stream name
-        :param data: data to send
-        :param users: array of tokens to broadcast to
-        :return:
-        """
-        if name in self.streams:
-            self.streams[name].broadcast_limited(data, users)
+    streams = getStreams()
+    if name in streams:
+        stream.addClient(name, client=client, token=token)
 
-    def dispose(self, name: str, *args, **kwargs) -> None:
-        """
-        Call `dispose` on `name`
+def leave(
+    name: str,
+    client: Optional[token] = None,
+    token: Optional[str] = None,
+) -> None:
+    """
+    Remove a client from a stream
 
-        :param name: name of the stream
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        if name in self.streams:
-            self.streams[name].dispose(*args, **kwargs)
+    :param name: stream name
+    :param client: client (osuToken) object
+    :param token: client uuid string
+    :return:
+    """
 
-    def getStream(self, name: str) -> Optional[stream.stream]:
-        """
-        Returns name's stream object or None if it doesn't exist
+    streams = getStreams()
+    if name in streams:
+        stream.removeClient(name, client=client, token=token)
 
-        :param name:
-        :return:
-        """
-        if name in self.streams:
-            return self.streams[name]
+def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
+    """
+    Send some data to all clients in a stream
+
+    :param name: stream name
+    :param data: data to send
+    :param but: array of tokens to ignore. Default: None (send to everyone)
+    :return:
+    """
+
+    streams = getStreams()
+    if name in streams:
+        stream.broadcast(name, data, but)
+
+def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
+    """
+    Send some data to specific clients in a stream
+
+    :param name: stream name
+    :param data: data to send
+    :param users: array of tokens to broadcast to
+    :return:
+    """
+
+    streams = getStreams()
+    if name in streams:
+        stream.broadcast_limited(name, data, users)
+
+def dispose(name: str, *args, **kwargs) -> None:
+    """
+    Call `dispose` on `name`
+
+    :param name: name of the stream
+    :param args:
+    :param kwargs:
+    :return:
+    """
+
+    streams = getStreams()
+    if name in streams:
+        stream.dispose(name, *args, **kwargs)

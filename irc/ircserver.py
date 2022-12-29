@@ -22,7 +22,7 @@ import settings
 from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
-from objects import glob
+from objects import glob, stream, streamList
 
 
 class Client:
@@ -430,10 +430,10 @@ class Client:
                     self.replyCode(332, description, channel=channel)
 
                 # Build connected users list
-                if f"chat/{channel}" not in glob.streams.streams:
+                if f"chat/{channel}" not in streamList.getStreams():
                     self.reply403(channel)
                     continue
-                users = glob.streams.streams[f"chat/{channel}"].clients
+                users = stream.getClients(f"chat/{channel}")
                 usernames = []
                 for user in users:
                     if user not in glob.tokens.tokens:

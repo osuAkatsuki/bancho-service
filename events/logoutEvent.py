@@ -9,7 +9,7 @@ from cmyui.logging import log
 import settings
 from constants import serverPackets
 from helpers import chatHelper as chat
-from objects import glob
+from objects import glob, streamList
 
 
 def handle(userToken, _=None, deleteToken=True):
@@ -32,7 +32,7 @@ def handle(userToken, _=None, deleteToken=True):
         userToken.leaveAllStreams()
 
         # Enqueue our disconnection to everyone else
-        glob.streams.broadcast("main", serverPackets.userLogout(userToken.userID))
+        streamList.broadcast("main", serverPackets.userLogout(userToken.userID))
 
         # Disconnect from IRC if needed
         if userToken.irc and settings.IRC_ENABLE:

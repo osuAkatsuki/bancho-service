@@ -43,14 +43,11 @@ dog = datadogClient.datadogClient()
 verifiedCache = {}
 pool = None
 ircServer = None
-busyThreads = 0
 
 restarting = False
 
 startTime = int(time.time())
 latestBuild = 0
-
-streams = streamList.streamList()
 
 groupPrivileges: dict[str, int] = {}
 bcrypt_cache: dict[bytes, bytes] = {}

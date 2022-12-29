@@ -4,6 +4,7 @@ from __future__ import annotations
 from common import generalUtils
 from constants import serverPackets
 from objects import glob
+from objects import streamList
 
 
 class banchoConfig:
@@ -50,7 +51,7 @@ class banchoConfig:
         if mainMenuIcon is None:
             self.config["menuIcon"] = ""
         else:
-            imageURL = f"https://i.ppy.sh/{mainMenuIcon['file_id']}.png"
+            imageURL = mainMenuIcon['file_id']
             self.config["menuIcon"] = f"{imageURL}|{mainMenuIcon['url']}"
         self.config["loginNotification"] = glob.db.fetch(
             "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
@@ -76,11 +77,11 @@ class banchoConfig:
         glob.channels.loadChannels()
 
         # Send new channels and new bottom icon to everyone
-        glob.streams.broadcast(
+        streamList.broadcast(
             "main",
             serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
         )
-        glob.streams.broadcast("main", serverPackets.channelInfoEnd)
+        streamList.broadcast("main", serverPackets.channelInfoEnd)
         for key, value in glob.channels.channels.items():
             if value.publicRead and not value.hidden:
-                glob.streams.broadcast("main", serverPackets.channelInfo(key))
+                streamList.broadcast("main", serverPackets.channelInfo(key))

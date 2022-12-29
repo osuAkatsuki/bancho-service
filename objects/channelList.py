@@ -7,6 +7,7 @@ from constants import exceptions
 from helpers import chatHelper as chat
 from objects import channel
 from objects import glob
+from objects import stream,streamList
 
 
 class channelList:
@@ -51,7 +52,7 @@ class channelList:
         :param hidden: if True, thic channel won't be shown in channels list
         :return:
         """
-        glob.streams.add(f"chat/{name}")
+        streamList.add(f"chat/{name}")
         self.channels[name] = channel.channel(
             name,
             description,
@@ -73,7 +74,7 @@ class channelList:
         if name in self.channels:
             return False
 
-        glob.streams.add(f"chat/{name}")
+        streamList.add(f"chat/{name}")
         self.channels[name] = channel.channel(
             name=name,
             description="Chat",
@@ -96,7 +97,7 @@ class channelList:
         if name in self.channels:
             return False
 
-        glob.streams.add(f"chat/{name}")
+        streamList.add(f"chat/{name}")
         self.channels[name] = channel.channel(
             name=name,
             description="Chat",
@@ -119,20 +120,18 @@ class channelList:
             log(f"{name} is not in channels list?", Ansi.LYELLOW)
             return
 
-        # glob.streams.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
+        # streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
 
-        stream = glob.streams.getStream(f"chat/{name}")
-        if stream:
-            for token in stream.clients:
-                if token in glob.tokens.tokens:
-                    chat.partChannel(
-                        channel=name,
-                        token=glob.tokens.tokens[token],
-                        kick=True,
-                    )
+        for token in stream.getClients(f"chat/{name}"):
+            if token in glob.tokens.tokens:
+                chat.partChannel(
+                    channel=name,
+                    token=glob.tokens.tokens[token],
+                    kick=True,
+                )
 
-        glob.streams.dispose(f"chat/{name}")
-        glob.streams.remove(f"chat/{name}")
+        streamList.dispose(f"chat/{name}")
+        streamList.remove(f"chat/{name}")
         self.channels.pop(name)
         log(f"Removed channel {name}.")
 

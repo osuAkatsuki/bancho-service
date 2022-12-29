@@ -17,6 +17,7 @@ from common.constants import bcolors
 from common.log import logUtils as log
 from constants import serverPackets
 from helpers import consoleHelper
+from objects import streamList
 from objects import glob
 
 
@@ -63,12 +64,12 @@ def scheduleShutdown(
 
     # Send notification if set
     if message:
-        glob.streams.broadcast("main", serverPackets.notification(message))
+        streamList.broadcast("main", serverPackets.notification(message))
 
     # Schedule server restart packet
     Timer(
         sendRestartTime,
-        glob.streams.broadcast,
+        streamList.broadcast,
         ["main", serverPackets.banchoRestart(delay * 2 * 1000)],
     ).start()
     glob.restarting = True

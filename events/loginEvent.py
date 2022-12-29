@@ -21,7 +21,7 @@ from constants import serverPackets
 from helpers import chatHelper as chat
 from helpers import countryHelper
 from helpers import locationHelper
-from objects import glob
+from objects import glob, streamList
 
 if TYPE_CHECKING:
     import tornado.web
@@ -366,11 +366,7 @@ def handle(
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
-            responseToken.enqueue(
-                serverPackets.mainMenuIcon(
-                    f'{glob.banchoConf.config["menuIcon"]}/u/{userID}',
-                ),
-            )
+            responseToken.enqueue(serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
 
         # Save token in redis
         glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
@@ -405,7 +401,7 @@ def handle(
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not responseToken.restricted:
-            glob.streams.broadcast("main", serverPackets.userPanel(userID))
+            streamList.broadcast("main", serverPackets.userPanel(userID))
 
         # Set reponse data to right value and reset our queue
         responseData = responseToken.queue.copy()

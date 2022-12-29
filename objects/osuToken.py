@@ -18,7 +18,7 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from helpers import chatHelper as chat
-from objects import glob
+from objects import glob,streamList
 
 if TYPE_CHECKING:
     from objects import channel
@@ -289,7 +289,7 @@ class token:
 
             # Create and join spectator stream
             streamName = f"spect/{host.userID}"
-            glob.streams.add(streamName)
+            streamList.add(streamName)
             self.joinStream(streamName)
             host.joinStream(streamName)
 
@@ -308,7 +308,7 @@ class token:
                 )
 
             # Send fellow spectator join to all clients
-            glob.streams.broadcast(
+            streamList.broadcast(
                 streamName,
                 serverPackets.fellowSpectatorJoined(self.userID),
             )
@@ -330,7 +330,6 @@ class token:
         :return:
         """
         with self._spectLock:
-
             # Remove our userID from host's spectators
             if not self.spectating or self.spectatingUserID <= 0:
                 return
@@ -522,7 +521,7 @@ class token:
         self.enqueue(serverPackets.silenceEndTime(seconds))
 
         # Send silenced packet to everyone else
-        glob.streams.broadcast("main", serverPackets.userSilenced(self.userID))
+        streamList.broadcast("main", serverPackets.userSilenced(self.userID))
 
     def spamProtection(self, increaseSpamRate: bool = True) -> None:
         """
@@ -646,7 +645,7 @@ class token:
         :param name: stream name
         :return:
         """
-        glob.streams.join(name, token=self.token)
+        streamList.join(name, token=self.token)
         if name not in self.streams:
             self.streams.append(name)
 
@@ -657,7 +656,7 @@ class token:
         :param name: stream name
         :return:
         """
-        glob.streams.leave(name, token=self.token)
+        streamList.leave(name, token=self.token)
         if name in self.streams:
             self.streams.remove(name)
 
