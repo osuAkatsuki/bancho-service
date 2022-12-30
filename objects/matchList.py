@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from threading import Timer
 from time import time
-from typing import MutableMapping
 from typing import Optional
 
 from common.log import logUtils as log
@@ -13,12 +12,11 @@ from objects import match
 from objects import streamList,channelList
 
 
-class matchList:
-    __slots__ = ("matches", "lastID")
+class MatchList:
 
     def __init__(self) -> None:
         """Initialize a matchList object"""
-        self.matches: MutableMapping[int, match.match] = {}
+        self.matches: dict[int, match.Match] = {}
         self.lastID: int = 1
 
     def createMatch(
@@ -47,7 +45,7 @@ class matchList:
         # Add a new match to matches list and create its stream
         matchID = self.lastID
         self.lastID += 1
-        self.matches[matchID] = match.match(
+        self.matches[matchID] = match.Match(
             matchID,
             matchName,
             matchPassword,
@@ -145,12 +143,12 @@ class matchList:
     def matchExists(self, matchID: int) -> bool:
         return matchID in self.matches
 
-    def getMatchByID(self, matchID: int) -> Optional[match.match]:
+    def getMatchByID(self, matchID: int) -> Optional[match.Match]:
         log.debug(f"call: getMatchByID,id={matchID}")
         if self.matchExists(matchID):
             return self.matches[matchID]
 
     # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
-    def getMatchFromChannel(self, chan: str) -> Optional[match.match]:
+    def getMatchFromChannel(self, chan: str) -> Optional[match.Match]:
         log.debug(f"call: getMatchFromChannel,channel={chan}")
         return self.getMatchByID(channelList.getMatchIDFromChannel(chan))

@@ -19,14 +19,14 @@ from objects import glob
 from objects import osuToken
 
 
-class tokenList:
+class TokenList:
     __slots__ = ("tokens", "_lock")
 
     def __init__(self) -> None:
         self.tokens: MutableMapping[str, osuToken.token] = {}
         self._lock = threading.Lock()
 
-    def __enter__(self) -> tokenList:
+    def __enter__(self) -> TokenList:
         self._lock.acquire()
         return self
 

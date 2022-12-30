@@ -19,67 +19,17 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from objects import glob
 from objects.osuToken import token
-from objects import stream,streamList
-from objects import channelList
+from objects import streamList
+from objects import channelList, slot
 
-class slot:
-    __slots__ = (
-        "status",
-        "team",
-        "userID",
-        "user",
-        "mods",
-        "loaded",
-        "skip",
-        "complete",
-        "score",
-        "failed",
-        "passed",
-    )
-
-    def __init__(self) -> None:
-        self.status = slotStatuses.FREE
-        self.team = matchTeams.NO_TEAM
-        self.userID = -1
-        self.user: Optional[str] = None  # string of osutoken
-        self.mods = 0
-        self.loaded = False
-        self.skip = False
-        self.complete = False
-        self.score = 0
-        self.failed = False
-        self.passed = True
+# (set) bancho:matches
+# (json obj) bancho:matches:{match_id}
+# (set? list?) bancho:matches:{match_id}:slots
+# (json obj) bancho:matches:{match_id}:slots:{index}
+# (set) bancho:matches:{match_id}:referees
 
 
-class match:
-    __slots__ = (
-        "matchID",
-        "streamName",
-        "playingStreamName",
-        "inProgress",
-        "mods",
-        "matchName",
-        "matchPassword",
-        "beatmapID",
-        "beatmapName",
-        "beatmapMD5",
-        "hostUserID",
-        "gameMode",
-        "matchScoringType",
-        "matchTeamType",
-        "matchModMode",
-        "seed",
-        "matchDataCache",
-        "isTourney",
-        "isLocked",
-        "isStarting",
-        "_lock",
-        "createTime",
-        "bloodcatAlert",
-        "slots",
-        "refers",
-    )
-
+class Match:
     def __init__(
         self,
         matchID: int,
@@ -131,7 +81,7 @@ class match:
         self.bloodcatAlert = False
 
         # Create all slots and reset them
-        self.slots = [slot() for _ in range(16)]
+        self.slots = [slot.Slot() for _ in range(16)]
 
         # Create streams
         streamList.add(self.streamName)
@@ -1066,7 +1016,7 @@ class match:
 
         chat.sendMessage(glob.BOT_NAME, chanName, message)
 
-    def __enter__(self) -> match:
+    def __enter__(self) -> Match:
         # 🌚🌚🌚🌚🌚
         self._lock.acquire()
         return self

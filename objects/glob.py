@@ -29,8 +29,8 @@ db: dbConnector.db
 redis: Redis
 conf = None
 banchoConf = None
-tokens = tokenList.tokenList()
-matches = matchList.matchList()
+tokens = tokenList.TokenList()
+matches = matchList.MatchList()
 schiavo = schiavo.schiavo()
 dog = datadogClient.datadogClient()
 pool = None
