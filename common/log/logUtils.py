@@ -27,7 +27,6 @@ def logMessage(
     :param alertType: alert type string. Can be INFO, WARNING, ERROR or DEBUG. Default: INFO
     :param messageColor: message console ANSI color. Default: no color
     :param discord: Discord channel acronym for Schiavo. If None, don't log to Discord. Default: None
-    :param of:	Output file name (inside .data folder). If None, don't log to file. Default: None
     :param stdout: If True, log to stdout (print). Default: True
     :return:
     """
@@ -75,7 +74,7 @@ def logMessage(
         else:
             error(f"Unknown discord webhook {discord}")
 
-    # TODO: save to s3
+    # TODO: save to sql?
 
 
 def warning(message: str, discord: Optional[str] = None) -> None:
