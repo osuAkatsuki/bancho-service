@@ -34,7 +34,6 @@ tokens = tokenList.tokenList()
 matches = matchList.matchList()
 schiavo = schiavo.schiavo()
 dog = datadogClient.datadogClient()
-verifiedCache = {}
 pool = None
 ircServer = None
 

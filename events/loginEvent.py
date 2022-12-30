@@ -21,7 +21,7 @@ from constants import serverPackets
 from helpers import chatHelper as chat
 from helpers import countryHelper
 from helpers import locationHelper
-from objects import glob, streamList,channelList,stream
+from objects import glob, streamList,channelList,stream,verifiedCache
 
 if TYPE_CHECKING:
     import tornado.web
@@ -119,7 +119,7 @@ def handle(
             if userUtils.verifyUser(userID, clientData):
                 # Valid account
                 log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
-                glob.verifiedCache[str(userID)] = 1
+                verifiedCache.set(userID, True)
                 firstLogin = True
             else:
                 # Multiaccount detected
@@ -127,7 +127,7 @@ def handle(
                     f"{username} ({userID}) tried to create another account.",
                     Ansi.LRED,
                 )
-                glob.verifiedCache[str(userID)] = 0
+                verifiedCache.set(userID, False)
                 raise exceptions.loginBannedException()
 
         # Save HWID in db for multiaccount detection
