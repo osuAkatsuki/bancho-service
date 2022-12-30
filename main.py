@@ -117,13 +117,13 @@ if __name__ == "__main__":
             raise
 
         # Empty redis cache
-        try:
-            glob.redis.set("ripple:online_users", 0)
-            glob.redis.delete(*glob.redis.keys("peppy:*"))
-            glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
-        except redis.exceptions.ResponseError:
-            # Script returns error if there are no keys starting with peppy:*
-            pass
+        # try:
+        #     glob.redis.set("ripple:online_users", 0)
+        #     glob.redis.delete(*glob.redis.keys("peppy:*"))
+        #     glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
+        # except redis.exceptions.ResponseError:
+        #     # Script returns error if there are no keys starting with peppy:*
+        #     pass
 
         # Save peppy version in redis
         glob.redis.set("peppy:version", glob.VERSION)
