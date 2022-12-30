@@ -21,7 +21,7 @@ from constants import serverPackets
 from helpers import chatHelper as chat
 from helpers import countryHelper
 from helpers import locationHelper
-from objects import glob, streamList
+from objects import glob, streamList,channelList,stream
 
 if TYPE_CHECKING:
     import tornado.web
@@ -340,23 +340,25 @@ def handle(
         responseToken.enqueue(serverPackets.userStats(userID, force=True))
 
         # Default opened channels.
-        chat.joinChannel(token=responseToken, channel="#osu")
-        chat.joinChannel(token=responseToken, channel="#announce")
+        chat.joinChannel(token=responseToken, channel_name="#osu")
+        chat.joinChannel(token=responseToken, channel_name="#announce")
 
         # Join role-related channels.
         if responseToken.privileges & privileges.ADMIN_CAKER:
-            chat.joinChannel(token=responseToken, channel="#devlog")
+            chat.joinChannel(token=responseToken, channel_name="#devlog")
         if responseToken.staff:
-            chat.joinChannel(token=responseToken, channel="#staff")
+            chat.joinChannel(token=responseToken, channel_name="#staff")
         if responseToken.privileges & privileges.USER_PREMIUM:
-            chat.joinChannel(token=responseToken, channel="#premium")
+            chat.joinChannel(token=responseToken, channel_name="#premium")
         if responseToken.privileges & privileges.USER_DONOR:
-            chat.joinChannel(token=responseToken, channel="#supporter")
+            chat.joinChannel(token=responseToken, channel_name="#supporter")
 
         # Output channels info
-        for key, value in glob.channels.channels.items():
-            if value.publicRead and not value.hidden:
-                responseToken.enqueue(serverPackets.channelInfo(key))
+        for channel in channelList.getChannels():
+            if channel["public_read"] and not channel["instance"]:
+                client_count = stream.getClientCount(f"chat/{channel['name']}")
+                packet_data = serverPackets.channelInfo(channel["name"], channel["description"], client_count)
+                responseToken.enqueue(packet_data)
 
         # Channel info end.
         responseToken.enqueue(serverPackets.channelInfoEnd)

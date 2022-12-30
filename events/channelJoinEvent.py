@@ -8,5 +8,5 @@ from objects.osuToken import token
 def handle(userToken: token, rawPacketData: bytes):  # Channel join packet
     chat.joinChannel(
         token=userToken,
-        channel=clientPackets.channelJoin(rawPacketData)["channel"],
+        channel_name=clientPackets.channelJoin(rawPacketData)["channel"],
     )

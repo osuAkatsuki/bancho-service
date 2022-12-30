@@ -12,7 +12,7 @@ def handle(userToken: token, rawPacketData: bytes):
         return
     chat.partChannel(
         token=userToken,
-        channel=f'#multi_{packetData["matchID"]}',
+        channel_name=f'#multi_{packetData["matchID"]}',
         force=True,
     )
     userToken.matchID = 0

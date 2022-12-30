@@ -22,7 +22,7 @@ import settings
 from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
-from objects import glob, stream, streamList
+from objects import glob, stream, streamList,channelList
 
 
 class Client:
@@ -404,36 +404,40 @@ class Client:
             return
 
         # Get channels to join list
-        channels = arguments[0].split(",")
+        channel_names = arguments[0].split(",")
 
-        for channel in channels:
+        for channel_name in channel_names:
             # Make sure we are not already in that channel
             # (we already check this bancho-side, but we need to do it
             # also here k maron)
-            if channel.lower() in token.joinedChannels:
+            if channel_name.lower() in token.joinedChannels:
                 continue
 
             # Attempt to join the channel
-            response = chat.IRCJoinChannel(self.banchoUsername, channel)
+            response = chat.IRCJoinChannel(self.banchoUsername, channel_name)
             if response == 0:
                 # Joined successfully
-                self.joinedChannels.append(channel)
+                self.joinedChannels.append(channel_name)
 
                 # Let everyone in this channel know that we've joined
-                self.messageChannel(channel, f"{self.IRCUsername} JOIN", channel, True)
+                self.messageChannel(channel_name, f"{self.IRCUsername} JOIN", channel_name, True)
 
                 # Send channel description (topic)
-                description = glob.channels.channels[channel].description
-                if description == "":
-                    self.replyCode(331, "No topic is set", channel=channel)
+                channel = channelList.getChannel(channel_name)
+                if channel is None:
+                    self.reply403(channel_name)
+                    continue
+
+                if channel["description"] == "":
+                    self.replyCode(331, "No topic is set", channel=channel_name)
                 else:
-                    self.replyCode(332, description, channel=channel)
+                    self.replyCode(332, channel["description"], channel=channel_name)
 
                 # Build connected users list
-                if f"chat/{channel}" not in streamList.getStreams():
-                    self.reply403(channel)
+                if f"chat/{channel_name}" not in streamList.getStreams():
+                    self.reply403(channel_name)
                     continue
-                users = stream.getClients(f"chat/{channel}")
+                users = stream.getClients(f"chat/{channel_name}")
                 usernames = []
                 for user in users:
                     if user not in glob.tokens.tokens:
@@ -444,11 +448,11 @@ class Client:
                 usernames = " ".join(usernames)
 
                 # Send IRC users list
-                self.replyCode(353, usernames, channel=f"= {channel}")
-                self.replyCode(366, "End of NAMES list", channel=channel)
+                self.replyCode(353, usernames, channel=f"= {channel_name}")
+                self.replyCode(366, "End of NAMES list", channel=channel_name)
             elif response == 403:
                 # Channel doesn't exist (or no read permissions)
-                self.reply403(channel)
+                self.reply403(channel_name)
                 continue
 
     def partHandler(self, _, arguments: list[str]) -> None:
@@ -518,7 +522,7 @@ class Client:
         # Send the message to IRC and bancho
         if recipientIRC.startswith("#"):
             # Public message (IRC)
-            if recipientIRC not in glob.channels.channels:
+            if recipientIRC not in channelList.getChannelNames():
                 self.replyCode(401, "No such nick/channel", channel=recipientIRC)
                 return
             for value in self.server.clients.values():

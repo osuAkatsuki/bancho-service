@@ -10,7 +10,7 @@ from constants import serverPackets
 from constants.exceptions import periodicLoopException
 from objects import glob
 from objects import match
-from objects import streamList
+from objects import streamList,channelList
 
 
 class matchList:
@@ -83,7 +83,7 @@ class matchList:
             )  # don't dispose the match twice when we remove all players
 
         # Delete chat channel
-        glob.channels.removeChannel(f"#multi_{_match.matchID}")
+        channelList.removeChannel(f"#multi_{_match.matchID}")
 
         # Send matchDisposed packet before disposing streams
         streamList.broadcast(
@@ -153,4 +153,4 @@ class matchList:
     # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
     def getMatchFromChannel(self, chan: str) -> Optional[match.match]:
         log.debug(f"call: getMatchFromChannel,channel={chan}")
-        return self.getMatchByID(glob.channels.getMatchIDFromChannel(chan))
+        return self.getMatchByID(channelList.getMatchIDFromChannel(chan))

@@ -12,13 +12,14 @@ if TYPE_CHECKING:
 def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
 
-def getClients(stream_name: str) -> list:
+def getClients(stream_name: str) -> set[str]:
     """
     Get all clients in this stream
 
     :return: list of clients
     """
-    return glob.redis.smembers(make_key(stream_name))
+    raw_members: set[bytes] = glob.redis.smembers(make_key(stream_name))
+    return {member.decode() for member in raw_members}
 
 def getClientCount(stream_name: str) -> int:
     """
@@ -40,11 +41,12 @@ def addClient(
     :param token: client uuid string
     :return:
     """
-    if not (client or token):
-        return
-
     if client:
         token = client.token
+    elif token:
+        pass
+    else:
+        return
 
     current_tokens = getClients(stream_name)
 
@@ -64,17 +66,17 @@ def removeClient(
     :param token: client uuid string
     :return:
     """
-    if not (client or token):
-        return
-
     if client:
         token = client.token
+    elif token:
+        pass
+    else:
+        return
 
     current_tokens = getClients(stream_name)
 
     if token in current_tokens:
-        key = make_key(stream_name, token)
-        glob.redis.srem(key, token)
+        glob.redis.srem(make_key(stream_name), token)
 
 def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     """
@@ -91,7 +93,7 @@ def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
             if i not in but:
                 glob.tokens.tokens[i].enqueue(data)
         else:
-            removeClient(token=i)
+            removeClient(stream_name, token=i)
 
 def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
     """
@@ -108,7 +110,7 @@ def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
             if i in users:
                 glob.tokens.tokens[i].enqueue(data)
         else:
-            removeClient(token=i)
+            removeClient(stream_name, token=i)
 
 def dispose(stream_name: str) -> None:
     """

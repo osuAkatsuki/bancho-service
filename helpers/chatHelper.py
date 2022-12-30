@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from common import channel_utils
 
 import settings
 from common.constants import mods
@@ -11,7 +12,7 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from objects import fokabot, stream
-from objects import glob, streamList
+from objects import glob, streamList,channelList
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 def joinChannel(
     userID: int = 0,
-    channel: str = "",
+    channel_name: str = "",
     token: Optional[token] = None,
     toIRC: bool = True,
     force: bool = False,
@@ -48,20 +49,20 @@ def joinChannel(
 
         # Normal channel, do check stuff
         # Make sure the channel exists
-        if channel not in glob.channels.channels:
+        if channel_name not in channelList.getChannelNames():
             raise exceptions.channelUnknownException()
 
         # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
-        channelObject = glob.channels.channels[channel]
-        if channelObject.isSpecial and not token.irc and not force:
+        channel = channelList.getChannel(channel_name)
+        if channel["instance"] and not token.irc and not force:
             raise exceptions.channelUnknownException()
 
         # Add the channel to our joined channel
-        token.joinChannel(channelObject)
+        token.joinChannel(channel_name)
 
         # Send channel joined (IRC)
         if settings.IRC_ENABLE and not toIRC:
-            glob.ircServer.banchoJoinChannel(token.username, channel)
+            glob.ircServer.banchoJoinChannel(token.username, channel_name)
 
         # Console output
         # log.info(f"{token.username} joined channel {channel}")
@@ -70,16 +71,16 @@ def joinChannel(
         return 0
     except exceptions.channelNoPermissionsException:
         log.warning(
-            f"{token.username} attempted to join channel {channel}, but they have no read permissions.",
+            f"{token.username} attempted to join channel {channel_name}, but they have no read permissions.",
         )
         return 403
     except exceptions.channelUnknownException:
         log.warning(
-            f"{token.username} attempted to join an unknown channel ({channel}).",
+            f"{token.username} attempted to join an unknown channel ({channel_name}).",
         )
         return 403
     except exceptions.userAlreadyInChannelException:
-        log.warning(f"User {token.username} already in channel {channel}.")
+        log.warning(f"User {token.username} already in channel {channel_name}.")
         return 403
     except exceptions.userNotFoundException:
         log.warning("User not connected to IRC/Bancho.")
@@ -88,7 +89,7 @@ def joinChannel(
 
 def partChannel(
     userID: int = 0,
-    channel: str = "",
+    channel_name: str = "",
     token: Optional[token] = None,
     toIRC: bool = True,
     kick: bool = False,
@@ -107,7 +108,7 @@ def partChannel(
     """
     try:
         # Make sure the client is not drunk and sends partChannel when closing a PM tab
-        if not channel.startswith("#"):
+        if not channel_name.startswith("#"):
             return
 
         # Get token if not defined
@@ -121,45 +122,45 @@ def partChannel(
 
         # Determine internal/client name if needed
         # (toclient is used clientwise for #multiplayer and #spectator channels)
-        channelClient = channel
-        if channel == "#spectator":
+        channelClient = channel_name
+        if channel_name == "#spectator":
             if token.spectating is None:
                 s = userID
             else:
                 s = token.spectatingUserID
-            channel = f"#spect_{s}"
-        elif channel == "#multiplayer":
-            channel = f"#multi_{token.matchID}"
-        elif channel.startswith("#spect_"):
+            channel_name = f"#spect_{s}"
+        elif channel_name == "#multiplayer":
+            channel_name = f"#multi_{token.matchID}"
+        elif channel_name.startswith("#spect_"):
             channelClient = "#spectator"
-        elif channel.startswith("#multi_"):
+        elif channel_name.startswith("#multi_"):
             channelClient = "#multiplayer"
 
         # Make sure the channel exists
-        if channel not in glob.channels.channels:
+        if channel_name not in channelList.getChannelNames():
             raise exceptions.channelUnknownException()
 
         # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
-        channelObject = glob.channels.channels[channel]
-        if channelObject.isSpecial and not token.irc and not force:
+        channel = channelList.getChannel(channel_name)
+        if channel['instance'] and not token.irc and not force:
             raise exceptions.channelUnknownException()
 
         # Make sure the user is in the channel
-        if channel not in token.joinedChannels:
+        if channel_name not in token.joinedChannels:
             raise exceptions.userNotInChannelException()
 
         # Part channel (token-side and channel-side)
-        token.partChannel(channelObject)
+        token.partChannel(channel_name)
 
         # Delete temporary channel if everyone left
-        key = f"chat/{channelObject.name}"
+        key = f"chat/{channel_name}"
         if key in streamList.getStreams():
             if (
-                channelObject.temp
+                channel["instance"]
                 and stream.getClientCount(key) - 1
                 == 0
             ):
-                glob.channels.removeChannel(channelObject.name)
+                channelList.removeChannel(channel_name)
 
         # Force close tab if needed
         # NOTE: Maybe always needed, will check later
@@ -168,21 +169,21 @@ def partChannel(
 
         # IRC part
         if settings.IRC_ENABLE and toIRC:
-            glob.ircServer.banchoPartChannel(token.username, channel)
+            glob.ircServer.banchoPartChannel(token.username, channel_name)
 
         # Console output
-        # log.info(f"{token.username} parted channel {channel} ({channelClient}).")
+        # log.info(f"{token.username} parted channel {channel_name} ({channelClient}).")
 
         # Return IRC code
         return 0
     except exceptions.channelUnknownException:
         log.warning(
-            f"{token.username} attempted to part an unknown channel ({channel}).",
+            f"{token.username} attempted to part an unknown channel ({channel_name}).",
         )
         return 403
     except exceptions.userNotInChannelException:
         log.warning(
-            f"{token.username} attempted to part {channel}, but he's not in that channel.",
+            f"{token.username} attempted to part {channel_name}, but he's not in that channel.",
         )
         return 442
     except exceptions.userNotFoundException:
@@ -281,11 +282,12 @@ def sendMessage(
         if isChannel:
             # CHANNEL
             # Make sure the channel exists
-            if to not in glob.channels.channels:
+            channel = channelList.getChannel(to)
+            if channel is None:
                 raise exceptions.channelUnknownException()
 
             # Make sure the channel is not in moderated mode
-            if glob.channels.channels[to].moderated and not token.staff:
+            if channel["moderated"] and not token.staff:
                 raise exceptions.channelModeratedException()
 
             # Make sure we are in the channel
@@ -296,11 +298,11 @@ def sendMessage(
 
             # Make sure we have write permissions.
             if (
-                (to == "#premium" and token.privileges & privileges.USER_PREMIUM == 0)
-                and (
-                    to == "#supporter" and token.privileges & privileges.USER_DONOR == 0
-                )
-                and not (glob.channels.channels[to].publicWrite or token.staff)
+                # you need premium for #premium
+                (to == "#premium" and token.privileges & privileges.USER_PREMIUM == 0) and
+                # you need supporter for #supporter
+                (to == "#supporter" and token.privileges & privileges.USER_DONOR == 0)
+                and not (channel["publicWrite"] or token.staff)
             ):
                 raise exceptions.channelNoPermissionsException()
 
@@ -322,7 +324,7 @@ def sendMessage(
                     index = None
 
                 if index is not None:
-                    if not (beatmapURL := npmsg[index][1:]).startswith("https://"):
+                    if not (beatmap_url := npmsg[index][1:]).startswith("https://"):
                         return
 
                     _mods = 0
@@ -347,14 +349,14 @@ def sendMessage(
                             if i in mapping.keys():
                                 _mods |= mapping[i]
 
-                    match = fokabot.npRegex.match(beatmapURL)
+                    match = fokabot.npRegex.match(beatmap_url)
 
                     if match:  # should always match?
                         # Get beatmap id from URL
-                        beatmapID = int(match["id"])
+                        beatmap_id = int(match["id"])
 
                         # Return tillerino message
-                        token.tillerino = [beatmapID, _mods, -1.0]
+                        token.tillerino = [beatmap_id, _mods, -1.0]
                     else:
                         log.error("failed to parse beatmap url? (chatHelper)")
 
@@ -648,7 +650,7 @@ def IRCAway(username: str, message: str) -> Optional[int]:
     userID = userUtils.getID(username)
     if not userID:
         log.warning(f"{username} doesn't exist.")
-        return
+        return # TODO: should this be returning a code?
 
     glob.tokens.getTokenFromUserID(userID).awayMessage = message
     return 306 if message else 305

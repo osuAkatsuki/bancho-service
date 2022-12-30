@@ -20,7 +20,7 @@ from helpers import chatHelper as chat
 from objects import glob
 from objects.osuToken import token
 from objects import stream,streamList
-
+from objects import channelList
 
 class slot:
     __slots__ = (
@@ -138,7 +138,7 @@ class match:
         streamList.add(self.playingStreamName)
 
         # Create #multiplayer channel
-        glob.channels.addHiddenChannel(f"#multi_{self.matchID}")
+        channelList.addInstanceChannel(f"#multi_{self.matchID}")
 
         # Create referrs array that couls use !mp command from fokabot.
         self.refers = {self.hostUserID}
@@ -550,7 +550,7 @@ class match:
 
         # If this is a tournament match, then we send a notification in the chat
         # saying that the match has completed.
-        if self.isTourney and chanName in glob.channels.channels:
+        if self.isTourney and chanName in channelList.getChannelNames():
             chat.sendMessage(glob.BOT_NAME, chanName, "Match has just finished.")
         return
 
@@ -1037,7 +1037,7 @@ class match:
         chanName = f"#multi_{self.matchID}"
 
         # Make sure match exists before attempting to do anything else
-        if chanName not in glob.channels.channels:
+        if chanName not in channelList.getChannelNames():
             return
 
         totalUsers = 0

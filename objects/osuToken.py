@@ -5,6 +5,8 @@ from threading import RLock
 from time import localtime
 from time import strftime
 from time import time
+from common import channel_utils
+from objects import channelList
 from typing import Optional
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -21,7 +23,6 @@ from helpers import chatHelper as chat
 from objects import glob,streamList
 
 if TYPE_CHECKING:
-    from objects import channel
     from objects import osuToken
 
 
@@ -222,7 +223,7 @@ class token:
         with self._bufferLock:
             self.queue.clear()
 
-    def joinChannel(self, channelObject: channel.channel) -> None:
+    def joinChannel(self, channel_name: str) -> None:
         """
         Join a channel
 
@@ -230,35 +231,41 @@ class token:
         :raises: exceptions.userAlreadyInChannelException()
                  exceptions.channelNoPermissionsException()
         """
-        if channelObject.name in self.joinedChannels:
+        if channel_name in self.joinedChannels:
             raise exceptions.userAlreadyInChannelException()
+
+        channel = channelList.getChannel(channel_name)
+        if channel is None:
+            raise exceptions.channelUnknownException()
 
         # Make sure we have write permissions.
         if (
             (
-                channelObject.name == "#premium"
+                channel_name == "#premium"
                 and self.privileges & privileges.USER_PREMIUM == 0
             )
             or (
-                channelObject.name == "#supporter"
+                channel_name == "#supporter"
                 and self.privileges & privileges.USER_DONOR == 0
             )
-            or (not channelObject.publicRead and not self.staff)
+            or (not channel["public_read"] and not self.staff)
         ) and self.userID != 999:
             raise exceptions.channelNoPermissionsException()
 
-        self.joinedChannels.append(channelObject.name)
-        self.joinStream(f"chat/{channelObject.name}")
-        self.enqueue(serverPackets.channelJoinSuccess(channelObject.clientName))
+        self.joinedChannels.append(channel_name)
+        self.joinStream(f"chat/{channel_name}")
 
-    def partChannel(self, channelObject: channel.channel) -> None:
+        client_name = channel_utils.get_client_name(channel_name)
+        self.enqueue(serverPackets.channelJoinSuccess(client_name))
+
+    def partChannel(self, channel_name: str) -> None:
         """
         Remove channel from joined channels list
 
         :param channelObject: channel object
         """
-        self.joinedChannels.remove(channelObject.name)
-        self.leaveStream(f"chat/{channelObject.name}")
+        self.joinedChannels.remove(channel_name)
+        self.leaveStream(f"chat/{channel_name}")
 
     def setLocation(self, latitude: float, longitude: float) -> None:
         """
@@ -297,13 +304,13 @@ class token:
             host.enqueue(serverPackets.addSpectator(self.userID))
 
             # Create and join #spectator (#spect_userid) channel
-            glob.channels.addTempChannel(f"#spect_{host.userID}")
-            chat.joinChannel(token=self, channel=f"#spect_{host.userID}", force=True)
+            channelList.addInstanceChannel(f"#spect_{host.userID}")
+            chat.joinChannel(token=self, channel_name=f"#spect_{host.userID}", force=True)
             if len(host.spectators) == 1:
                 # First spectator, send #spectator join to host too
                 chat.joinChannel(
                     token=host,
-                    channel=f"#spect_{host.userID}",
+                    channel_name=f"#spect_{host.userID}",
                     force=True,
                 )
 
@@ -361,7 +368,7 @@ class token:
                 if not hostToken.spectators:
                     chat.partChannel(
                         token=hostToken,
-                        channel=f"#spect_{hostToken.userID}",
+                        channel_name=f"#spect_{hostToken.userID}",
                         kick=True,
                         force=True,
                     )
@@ -373,7 +380,7 @@ class token:
             # Part #spectator channel
             chat.partChannel(
                 token=self,
-                channel=f"#spect_{self.spectatingUserID}",
+                channel_name=f"#spect_{self.spectatingUserID}",
                 kick=True,
                 force=True,
             )
@@ -419,7 +426,7 @@ class token:
         # Set matchID, join stream, channel and send packet
         self.matchID = matchID
         self.joinStream(match.streamName)
-        chat.joinChannel(token=self, channel=f"#multi_{self.matchID}", force=True)
+        chat.joinChannel(token=self, channel_name=f"#multi_{self.matchID}", force=True)
         self.enqueue(serverPackets.matchJoinSuccess(matchID))
 
         if match.isTourney:
@@ -444,7 +451,7 @@ class token:
         # Part #multiplayer channel and streams (/ and /playing)
         chat.partChannel(
             token=self,
-            channel=f"#multi_{self.matchID}",
+            channel_name=f"#multi_{self.matchID}",
             kick=True,
             force=True,
         )

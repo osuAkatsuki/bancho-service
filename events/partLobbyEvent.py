@@ -9,4 +9,4 @@ def handle(userToken, _):
 
     # Part lobby channel
     # Done automatically by the client
-    chat.partChannel(channel="#lobby", token=userToken, kick=True)
+    chat.partChannel(channel_name="#lobby", token=userToken, kick=True)

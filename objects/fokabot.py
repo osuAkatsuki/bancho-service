@@ -29,9 +29,9 @@ def connect() -> None:
         token = glob.tokens.addToken(999)
         assert token is not None
 
-    token.actionID = actions.IDLE
-    streamList.broadcast("main", serverPackets.userPanel(999))
-    streamList.broadcast("main", serverPackets.userStats(999))
+        token.actionID = actions.IDLE
+        streamList.broadcast("main", serverPackets.userPanel(999))
+        streamList.broadcast("main", serverPackets.userStats(999))
 
 
 def disconnect() -> None:

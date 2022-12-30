@@ -33,7 +33,7 @@ from handlers import (
 from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
-from objects import banchoConfig, fokabot, glob, streamList
+from objects import banchoConfig, fokabot, glob, streamList, channelList
 from pubSubHandlers import (
     banHandler,
     changeUsernameHandler,
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
         fokabot.connect()
 
-        glob.channels.loadChannels()
+        channelList.loadChannels()
 
         # Initialize stremas
         streamList.add("main")

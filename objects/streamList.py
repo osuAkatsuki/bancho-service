@@ -14,15 +14,14 @@ def make_key() -> str:
     return f"bancho:streams"
 
 
-# TODO: use *args and **kwargs
-
-def getStreams() -> list[str]:
+def getStreams() -> set[str]:
     """
     Returns a list of all streams
 
     :return:
     """
-    return glob.redis.smembers(make_key())
+    raw_streams: set[bytes] = glob.redis.smembers(make_key())
+    return {stream.decode() for stream in raw_streams}
 
 def add(name: str) -> None:
     """

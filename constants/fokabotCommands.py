@@ -30,7 +30,7 @@ from constants import serverPackets
 from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
-from objects import fokabot
+from objects import fokabot, channelList
 from objects import glob, stream,streamList
 
 """
@@ -142,11 +142,11 @@ def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(trigger="!moderated", privs=privileges.ADMIN_CHAT_MOD, hidden=True)
-def moderated(fro: str, chan: str, message: list[str]) -> str:
+def moderated(fro: str, channel_name: str, message: list[str]) -> str:
     """Set moderated mode for the current channel."""
     try:
         # Make sure we are in a channel and not PM
-        if not chan.startswith("#"):
+        if not channel_name.startswith("#"):
             raise exceptions.moderatedPMException
 
         # Get on/off
@@ -156,8 +156,12 @@ def moderated(fro: str, chan: str, message: list[str]) -> str:
                 enable = False
 
         # Turn on/off moderated mode
-        glob.channels.channels[chan].moderated = enable
+        # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
+        channelList.updateChannel(channel_name, moderated=enable)
+
         return f'This channel is {"now" if enable else "no longer"} in moderated mode!'
+    except exceptions.channelUnknownException:
+        return "Channel doesn't exist. (??? contact cmyui(#0425))"
     except exceptions.moderatedPMException:
         return "You are trying to put a private chat in moderated mode.. Let that sink in for a second.."
 
@@ -681,7 +685,7 @@ def chimuMessage(beatmapID: int) -> str:
 def chimu(fro: str, chan: str, message: list[str]) -> str:
     """Get a download link for the beatmap in the current context (multi, spectator)."""
     try:
-        matchID = glob.channels.getMatchIDFromChannel(chan)
+        matchID = channelList.getMatchIDFromChannel(chan)
     except exceptions.wrongChannelException:
         matchID = None
 
@@ -689,7 +693,7 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
         beatmapID = glob.matches.getMatchByID(matchID).beatmapID  # Multiplayer
     else:  # Spectator
         try:
-            spectatorHostUserID = glob.channels.getSpectatorHostUserIDFromChannel(chan)
+            spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         except exceptions.wrongChannelException:
             spectatorHostUserID = None
             return "This command is only usable when either spectating a user, or playing multiplayer."
@@ -729,7 +733,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     # Chimu trigger for #spect_
     if chan.startswith("#spect_"):
-        spectatorHostUserID = glob.channels.getSpectatorHostUserIDFromChannel(chan)
+        spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         spectatorHostToken = glob.tokens.getTokenFromUserID(
             spectatorHostUserID,
             ignoreIRC=True,
@@ -1734,7 +1738,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Attempting to join match #{matchID}!"
 
     def mpClose() -> str:
-        matchID = glob.channels.getMatchIDFromChannel(chan)
+        matchID = channelList.getMatchIDFromChannel(chan)
         glob.matches.disposeMatch(matchID)
         return f"Multiplayer match #{matchID} disposed successfully."
 

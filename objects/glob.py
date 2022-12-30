@@ -31,7 +31,6 @@ redis: Redis
 conf = None
 banchoConf = None
 tokens = tokenList.tokenList()
-channels = channelList.channelList()
 matches = matchList.matchList()
 schiavo = schiavo.schiavo()
 dog = datadogClient.datadogClient()

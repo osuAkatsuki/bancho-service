@@ -26,7 +26,7 @@ def handle(userToken, _=None, deleteToken=True):
 
         # Part all joined channels
         for i in userToken.joinedChannels:
-            chat.partChannel(token=userToken, channel=i)
+            chat.partChannel(token=userToken, channel_name=i)
 
         # Leave all joined streams
         userToken.leaveAllStreams()

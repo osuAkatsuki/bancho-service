@@ -4,7 +4,7 @@ from __future__ import annotations
 from common import generalUtils
 from constants import serverPackets
 from objects import glob
-from objects import streamList
+from objects import streamList, channelList, stream
 
 
 class banchoConfig:
@@ -74,7 +74,7 @@ class banchoConfig:
         glob.banchoConf.loadSettings()
 
         # Reload channels too
-        glob.channels.loadChannels()
+        channelList.loadChannels()
 
         # Send new channels and new bottom icon to everyone
         streamList.broadcast(
@@ -82,6 +82,8 @@ class banchoConfig:
             serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
         )
         streamList.broadcast("main", serverPackets.channelInfoEnd)
-        for key, value in glob.channels.channels.items():
-            if value.publicRead and not value.hidden:
-                streamList.broadcast("main", serverPackets.channelInfo(key))
+        for channel in channelList.getChannels():
+            if channel["public_read"] and not channel["instance"]:
+                client_count = stream.getClientCount(f"chat/{channel['name']}")
+                packet_data = serverPackets.channelInfo(channel["name"], channel["description"], client_count)
+                streamList.broadcast("main", packet_data)

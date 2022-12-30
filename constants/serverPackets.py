@@ -7,7 +7,7 @@ from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
 from helpers import packetHelper
-from objects import glob, stream
+from objects import glob, stream,channelList
 
 
 def notification(message: str) -> bytes:
@@ -293,20 +293,13 @@ def channelJoinSuccess(chan: str) -> bytes:
     )
 
 
-def channelInfo(chan: str) -> bytes:
-    if chan not in glob.channels.channels:
-        return b""
-
-    channel = glob.channels.channels[chan]
-    key = f"chat/{chan}"
-    client_count = stream.getClientCount(key)
-
+def channelInfo(channel_name: str, channel_description:str, channel_playercount: int) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_channelInfo,
         (
-            (channel.name, dataTypes.STRING),
-            (channel.description, dataTypes.STRING),
-            (client_count, dataTypes.UINT16),
+            (channel_name, dataTypes.STRING),
+            (channel_description, dataTypes.STRING),
+            (channel_playercount, dataTypes.UINT16),
         ),
     )
 
