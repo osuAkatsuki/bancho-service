@@ -39,7 +39,7 @@ def disconnect() -> None:
         token = glob.tokens.getTokenFromUserID(999)
         assert token is not None
 
-        glob.tokens.deleteToken(token)
+        glob.tokens.deleteToken(token.token)
 
 
 # def reload_commands():
