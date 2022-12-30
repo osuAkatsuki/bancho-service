@@ -82,11 +82,14 @@ if __name__ == "__main__":
             Ansi.LGREEN,
         )
         log("Press CTRL+C to exit\n", Ansi.LGREEN)
+
+        # TODO: do we need this anymore now with stateless design?
+        # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        log("Ensuring folders.", Ansi.LMAGENTA)
-        if not os.path.exists(".data"):
-            os.makedirs(".data", 0o770)
+        # log("Ensuring folders.", Ansi.LMAGENTA)
+        # if not os.path.exists(".data"):
+        #     os.makedirs(".data", 0o770)
 
         # Connect to db
         try:
