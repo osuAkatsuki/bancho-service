@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from common.ddog import datadogClient
 from common.web import schiavo
-from objects import channelList
 from objects import matchList
 from objects import tokenList
 
