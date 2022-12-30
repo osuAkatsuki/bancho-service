@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from threading import Lock
 from typing import Optional
 
 from common.log import logUtils as log
@@ -16,7 +15,7 @@ from helpers import chatHelper as chat
 from objects import glob
 from objects.osuToken import token
 from objects import streamList
-from objects import channelList, slot
+from objects import channelList, slot, match
 from typing import TypedDict
 
 # (set) bancho:matches
@@ -261,7 +260,7 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
 
     return tuple(struct)
 
-def setHost(match_id: int, newHostID: int) -> bool:
+def setHost(match_id: int, new_host_id: int) -> bool:
     """
     Set room host to newHost and send him host packet
 
@@ -279,9 +278,9 @@ def setHost(match_id: int, newHostID: int) -> bool:
     if not old_host.staff:
         remove_referee(match_id, multiplayer_match["host_user_id"])
 
-    add_referee(match_id, newHostID)
+    add_referee(match_id, new_host_id)
 
-    slot_id = getUserSlotID(match_id, newHostID)
+    slot_id = getUserSlotID(match_id, new_host_id)
     if slot_id is None:
         return False
 
@@ -290,7 +289,10 @@ def setHost(match_id: int, newHostID: int) -> bool:
     if _slot["user_token"] is None or _slot["user_token"] not in glob.tokens.tokens:
         return False
 
-    multiplayer_match["host_user_id"] = newHostID
+    match.update_match(
+        match_id,
+        host_user_id=new_host_id,
+    )
 
     user_token = glob.tokens.tokens[_slot["user_token"]]
     user_token.enqueue(serverPackets.matchTransferHost)
@@ -698,7 +700,6 @@ def userJoin(match_id: int, user_token_obj: token) -> bool:
     assert multiplayer_match is not None
 
     slots = slot.get_slots(match_id)
-    breakpoint()
     assert len(slots) == 16
 
     # Make sure we're not in this match
@@ -1155,16 +1156,19 @@ def start(match_id: int) -> bool:
     slots = slot.get_slots(match_id)
     assert len(slots) == 16
 
-    for _slot in slots:
+    for slot_id, _slot in enumerate(slots):
         if _slot["user_token"] is None:
             continue
 
         if _slot["user_token"] in glob.tokens.tokens:
-            _slot["status"] = slotStatuses.PLAYING
-            _slot["loaded"] = False
-            _slot["skip"] = False
-            _slot["complete"] = False
-
+            slot.update_slot(
+                match_id,
+                slot_id,
+                status=slotStatuses.PLAYING,
+                loaded=False,
+                skip=False,
+                complete=False,
+            )
             user_token = glob.tokens.tokens[_slot["user_token"]]
             user_token.joinStream(playing_stream_name)
 

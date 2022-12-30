@@ -103,7 +103,7 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
             return resp
 
         if cmd["callback"]:
-            resp = handle_command(cmd, fro, chan, message[1:])
+            resp = handle_command(cmd, fro, chan, message_split[1:])
 
             if isinstance(resp, Exception):
                 raise resp

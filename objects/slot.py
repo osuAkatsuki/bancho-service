@@ -49,7 +49,7 @@ def get_slot(match_id: int, slot_id: int) -> Optional[Slot]:
 
 
 def get_slots(match_id: int) -> list[Slot]:
-    keys = glob.redis.keys(make_key(match_id, "*"))
+    keys = [make_key(match_id, slot_id) for slot_id in range(16)]
     raw_slots = glob.redis.mget(keys)
     slots = []
     for raw_slot in raw_slots:
@@ -64,7 +64,7 @@ def update_slot(
     status: Optional[int] = None,
     team: Optional[int] = None,
     user_id: Optional[int] = None,
-    user_token: Optional[str] = None,
+    user_token: Optional[str] = "",
     mods: Optional[int] = None,
     loaded: Optional[bool] = None,
     skip: Optional[bool] = None,
@@ -83,7 +83,7 @@ def update_slot(
         slot["team"] = team
     if user_id is not None:
         slot["user_id"] = user_id
-    if user_token is not None:
+    if user_token != "":
         slot["user_token"] = user_token
     if mods is not None:
         slot["mods"] = mods

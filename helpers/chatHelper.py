@@ -54,6 +54,9 @@ def joinChannel(
 
         # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
         channel = channelList.getChannel(channel_name)
+        if channel is None:
+            raise exceptions.channelUnknownException()
+
         if channel["instance"] and not token.irc and not force:
             raise exceptions.channelUnknownException()
 
@@ -109,7 +112,7 @@ def partChannel(
     try:
         # Make sure the client is not drunk and sends partChannel when closing a PM tab
         if not channel_name.startswith("#"):
-            return
+            return 0
 
         # Get token if not defined
         if token is None:
@@ -142,6 +145,9 @@ def partChannel(
 
         # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
         channel = channelList.getChannel(channel_name)
+        if channel is None:
+            raise exceptions.channelUnknownException()
+
         if channel['instance'] and not token.irc and not force:
             raise exceptions.channelUnknownException()
 

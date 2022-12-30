@@ -15,13 +15,14 @@ def handle(userToken: token, rawPacketData: bytes):
     password = packetData["password"]
 
     # Make sure the match exists
-    multiplayer_match = match.get_match(userToken.matchID)
+    multiplayer_match = match.get_match(matchID)
     if multiplayer_match is None:
+        userToken.enqueue(serverPackets.matchJoinFail)
         return
 
     # Check password
     with RedLock(
-        f"{match.make_key(userToken.matchID)}:lock",
+        f"{match.make_key(matchID)}:lock",
         retry_delay=50,
         retry_times=20,
     ):

@@ -39,20 +39,16 @@ def loadChannels() -> None:
     assert channels is not None
 
     # Add each channel if needed
+    current_channels = glob.redis.smembers("bancho:channels")
     for chan in channels:
-        current_channels = glob.redis.smembers("bancho:channels")
-        if chan["name"] in current_channels:
-            continue
-
-        glob.redis.sadd("bancho:channels", chan["name"])
-        glob.redis.set(make_key(chan['name']), json.dumps({
-            "name": chan["name"],
-            "description": chan["description"],
-            "public_read": chan["public_read"] == 1,
-            "public_write": chan["public_write"] == 1,
-            "moderated": False,
-            "instance": False ,# all db tables are not
-        }))
+        if chan["name"] not in current_channels:
+            addChannel(
+                chan["name"],
+                chan["description"],
+                chan["public_read"] == 1,
+                chan["public_write"] == 1,
+                instance=False,
+            )
 
 def getChannelNames() -> set[str]:
     """
@@ -88,30 +84,32 @@ def getChannels() -> list[Channel]:
 def addChannel(
     name: str,
     description: str,
-    publicRead: bool,
-    publicWrite: bool,
+    public_read: bool,
+    public_write: bool,
     instance: bool = False,
+    moderated: bool = False,
 ) -> None:
     """
     Add a channel to channels list
     :param name: channel name
     :param description: channel description
-    :param publicRead: if True, this channel can be read by everyone. If False, it can be read only by mods/admins
-    :param publicWrite: same as public read, but regards writing permissions
+    :param public_read: if True, this channel can be read by everyone. If False, it can be read only by mods/admins
+    :param public_write: same as public read, but regards writing permissions
     :param temp: if True, this channel will be deleted when there's no one in this channel
     :param hidden: if True, thic channel won't be shown in channels list
     :return:
     """
     streamList.add(f"chat/{name}")
+    glob.redis.sadd("bancho:channels", name)
     glob.redis.set(
         make_key(name),
         json.dumps({
             "name": name,
             "description": description,
-            "public_read": publicRead,
-            "public_write": publicWrite,
-            "moderated": False,
+            "public_read": public_read,
+            "public_write": public_write,
             "instance": instance,
+            "moderated": moderated,
         }),
     )
     # Make Foka join the channel
@@ -123,39 +121,6 @@ def addChannel(
             logging.warning(f"{glob.BOT_NAME} has already joined channel {name}")
     log(f"Created channel {name}.")
 
-def addInstanceChannel(name: str) -> None:
-    """
-    Add a temporary channel (like #spectator or #multiplayer), gets deleted when there's no one in the channel
-    and it's hidden in channels list
-    :param name: channel name
-    :return:
-    """
-    current_channels = getChannelNames()
-    if name in current_channels:
-        logging.warning("Tried to create an instance channel that already exists!")
-        return None
-
-    streamList.add(f"chat/{name}")
-    glob.redis.set(
-        make_key(name),
-        json.dumps({
-            "name": name,
-            "description": "Chat",
-            "public_read": True,
-            "public_write": True,
-            "moderated": False,
-            "instance": True,
-        }),
-    )
-
-    # Make Foka join the channel
-    fokaToken = glob.tokens.getTokenFromUserID(999)
-    if fokaToken:
-        try:
-            fokaToken.joinChannel(name)
-        except exceptions.userAlreadyInChannelException:
-            logging.warning(f"{glob.BOT_NAME} has already joined channel {name}")
-    log(f"Created temp channel {name}.")
 
 def removeChannel(name: str) -> None:
     """
@@ -179,6 +144,7 @@ def removeChannel(name: str) -> None:
     streamList.dispose(f"chat/{name}")
     streamList.remove(f"chat/{name}")
     glob.redis.delete(make_key(name))
+    glob.redis.srem("bancho:channels", name)
     log(f"Removed channel {name}.")
 
 def updateChannel(
@@ -186,8 +152,8 @@ def updateChannel(
     description: Optional[str] = None,
     public_read: Optional[bool] = None,
     public_write: Optional[bool] = None,
-    moderated: Optional[bool] = None,
     instance: Optional[bool] = None,
+    moderated: Optional[bool] = None,
 ) -> None:
     """
     Updates a channel
@@ -207,10 +173,10 @@ def updateChannel(
         channel["public_read"] = public_read
     if public_write is not None:
         channel["public_write"] = public_write
-    if moderated is not None:
-        channel["moderated"] = moderated
     if instance is not None:
         channel["instance"] = instance
+    if moderated is not None:
+        channel["moderated"] = moderated
 
     glob.redis.set(make_key(name), json.dumps(channel))
     log(f"Updated channel {name}.")

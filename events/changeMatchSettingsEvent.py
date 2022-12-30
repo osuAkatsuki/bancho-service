@@ -4,7 +4,7 @@ from common.constants import mods
 from constants import clientPackets
 from constants import matchModModes
 from constants import matchTeamTypes
-from objects import match, slot
+from objects import match, slot, channelList
 from objects.osuToken import token
 
 from redlock import RedLock
@@ -27,6 +27,7 @@ def handle(userToken: token, rawPacketData: bytes):
         if userToken.userID != multiplayer_match["host_user_id"]:
             return
 
+        old_match_name = multiplayer_match["match_name"]
         old_mods = multiplayer_match["mods"]
         old_beatmap_md5 = multiplayer_match["beatmap_md5"]
         old_scoring_type = multiplayer_match["match_scoring_type"]
@@ -37,7 +38,7 @@ def handle(userToken: token, rawPacketData: bytes):
         multiplayer_match = match.update_match(
             multiplayer_match["match_id"],
             match_name=packetData["matchName"],
-            is_in_progress=packetData["inProgress"],
+            is_in_progress=packetData["inProgress"] == 1,
             match_password=packetData["matchPassword"],
             beatmap_name=packetData["beatmapName"],
             beatmap_id=packetData["beatmapID"],
@@ -59,6 +60,12 @@ def handle(userToken: token, rawPacketData: bytes):
             or old_match_mod_mode != multiplayer_match["match_mod_mode"]
         ):
             match.resetReady(multiplayer_match["match_id"])
+
+        if old_match_name != multiplayer_match["match_name"]:
+            channelList.updateChannel(
+                f"#multi_{multiplayer_match['match_id']}",
+                description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
+            )
 
         if old_match_mod_mode != multiplayer_match["match_mod_mode"]:
             slots = slot.get_slots(multiplayer_match["match_id"])

@@ -67,7 +67,14 @@ class MatchList:
         )
         streamList.add(match.create_stream_name(multiplayer_match['match_id']))
         streamList.add(match.create_playing_stream_name(multiplayer_match['match_id']))
-        channelList.addInstanceChannel(f"#multi_{multiplayer_match['match_id']}")
+        channelList.addChannel(
+            f"#multi_{multiplayer_match['match_id']}",
+            description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
+            public_read=True,
+            public_write=False,
+            moderated=False,
+            instance=True,
+        )
 
         return multiplayer_match["match_id"]
 

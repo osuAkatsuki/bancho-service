@@ -254,7 +254,13 @@ class token:
             host.enqueue(serverPackets.addSpectator(self.userID))
 
             # Create and join #spectator (#spect_userid) channel
-            channelList.addInstanceChannel(f"#spect_{host.userID}")
+            channelList.addChannel(
+                name=f"#spect_{host.userID}",
+                description=f"Spectator lobby for host {host.username}",
+                public_read=True,
+                public_write=False,
+                instance=True,
+            )
             chat.joinChannel(token=self, channel_name=f"#spect_{host.userID}", force=True)
             if len(host.spectators) == 1:
                 # First spectator, send #spectator join to host too
