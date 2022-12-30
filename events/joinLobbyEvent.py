@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from constants import serverPackets
-from objects import match
-from objects.osuToken import token
+from objects import match,osuToken
+from objects.osuToken import Token
 
 
-def handle(userToken: token, _):
+def handle(userToken: Token, _):
     # Add user to users in lobby
-    userToken.joinStream("lobby")
+    osuToken.joinStream(userToken["token_id"], "lobby")
 
     # Send matches data
     for match_id in match.get_match_ids():
-        userToken.enqueue(serverPackets.createMatch(match_id))
+        osuToken.enqueue(userToken["token_id"], serverPackets.createMatch(match_id))

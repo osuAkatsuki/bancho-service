@@ -3,10 +3,10 @@ from __future__ import annotations
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
-from objects.osuToken import token
+from objects.osuToken import Token
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Read userIDs list
     packetData = clientPackets.userPanelRequest(rawPacketData)
 

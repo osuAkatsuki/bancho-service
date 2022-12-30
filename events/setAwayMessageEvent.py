@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from constants import clientPackets
 from constants import serverPackets
-from objects import glob
-from objects.osuToken import token
+from objects import glob, osuToken
+from objects.osuToken import Token
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Read packet data
     packetData = clientPackets.setAwayMessage(rawPacketData)
 
     # Set token away message
-    userToken.awayMessage = packetData["awayMessage"]
+    osuToken.update_token(
+        userToken["token_id"],
+        away_message=packetData["awayMessage"],
+    )
 
     # Send private message from Aika
     if packetData["awayMessage"] == "":
@@ -19,10 +22,11 @@ def handle(userToken: token, rawPacketData: bytes):
     else:
         fokaMessage = f"Your away message is now: {packetData['awayMessage']}."
 
-    userToken.enqueue(
+    osuToken.enqueue(
+        userToken["token_id"],
         serverPackets.sendMessage(
             fro=glob.BOT_NAME,
-            to=userToken.username,
+            to=userToken["username"],
             message=fokaMessage,
             fro_id=999,
         ),

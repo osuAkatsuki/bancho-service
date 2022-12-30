@@ -22,7 +22,7 @@ import settings
 from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
-from objects import glob, stream, streamList,channelList
+from objects import glob, stream, streamList,channelList, tokenList, osuToken
 
 
 class Client:
@@ -253,7 +253,7 @@ class Client:
         """
         self.replyCode(
             251,
-            f"There are {len(glob.tokens.tokens)} users and 0 services on 1 server",
+            f"There are {len(osuToken.get_token_ids())} users and 0 services on 1 server",
         )
 
     def sendMotd(self) -> None:
@@ -328,7 +328,7 @@ class Client:
                 return
 
             # Make sure we are not connected to Bancho
-            token = glob.tokens.getTokenFromUsername(
+            token = tokenList.getTokenFromUsername(
                 chat.fixUsernameForBancho(nick),
                 True,
             )
@@ -389,7 +389,7 @@ class Client:
             return
 
         # Get bancho token object
-        token = glob.tokens.getTokenFromUsername(self.banchoUsername)
+        token = tokenList.getTokenFromUsername(self.banchoUsername)
         if token is None:
             return
 
@@ -440,10 +440,11 @@ class Client:
                 users = stream.getClients(f"chat/{channel_name}")
                 usernames = []
                 for user in users:
-                    if user not in glob.tokens.tokens:
+                    token = osuToken.get_token(user)
+                    if token is None:
                         continue
                     usernames.append(
-                        chat.fixUsernameForIRC(glob.tokens.tokens[user].username),
+                        chat.fixUsernameForIRC(token["username"]),
                     )
                 usernames = " ".join(usernames)
 
@@ -462,7 +463,7 @@ class Client:
             return
 
         # Get bancho token object
-        token = glob.tokens.getTokenFromUsername(self.banchoUsername)
+        token = tokenList.getTokenFromUsername(self.banchoUsername)
         if token is None:
             return
 
@@ -473,7 +474,7 @@ class Client:
             # Make sure we in that channel
             # (we already check this bancho-side, but we need to do it
             # also here k maron)
-            if channel.lower() not in token.joinedChannels:
+            if channel.lower() not in osuToken.get_joined_channels(token["token_id"]):
                 continue
 
             # Attempt to part the channel

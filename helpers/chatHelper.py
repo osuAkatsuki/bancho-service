@@ -11,19 +11,20 @@ from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
-from objects import fokabot, stream
-from objects import glob, streamList,channelList
+from objects import fokabot, stream, osuToken
+
+
+from redlock import RedLock
+from objects import glob, streamList,channelList,tokenList
 
 if TYPE_CHECKING:
     from typing import Optional
 
-    from objects.osuToken import token
-
 
 def joinChannel(
-    userID: int = 0,
+    user_id: int = 0,
     channel_name: str = "",
-    token: Optional[token] = None,
+    token_id: Optional[str] = None,
     toIRC: bool = True,
     force: bool = False,
 ) -> int:
@@ -37,15 +38,19 @@ def joinChannel(
     :param force: whether to allow game clients to join #spect_ and #multi_ channels
     :return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
     """
+    token: Optional[osuToken.Token] = None
+
     try:
         # Get token if not defined
-        if token is None:
-            token = glob.tokens.getTokenFromUserID(userID)
+        if token_id is None:
+            token = tokenList.getTokenFromUserID(user_id)
             # Make sure the token exists
             if token is None:
                 raise exceptions.userNotFoundException
         else:
-            token = token
+            token = osuToken.get_token(token_id)
+            if token is None:
+                raise exceptions.userNotFoundException
 
         # Normal channel, do check stuff
         # Make sure the channel exists
@@ -57,15 +62,15 @@ def joinChannel(
         if channel is None:
             raise exceptions.channelUnknownException()
 
-        if channel["instance"] and not token.irc and not force:
+        if channel["instance"] and not token["irc"] and not force:
             raise exceptions.channelUnknownException()
 
         # Add the channel to our joined channel
-        token.joinChannel(channel_name)
+        osuToken.joinChannel(token["token_id"], channel_name)
 
         # Send channel joined (IRC)
         if settings.IRC_ENABLE and not toIRC:
-            glob.ircServer.banchoJoinChannel(token.username, channel_name)
+            glob.ircServer.banchoJoinChannel(token["username"], channel_name)
 
         # Console output
         # log.info(f"{token.username} joined channel {channel}")
@@ -73,17 +78,20 @@ def joinChannel(
         # IRC code return
         return 0
     except exceptions.channelNoPermissionsException:
+        assert token is not None
         log.warning(
-            f"{token.username} attempted to join channel {channel_name}, but they have no read permissions.",
+            f"{token['username']} attempted to join channel {channel_name}, but they have no read permissions.",
         )
         return 403
     except exceptions.channelUnknownException:
+        assert token is not None
         log.warning(
-            f"{token.username} attempted to join an unknown channel ({channel_name}).",
+            f"{token['username']} attempted to join an unknown channel ({channel_name}).",
         )
         return 403
     except exceptions.userAlreadyInChannelException:
-        log.warning(f"User {token.username} already in channel {channel_name}.")
+        assert token is not None
+        log.warning(f"User {token['username']} already in channel {channel_name}.")
         return 403
     except exceptions.userNotFoundException:
         log.warning("User not connected to IRC/Bancho.")
@@ -93,7 +101,7 @@ def joinChannel(
 def partChannel(
     userID: int = 0,
     channel_name: str = "",
-    token: Optional[token] = None,
+    token_id: Optional[str] = None,
     toIRC: bool = True,
     kick: bool = False,
     force: bool = False,
@@ -109,31 +117,35 @@ def partChannel(
     :param force: whether to allow game clients to part #spect_ and #multi_ channels
     :return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
     """
+    token: Optional[osuToken.Token] = None
+
     try:
         # Make sure the client is not drunk and sends partChannel when closing a PM tab
         if not channel_name.startswith("#"):
             return 0
 
         # Get token if not defined
-        if token is None:
-            token = glob.tokens.getTokenFromUserID(userID)
+        if token_id is None:
+            token = tokenList.getTokenFromUserID(userID)
             # Make sure the token exists
             if token is None:
                 raise exceptions.userNotFoundException()
         else:
-            token = token
+            token = osuToken.get_token(token_id)
+            if token is None:
+                raise exceptions.userNotFoundException
 
         # Determine internal/client name if needed
         # (toclient is used clientwise for #multiplayer and #spectator channels)
         channelClient = channel_name
         if channel_name == "#spectator":
-            if token.spectating is None:
-                s = userID
+            if token["spectating_user_id"] is None:
+                spectating_user_id = userID
             else:
-                s = token.spectatingUserID
-            channel_name = f"#spect_{s}"
+                spectating_user_id = token['spectating_user_id']
+            channel_name = f"#spect_{spectating_user_id}"
         elif channel_name == "#multiplayer":
-            channel_name = f"#multi_{token.matchID}"
+            channel_name = f"#multi_{token['match_id']}"
         elif channel_name.startswith("#spect_"):
             channelClient = "#spectator"
         elif channel_name.startswith("#multi_"):
@@ -148,15 +160,15 @@ def partChannel(
         if channel is None:
             raise exceptions.channelUnknownException()
 
-        if channel['instance'] and not token.irc and not force:
+        if channel['instance'] and not token["irc"] and not force:
             raise exceptions.channelUnknownException()
 
         # Make sure the user is in the channel
-        if channel_name not in token.joinedChannels:
+        if channel_name not in osuToken.get_joined_channels(token["token_id"]):
             raise exceptions.userNotInChannelException()
 
         # Part channel (token-side and channel-side)
-        token.partChannel(channel_name)
+        osuToken.partChannel(token["token_id"], channel_name)
 
         # Delete temporary channel if everyone left
         key = f"chat/{channel_name}"
@@ -171,11 +183,11 @@ def partChannel(
         # Force close tab if needed
         # NOTE: Maybe always needed, will check later
         if kick:
-            token.enqueue(serverPackets.channelKicked(channelClient))
+            osuToken.enqueue(token["token_id"], serverPackets.channelKicked(channelClient))
 
         # IRC part
         if settings.IRC_ENABLE and toIRC:
-            glob.ircServer.banchoPartChannel(token.username, channel_name)
+            glob.ircServer.banchoPartChannel(token["username"], channel_name)
 
         # Console output
         # log.info(f"{token.username} parted channel {channel_name} ({channelClient}).")
@@ -183,13 +195,15 @@ def partChannel(
         # Return IRC code
         return 0
     except exceptions.channelUnknownException:
+        assert token is not None
         log.warning(
-            f"{token.username} attempted to part an unknown channel ({channel_name}).",
+            f"{token['username']} attempted to part an unknown channel ({channel_name}).",
         )
         return 403
     except exceptions.userNotInChannelException:
+        assert token is not None
         log.warning(
-            f"{token.username} attempted to part {channel_name}, but he's not in that channel.",
+            f"{token['username']} attempted to part {channel_name}, but he's not in that channel.",
         )
         return 442
     except exceptions.userNotFoundException:
@@ -208,6 +222,7 @@ gamer_ids = [
     [109, 112, 103, 104],
     [107, 97, 119, 97, 116, 97],
     [104, 97, 99, 107],
+    [109, 97, 112, 108, 101],
 ]
 
 
@@ -215,7 +230,7 @@ def sendMessage(
     fro: Optional[str] = "",
     to: str = "",
     message: str = "",
-    token: Optional[token] = None,
+    token_id: Optional[str] = None,
     toIRC: bool = True,
 ) -> int:
     """
@@ -228,28 +243,29 @@ def sendMessage(
     :param toIRC: if True, send the message to IRC. If False, send it to Bancho only. Default: True
     :return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
     """
+    userToken: Optional[osuToken.Token] = None
+
     try:
-        # tokenString = ""
-        # Get token object if not passed
-        if token is None:
-            token = glob.tokens.getTokenFromUsername(fro)
-            if token is None:
+        if token_id is None:
+            userToken = tokenList.getTokenFromUsername(fro)
+            if userToken is None:
                 raise exceptions.userNotFoundException()
         else:
-            # token object alredy passed, get its string and its username (fro)
-            fro = token.username
-            # tokenString = token.token
+            userToken = osuToken.get_token(token_id)
+            if userToken is None:
+                raise exceptions.userNotFoundException()
+            fro = userToken["username"]
 
         # Make sure this is not a tournament client
-        if token.tournament:
+        if userToken["tournament"]:
             raise exceptions.userTournamentException()
 
         # Make sure the user is not in restricted mode
-        if token.restricted:
+        if osuToken.is_restricted(userToken["privileges"]):
             raise exceptions.userRestrictedException()
 
         # Make sure the user is not silenced
-        if token.isSilenced():
+        if osuToken.isSilenced(userToken["token_id"]):
             raise exceptions.userSilencedException()
 
         # Redirect !report to FokaBot
@@ -260,13 +276,13 @@ def sendMessage(
         # (toclient is used clientwise for #multiplayer and #spectator channels)
         toClient = to
         if to == "#spectator":
-            if token.spectating is None:
-                s = token.userID
+            if userToken["spectating_user_id"] is None:
+                s = userToken["user_id"]
             else:
-                s = token.spectatingUserID
+                s = userToken["spectating_user_id"]
             to = f"#spect_{s}"
         elif to == "#multiplayer":
-            to = f"#multi_{token.matchID}"
+            to = f"#multi_{userToken['match_id']}"
         elif to.startswith("#spect_"):
             toClient = "#spectator"
         elif to.startswith("#multi_"):
@@ -293,11 +309,11 @@ def sendMessage(
                 raise exceptions.channelUnknownException()
 
             # Make sure the channel is not in moderated mode
-            if channel["moderated"] and not token.staff:
+            if channel["moderated"] and not osuToken.is_staff(userToken["privileges"]):
                 raise exceptions.channelModeratedException()
 
             # Make sure we are in the channel
-            if to not in token.joinedChannels:
+            if to not in osuToken.get_joined_channels(token_id):
                 # I'm too lazy to put and test the correct IRC error code here...
                 # but IRC is not strict at all so who cares
                 raise exceptions.channelNoPermissionsException()
@@ -305,16 +321,16 @@ def sendMessage(
             # Make sure we have write permissions.
             if (
                 # you need premium for #premium
-                (to == "#premium" and token.privileges & privileges.USER_PREMIUM == 0) and
+                (to == "#premium" and userToken["privileges"] & privileges.USER_PREMIUM == 0) and
                 # you need supporter for #supporter
-                (to == "#supporter" and token.privileges & privileges.USER_DONOR == 0)
-                and not (channel["publicWrite"] or token.staff)
+                (to == "#supporter" and userToken["privileges"] & privileges.USER_DONOR == 0)
+                and not (channel["publicWrite"] or osuToken.is_staff(userToken["privileges"]))
             ):
                 raise exceptions.channelNoPermissionsException()
 
             # Check message for commands
             if not action_msg:
-                fokaMessage = fokabot.fokabotResponse(token.username, to, message)
+                fokaMessage = fokabot.fokabotResponse(userToken["username"], to, message)
             else:
                 fokaMessage = None
 
@@ -362,31 +378,43 @@ def sendMessage(
                         beatmap_id = int(match["id"])
 
                         # Return tillerino message
-                        token.tillerino = [beatmap_id, _mods, -1.0]
+                        userToken["last_np"] = {
+                            "beatmap_id": beatmap_id,
+                            "mods": _mods,
+                            "accuracy": -1.0,
+                        }
+                        osuToken.update_token(
+                            token_id,
+                            last_np=userToken["last_np"],
+                        )
                     else:
                         log.error("failed to parse beatmap url? (chatHelper)")
 
             msg_packet = serverPackets.sendMessage(
-                fro=token.username,
+                fro=userToken["username"],
                 to=toClient,
                 message=message,
-                fro_id=token.userID,
+                fro_id=userToken["user_id"],
             )
 
             if fokaMessage:
                 if fokaMessage["hidden"]:  # Send to user & gmt+
-                    with glob.tokens:  # Generate admin token list
+                    with RedLock(
+                        "bancho:locks:tokens",
+                        retry_delay=50,
+                        retry_times=20,
+                    ): # Generate admin token list
                         send_to = {
-                            i.token
-                            for i in glob.tokens.tokens.values()
-                            if i != token and i.staff and i.userID != 999
+                            t["token_id"]
+                            for t in osuToken.get_tokens() # TODO: use redis
+                            if t["token_id"] != token_id and osuToken.is_staff(t["privileges"]) and t["user_id"] != 999
                         }
 
                     # Send their command
                     streamList.broadcast_limited(f"chat/{to}", msg_packet, send_to)
 
                     # Send Aika's response
-                    send_to.add(token.token)
+                    send_to.add(userToken["token_id"])
                     response_packet = serverPackets.sendMessage(
                         fro=glob.BOT_NAME,
                         to=toClient,
@@ -399,84 +427,86 @@ def sendMessage(
                         send_to,
                     )
                 else:  # Send to all streams
-                    token.addMessageInBuffer(to, message)
-                    streamList.broadcast(f"chat/{to}", msg_packet, but=[token.token])
+                    osuToken.addMessageInBuffer(token_id, to, message)
+                    streamList.broadcast(f"chat/{to}", msg_packet, but=[userToken["token_id"]])
                     sendMessage(glob.BOT_NAME, to, fokaMessage["response"])
             else:
-                token.addMessageInBuffer(to, message)
-                streamList.broadcast(f"chat/{to}", msg_packet, but=[token.token])
+                osuToken.addMessageInBuffer(token_id, to, message)
+                streamList.broadcast(f"chat/{to}", msg_packet, but=[userToken["token_id"]])
         else:
             # USER
             # Make sure recipient user is connected
-            recipientToken = glob.tokens.getTokenFromUsername(to)
-            if recipientToken is None:
+            recipient_token = tokenList.getTokenFromUsername(to)
+            if recipient_token is None:
                 raise exceptions.userNotFoundException()
 
             # Make sure the recipient is not a tournament client
-            if recipientToken.tournament:
+            if recipient_token["tournament"]:
                 raise exceptions.userTournamentException()
 
             # Notify the sender that the recipient is silenced.
-            if recipientToken.isSilenced():
-                token.enqueue(
+            if osuToken.isSilenced(recipient_token["token_id"]):
+                osuToken.enqueue(
+                    recipient_token["token_id"],
                     serverPackets.targetSilenced(
                         to=to,
-                        fro=token.username,
-                        fro_id=token.userID,
+                        fro=userToken["username"],
+                        fro_id=userToken["user_id"],
                     ),
                 )
 
-            if token.username != glob.BOT_NAME:
+            if userToken["username"] != glob.BOT_NAME:
                 # Make sure the recipient is not restricted or we are bot
-                if recipientToken.restricted:
+                if osuToken.is_restricted(recipient_token["privileges"]):
                     raise exceptions.userRestrictedException()
 
                 # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
                 if (
-                    recipientToken.blockNonFriendsDM
-                    and token.userID
-                    not in userUtils.getFriendList(recipientToken.userID)
+                    recipient_token["block_non_friends_dm"]
+                    and userToken["user_id"]
+                    not in userUtils.getFriendList(recipient_token["user_id"])
                 ):
-                    token.enqueue(
+                    osuToken.enqueue(
+                        token_id,
                         serverPackets.targetBlockingDMs(
                             to=to,
-                            fro=token.username,
-                            fro_id=token.userID,
+                            fro=userToken["username"],
+                            fro_id=userToken["user_id"],
                         ),
                     )
                     raise exceptions.userBlockingDMsException
 
             # Away check
-            if recipientToken.awayCheck(token.userID):
+            if osuToken.awayCheck(recipient_token["token_id"], userToken["user_id"]):
                 sendMessage(
                     to,
                     fro,
-                    f"\x01ACTION is away: {recipientToken.awayMessage}\x01",
+                    f"\x01ACTION is away: {recipient_token['away_message']}\x01",
                 )
 
             if to == glob.BOT_NAME:
                 # Check message for commands
-                fokaMessage = fokabot.fokabotResponse(token.username, to, message)
+                fokaMessage = fokabot.fokabotResponse(userToken["username"], to, message)
 
                 if fokaMessage:
                     sendMessage(glob.BOT_NAME, fro, fokaMessage["response"])
             else:
                 packet = serverPackets.sendMessage(
-                    fro=token.username,
+                    fro=userToken["username"],
                     to=toClient,
                     message=message,
-                    fro_id=token.userID,
+                    fro_id=userToken["user_id"],
                 )
-                recipientToken.enqueue(packet)
+                osuToken.enqueue(recipient_token["token_id"], packet)
 
         # Spam protection (ignore staff)
-        if not token.staff:
-            token.spamProtection()
+        if not osuToken.is_staff(userToken["privileges"]):
+            osuToken.spamProtection(token_id)
 
         if (
             any([bytes(gid).decode() in message for gid in gamer_ids])
             and not action_msg
-            and not token.staff
+            and not osuToken.is_staff(userToken["privileges"])
         ):
             webhook = "ac_confidential"
         else:
@@ -484,40 +514,40 @@ def sendMessage(
 
         if isChannel:
             if webhook:
-                log.chat(f"{token.getMessagesBufferString()}", webhook)
+                log.chat(f"{osuToken.getMessagesBufferString(token_id)}", webhook)
             else:
-                log.chat(f"{token.username} @ {to}: {message}")
+                log.chat(f"{userToken['username']} @ {to}: {message}")
         else:
             log.pm(f"{fro} @ {to}: {message}", webhook)
 
         return 0
     except exceptions.userSilencedException:
-        token.enqueue(serverPackets.silenceEndTime(token.getSilenceSecondsLeft()))
-        log.warning(f"{token.username} tried to send a message during silence.")
+        osuToken.enqueue(token_id, serverPackets.silenceEndTime(osuToken.getSilenceSecondsLeft(token_id)))
+        log.warning(f"{userToken['username']} tried to send a message during silence.")
         return 404
     except exceptions.channelModeratedException:
         log.warning(
-            f"{token.username} tried to send a message to a channel that is in moderated mode ({to}).",
+            f"{userToken['username']} tried to send a message to a channel that is in moderated mode ({to}).",
         )
         return 404
     except exceptions.channelUnknownException:
         log.warning(
-            f"{token.username} tried to send a message to an unknown channel ({to}).",
+            f"{userToken['username']} tried to send a message to an unknown channel ({to}).",
         )
         return 403
     except exceptions.channelNoPermissionsException:
         log.warning(
-            f"{token.username} tried to send a message to channel {to}, but they have no write permissions.",
+            f"{userToken['username']} tried to send a message to channel {to}, but they have no write permissions.",
         )
         return 404
     except exceptions.userRestrictedException:
         log.warning(
-            f"{token.username} tried to send a message {to}, but the recipient is in restricted mode.",
+            f"{userToken['username']} tried to send a message {to}, but the recipient is in restricted mode.",
         )
         return 404
     except exceptions.userTournamentException:
         log.warning(
-            f"{token.username} tried to send a message {to}, but the recipient is a tournament client.",
+            f"{userToken['username']} tried to send a message {to}, but the recipient is a tournament client.",
         )
         return 404
     except exceptions.userNotFoundException:
@@ -525,13 +555,15 @@ def sendMessage(
         return 401
     except exceptions.userBlockingDMsException:
         log.warning(
-            f"{token.username} tried to send a message to {to}, but the recipient is blocking non-friends dms.",
+            f"{userToken['username']} tried to send a message to {to}, but the recipient is blocking non-friends dms.",
         )
         return 404
     except exceptions.invalidArgumentsException:
-        log.warning(f"{token.username} tried to send an invalid message to {to}.")
+        log.warning(f"{userToken['username']} tried to send an invalid message to {to}.")
         return 404
     except Exception as e:  # unhandled
+        import traceback
+        traceback.print_exc()
         log.warning(f"chatHelper {e}")
 
 
@@ -580,16 +612,20 @@ def IRCConnect(username: str) -> None:
     :param username: username
     :return:
     """
-    userID = userUtils.getID(username)
-    if not userID:
+    user_id = userUtils.getID(username)
+    if not user_id:
         log.warning(f"{username} doesn't exist.")
         return
 
-    with glob.tokens:
-        glob.tokens.deleteOldTokens(userID)
-        glob.tokens.addToken(userID, irc=True)
+    with RedLock(
+        "bancho:locks:tokens",
+        retry_delay=50,
+        retry_times=20,
+    ):
+        tokenList.deleteOldTokens(user_id)
+        tokenList.addToken(user_id, irc=True)
 
-    streamList.broadcast("main", serverPackets.userPanel(userID))
+    streamList.broadcast("main", serverPackets.userPanel(user_id))
     log.info(f"{username} logged in from IRC.")
 
 
@@ -601,12 +637,12 @@ def IRCDisconnect(username: str) -> None:
     :param username: username
     :return:
     """
-    token = glob.tokens.getTokenFromUsername(username)
+    token = osuToken.get_token_by_username(username)
     if token is None:
         log.warning(f"{username} doesn't exist.")
         return
 
-    logoutEvent.handle(token)
+    logoutEvent.handle(token["token_id"]) # TODO
     log.info(f"{username} disconnected from IRC.")
 
 
@@ -658,5 +694,13 @@ def IRCAway(username: str, message: str) -> Optional[int]:
         log.warning(f"{username} doesn't exist.")
         return # TODO: should this be returning a code?
 
-    glob.tokens.getTokenFromUserID(userID).awayMessage = message
+    token = osuToken.get_token_by_user_id(userID)
+    if token is None:
+        log.warning(f"{username} is not connected to Bancho.")
+        return
+
+    osuToken.update_token(
+        token["token_id"],
+        away_message=message,
+    )
     return 306 if message else 305

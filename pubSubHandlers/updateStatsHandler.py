@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from common.redis import generalPubSubHandler
 from constants import serverPackets
-from objects import glob
-
+from objects import osuToken, tokenList
 
 class handler(generalPubSubHandler.generalPubSubHandler):
     def __init__(self):
@@ -14,9 +13,8 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
-        if not (targetToken := glob.tokens.getTokenFromUserID(userID)):
+        if not (targetToken := tokenList.getTokenFromUserID(userID)):
             return
 
-        targetToken.updateCachedStats()
-        force = True
-        targetToken.enqueue(serverPackets.userStats(userID, force))
+        osuToken.updateCachedStats(targetToken["token_id"])
+        osuToken.enqueue(targetToken["token_id"], serverPackets.userStats(userID, force=True))

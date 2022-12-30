@@ -10,7 +10,7 @@ from constants import exceptions
 from helpers import chatHelper as chat
 import json
 from objects import glob, match
-from objects import stream,streamList
+from objects import stream,streamList, osuToken, tokenList
 import logging
 
 # bancho:channels
@@ -113,10 +113,11 @@ def addChannel(
         }),
     )
     # Make Foka join the channel
-    fokaToken = glob.tokens.getTokenFromUserID(999)
+    fokaToken = tokenList.getTokenFromUserID(999)
+    assert fokaToken is not None
     if fokaToken:
         try:
-            fokaToken.joinChannel(name)
+            osuToken.joinChannel(fokaToken["token_id"], name)
         except exceptions.userAlreadyInChannelException:
             logging.warning(f"{glob.BOT_NAME} has already joined channel {name}")
     log(f"Created channel {name}.")
@@ -134,11 +135,12 @@ def removeChannel(name: str) -> None:
         return
 
     # streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
-    for token in stream.getClients(f"chat/{name}"):
-        if token in glob.tokens.tokens:
+    for token_id in stream.getClients(f"chat/{name}"):
+        token = osuToken.get_token(token_id)
+        if token is not None:
             chat.partChannel(
                 channel_name=name,
-                token=glob.tokens.tokens[token],
+                token_id=token_id,
                 kick=True,
             )
     streamList.dispose(f"chat/{name}")

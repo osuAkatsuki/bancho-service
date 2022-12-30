@@ -20,6 +20,7 @@ from common.constants import privileges
 from common.log import logUtils as log
 from common.ripple import passwordUtils
 from common.web.discord import Webhook
+from objects import tokenList
 from objects import glob
 
 
@@ -229,9 +230,9 @@ def editWhitelist(userID: int, bit: int) -> None:
     glob.db.execute("UPDATE users SET whitelist = %s " "WHERE id = %s", [bit, userID])
 
     # User is online, update their token's whitelist.
-    userToken = glob.tokens.getTokenFromUserID(userID)
+    userToken = tokenList.getTokenFromUserID(userID)
     if userToken:
-        userToken.whitelist = bit
+        userToken["whitelist"] = bit
 
 
 def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
@@ -1429,9 +1430,9 @@ def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
         return False
 
     groupPrivileges = groupPrivileges["privileges"]
-    userToken = glob.tokens.getTokenFromUserID(userID)
+    userToken = tokenList.getTokenFromUserID(userID)
     if userToken:
-        userPrivileges = userToken.privileges
+        userPrivileges = userToken["privileges"]
     else:
         userPrivileges = getPrivileges(userID)
     return userPrivileges & groupPrivileges == groupPrivileges

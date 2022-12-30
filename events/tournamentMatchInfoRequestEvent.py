@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from constants import clientPackets
 from objects import match
-from objects.osuToken import token
+from objects.osuToken import Token
 from constants import serverPackets
 
 from redlock import RedLock
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentMatchInfoRequest(rawPacketData)
 
     match_id = packetData["matchID"]

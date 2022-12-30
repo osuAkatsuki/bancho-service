@@ -2,26 +2,30 @@ from __future__ import annotations
 
 from constants import clientPackets
 from objects import match
-from objects.osuToken import token
+from objects.osuToken import Token
 
 from redlock import RedLock
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Read packet data. Same structure as changeMatchSettings
     packetData = clientPackets.changeMatchSettings(rawPacketData)
 
+    match_id = userToken["match_id"]
+    if match_id is None:
+        return
+
     # Make sure the match exists
-    multiplayer_match = match.get_match(userToken.matchID)
+    multiplayer_match = match.get_match(match_id)
     if multiplayer_match is None:
         return
 
     with RedLock(
-        f"{match.make_key(userToken.matchID)}:lock",
+        f"{match.make_key(match_id)}:lock",
         retry_delay=50,
         retry_times=20,
     ):
         # Host check
-        if userToken.userID != multiplayer_match["host_user_id"]:
+        if match_id != multiplayer_match["host_user_id"]:
             return
 
         # Update match password

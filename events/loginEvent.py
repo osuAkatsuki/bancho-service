@@ -21,7 +21,8 @@ from constants import serverPackets
 from helpers import chatHelper as chat
 from helpers import countryHelper
 from helpers import locationHelper
-from objects import glob, streamList,channelList,stream,verifiedCache
+from redlock import RedLock
+from objects import glob, streamList,channelList,stream,verifiedCache,osuToken,tokenList
 
 if TYPE_CHECKING:
     import tornado.web
@@ -36,7 +37,7 @@ def handle(
     web_handler: tornado.web.RequestHandler,
 ) -> tuple[str, bytes]:  # token, data
     # Data to return
-    responseToken = None
+    userToken = None
     responseTokenString = "ayy"
     responseData = bytearray()
 
@@ -60,10 +61,10 @@ def handle(
         # [4] disk ID
         splitData = loginData[2].split("|")
         osuVersionStr = splitData[0]
-        timeOffset = int(splitData[1])
+        utc_offset = int(splitData[1])
         if len(clientData := splitData[3].split(":")[:5]) < 4:
             raise exceptions.forceUpdateException()
-        blockNonFriendsDM = splitData[4] == "1"
+        block_non_friends_dm = splitData[4] == "1"
 
         # Try to get the ID from username
         username = loginData[0]
@@ -113,31 +114,32 @@ def handle(
 
         """ No login errors! """
 
-        # Verify this user (if pending activation)
         firstLogin = False
-        if pending_verification or not userUtils.hasVerifiedHardware(userID):
-            if userUtils.verifyUser(userID, clientData):
-                # Valid account
-                log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
-                verifiedCache.set(userID, True)
-                firstLogin = True
-            else:
-                # Multiaccount detected
-                log(
-                    f"{username} ({userID}) tried to create another account.",
-                    Ansi.LRED,
-                )
-                verifiedCache.set(userID, False)
-                raise exceptions.loginBannedException()
+        # Verify this user (if pending activation)
+        # firstLogin = False
+        # if pending_verification or not userUtils.hasVerifiedHardware(userID):
+        #     if userUtils.verifyUser(userID, clientData):
+        #         # Valid account
+        #         log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
+        #         verifiedCache.set(userID, True)
+        #         firstLogin = True
+        #     else:
+        #         # Multiaccount detected
+        #         log(
+        #             f"{username} ({userID}) tried to create another account.",
+        #             Ansi.LRED,
+        #         )
+        #         verifiedCache.set(userID, False)
+        #         # raise exceptions.loginBannedException()
 
         # Save HWID in db for multiaccount detection
-        hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
+        # hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
 
         # This is false only if HWID is empty
         # if HWID is banned, we get restricted so there's no
         # need to deny bancho access
-        if not hwAllowed:
-            raise exceptions.haxException()
+        # if not hwAllowed:
+        #     raise exceptions.haxException()
 
         # Log user IP
         userUtils.logIP(userID, requestIP)
@@ -145,27 +147,33 @@ def handle(
         # Delete old tokens for that user and generate a new one
         isTournament = rgx["stream"] == "tourney"
 
-        with glob.tokens:
+        with RedLock(
+            "bancho:locks:tokens",
+            retry_delay=50,
+            retry_times=20,
+        ):
             if not isTournament:
-                glob.tokens.deleteOldTokens(userID)
-            responseToken = glob.tokens.addToken(
+                tokenList.deleteOldTokens(userID)
+
+            userToken = tokenList.addToken(
                 userID,
-                requestIP,
-                timeOffset=timeOffset,
+                ip=requestIP,
+                irc=False,
+                utc_offset=utc_offset,
                 tournament=isTournament,
+                block_non_friends_dm=block_non_friends_dm,
             )
-        responseToken.blockNonFriendsDM = blockNonFriendsDM
-        responseTokenString = responseToken.token
+            responseTokenString = userToken["token_id"]
 
         # Console output
         log(
             f"{username} ({userID}) logged in. "
-            f"({len(glob.tokens.tokens) - 1} online)",
+            f"({len(osuToken.get_token_ids()) - 1} online)",
             Ansi.CYAN,
         )
 
         # Check restricted mode (and eventually send message)
-        responseToken.checkRestricted()
+        # osuToken.checkRestricted(userToken["token_id"])
 
         """ osu!Akatuki account freezing. """
 
@@ -205,7 +213,8 @@ def handle(
                 userUtils.restrict(userID)
                 userUtils.unfreeze(userID, _log=False)
 
-                responseToken.enqueue(
+                osuToken.enqueue(
+                    userToken["token_id"],
                     serverPackets.notification(
                         "\n\n".join(
                             [
@@ -226,15 +235,15 @@ def handle(
 
         # Send message if premium / donor expires soon
         # This should NOT be done at login, but done by the cron
-        if responseToken.privileges & privileges.USER_DONOR:
+        if userToken["privileges"] & privileges.USER_DONOR:
             expireDate = userUtils.getDonorExpire(userID)
-            premium = responseToken.privileges & privileges.USER_PREMIUM
+            premium = userToken["privileges"] & privileges.USER_PREMIUM
             rolename = "premium" if premium else "supporter"
 
             if current_time >= expireDate:
                 userUtils.setPrivileges(
                     userID,
-                    responseToken.privileges - privileges.USER_DONOR
+                    userToken["privileges"] - privileges.USER_DONOR
                     | (privileges.USER_PREMIUM if premium else 0),
                 )
 
@@ -264,7 +273,8 @@ def handle(
                 )
                 logUtils.rap(userID, f"{rolename} subscription expired.")
 
-                responseToken.enqueue(
+                osuToken.enqueue(
+                    userToken["token_id"],
                     serverPackets.notification(
                         "\n\n".join(
                             [
@@ -281,21 +291,24 @@ def handle(
                 expireDate - current_time <= 86400 * 7
             ):  # Notify within 7 days of expiry
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
-                responseToken.enqueue(
+                userToken.enqueue(
                     serverPackets.notification(
                         f"Your {rolename} tag expires in {expireIn}.",
                     ),
                 )
 
         # Set silence end UNIX time in token
-        responseToken.silenceEndTime = userUtils.getSilenceEnd(userID)
+        osuToken.update_token(
+            userToken["token_id"],
+            silence_end_time=userUtils.getSilenceEnd(userID),
+        )
 
         # Get only silence remaining seconds
-        silenceSeconds = responseToken.getSilenceSecondsLeft()
+        silenceSeconds = osuToken.getSilenceSecondsLeft(userToken["token_id"])
 
         # Get supporter/GMT
-        userGMT = responseToken.staff
-        userTournament = responseToken.privileges & privileges.USER_TOURNAMENT_STAFF > 0
+        userGMT = osuToken.is_staff(userToken["privileges"])
+        userTournament = userToken["privileges"] & privileges.USER_TOURNAMENT_STAFF > 0
 
         # userSupporter = not restricted
         userSupporter = True
@@ -306,7 +319,8 @@ def handle(
 
         # Send login notification before maintenance message
         if glob.banchoConf.config["loginNotification"]:
-            responseToken.enqueue(
+            osuToken.enqueue(
+                userToken["token_id"],
                 serverPackets.notification(
                     glob.banchoConf.config["loginNotification"].format(
                         BUILD_VER=glob.latestBuild,
@@ -318,11 +332,12 @@ def handle(
         if glob.banchoConf.config["banchoMaintenance"]:
             if not userGMT:
                 # We are not mod/admin, delete token, send notification and logout
-                glob.tokens.deleteToken(responseTokenString)
+                tokenList.deleteToken(responseTokenString)
                 raise exceptions.banchoMaintenanceException()
             else:
                 # We are mod/admin, send warning notification and continue
-                responseToken.enqueue(
+                osuToken.enqueue(
+                    userToken["token_id"],
                     serverPackets.notification(
                         "Akatsuki is currently in maintenance mode. Only admins have full access to the server.\n"
                         "Type '!system maintenance off' in chat to turn off maintenance mode.",
@@ -330,58 +345,60 @@ def handle(
                 )
 
         # Send all needed login packets
-        responseToken.enqueue(serverPackets.protocolVersion(19))
-        responseToken.enqueue(serverPackets.userID(userID))
-        responseToken.enqueue(serverPackets.silenceEndTime(silenceSeconds))
-        responseToken.enqueue(
-            serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
-        )
-        responseToken.enqueue(serverPackets.userPanel(userID, force=True))
-        responseToken.enqueue(serverPackets.userStats(userID, force=True))
+        osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
+        osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
+        osuToken.enqueue(userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds))
+        osuToken.enqueue(userToken["token_id"], serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament))
+        osuToken.enqueue(userToken["token_id"], serverPackets.userPanel(userID, force=True))
+        osuToken.enqueue(userToken["token_id"], serverPackets.userStats(userID, force=True))
 
         # Default opened channels.
-        chat.joinChannel(token=responseToken, channel_name="#osu")
-        chat.joinChannel(token=responseToken, channel_name="#announce")
+        chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
+        chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
 
         # Join role-related channels.
-        if responseToken.privileges & privileges.ADMIN_CAKER:
-            chat.joinChannel(token=responseToken, channel_name="#devlog")
-        if responseToken.staff:
-            chat.joinChannel(token=responseToken, channel_name="#staff")
-        if responseToken.privileges & privileges.USER_PREMIUM:
-            chat.joinChannel(token=responseToken, channel_name="#premium")
-        if responseToken.privileges & privileges.USER_DONOR:
-            chat.joinChannel(token=responseToken, channel_name="#supporter")
+        if userToken["privileges"] & privileges.ADMIN_CAKER:
+            chat.joinChannel(token_id=userToken["token_id"], channel_name="#devlog")
+        if osuToken.is_staff(userToken["privileges"]):
+            chat.joinChannel(token_id=userToken["token_id"], channel_name="#staff")
+        if userToken["privileges"] & privileges.USER_PREMIUM:
+            chat.joinChannel(token_id=userToken["token_id"], channel_name="#premium")
+        if userToken["privileges"] & privileges.USER_DONOR:
+            chat.joinChannel(token_id=userToken["token_id"], channel_name="#supporter")
 
         # Output channels info
         for channel in channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
                 client_count = stream.getClientCount(f"chat/{channel['name']}")
                 packet_data = serverPackets.channelInfo(channel["name"], channel["description"], client_count)
-                responseToken.enqueue(packet_data)
+                osuToken.enqueue(userToken["token_id"], packet_data)
 
         # Channel info end.
-        responseToken.enqueue(serverPackets.channelInfoEnd)
+        osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
 
         # Send friends list
-        responseToken.enqueue(serverPackets.friendList(userID))
+        osuToken.enqueue(userToken["token_id"], serverPackets.friendList(userID))
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
-            responseToken.enqueue(serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
+            osuToken.enqueue(userToken["token_id"], serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
 
         # Save token in redis
         glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
 
         # Send online users' panels
-        with glob.tokens:
-            for token in glob.tokens.tokens.values():
-                if not token.restricted:
-                    responseToken.enqueue(serverPackets.userPanel(token.userID))
+        with RedLock(
+            "bancho:locks:tokens",
+            retry_delay=50,
+            retry_times=20,
+        ):
+            for token in osuToken.get_tokens():
+                if not osuToken.is_restricted(token["privileges"]):
+                    osuToken.enqueue(userToken["token_id"], serverPackets.userPanel(token["user_id"]))
 
         # Get location and country from ip.zxq.co or database. If the user is a donor, then yee
         if settings.LOCALIZE_ENABLE and (
-            firstLogin or not responseToken.privileges & privileges.USER_DONOR
+            firstLogin or not userToken["privileges"] & privileges.USER_DONOR
         ):
             # Get location and country from IP
             countryLetters, (latitude, longitude) = locationHelper.getGeoloc(requestIP)
@@ -394,20 +411,22 @@ def handle(
             country = countryHelper.getCountryID(userUtils.getCountry(userID))
 
         # Set location and country
-        responseToken.setLocation(latitude, longitude)
-        responseToken.country = country
+        osuToken.setLocation(userToken["token_id"], latitude, longitude)
+        osuToken.update_token(
+            userToken["token_id"],
+            country=country,
+        )
 
         # Set country in db if user has no country (first bancho login)
         if userUtils.getCountry(userID) == "XX":
             userUtils.setCountry(userID, countryLetters)
 
         # Send to everyone our userpanel if we are not restricted or tournament
-        if not responseToken.restricted:
+        if not osuToken.is_restricted(userToken["privileges"]):
             streamList.broadcast("main", serverPackets.userPanel(userID))
 
         # Set reponse data to right value and reset our queue
-        responseData = responseToken.queue.copy()
-        responseToken.resetQueue()
+        responseData = osuToken.dequeue(userToken["token_id"])
     except exceptions.loginFailedException:
         # Login failed error packet
         # (we don't use enqueue because we don't have a token since login has failed)
@@ -430,9 +449,8 @@ def handle(
         responseData += serverPackets.loginLocked
     except exceptions.banchoMaintenanceException:
         # Bancho is in maintenance mode
-        if responseToken:
-            responseData = responseToken.queue.copy()
-            responseToken.resetQueue()
+        if userToken:
+            responseData = osuToken.dequeue(userToken["token_id"])
         else:
             responseData.clear()
         responseData += serverPackets.notification(

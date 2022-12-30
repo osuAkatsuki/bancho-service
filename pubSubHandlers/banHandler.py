@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob
+from objects import tokenList, osuToken
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):
@@ -14,11 +14,13 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
+        userID = int(userID)
+
         userUtils.removeFirstPlaces(userID)
 
-        if not (targetToken := glob.tokens.getTokenFromUserID(userID)):
+        if not (targetToken := tokenList.getTokenFromUserID(userID)):
             return
 
-        targetToken.privileges = userUtils.getPrivileges(userID)
-        targetToken.checkBanned()
-        targetToken.checkRestricted()
+        targetToken["privileges"] = userUtils.getPrivileges(userID)
+        osuToken.checkBanned(targetToken["token_id"])
+        osuToken.checkRestricted(targetToken["token_id"])

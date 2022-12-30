@@ -33,7 +33,7 @@ from handlers import (
 from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
-from objects import banchoConfig, fokabot, glob, streamList, channelList, match
+from objects import banchoConfig, fokabot, glob, streamList, channelList, match, osuToken, tokenList
 from pubSubHandlers import (
     banHandler,
     changeUsernameHandler,
@@ -119,6 +119,9 @@ if __name__ == "__main__":
             log(f"Error connecting to redis.", Ansi.LRED)
             raise
 
+        # TODO: remove this once we're done testing
+        # glob.redis.flushall()
+
         # Empty redis cache
         # try:
         #     glob.redis.set("ripple:online_users", 0)
@@ -136,7 +139,7 @@ if __name__ == "__main__":
             raise
 
         # Delete old bancho sessions
-        glob.tokens.deleteBanchoSessions()
+        tokenList.deleteBanchoSessions()
 
         # Create threads pool
         try:
@@ -161,8 +164,8 @@ if __name__ == "__main__":
 
         log("Starting background loops.", Ansi.LMAGENTA)
 
-        glob.tokens.usersTimeoutCheckLoop()
-        glob.tokens.spamProtectionResetLoop()
+        tokenList.usersTimeoutCheckLoop()
+        tokenList.spamProtectionResetLoop()
         # glob.matches.cleanupLoop()
 
         if not settings.LOCALIZE_ENABLE:
@@ -185,20 +188,16 @@ if __name__ == "__main__":
                     periodicChecks=[
                         datadogClient.periodicCheck(
                             "online_users",
-                            lambda: len(glob.tokens.tokens),
+                            lambda: len(osuToken.get_token_ids()),
                         ),
                         datadogClient.periodicCheck(
                             "multiplayer_matches",
                             lambda: len(match.get_match_ids()),
                         ),
-                        # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
-                        # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
-                        # datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
-                        # datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
-                        # datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
-                        # datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),
-                        # datadogClient.periodicCheck("ram_tornado", lambda: generalUtils.getTotalSize(glob.application)),
-                        # datadogClient.periodicCheck("ram_db", lambda: generalUtils.getTotalSize(glob.db)),
+                        datadogClient.periodicCheck(
+                            "chat_channels",
+                            lambda: len(channelList.getChannelNames()),
+                        ),
                     ],
                 )
         except:

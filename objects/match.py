@@ -13,9 +13,8 @@ from constants import serverPackets
 from constants import slotStatuses
 from helpers import chatHelper as chat
 from objects import glob
-from objects.osuToken import token
-from objects import streamList
-from objects import channelList, slot, match
+from objects import streamList, osuToken
+from objects import channelList,tokenList, slot, match,matchList
 from typing import TypedDict
 
 # (set) bancho:matches
@@ -233,9 +232,9 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
 
     struct.extend(
         [
-            (glob.tokens.tokens[slot["user_token"]].userID, dataTypes.UINT32)
+            (tokenList.getUserIDFromToken(slot["user_token"]), dataTypes.UINT32)
             for slot in slots
-            if (slot["user_token"] and slot["user_token"] in glob.tokens.tokens)
+            if (slot["user_token"] and osuToken.get_token(slot["user_token"]) is not None)
         ],
     )
 
@@ -272,10 +271,10 @@ def setHost(match_id: int, new_host_id: int) -> bool:
     multiplayer_match = get_match(match_id)
     assert multiplayer_match is not None
 
-    old_host = glob.tokens.getTokenFromUserID(multiplayer_match["host_user_id"])
+    old_host = tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
     assert old_host is not None
 
-    if not old_host.staff:
+    if not osuToken.is_staff(old_host["privileges"]):
         remove_referee(match_id, multiplayer_match["host_user_id"])
 
     add_referee(match_id, new_host_id)
@@ -286,7 +285,12 @@ def setHost(match_id: int, new_host_id: int) -> bool:
 
     _slot = slot.get_slot(match_id, slot_id)
     assert _slot is not None
-    if _slot["user_token"] is None or _slot["user_token"] not in glob.tokens.tokens:
+
+    if _slot["user_token"] is None:
+        return False
+
+    user_token = osuToken.get_token(_slot["user_token"])
+    if user_token is None:
         return False
 
     match.update_match(
@@ -294,8 +298,7 @@ def setHost(match_id: int, new_host_id: int) -> bool:
         host_user_id=new_host_id,
     )
 
-    user_token = glob.tokens.tokens[_slot["user_token"]]
-    user_token.enqueue(serverPackets.matchTransferHost)
+    osuToken.enqueue(user_token["token_id"], serverPackets.matchTransferHost)
     sendUpdates(match_id)
     return True
 
@@ -406,16 +409,16 @@ def toggleSlotLocked(match_id: int, slot_id: int) -> None:
         newStatus = slotStatuses.LOCKED
 
     # Send updated settings to kicked user, so he returns to lobby
-    if _slot["user_token"] and _slot["user_token"] in glob.tokens.tokens:
+    if _slot["user_token"] and _slot["user_token"] in osuToken.get_token_ids():
         packet_data = serverPackets.updateMatch(match_id)
         if packet_data is None:
             # TODO: is this correct behaviour?
             # ripple was doing this before the stateless refactor,
             # but i'm pretty certain the osu! client won't like this.
-            glob.tokens.tokens[_slot["user_token"]].enqueue(b"")
+            osuToken.enqueue(_slot["user_token"], b"")
             return None
 
-        glob.tokens.tokens[_slot["user_token"]].enqueue(packet_data)
+        osuToken.enqueue(_slot["user_token"], packet_data)
 
     # Set new slot status
     setSlot(
@@ -607,7 +610,7 @@ def allPlayersCompleted(match_id: int) -> None:
     # Add score info for each player
     for _slot in slots:
         if _slot["user_token"] and _slot["status"] == slotStatuses.PLAYING:
-            infoToSend["scores"][glob.tokens.tokens[_slot["user_token"]].userID] = {
+            infoToSend["scores"][_slot["user_id"]] = {
                 "score": _slot["score"],
                 "mods": _slot["mods"],
                 "failed": _slot["failed"],
@@ -682,14 +685,10 @@ def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
     assert len(slots) == 16
 
     for slot_id, _slot in enumerate(slots):
-        if (
-            _slot["user_token"]
-            and _slot["user_token"] in glob.tokens.tokens
-            and glob.tokens.tokens[_slot["user_token"]].userID == user_id
-        ):
+        if _slot["user_id"] == user_id:
             return slot_id
 
-def userJoin(match_id: int, user_token_obj: token) -> bool:
+def userJoin(match_id: int, token_id: str) -> bool:
     """
     Add someone to users in match
 
@@ -702,9 +701,12 @@ def userJoin(match_id: int, user_token_obj: token) -> bool:
     slots = slot.get_slots(match_id)
     assert len(slots) == 16
 
+    token = osuToken.get_token(token_id)
+    assert token is not None
+
     # Make sure we're not in this match
     for slot_id, _slot in enumerate(slots):
-        if _slot["user_token"] == user_token_obj.token:
+        if _slot["user_token"] == token_id:
             # Set bugged slot to free
             setSlot(
                 match_id,
@@ -733,19 +735,19 @@ def userJoin(match_id: int, user_token_obj: token) -> bool:
                 slot_id,
                 status=slotStatuses.NOT_READY,
                 team=team,
-                user_token=user_token_obj.token,
+                user_token=token_id,
                 mods=0,
-                user_id=user_token_obj.userID,
+                user_id=token["user_id"],
             )
 
-            if user_token_obj.staff:
-                add_referee(match_id, user_token_obj.userID)
+            if osuToken.is_staff(token["privileges"]):
+                add_referee(match_id, token["user_id"])
 
             # Send updated match data
             sendUpdates(match_id)
             return True
 
-    if user_token_obj.staff:  # Allow mods+ to join into locked but empty slots.
+    if osuToken.is_staff(token["privileges"]):  # Allow mods+ to join into locked but empty slots.
         for slot_id, _slot in enumerate(slots):
             if _slot["status"] == slotStatuses.LOCKED and _slot["user_id"] == -1:
                 if multiplayer_match["match_team_type"] in (
@@ -761,9 +763,9 @@ def userJoin(match_id: int, user_token_obj: token) -> bool:
                     slot_id,
                     status=slotStatuses.NOT_READY,
                     team=team,
-                    user_token=user_token_obj.token,
+                    user_token=token["token_id"],
                     mods=0,
-                    user_id=user_token_obj.userID,
+                    user_id=token["user_id"],
                 )
 
                 # Send updated match data
@@ -772,7 +774,7 @@ def userJoin(match_id: int, user_token_obj: token) -> bool:
 
     return False
 
-def userLeft(match_id: int, user: token, disposeMatch: bool = True) -> None:
+def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
     """
     Remove someone from users in match
 
@@ -783,8 +785,11 @@ def userLeft(match_id: int, user: token, disposeMatch: bool = True) -> None:
     multiplayer_match = get_match(match_id)
     assert multiplayer_match is not None
 
+    token = osuToken.get_token(token_id)
+    assert token is not None
+
     # Make sure the user is in room
-    slot_id = getUserSlotID(match_id, user.userID)
+    slot_id = getUserSlotID(match_id, token["user_id"])
     if slot_id is None:
         return
 
@@ -802,7 +807,7 @@ def userLeft(match_id: int, user: token, disposeMatch: bool = True) -> None:
     # Check if everyone left
     if countUsers(match_id) == 0 and disposeMatch and not multiplayer_match["is_tourney"]:
         # Dispose match
-        glob.matches.disposeMatch(multiplayer_match["match_id"])
+        matchList.disposeMatch(multiplayer_match["match_id"]) # TODO
         # log.info("MPROOM{}: Room disposed because all users left.".format(self.matchID))
         return
 
@@ -810,12 +815,18 @@ def userLeft(match_id: int, user: token, disposeMatch: bool = True) -> None:
     assert len(slots) == 16
 
     # Check if host left
-    if user.userID == multiplayer_match["host_user_id"]:
+    if token["user_id"] == multiplayer_match["host_user_id"]:
         # Give host to someone else
         for _slot in slots:
-            if _slot["user_token"] and _slot["user_token"] in glob.tokens.tokens:
-                setHost(match_id, glob.tokens.tokens[_slot["user_token"]].userID)
-                break
+            if _slot["user_token"] is None:
+                continue
+
+            token = osuToken.get_token(_slot["user_token"])
+            if token is None:
+                continue
+
+            setHost(match_id, token["user_id"])
+            break
 
     # Send updated match data
     sendUpdates(match_id)
@@ -959,11 +970,11 @@ def transferHost(match_id: int, slot_id: int) -> None:
     assert _slot is not None
 
     # Make sure there is someone in that slot
-    if not _slot["user_token"] or _slot["user_token"] not in glob.tokens.tokens:
+    if not _slot["user_token"] or _slot["user_token"] not in osuToken.get_token_ids():
         return
 
     # Transfer host
-    setHost(match_id, glob.tokens.tokens[_slot["user_token"]].userID)
+    setHost(match_id, _slot["user_id"])
 
 def playerFailed(match_id: int, user_id: int) -> None:
     """
@@ -998,8 +1009,8 @@ def invite(match_id: int, fro: int, to: int) -> None:
     :return:
     """
     # Get tokens
-    froToken = glob.tokens.getTokenFromUserID(fro, _all=False)
-    toToken = glob.tokens.getTokenFromUserID(to, _all=False)
+    froToken = tokenList.getTokenFromUserID(fro, _all=False)
+    toToken = tokenList.getTokenFromUserID(to, _all=False)
     if not froToken or not toToken:
         return
 
@@ -1007,7 +1018,7 @@ def invite(match_id: int, fro: int, to: int) -> None:
     if to == 999:
         chat.sendMessage(
             glob.BOT_NAME,
-            froToken.username,
+            froToken["username"],
             "I'd love to join your match, but I've got a job to do!.",
         )
         return
@@ -1021,7 +1032,11 @@ def invite(match_id: int, fro: int, to: int) -> None:
         "Come join my multiplayer match: "
         f'"[osump://{multiplayer_match["match_id"]}/{pw_safe} {multiplayer_match["match_name"]}]"'
     )
-    chat.sendMessage(token=froToken, to=toToken.username, message=message)
+    chat.sendMessage(
+        token_id=froToken["token_id"],
+        to=toToken["username"],
+        message=message,
+    )
 
 def countUsers(match_id: int) -> int:
     """
@@ -1160,7 +1175,8 @@ def start(match_id: int) -> bool:
         if _slot["user_token"] is None:
             continue
 
-        if _slot["user_token"] in glob.tokens.tokens:
+        user_token = osuToken.get_token(_slot["user_token"])
+        if user_token is not None:
             slot.update_slot(
                 match_id,
                 slot_id,
@@ -1169,8 +1185,8 @@ def start(match_id: int) -> bool:
                 skip=False,
                 complete=False,
             )
-            user_token = glob.tokens.tokens[_slot["user_token"]]
-            user_token.joinStream(playing_stream_name)
+
+            osuToken.joinStream(user_token["token_id"], playing_stream_name)
 
     # Send match start packet
     streamList.broadcast(

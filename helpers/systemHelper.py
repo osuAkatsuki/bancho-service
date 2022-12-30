@@ -18,7 +18,7 @@ from common.log import logUtils as log
 from constants import serverPackets
 from helpers import consoleHelper
 from objects import streamList
-from objects import glob, match
+from objects import glob, match, osuToken
 
 
 def dispose() -> None:
@@ -111,7 +111,7 @@ def getSystemInfo() -> dict[str, Any]:
     """
     data = {
         "unix": runningUnderUnix(),
-        "connectedUsers": len(glob.tokens.tokens),
+        "connectedUsers": len(osuToken.get_token_ids()),
         "matches": len(match.get_match_ids()),
     }
 

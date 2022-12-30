@@ -5,18 +5,18 @@ from common.constants import mods
 from common.ripple import userUtils
 from constants import clientPackets
 from constants import serverPackets
-from objects import glob
-from objects.osuToken import token
+from objects import glob,osuToken
+from objects.osuToken import Token
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Make sure we are not banned
     # if userUtils.isBanned(userID):
     # 	userToken.enqueue(serverPackets.loginBanned)
     # 	return
 
     # Send restricted message if needed
-    # if userToken.restricted:
+    # if userToken["restricted"]:
     # 	userToken.checkRestricted(True)
 
     # Change action packet
@@ -35,50 +35,58 @@ def handle(userToken: token, rawPacketData: bytes):
     autopilot_in_mods: bool = packetData["actionMods"] & mods.AUTOPILOT != 0
 
     # Update cached stats if relax/autopilot status changed
+    should_update_cached_stats = False
 
-    if relax_in_mods != userToken.relax:
-        userToken.relax = relax_in_mods
-        userToken.updateCachedStats()
+    if relax_in_mods != userToken["relax"]:
+        userToken["relax"] = relax_in_mods
+        should_update_cached_stats = True
 
-    if autopilot_in_mods != userToken.autopilot:
-        userToken.autopilot = autopilot_in_mods
-        userToken.updateCachedStats()
+    if autopilot_in_mods != userToken["autopilot"]:
+        userToken["autopilot"] = autopilot_in_mods
+        should_update_cached_stats = True
 
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-    if userToken.actionID in {
+    if userToken["action_id"] in {
         actions.PLAYING,
         actions.MULTIPLAYING,
-    } or userToken.pp != userUtils.getPP(
-        userToken.userID,
-        userToken.gameMode,
-        userToken.relax,
-        userToken.autopilot,
+    } or userToken["pp"] != userUtils.getPP(
+        userToken["user_id"],
+        userToken["game_mode"],
+        userToken["relax"],
+        userToken["autopilot"],
     ):
-        userToken.updateCachedStats()
+        should_update_cached_stats = True
 
-    if userToken.gameMode != packetData["gameMode"]:
-        userToken.gameMode = packetData["gameMode"]
-        userToken.updateCachedStats()
+    if userToken["game_mode"] != packetData["gameMode"]:
+        userToken["game_mode"] = packetData["gameMode"]
+        should_update_cached_stats = True
 
-    # Always update action id, text, md5 and beatmapID
-    userToken.actionID = packetData["actionID"]
-    userToken.actionText = packetData["actionText"]
-    userToken.actionMd5 = packetData["actionMd5"]
-    userToken.actionMods = packetData["actionMods"]
-    userToken.beatmapID = packetData["beatmapID"]
+    osuToken.update_token(
+        userToken["token_id"],
+        relax=userToken["relax"],
+        autopilot=userToken["autopilot"],
+        game_mode=userToken["game_mode"],
+        # always update these
+        action_id=packetData["actionID"],
+        action_text=packetData["actionText"],
+        action_md5=packetData["actionMd5"],
+        action_mods=packetData["actionMods"],
+        beatmap_id=packetData["beatmapID"],
+    )
+    if should_update_cached_stats:
+        osuToken.updateCachedStats(userToken["token_id"])
 
     # Enqueue our new user panel and stats to us and our spectators
     recipients = [userToken]
-    if userToken.spectators:
-        for i in userToken.spectators:
-            if i in glob.tokens.tokens:
-                recipients.append(glob.tokens.tokens[i])
+    spectators = osuToken.get_spectators(userToken["token_id"])
+    for spectator_user_id in spectators:
+        token = osuToken.get_token_by_user_id(spectator_user_id)
+        if token is not None:
+            recipients.append(token)
 
-    for i in recipients:
-        if not i:
-            continue
-
+    for spectator in recipients:
         # Force our own packet
-        force = i == userToken
-        i.enqueue(serverPackets.userPanel(userToken.userID, force))
-        i.enqueue(serverPackets.userStats(userToken.userID, force))
+        force = spectator == userToken
+
+        osuToken.enqueue(spectator["token_id"], serverPackets.userPanel(userToken["user_id"], force))
+        osuToken.enqueue(spectator["token_id"], serverPackets.userStats(userToken["user_id"], force))

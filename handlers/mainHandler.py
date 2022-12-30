@@ -8,6 +8,7 @@ import tornado.gen
 import tornado.web
 
 import settings
+from redlock import RedLock
 from common.log import logUtils as log
 from common.web import requestsManager
 from constants import exceptions
@@ -57,7 +58,7 @@ from events import tournamentLeaveMatchChannelEvent
 from events import tournamentMatchInfoRequestEvent
 from events import userPanelRequestEvent
 from events import userStatsRequestEvent
-from objects import glob
+from objects import glob, osuToken, tokenList
 
 PACKET_PROTO = struct.Struct("<HxI")
 
@@ -161,18 +162,24 @@ class handler(requestsManager.asyncRequestHandler):
             responseTokenString, responseData = loginEvent.handle(self)
         else:
             userToken = None  # default value
+            redlock = None
             try:
                 # This is not the first packet, send response based on client's request
                 # Packet start position, used to read stacked packets
                 pos = 0
 
                 # Make sure the token exists
-                if requestTokenString not in glob.tokens.tokens:
+                userToken = osuToken.get_token(requestTokenString)
+                if userToken is None:
                     raise exceptions.tokenNotFoundException()
 
                 # Token exists, get its object and lock it
-                userToken = glob.tokens.tokens[requestTokenString]
-                userToken.processingLock.acquire()
+                redlock = RedLock(
+                    f"{osuToken.make_key(userToken['token_id'])}:processing_lock",
+                    retry_delay=50, # ms
+                    retry_times=20,
+                )
+                redlock.acquire()
 
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
@@ -188,7 +195,7 @@ class handler(requestsManager.asyncRequestHandler):
                     if packetID != 4:
                         if packetID in bancho_packets:
                             if (
-                                not userToken.restricted
+                                not osuToken.is_restricted(userToken["privileges"])
                                 or packetID in restricted_packets
                             ):
                                 bancho_packets[packetID](userToken, packetData)
@@ -200,9 +207,8 @@ class handler(requestsManager.asyncRequestHandler):
                     pos += dataLength + 7
 
                 # Token queue built, send it
-                responseTokenString = userToken.token
-                responseData = bytes(userToken.queue)
-                userToken.resetQueue()
+                responseTokenString = userToken["token_id"]
+                responseData = osuToken.dequeue(userToken["token_id"])
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
@@ -214,12 +220,15 @@ class handler(requestsManager.asyncRequestHandler):
                 # Unlock token
                 if userToken:
                     # Update ping time for timeout
-                    userToken.updatePingTime()
+                    osuToken.updatePingTime(userToken["token_id"])
+
                     # Release processing lock
-                    userToken.processingLock.release()
+                    if redlock is not None:
+                        redlock.release()
+
                     # Delete token if kicked
-                    if userToken.kicked:
-                        glob.tokens.deleteToken(userToken)
+                    if userToken["kicked"]:
+                        tokenList.deleteToken(userToken["token_id"])
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)

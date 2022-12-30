@@ -2,12 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from objects import glob
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-    from objects.osuToken import token
+from objects import glob, osuToken
 
 def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
@@ -29,11 +24,7 @@ def getClientCount(stream_name: str) -> int:
     """
     return glob.redis.scard(make_key(stream_name))
 
-def addClient(
-    stream_name: str,
-    client: Optional[token] = None,
-    token: Optional[str] = None,
-) -> None:
+def addClient(stream_name: str, token_id: str) -> None:
     """
     Add a client to this stream if not already in
 
@@ -41,42 +32,27 @@ def addClient(
     :param token: client uuid string
     :return:
     """
-    if client:
-        token = client.token
-    elif token:
-        pass
-    else:
-        return
 
     current_tokens = getClients(stream_name)
 
-    if token not in current_tokens:
+    if token_id not in current_tokens:
         # log.info("{} has joined stream {}.".format(token, self.name))
-        glob.redis.sadd(make_key(stream_name), token)
+        glob.redis.sadd(make_key(stream_name), token_id)
 
 def removeClient(
     stream_name: str,
-    client: Optional[token] = None,
-    token: Optional[str] = None,
+    token_id: str,
 ) -> None:
     """
     Remove a client from this stream if in
 
-    :param client: client (osuToken) object
-    :param token: client uuid string
+    :param token_id: client uuid string
     :return:
     """
-    if client:
-        token = client.token
-    elif token:
-        pass
-    else:
-        return
-
     current_tokens = getClients(stream_name)
 
-    if token in current_tokens:
-        glob.redis.srem(make_key(stream_name), token)
+    if token_id in current_tokens:
+        glob.redis.srem(make_key(stream_name), token_id)
 
 def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     """
@@ -89,11 +65,11 @@ def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     current_tokens = getClients(stream_name)
 
     for i in current_tokens:
-        if i in glob.tokens.tokens:
+        if i in osuToken.get_token_ids():
             if i not in but:
-                glob.tokens.tokens[i].enqueue(data)
+                osuToken.enqueue(i, data)
         else:
-            removeClient(stream_name, token=i)
+            removeClient(stream_name, token_id=i)
 
 def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
     """
@@ -106,11 +82,11 @@ def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
     current_tokens = getClients(stream_name)
 
     for i in current_tokens:
-        if i in glob.tokens.tokens:
+        if i in osuToken.get_token_ids():
             if i in users:
-                glob.tokens.tokens[i].enqueue(data)
+                osuToken.enqueue(i, data)
         else:
-            removeClient(stream_name, token=i)
+            removeClient(stream_name, token_id=i)
 
 def dispose(stream_name: str) -> None:
     """
@@ -121,5 +97,5 @@ def dispose(stream_name: str) -> None:
     current_tokens = getClients(stream_name)
 
     for i in current_tokens:
-        if i in glob.tokens.tokens:
-            glob.tokens.tokens[i].leaveStream(stream_name)
+        if i in osuToken.get_token_ids():
+            osuToken.leaveStream(i, stream_name)

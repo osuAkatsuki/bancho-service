@@ -4,12 +4,13 @@ import re
 from time import time
 from typing import Optional
 from typing import TypedDict
+from redlock import RedLock
 
 from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob,streamList,match
+from objects import glob,streamList,match,matchList, tokenList, osuToken
 
 # Some common regexes, compiled to increase performance.
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
@@ -23,21 +24,29 @@ npRegex = re.compile(
 
 
 def connect() -> None:
-    with glob.tokens:
-        token = glob.tokens.addToken(999)
+    with RedLock(
+        "bancho:locks:tokens",
+        retry_delay=50,
+        retry_times=20,
+    ):
+        token = tokenList.addToken(999)
         assert token is not None
 
-        token.actionID = actions.IDLE
+        osuToken.update_token(token["token_id"], action_id=actions.IDLE)
         streamList.broadcast("main", serverPackets.userPanel(999))
         streamList.broadcast("main", serverPackets.userStats(999))
 
 
 def disconnect() -> None:
-    with glob.tokens:
-        token = glob.tokens.getTokenFromUserID(999)
+    with RedLock(
+        "bancho:locks:tokens",
+        retry_delay=50,
+        retry_times=20,
+    ):
+        token = tokenList.getTokenFromUserID(999)
         assert token is not None
 
-        glob.tokens.deleteToken(token.token)
+        tokenList.deleteToken(token["token_id"])
 
 
 # def reload_commands():
@@ -80,7 +89,7 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
 
         # If this is an !mp command in a match, make sure the user is a referee.
         if chan.startswith("#multi_") and cmd["trigger"] == "!mp":
-            multiplayer_match = glob.matches.getMatchFromChannel(chan)
+            multiplayer_match = matchList.getMatchFromChannel(chan)
             assert multiplayer_match is not None
 
             if userID not in match.get_referees(multiplayer_match["match_id"]):

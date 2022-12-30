@@ -1,28 +1,28 @@
 from __future__ import annotations
 
-from objects import match
-from objects.osuToken import token
+from objects import match, osuToken
+from objects.osuToken import Token
 
 from redlock import RedLock
 
-def handle(userToken: token, _, has_beatmap: bool):
+def handle(userToken: Token, _, has_beatmap: bool):
     # Make sure we are in a match
-    if userToken.matchID == -1:
+    if userToken["match_id"] is None:
         return
 
     # Make sure the match exists
-    multiplayer_match = match.get_match(userToken.matchID)
+    multiplayer_match = match.get_match(userToken["match_id"])
     if multiplayer_match is None:
         return
 
     # Set has beatmap/no beatmap
     with RedLock(
-        f"{match.make_key(userToken.matchID)}:lock",
+        f"{match.make_key(userToken['match_id'])}:lock",
         retry_delay=50,
         retry_times=20,
     ):
         match.userHasBeatmap(
             multiplayer_match["match_id"],
-            userToken.userID,
+            userToken["user_id"],
             has_beatmap,
         )

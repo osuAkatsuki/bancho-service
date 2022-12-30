@@ -3,10 +3,11 @@ from __future__ import annotations
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
-from objects.osuToken import token
+from objects.osuToken import Token
+from objects import osuToken
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Read userIDs list
     packetData = clientPackets.userStatsRequest(rawPacketData)
 
@@ -19,8 +20,8 @@ def handle(userToken: token, rawPacketData: bytes):
         log.debug(f"Sending stats for user {userID}.")
 
         # Skip our stats
-        if userID == userToken.userID:
+        if userID == userToken["user_id"]:
             continue
 
         # Enqueue stats packets relative to this user
-        userToken.enqueue(serverPackets.userStats(userID))
+        osuToken.enqueue(userToken["token_id"], serverPackets.userStats(userID))

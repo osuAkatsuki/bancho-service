@@ -4,7 +4,7 @@ from common.constants import actions
 from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob
+from objects import glob, tokenList
 
 
 def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
@@ -46,11 +46,11 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             return
 
         # Get the user's token
-        if (targetToken := glob.tokens.getTokenFromUserID(data["userID"])) is None:
+        if (targetToken := tokenList.getTokenFromUserID(data["userID"])) is None:
             # If the user is offline change username immediately
             handleUsernameChange(data["userID"], data["newUsername"])
         else:
-            if targetToken.irc or targetToken.actionID not in {
+            if targetToken["irc"] or targetToken["action_id"] not in {
                 actions.PLAYING,
                 actions.MULTIPLAYING,
             }:

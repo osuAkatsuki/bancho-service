@@ -4,11 +4,10 @@ from typing import TYPE_CHECKING
 
 from objects import glob
 from objects import stream
+from objects import osuToken
 
 if TYPE_CHECKING:
     from typing import Optional
-
-    from objects.osuToken import token
 
 def make_key() -> str:
     return f"bancho:streams"
@@ -47,21 +46,17 @@ def remove(name: str) -> None:
     if name in current_streams:
         current_clients = stream.getClients(name)
         for i in current_clients:
-            if i in glob.tokens.tokens:
-                glob.tokens.tokens[i].leaveStream(name)
+            if i in osuToken.get_token_ids():
+                osuToken.leaveStream(i, name)
 
         #self.streams.pop(name)
         previous_members = stream.getClients(name)
         for token in previous_members:
-            stream.removeClient(name, token=token)
+            stream.removeClient(name, token_id=token)
         glob.redis.srem(make_key(), name)
 
 
-def join(
-    name: str,
-    client: Optional[token] = None,
-    token: Optional[str] = None,
-) -> None:
+def join(name: str, token_id: str) -> None:
     """
     Add a client to a stream
 
@@ -73,12 +68,11 @@ def join(
 
     streams = getStreams()
     if name in streams:
-        stream.addClient(name, client=client, token=token)
+        stream.addClient(name, token_id)
 
 def leave(
     name: str,
-    client: Optional[token] = None,
-    token: Optional[str] = None,
+    token_id: str,
 ) -> None:
     """
     Remove a client from a stream
@@ -91,7 +85,7 @@ def leave(
 
     streams = getStreams()
     if name in streams:
-        stream.removeClient(name, client=client, token=token)
+        stream.removeClient(name, token_id)
 
 def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     """
