@@ -9,7 +9,7 @@ from typing import TypedDict
 from constants import exceptions
 from helpers import chatHelper as chat
 import json
-from objects import glob
+from objects import glob, match
 from objects import stream,streamList
 import logging
 
@@ -224,7 +224,7 @@ def getMatchIDFromChannel(channel_name: str) -> int:
         raise exceptions.wrongChannelException()
 
     matchID = int(parts[1])
-    if matchID not in glob.matches.matches:
+    if matchID not in match.get_match_ids():
         raise exceptions.matchNotFoundException()
 
     return matchID

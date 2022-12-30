@@ -12,7 +12,7 @@ from helpers import chatHelper as chat
 from objects import glob, streamList
 
 
-def handle(userToken, _=None, deleteToken=True):
+def handle(userToken: token, _=None, deleteToken=True):
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login

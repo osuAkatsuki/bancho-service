@@ -9,7 +9,7 @@ from os import name
 from signal import SIGKILL
 from threading import Timer
 from time import time
-from typing import NoReturn
+from typing import NoReturn, Any
 
 import psutil
 
@@ -18,7 +18,7 @@ from common.log import logUtils as log
 from constants import serverPackets
 from helpers import consoleHelper
 from objects import streamList
-from objects import glob
+from objects import glob, match
 
 
 def dispose() -> None:
@@ -91,7 +91,7 @@ def restartServer() -> NoReturn:
     _exit(0)  # restart handled by script now
 
 
-def shutdownServer() -> NoReturn:
+def shutdownServer() -> NoReturn:  # type: ignore
     """
     Shutdown bancho-service
 
@@ -103,7 +103,7 @@ def shutdownServer() -> NoReturn:
     kill(getpid(), sig)
 
 
-def getSystemInfo() -> dict[str, object]:
+def getSystemInfo() -> dict[str, Any]:
     """
     Get a dictionary with some system/server info
 
@@ -112,7 +112,7 @@ def getSystemInfo() -> dict[str, object]:
     data = {
         "unix": runningUnderUnix(),
         "connectedUsers": len(glob.tokens.tokens),
-        "matches": len(glob.matches.matches),
+        "matches": len(match.get_match_ids()),
     }
 
     # General stats

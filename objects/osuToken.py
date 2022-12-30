@@ -20,7 +20,7 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from helpers import chatHelper as chat
-from objects import glob,streamList
+from objects import glob,streamList, match
 
 if TYPE_CHECKING:
     from objects import osuToken
@@ -56,6 +56,7 @@ class token:
             "FROM users WHERE id = %s",
             [userID],
         )
+        assert res is not None
 
         self.username = res["username"]
         self.safeUsername = res["username_safe"]
@@ -354,11 +355,9 @@ class token:
         :return:
         """
         # Make sure the match exists
-        if matchID not in glob.matches.matches:
+        multiplayer_match = match.get_match(matchID)
+        if multiplayer_match is None:
             return
-
-        # Match exists, get object
-        match = glob.matches.matches[matchID]
 
         # Stop spectating
         self.stopSpectating()
@@ -368,24 +367,24 @@ class token:
             self.leaveMatch()
 
         # Try to join match
-        if not match.userJoin(self):
+        if not match.userJoin(multiplayer_match["match_id"], self):
             self.enqueue(serverPackets.matchJoinFail)
             return
 
         # Set matchID, join stream, channel and send packet
         self.matchID = matchID
-        self.joinStream(match.streamName)
+        self.joinStream(match.create_stream_name(multiplayer_match["match_id"]))
         chat.joinChannel(token=self, channel_name=f"#multi_{self.matchID}", force=True)
         self.enqueue(serverPackets.matchJoinSuccess(matchID))
 
-        if match.isTourney:
+        if multiplayer_match["is_tourney"]:
             # Alert the user if we have just joined a tourney match
             self.enqueue(
                 serverPackets.notification("You are now in a tournament match."),
             )
             # If an user joins, then the ready status of the match changes and
             # maybe not all users are ready.
-            match.sendReadyStatus()
+            match.sendReadyStatus(multiplayer_match["match_id"])
 
     def leaveMatch(self) -> None:
         """
@@ -404,38 +403,36 @@ class token:
             kick=True,
             force=True,
         )
-        self.leaveStream(f"multi/{self.matchID}")
-        self.leaveStream(f"multi/{self.matchID}/playing")  # optional
+        self.leaveStream(match.create_stream_name(self.matchID))
+        self.leaveStream(match.create_playing_stream_name(self.matchID))  # optional
 
         # Set usertoken match to -1
         leavingMatchID = self.matchID
         self.matchID = -1
 
         # Make sure the match exists
-        if leavingMatchID not in glob.matches.matches:
+        multiplayer_match = match.get_match(leavingMatchID)
+        if multiplayer_match is None:
             return
 
-        # The match exists, get object
-        match = glob.matches.matches[leavingMatchID]
-
         # Set slot to free
-        match.userLeft(self)
+        match.userLeft(multiplayer_match["match_id"], self)
 
-        if match.isTourney:
+        if multiplayer_match["is_tourney"]:
             # If an user leaves, then the ready status of the match changes and
             # maybe all users are ready. Or maybe nobody is in the match anymore
-            match.sendReadyStatus()
+            match.sendReadyStatus(multiplayer_match["match_id"])
 
     def kick(
         self,
-        message: str = "You we're kicked from the server.",
+        message: str = "You were kicked from the server.",
         reason: str = "kick",
     ) -> None:
         """
         Kick this user from the server
 
         :param message: Notification message to send to this user.
-                        Default: "You we're kicked from the server."
+                        Default: "You were kicked from the server."
         :param reason: Kick reason, used in logs. Default: "kick"
         :return:
         """

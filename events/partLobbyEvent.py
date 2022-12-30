@@ -3,7 +3,7 @@ from __future__ import annotations
 from helpers import chatHelper as chat
 
 
-def handle(userToken, _):
+def handle(userToken: token, _):
     # Remove user from users in lobby
     userToken.leaveStream("lobby")
 

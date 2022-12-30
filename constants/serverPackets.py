@@ -1,5 +1,6 @@
 """ Contains functions used to write specific server packets to byte streams """
 from __future__ import annotations
+from typing import Optional
 
 from common.constants import privileges
 from common.ripple import userUtils
@@ -7,7 +8,7 @@ from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
 from helpers import packetHelper
-from objects import glob, stream,channelList
+from objects import glob, match
 
 
 def notification(message: str) -> bytes:
@@ -372,58 +373,56 @@ def fellowSpectatorLeft(userID: int) -> bytes:
 """ Multiplayer Packets """
 
 
-def createMatch(matchID: int) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
+def createMatch(match_id: int) -> bytes:
+    # Get match binary data and build packet
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
         return b""
 
-    # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
-    matchData = match.getMatchData(censored=True)
+    matchData = match.getMatchData(match_id, censored=True)
     return packetHelper.buildPacket(packetIDs.server_newMatch, matchData)
 
 
-# TODO: Add match object argument to save some CPU
-def updateMatch(matchID: int, censored: bool = False) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
-        return b""
-
+def updateMatch(match_id: int, censored: bool = False) -> Optional[bytes]:
     # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
+        return None
+
     return packetHelper.buildPacket(
         packetIDs.server_updateMatch,
-        match.getMatchData(censored=censored),
+        match.getMatchData(match_id, censored=censored),
     )
 
 
-def matchStart(matchID: int) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
+def matchStart(match_id: int) -> bytes:
+    # Get match binary data and build packet
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
         return b""
 
-    # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
-    return packetHelper.buildPacket(packetIDs.server_matchStart, match.getMatchData())
+    return packetHelper.buildPacket(
+        packetIDs.server_matchStart,
+        match.getMatchData(match_id, censored=False),
+    )
 
 
-def disposeMatch(matchID: int) -> bytes:
+def disposeMatch(match_id: int) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_disposeMatch,
-        ((matchID, dataTypes.UINT32),),
+        ((match_id, dataTypes.UINT32),),
     )
 
 
-def matchJoinSuccess(matchID: int) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
+def matchJoinSuccess(match_id: int) -> bytes:
+    # Get match binary data and build packet
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
         return b""
 
-    # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
     return packetHelper.buildPacket(
         packetIDs.server_matchJoinSuccess,
-        match.getMatchData(),
+        match.getMatchData(match_id, censored=False),
     )
 
 

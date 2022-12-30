@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from common.log import logUtils as log
 from constants import clientPackets
-from constants import exceptions
 from constants import serverPackets
-from objects import glob
+from objects import match
 from objects.osuToken import token
 
+from redlock import RedLock
 
 def handle(userToken: token, rawPacketData: bytes):
     # read packet data
@@ -14,21 +14,23 @@ def handle(userToken: token, rawPacketData: bytes):
     matchID = packetData["matchID"]
     password = packetData["password"]
 
-    # Get match from ID
-    try:
-        # Make sure the match exists
-        if matchID not in glob.matches.matches:
+    # Make sure the match exists
+    multiplayer_match = match.get_match(userToken.matchID)
+    if multiplayer_match is None:
+        return
+
+    # Check password
+    with RedLock(
+        f"{match.make_key(userToken.matchID)}:lock",
+        retry_delay=50,
+        retry_times=20,
+    ):
+        if multiplayer_match["match_password"] not in ("", password):
+            userToken.enqueue(serverPackets.matchJoinFail)
+            log.warning(
+                f"{userToken.username} has tried to join a mp room, but he typed the wrong password.",
+            )
             return
 
-        # Check password
-        with glob.matches.matches[matchID] as match:
-            if match.matchPassword not in ("", password):
-                raise exceptions.matchWrongPasswordException()
-
-            # Password is correct, join match
-            userToken.joinMatch(matchID)
-    except exceptions.matchWrongPasswordException:
-        userToken.enqueue(serverPackets.matchJoinFail)
-        log.warning(
-            f"{userToken.username} has tried to join a mp room, but he typed the wrong password.",
-        )
+        # Password is correct, join match
+        userToken.joinMatch(matchID)

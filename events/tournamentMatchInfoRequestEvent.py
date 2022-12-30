@@ -1,13 +1,31 @@
 from __future__ import annotations
 
 from constants import clientPackets
-from objects import glob
+from objects import match
 from objects.osuToken import token
+from constants import serverPackets
 
+from redlock import RedLock
 
 def handle(userToken: token, rawPacketData: bytes):
     packetData = clientPackets.tournamentMatchInfoRequest(rawPacketData)
-    if packetData["matchID"] not in glob.matches.matches or not userToken.tournament:
+
+    match_id = packetData["matchID"]
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None or not userToken.tournament:
         return
-    with glob.matches.matches[packetData["matchID"]] as m:
-        userToken.enqueue(m.matchDataCache)
+
+    with RedLock(
+        f"{match.make_key(match_id)}:lock",
+        retry_delay=50, # ms
+        retry_times=20,
+    ):
+        packet_data = serverPackets.updateMatch(match_id)
+        if packet_data is None:
+            # TODO: is this correct behaviour?
+            # ripple was doing this before the stateless refactor,
+            # but i'm pretty certain the osu! client won't like this.
+            userToken.enqueue(b"")
+            return None
+
+        userToken.enqueue(packet_data)

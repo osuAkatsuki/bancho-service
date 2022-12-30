@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import re
-import threading
-from queue import Queue
 from time import time
 from typing import Optional
 from typing import TypedDict
@@ -11,7 +9,7 @@ from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob,streamList
+from objects import glob,streamList,match
 
 # Some common regexes, compiled to increase performance.
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
@@ -82,10 +80,10 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
 
         # If this is an !mp command in a match, make sure the user is a referee.
         if chan.startswith("#multi_") and cmd["trigger"] == "!mp":
-            match = glob.matches.getMatchFromChannel(chan)
-            assert match is not None
+            multiplayer_match = glob.matches.getMatchFromChannel(chan)
+            assert multiplayer_match is not None
 
-            if not match.is_referee(userID):
+            if userID not in match.get_referees(multiplayer_match["match_id"]):
                 return None
 
         # Check argument number
@@ -105,18 +103,7 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
             return resp
 
         if cmd["callback"]:
-            queue = Queue()
-            thread = threading.Thread(
-                target=lambda q, arg1, arg2, arg3: q.put(
-                    handle_command(cmd, arg1, arg2, arg3),
-                ),
-                args=(queue, fro, chan, message_split[1:]),
-                daemon=True,
-            )
-            thread.start()
-            thread.join()
-
-            resp = queue.get()
+            resp = handle_command(cmd, fro, chan, message[1:])
 
             if isinstance(resp, Exception):
                 raise resp

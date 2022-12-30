@@ -1814,66 +1814,6 @@ def removeFromLeaderboard(userID: int) -> None:
                 glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(userID))
 
 
-def deprecateTelegram2Fa(userID: int) -> bool:
-    """
-    Checks whether the user has enabled telegram 2fa on his account.
-    If so, disables 2fa and returns True.
-    If not, return False.
-
-    :param userID: id of the user
-    :return: True if 2fa has been disabled from the account otherwise False
-    """
-
-    try:
-        telegram2Fa = glob.db.fetch(
-            "SELECT id " "FROM 2fa_telegram " "WHERE userid = %s",
-            [userID],
-        )
-    except:
-        return False  # the table doesn't exist
-
-    if telegram2Fa:
-        glob.db.execute("DELETE FROM 2fa_telegram " "WHERE userid = %s", [userID])
-        return True
-    return False
-
-
-def unlockAchievement(userID: int, achievementID: int) -> None:
-    """
-    Unlock an achievement for a user
-    """
-
-    glob.db.execute(
-        "INSERT INTO users_achievements (user_id, achievement_id, `time`) "
-        "VALUES (%s, %s, UNIX_TIMESTAMP())",
-        [userID, achievementID],
-    )
-
-
-def getAchievementsVersion(userID: int) -> Optional[int]:
-    """
-    Get the achievements version from the database
-    """
-
-    result = glob.db.fetch(
-        "SELECT achievements_version " "FROM users " "WHERE id = %s",
-        [userID],
-    )
-
-    return result["achievements_version"] if result else None
-
-
-def updateAchievementsVersion(userID: int) -> None:
-    """
-    Update the achievements version
-    """
-
-    glob.db.execute(
-        "UPDATE users " "SET achievements_version = %s " "WHERE id = %s",
-        [glob.ACHIEVEMENTS_VERSION, userID],
-    )
-
-
 def getClan(userID: int) -> str:
     """
     Get userID's clan
@@ -1883,6 +1823,8 @@ def getClan(userID: int) -> str:
     """
 
     username = getUsername(userID)
+    assert username is not None
+
     clan = glob.db.fetch(
         "SELECT tag FROM clans "
         "LEFT JOIN users ON clans.id = users.clan_id "
@@ -1910,10 +1852,12 @@ def getOverwriteWaitRemainder(userID: int) -> int:
     Return the time left before the command can be used again.
     """
 
-    return glob.db.fetch(
+    raw_db_return = glob.db.fetch(
         "SELECT previous_overwrite FROM users WHERE id = %s",
         [userID],
-    )["previous_overwrite"]
+    )
+    assert raw_db_return is not None
+    return raw_db_return["previous_overwrite"]
 
 
 def removeFirstPlaces(

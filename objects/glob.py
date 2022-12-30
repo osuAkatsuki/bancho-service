@@ -5,33 +5,22 @@ import time
 from typing import TYPE_CHECKING
 
 from common.ddog import datadogClient
-from common.web import schiavo
 from objects import matchList
 from objects import tokenList
 
 if TYPE_CHECKING:
     from redis import Redis
-
     from common.db import dbConnector
-
-try:
-    with open("version") as f:
-        VERSION = f.read().strip()
-    if VERSION == "":
-        raise Exception
-except:
-    VERSION = "Unknown"
+    from objects.banchoConfig import banchoConfig
 
 DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
 application = None
 db: dbConnector.db
 redis: Redis
-conf = None
-banchoConf = None
+banchoConf: banchoConfig
 tokens = tokenList.TokenList()
 matches = matchList.MatchList()
-schiavo = schiavo.schiavo()
 dog = datadogClient.datadogClient()
 pool = None
 ircServer = None

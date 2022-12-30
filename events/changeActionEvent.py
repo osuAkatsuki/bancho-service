@@ -32,7 +32,7 @@ def handle(userToken: token, rawPacketData: bytes):
     """
 
     relax_in_mods: bool = packetData["actionMods"] & mods.RELAX != 0
-    autopilot_in_mods: bool = packetData["actionMods"] & mods.RELAX2 != 0
+    autopilot_in_mods: bool = packetData["actionMods"] & mods.AUTOPILOT != 0
 
     # Update cached stats if relax/autopilot status changed
 

@@ -4,70 +4,96 @@ from common.constants import mods
 from constants import clientPackets
 from constants import matchModModes
 from constants import matchTeamTypes
-from objects import glob
+from objects import match, slot
 from objects.osuToken import token
 
+from redlock import RedLock
 
 def handle(userToken: token, rawPacketData: bytes):
     # Read new settings
     packetData = clientPackets.changeMatchSettings(rawPacketData)
 
     # Make sure the match exists
-    if userToken.matchID not in glob.matches.matches:
+    multiplayer_match = match.get_match(userToken.matchID)
+    if multiplayer_match is None:
         return
 
     # Host check
-    with glob.matches.matches[userToken.matchID] as match:
-        if userToken.userID != match.hostUserID:
+    with RedLock(
+        f"{match.make_key(userToken.matchID)}:lock",
+        retry_delay=50,
+        retry_times=20,
+    ):
+        if userToken.userID != multiplayer_match["host_user_id"]:
             return
 
+        old_mods = multiplayer_match["mods"]
+        old_beatmap_md5 = multiplayer_match["beatmap_md5"]
+        old_scoring_type = multiplayer_match["match_scoring_type"]
+        old_match_team_type = multiplayer_match["match_team_type"]
+        old_match_mod_mode = multiplayer_match["match_mod_mode"]
+
         # Update match settings
-        match.matchName = packetData["matchName"]
-        match.inProgress = packetData["inProgress"]
-        match.matchPassword = packetData["matchPassword"]
-        match.beatmapName = packetData["beatmapName"]
-        match.beatmapID = packetData["beatmapID"]
-        match.hostUserID = packetData["hostUserID"]
-        match.gameMode = packetData["gameMode"]
-
-        oldMods = match.mods
-        oldBeatmapMD5 = match.beatmapMD5
-        oldScoringType = match.matchScoringType
-        oldMatchTeamType = match.matchTeamType
-        oldMatchModMode = match.matchModMode
-
-        match.mods = packetData["mods"]
-        match.beatmapMD5 = packetData["beatmapMD5"]
-        match.matchScoringType = packetData["scoringType"]
-        match.matchTeamType = packetData["teamType"]
-        match.matchModMode = packetData["freeMods"]
+        multiplayer_match = match.update_match(
+            multiplayer_match["match_id"],
+            match_name=packetData["matchName"],
+            is_in_progress=packetData["inProgress"],
+            match_password=packetData["matchPassword"],
+            beatmap_name=packetData["beatmapName"],
+            beatmap_id=packetData["beatmapID"],
+            host_user_id=packetData["hostUserID"],
+            game_mode=packetData["gameMode"],
+            mods=packetData["mods"],
+            beatmap_md5=packetData["beatmapMD5"],
+            match_scoring_type=packetData["scoringType"],
+            match_team_type=packetData["teamType"],
+            match_mod_mode=packetData["freeMods"],
+        )
+        assert multiplayer_match is not None
 
         if (
-            oldMods != match.mods
-            or oldBeatmapMD5 != match.beatmapMD5
-            or oldScoringType != match.matchScoringType
-            or oldMatchTeamType != match.matchTeamType
-            or oldMatchModMode != match.matchModMode
+            old_mods != multiplayer_match["mods"]
+            or old_beatmap_md5 != multiplayer_match["beatmap_md5"]
+            or old_scoring_type != multiplayer_match["match_scoring_type"]
+            or old_match_team_type != multiplayer_match["match_team_type"]
+            or old_match_mod_mode != multiplayer_match["match_mod_mode"]
         ):
-            match.resetReady()
+            match.resetReady(multiplayer_match["match_id"])
 
-        if oldMatchModMode != match.matchModMode:
+        if old_match_mod_mode != multiplayer_match["match_mod_mode"]:
+            slots = slot.get_slots(multiplayer_match["match_id"])
+
             # Match mode was changed.
-            if match.matchModMode == matchModModes.NORMAL:
+            if multiplayer_match["match_mod_mode"] == matchModModes.NORMAL:
                 # Freemods -> Central
                 # Move mods from host -> match.
-                is_host = lambda s: s.userID == match.hostUserID
-                for slot in filter(is_host, match.slots):
-                    match.mods = slot.mods  # yoink
-                    break
+                for slot_id, _slot in enumerate(slots):
+                    if _slot["user_id"] == multiplayer_match["host_user_id"]:
+                        match.update_match(
+                            multiplayer_match["match_id"],
+                            mods=_slot["mods"],
+                        )
+                        break
             else:
                 # Central -> Freemods
                 # Move mods from match -> players.
-                for slot in filter(lambda s: s.user, match.slots):
-                    slot.mods = match.mods
+                for slot_id, _slot in enumerate(slots):
+                    if _slot["user_token"]:
+                        slot.update_slot(
+                            multiplayer_match["match_id"],
+                            slot_id,
+                            # removing speed changing mods would seem more correct,
+                            # but that would mean switching back from freemods to central
+                            # would remove speed changing mods from the match?
+                            mods=multiplayer_match["mods"],
+                        )
 
                 # Only keep speed-changing mods centralized.
-                match.mods = match.mods & mods.SPEED_CHANGING
+                match.update_match(
+                    multiplayer_match["match_id"],
+                    mods=multiplayer_match["mods"] & mods.SPEED_CHANGING,
+                )
+
         """
         else: # Match mode unchanged.
             for slot in range(16):
@@ -78,12 +104,15 @@ def handle(userToken: token, rawPacketData: bytes):
         """
 
         # Initialize teams if team type changed
-        if match.matchTeamType != oldMatchTeamType:
-            match.initializeTeams()
+        if multiplayer_match["match_team_type"] != old_match_team_type:
+            match.initializeTeams(multiplayer_match["match_id"])
 
         # Force no freemods if tag coop
-        if match.matchTeamType in (matchTeamTypes.TAG_COOP, matchTeamTypes.TAG_TEAM_VS):
-            match.matchModMode = matchModModes.NORMAL
+        if multiplayer_match["match_team_type"] in (
+            matchTeamTypes.TAG_COOP,
+            matchTeamTypes.TAG_TEAM_VS,
+        ):
+            multiplayer_match["match_mod_mode"] = matchModModes.NORMAL
 
         # Send updated settings
-        match.sendUpdates()
+        match.sendUpdates(multiplayer_match["match_id"])

@@ -370,10 +370,10 @@ class Client:
             self.replyCode(1, "Welcome to the Internet Relay Network")
             self.replyCode(
                 2,
-                f"Your host is {self.server.host}, running version bancho-service-{glob.VERSION}",
+                f"Your host is {self.server.host}, running version bancho-service",
             )
             self.replyCode(3, "This server was created since the beginning")
-            self.replyCode(4, f"{self.server.host} bancho-service-{glob.VERSION} o o")
+            self.replyCode(4, f"{self.server.host} bancho-service o o")
             self.sendLusers()
             self.sendMotd()
             self.__handleCommand = self.mainHandler

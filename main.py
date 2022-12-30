@@ -33,7 +33,7 @@ from handlers import (
 from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
-from objects import banchoConfig, fokabot, glob, streamList, channelList
+from objects import banchoConfig, fokabot, glob, streamList, channelList, match
 from pubSubHandlers import (
     banHandler,
     changeUsernameHandler,
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to Akatsuki's bancho-service v{glob.VERSION}", Ansi.LGREEN)
+        log(f"Welcome to Akatsuki's bancho-service", Ansi.LGREEN)
         log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
         log(
             f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/bancho-service",
@@ -128,9 +128,6 @@ if __name__ == "__main__":
         #     # Script returns error if there are no keys starting with peppy:*
         #     pass
 
-        # Save peppy version in redis
-        glob.redis.set("peppy:version", glob.VERSION)
-
         # Load bancho_settings
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
@@ -166,7 +163,7 @@ if __name__ == "__main__":
 
         glob.tokens.usersTimeoutCheckLoop()
         glob.tokens.spamProtectionResetLoop()
-        glob.matches.cleanupLoop()
+        # glob.matches.cleanupLoop()
 
         if not settings.LOCALIZE_ENABLE:
             log("User localization is disabled.", Ansi.LYELLOW)
@@ -192,7 +189,7 @@ if __name__ == "__main__":
                         ),
                         datadogClient.periodicCheck(
                             "multiplayer_matches",
-                            lambda: len(glob.matches.matches),
+                            lambda: len(match.get_match_ids()),
                         ),
                         # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
                         # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
