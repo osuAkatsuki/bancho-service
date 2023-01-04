@@ -1,9 +1,9 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
-import ddtrace
+#import ddtrace
 
-ddtrace.patch_all()
+#ddtrace.patch_all()
 
 import os
 import threading
