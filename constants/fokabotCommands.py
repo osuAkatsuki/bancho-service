@@ -1772,6 +1772,11 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Match size changed to {matchSize}."
 
     def mpForce() -> Optional[str]:
+        froToken = glob.tokens.getTokenFromUsername(fro, ignoreIRC=True)
+
+        if not froToken or not froToken.privileges & privileges.ADMIN_CAKER:
+            return
+
         if len(message) != 3 or not message[2].isnumeric():
             return "Incorrect syntax: !mp force <user> <matchID>"
 

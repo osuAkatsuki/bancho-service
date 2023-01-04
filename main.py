@@ -1,10 +1,6 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
-import ddtrace
-
-ddtrace.patch_all()
-
 import os
 import threading
 from datetime import datetime as dt
@@ -15,36 +11,39 @@ import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+from cmyui.logging import Ansi
+from cmyui.logging import log
+from cmyui.logging import printc
 
-from cmyui.logging import Ansi, log, printc
+import settings
 from common.constants import bcolors
 from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
-from handlers import (
-    apiFokabotMessageHandler,
-    apiIsOnlineHandler,
-    apiOnlineUsersHandler,
-    apiServerStatusHandler,
-    apiVerifiedStatusHandler,
-    ciTriggerHandler,
-    mainHandler,
-)
+from handlers import apiFokabotMessageHandler
+from handlers import apiIsOnlineHandler
+from handlers import apiOnlineUsersHandler
+from handlers import apiServerStatusHandler
+from handlers import apiVerifiedStatusHandler
+from handlers import ciTriggerHandler
+from handlers import mainHandler
 from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
-from objects import banchoConfig, fokabot, glob
-from pubSubHandlers import (
-    banHandler,
-    changeUsernameHandler,
-    disconnectHandler,
-    notificationHandler,
-    unbanHandler,
-    updateSilenceHandler,
-    updateStatsHandler,
-    wipeHandler,
-)
-import settings
+from objects import banchoConfig
+from objects import fokabot
+from objects import glob
+from pubSubHandlers import banHandler
+from pubSubHandlers import changeUsernameHandler
+from pubSubHandlers import disconnectHandler
+from pubSubHandlers import notificationHandler
+from pubSubHandlers import unbanHandler
+from pubSubHandlers import updateSilenceHandler
+from pubSubHandlers import updateStatsHandler
+from pubSubHandlers import wipeHandler
+
+# import ddtrace
+# ddtrace.patch_all()
 
 
 def make_app():
