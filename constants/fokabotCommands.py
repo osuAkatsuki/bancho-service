@@ -1767,22 +1767,22 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.sendUpdates(multiplayer_match["match_id"])
         return f"Tourney match #{matchID} created!"
 
-    def mpJoin() -> str:
-        if len(message) < 2 or not message[1].isnumeric():
-            raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp join <id>",
-            )
-        matchID = int(message[1])
-        userToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
-        if userToken is None:
-            raise exceptions.invalidArgumentsException(
-                f"No game clients found for {fro}, can't join the match. "
-                "If you're a referee and you want to join the chat "
-                f"channel from IRC, use /join #multi_{matchID} instead.",
-            )
+    # def mpJoin() -> str:
+    #     if len(message) < 2 or not message[1].isnumeric():
+    #         raise exceptions.invalidArgumentsException(
+    #             "Incorrect syntax: !mp join <id>",
+    #         )
+    #     matchID = int(message[1])
+    #     userToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
+    #     if userToken is None:
+    #         raise exceptions.invalidArgumentsException(
+    #             f"No game clients found for {fro}, can't join the match. "
+    #             "If you're a referee and you want to join the chat "
+    #             f"channel from IRC, use /join #multi_{matchID} instead.",
+    #         )
 
-        osuToken.joinMatch(userToken["token_id"], matchID)
-        return f"Attempting to join match #{matchID}!"
+    #     osuToken.joinMatch(userToken["token_id"], matchID)
+    #     return f"Attempting to join match #{matchID}!"
 
     def mpClose() -> str:
         matchID = channelList.getMatchIDFromChannel(chan)
@@ -2325,7 +2325,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             "listref": mpListRefer,
             "make": mpMake,
             "close": mpClose,
-            "join": mpJoin,
+            # "join": mpJoin,
             "force": mpForce,
             "lock": mpLock,
             "unlock": mpUnlock,
