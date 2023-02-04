@@ -16,23 +16,26 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
             f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
         if targetToken:
-            targetToken.kick(
+            osuToken.kick(
+                targetToken["token_id"],
                 f"Your username has been changed to {newUsername}. Please log in again.",
                 "username_change",
             )
     except userUtils.usernameAlreadyInUseError:
         # log.rap(999, "Username change: {} is already in use!", through="Bancho")
         if targetToken:
-            targetToken.kick(
+            osuToken.kick(
+                targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
-                "username_change_fail",
+                "username_change",
             )
     except userUtils.invalidUsernameError:
         # log.rap(999, "Username change: {} is not a valid username!", through="Bancho")
         if targetToken:
-            targetToken.kick(
+            osuToken.kick(
+                targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
-                "username_change_fail",
+                "username_change",
             )
 
 
