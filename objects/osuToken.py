@@ -766,7 +766,7 @@ def updatePingTime(token_id: str) -> None:
     )
 
 
-def joinMatch(token_id: str, match_id: int) -> None:
+def joinMatch(token_id: str, match_id: int) -> bool:
     """
     Set match to match_id, join match stream and channel
 
@@ -780,7 +780,7 @@ def joinMatch(token_id: str, match_id: int) -> None:
     # Make sure the match exists
     multiplayer_match = match.get_match(match_id)
     if multiplayer_match is None:
-        return
+        return False
 
     # Stop spectating
     stopSpectating(token_id)
@@ -792,7 +792,7 @@ def joinMatch(token_id: str, match_id: int) -> None:
     # Try to join match
     if not match.userJoin(multiplayer_match["match_id"], token_id):
         enqueue(token_id, serverPackets.matchJoinFail)
-        return
+        return False
 
     # Set matchID, join stream, channel and send packet
     update_token(
@@ -812,6 +812,8 @@ def joinMatch(token_id: str, match_id: int) -> None:
         # If an user joins, then the ready status of the match changes and
         # maybe not all users are ready.
         match.sendReadyStatus(multiplayer_match["match_id"])
+        
+    return True
 
 
 def leaveMatch(token_id: str) -> None:
