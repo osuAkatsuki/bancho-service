@@ -367,6 +367,11 @@ def delete_token(token_id: str) -> None:
     glob.redis.delete(f"bancho:tokens:names:{token['username']}")
     glob.redis.hdel("bancho:tokens:json", token_id)
     glob.redis.delete(make_key(token_id))
+    glob.redis.delete(f"{make_key(token_id)}:channels")
+    glob.redis.delete(f"{make_key(token_id)}:spectators")
+    glob.redis.delete(f"{make_key(token_id)}:streams")
+    glob.redis.delete(f"{make_key(token_id)}:message_history")
+    glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
 
 
 # joined channels
@@ -519,18 +524,26 @@ def joinChannel(token_id: str, channel_name: str) -> None:
     if channel is None:
         raise exceptions.channelUnknownException()
 
-    # Make sure we have write permissions.
+    # Make sure we have read permissions.
+
+    # premium requires premium
     if (
-        (
-            channel_name == "#premium"
-            and token["privileges"] & privileges.USER_PREMIUM == 0
-        )
-        or (
-            channel_name == "#supporter"
-            and token["privileges"] & privileges.USER_DONOR == 0
-        )
-        or (not channel["public_read"] and not is_staff(token["privileges"]))
-    ) and token["user_id"] != 999:
+        channel_name == "#premium"
+        and token["privileges"] & privileges.USER_PREMIUM == 0
+    ):
+        raise exceptions.channelNoPermissionsException()
+
+    # supporter requires supporter
+    if (
+        channel_name == "#supporter"
+        and token["privileges"] & privileges.USER_DONOR == 0
+    ):
+        raise exceptions.channelNoPermissionsException()
+
+    # non-public channels require staff or bot
+    if (not channel["public_read"]) and not (
+        is_staff(token["privileges"]) or token["user_id"] == 999
+    ):
         raise exceptions.channelNoPermissionsException()
 
     glob.redis.sadd(f"{make_key(token_id)}:channels", channel_name)
