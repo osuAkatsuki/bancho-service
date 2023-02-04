@@ -1703,7 +1703,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "Incorrect syntax: !mp addref <user>",
             )
         multiplayer_match = matchList.getMatchFromChannel(chan)
-        assert multiplayer_match is not None= 
+        assert multiplayer_match is not None
         
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
