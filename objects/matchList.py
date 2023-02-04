@@ -100,12 +100,9 @@ def disposeMatch(match_id: int) -> None:
                 # don't dispose the match twice when we remove all players
                 disposeMatch=False,
             )
-            chat.partChannel(
-                token_id=_token["token_id"],
-                channel_name=f"#multi_{match_id}",
-                kick=True,
-                force=True,
-            )
+
+    # Delete chat channel
+    channelList.removeChannel(f"#multi_{match_id}")
 
     stream_name = match.create_stream_name(match_id)
     playing_stream_name = match.create_playing_stream_name(match_id)
@@ -122,9 +119,6 @@ def disposeMatch(match_id: int) -> None:
     # Send match dispose packet to everyone in lobby
     streamList.broadcast("lobby", serverPackets.disposeMatch(match_id))
     match.delete_match(match_id)
-
-    # Delete chat channel
-    channelList.removeChannel(f"#multi_{match_id}")
 
 
 # deleting this code 2022-12-30 because
