@@ -14,7 +14,7 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from objects import glob
 from objects import streamList, osuToken
-from objects import channelList,tokenList, slot, match,matchList
+from objects import channelList, tokenList, slot, match, matchList
 from typing import TypedDict
 
 # (set) bancho:matches
@@ -22,7 +22,6 @@ from typing import TypedDict
 # (set? list?) bancho:matches:{match_id}:slots
 # (json obj) bancho:matches:{match_id}:slots:{index}
 # (set) bancho:matches:{match_id}:referees
-
 
 
 class Match(TypedDict):
@@ -35,9 +34,9 @@ class Match(TypedDict):
     game_mode: int
     host_user_id: int
     mods: int
-    match_scoring_type: int # matchScoringTypes
-    match_team_type: int # matchTeamTypes
-    match_mod_mode: int # matchModModes
+    match_scoring_type: int  # matchScoringTypes
+    match_team_type: int  # matchTeamTypes
+    match_mod_mode: int  # matchModModes
     seed: int
     is_tourney: bool
     is_locked: bool
@@ -185,11 +184,14 @@ def delete_match(match_id: int) -> None:
     # TODO: should devs have to do this separately?
     slot.delete_slots(match_id)
 
+
 def create_stream_name(match_id: int) -> str:
     return f"multi/{match_id}"
 
+
 def create_playing_stream_name(match_id: int) -> str:
     return f"multi/{match_id}/playing"
+
 
 def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, int]]:
     """
@@ -210,7 +212,7 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
     struct = [
         (multiplayer_match["match_id"], dataTypes.UINT16),
         (int(multiplayer_match["is_in_progress"]), dataTypes.BYTE),
-        (0, dataTypes.BYTE), # TODO: what is this?
+        (0, dataTypes.BYTE),  # TODO: what is this?
         (multiplayer_match["mods"], dataTypes.UINT32),
         (multiplayer_match["match_name"], dataTypes.STRING),
     ]
@@ -234,7 +236,10 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
         [
             (tokenList.getUserIDFromToken(slot["user_token"]), dataTypes.UINT32)
             for slot in slots
-            if (slot["user_token"] and osuToken.get_token(slot["user_token"]) is not None)
+            if (
+                slot["user_token"]
+                and osuToken.get_token(slot["user_token"]) is not None
+            )
         ],
     )
 
@@ -258,6 +263,7 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
     struct.append((multiplayer_match["seed"], dataTypes.UINT32))
 
     return tuple(struct)
+
 
 def setHost(match_id: int, new_host_id: int) -> bool:
     """
@@ -302,6 +308,7 @@ def setHost(match_id: int, new_host_id: int) -> bool:
     sendUpdates(match_id)
     return True
 
+
 def removeHost(match_id: int) -> None:
     """
     Removes the host (for tourney matches)
@@ -319,6 +326,7 @@ def removeHost(match_id: int) -> None:
 
     sendUpdates(match_id)
 
+
 # TODO: this func probably should not exist; jkurwa
 def setSlot(
     match_id: int,
@@ -326,7 +334,7 @@ def setSlot(
     status: Optional[int] = None,
     team: Optional[int] = None,
     user_id: Optional[int] = None,
-    user_token: Optional[str] = "", # TODO: need to refactor stuff for this
+    user_token: Optional[str] = "",  # TODO: need to refactor stuff for this
     mods: Optional[int] = None,
     loaded: Optional[bool] = None,
     skip: Optional[bool] = None,
@@ -350,6 +358,7 @@ def setSlot(
     assert _slot is not None
     return _slot
 
+
 def setSlotMods(match_id: int, slot_id: int, mods: int) -> None:
     """
     Set slotID mods. Same as calling setSlot and then sendUpdate
@@ -361,6 +370,7 @@ def setSlotMods(match_id: int, slot_id: int, mods: int) -> None:
     # Set new slot data and send update
     setSlot(match_id, slot_id, mods=mods)
     sendUpdates(match_id)
+
 
 def toggleSlotReady(match_id: int, slot_id: int) -> None:
     """
@@ -389,6 +399,7 @@ def toggleSlotReady(match_id: int, slot_id: int) -> None:
 
     setSlot(match_id, slot_id, newStatus)
     sendUpdates(match_id)
+
 
 def toggleSlotLocked(match_id: int, slot_id: int) -> None:
     """
@@ -434,6 +445,7 @@ def toggleSlotLocked(match_id: int, slot_id: int) -> None:
     # Send updates to everyone else
     sendUpdates(match_id)
 
+
 def playerLoaded(match_id: int, user_id: int) -> None:
     """
     Set a player loaded status to True
@@ -467,6 +479,7 @@ def playerLoaded(match_id: int, user_id: int) -> None:
     if playing == loaded:
         allPlayersLoaded(match_id)
 
+
 def allPlayersLoaded(match_id: int) -> None:
     """
     Send allPlayersLoaded packet to every playing usr in match
@@ -478,6 +491,7 @@ def allPlayersLoaded(match_id: int) -> None:
 
     playing_stream_name = create_playing_stream_name(match_id)
     streamList.broadcast(playing_stream_name, serverPackets.allPlayersLoaded)
+
 
 def playerSkip(match_id: int, user_id: int) -> None:
     """
@@ -517,6 +531,7 @@ def playerSkip(match_id: int, user_id: int) -> None:
     if total_playing == skipped:
         allPlayersSkipped(match_id)
 
+
 def allPlayersSkipped(match_id):
     """
     Send allPlayersSkipped packet to every playing usr in match
@@ -526,6 +541,7 @@ def allPlayersSkipped(match_id):
 
     playing_stream_name = create_playing_stream_name(match_id)
     streamList.broadcast(playing_stream_name, serverPackets.allPlayersSkipped)
+
 
 def updateScore(match_id: int, slot_id: int, score: int) -> None:
     """
@@ -540,6 +556,7 @@ def updateScore(match_id: int, slot_id: int, score: int) -> None:
 
     _slot = slot.update_slot(match_id, slot_id, score=score)
     assert _slot is not None
+
 
 def updateHP(match_id: int, slot_id: int, hp: int) -> None:
     """
@@ -584,6 +601,7 @@ def playerCompleted(match_id: int, user_id: int) -> None:
 
     if total_playing == completed:
         allPlayersCompleted(match_id)
+
 
 def allPlayersCompleted(match_id: int) -> None:
     """
@@ -650,7 +668,10 @@ def allPlayersCompleted(match_id: int) -> None:
 
     # If this is a tournament match, then we send a notification in the chat
     # saying that the match has completed.
-    if multiplayer_match["is_tourney"] and channel_name in channelList.getChannelNames():
+    if (
+        multiplayer_match["is_tourney"]
+        and channel_name in channelList.getChannelNames()
+    ):
         chat.sendMessage(glob.BOT_NAME, channel_name, "Match has just finished.")
 
 
@@ -675,6 +696,7 @@ def resetSlots(match_id: int) -> None:
                 passed=True,
             )
 
+
 def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
     """
     Get slot ID occupied by userID
@@ -687,6 +709,7 @@ def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
     for slot_id, _slot in enumerate(slots):
         if _slot["user_id"] == user_id:
             return slot_id
+
 
 def userJoin(match_id: int, token_id: str) -> bool:
     """
@@ -747,7 +770,9 @@ def userJoin(match_id: int, token_id: str) -> bool:
             sendUpdates(match_id)
             return True
 
-    if osuToken.is_staff(token["privileges"]):  # Allow mods+ to join into locked but empty slots.
+    if osuToken.is_staff(
+        token["privileges"]
+    ):  # Allow mods+ to join into locked but empty slots.
         for slot_id, _slot in enumerate(slots):
             if _slot["status"] == slotStatuses.LOCKED and _slot["user_id"] == -1:
                 if multiplayer_match["match_team_type"] in (
@@ -773,6 +798,7 @@ def userJoin(match_id: int, token_id: str) -> bool:
                 return True
 
     return False
+
 
 def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
     """
@@ -805,9 +831,13 @@ def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
     )
 
     # Check if everyone left
-    if countUsers(match_id) == 0 and disposeMatch and not multiplayer_match["is_tourney"]:
+    if (
+        countUsers(match_id) == 0
+        and disposeMatch
+        and not multiplayer_match["is_tourney"]
+    ):
         # Dispose match
-        matchList.disposeMatch(multiplayer_match["match_id"]) # TODO
+        matchList.disposeMatch(multiplayer_match["match_id"])  # TODO
         # log.info("MPROOM{}: Room disposed because all users left.".format(self.matchID))
         return
 
@@ -830,6 +860,7 @@ def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
 
     # Send updated match data
     sendUpdates(match_id)
+
 
 def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
     """
@@ -897,6 +928,7 @@ def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
 
     return True
 
+
 def changePassword(match_id: int, newPassword: str) -> None:
     """
     Change match password to newPassword
@@ -919,6 +951,7 @@ def changePassword(match_id: int, newPassword: str) -> None:
     # Send new match settings too
     sendUpdates(match_id)
 
+
 def changeMods(match_id: int, mods: int) -> None:
     """
     Set match global mods
@@ -934,6 +967,7 @@ def changeMods(match_id: int, mods: int) -> None:
     assert multiplayer_match is not None
 
     sendUpdates(match_id)
+
 
 def userHasBeatmap(match_id: int, user_id: int, has_beatmap: bool = True) -> None:
     """
@@ -959,6 +993,7 @@ def userHasBeatmap(match_id: int, user_id: int, has_beatmap: bool = True) -> Non
     # Send updates
     sendUpdates(match_id)
 
+
 def transferHost(match_id: int, slot_id: int) -> None:
     """
     Transfer host to slotID
@@ -975,6 +1010,7 @@ def transferHost(match_id: int, slot_id: int) -> None:
 
     # Transfer host
     setHost(match_id, _slot["user_id"])
+
 
 def playerFailed(match_id: int, user_id: int) -> None:
     """
@@ -999,6 +1035,7 @@ def playerFailed(match_id: int, user_id: int) -> None:
         playing_stream_name,
         serverPackets.playerFailed(slot_id),
     )
+
 
 def invite(match_id: int, fro: int, to: int) -> None:
     """
@@ -1027,7 +1064,7 @@ def invite(match_id: int, fro: int, to: int) -> None:
     assert multiplayer_match is not None
 
     # Send message
-    pw_safe = multiplayer_match['match_password'].replace(" ", "_")
+    pw_safe = multiplayer_match["match_password"].replace(" ", "_")
     message = (
         "Come join my multiplayer match: "
         f'"[osump://{multiplayer_match["match_id"]}/{pw_safe} {multiplayer_match["match_name"]}]"'
@@ -1037,6 +1074,7 @@ def invite(match_id: int, fro: int, to: int) -> None:
         to=toToken["username"],
         message=message,
     )
+
 
 def countUsers(match_id: int) -> int:
     """
@@ -1048,6 +1086,7 @@ def countUsers(match_id: int) -> int:
     assert len(slots) == 16
 
     return sum(1 for slot in slots if slot["user_token"] is not None)
+
 
 def changeTeam(match_id: int, user_id: int, new_team: Optional[int] = None) -> None:
     """
@@ -1089,6 +1128,7 @@ def changeTeam(match_id: int, user_id: int, new_team: Optional[int] = None) -> N
 
     sendUpdates(match_id)
 
+
 def sendUpdates(match_id: int) -> None:
     """
     Send match updates packet to everyone in lobby and room streams
@@ -1107,6 +1147,7 @@ def sendUpdates(match_id: int) -> None:
         log.error(
             f"MPROOM{match_id}: Can't send match update packet, match data is None!!!",
         )
+
 
 def checkTeams(match_id: int) -> bool:
     """
@@ -1140,6 +1181,7 @@ def checkTeams(match_id: int) -> bool:
 
     log.warning(f"MPROOM{match_id}: Invalid teams!")
     return False
+
 
 def start(match_id: int) -> bool:
     """
@@ -1198,6 +1240,7 @@ def start(match_id: int) -> bool:
     sendUpdates(match_id)
     return True
 
+
 def forceSize(match_id: int, matchSize: int) -> None:
     slots = slot.get_slots(match_id)
     assert len(slots) == 16
@@ -1208,6 +1251,7 @@ def forceSize(match_id: int, matchSize: int) -> None:
     for i in range(matchSize, 16):
         if slots[i]["status"] != slotStatuses.LOCKED:
             toggleSlotLocked(match_id, i)
+
 
 def abort(match_id: int) -> None:
     multiplayer_match = get_match(match_id)
@@ -1228,6 +1272,7 @@ def abort(match_id: int) -> None:
     streamList.dispose(playing_stream_name)
     streamList.remove(playing_stream_name)
 
+
 def initializeTeams(match_id: int) -> None:
     multiplayer_match = get_match(match_id)
     assert multiplayer_match is not None
@@ -1235,7 +1280,10 @@ def initializeTeams(match_id: int) -> None:
     slots = slot.get_slots(match_id)
     assert len(slots) == 16
 
-    if multiplayer_match["match_team_type"] in {matchTeamTypes.TEAM_VS, matchTeamTypes.TAG_TEAM_VS}:
+    if multiplayer_match["match_team_type"] in {
+        matchTeamTypes.TEAM_VS,
+        matchTeamTypes.TAG_TEAM_VS,
+    }:
         # Set teams
         for slot_id in range(len(slots)):
             new_team = matchTeams.RED if slot_id % 2 == 0 else matchTeams.BLUE
@@ -1246,12 +1294,14 @@ def initializeTeams(match_id: int) -> None:
             new_team = matchTeams.NO_TEAM
             slot.update_slot(match_id, slot_id, team=new_team)
 
+
 def resetMods(match_id: int) -> None:
     slots = slot.get_slots(match_id)
     assert len(slots) == 16
 
     for slot_id in range(len(slots)):
         slot.update_slot(match_id, slot_id, mods=0)
+
 
 def resetReady(match_id: int) -> None:
     slots = slot.get_slots(match_id)
@@ -1261,6 +1311,7 @@ def resetReady(match_id: int) -> None:
         if _slot["status"] == slotStatuses.READY:
             new_status = slotStatuses.NOT_READY
             slot.update_slot(match_id, slot_id, status=new_status)
+
 
 def sendReadyStatus(match_id: int) -> None:
     channel_name = f"#multi_{match_id}"
@@ -1298,7 +1349,9 @@ def sendReadyStatus(match_id: int) -> None:
 
     chat.sendMessage(glob.BOT_NAME, channel_name, message)
 
+
 # TODO: abstract these redis calls into a repository
+
 
 def add_referee(match_id: int, user_id: int) -> None:
     multiplayer_match = get_match(match_id)
@@ -1306,14 +1359,18 @@ def add_referee(match_id: int, user_id: int) -> None:
 
     glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)
 
+
 def get_referees(match_id: int) -> set[int]:
     multiplayer_match = get_match(match_id)
     assert multiplayer_match is not None
 
-    raw_referees: set[bytes] = glob.redis.smembers(f"bancho:matches:{match_id}:referees")
+    raw_referees: set[bytes] = glob.redis.smembers(
+        f"bancho:matches:{match_id}:referees"
+    )
     referees = {int(referee) for referee in raw_referees}
 
     return referees
+
 
 def remove_referee(match_id: int, user_id: int) -> None:
     multiplayer_match = get_match(match_id)

@@ -6,7 +6,7 @@ from cmyui.logging import log
 from typing import Optional
 from typing import TypedDict
 
-from constants import exceptions
+from constants import exceptions, serverPackets
 from helpers import chatHelper as chat
 import json
 from objects import glob, match
@@ -144,7 +144,7 @@ def removeChannel(name: str) -> None:
         log(f"{name} is not in channels list?", Ansi.LYELLOW)
         return
 
-    # streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
+    streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
     for token_id in stream.getClients(f"chat/{name}"):
         token = osuToken.get_token(token_id)
         if token is not None:
