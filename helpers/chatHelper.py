@@ -329,7 +329,7 @@ def sendMessage(
                 raise exceptions.channelNoPermissionsException()
 
             # non-public channels (except multiplayer) require staff or bot
-            if (not channel["public_write"] and to.startswith("#multi_")) and not (
+            if (not channel["public_write"] and not to.startswith("#multi_")) and not (
                 osuToken.is_staff(userToken["privileges"])
                 or userToken["user_id"] == 999
             ):
