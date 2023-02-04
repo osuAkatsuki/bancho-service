@@ -164,7 +164,9 @@ def partChannel(
             raise exceptions.channelUnknownException()
 
         # Make sure the user is in the channel
-        if channel_name not in osuToken.get_joined_channels(token["token_id"]):
+        channels = osuToken.get_joined_channels(token["token_id"])
+        if channel_name not in channels:
+            print(channels)
             raise exceptions.userNotInChannelException()
 
         # Part channel (token-side and channel-side)

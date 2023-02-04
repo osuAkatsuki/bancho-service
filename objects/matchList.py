@@ -10,6 +10,7 @@ from objects import slot
 from objects import glob
 from objects import match
 from objects import streamList, channelList, tokenList, osuToken
+from helpers import chatHelper as chat
 
 
 def make_key() -> str:
@@ -99,7 +100,12 @@ def disposeMatch(match_id: int) -> None:
                 # don't dispose the match twice when we remove all players
                 disposeMatch=False,
             )
-            osuToken.partChannel(_token["token_id"], f"#multi_{match_id}")
+            chat.partChannel(
+                token_id=_token["token_id"],
+                channel_name=f"#multi_{match_id}",
+                kick=True,
+                force=True,
+            )
 
     stream_name = match.create_stream_name(match_id)
     playing_stream_name = match.create_playing_stream_name(match_id)
