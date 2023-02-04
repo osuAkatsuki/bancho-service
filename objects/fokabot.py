@@ -10,7 +10,7 @@ from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob,streamList,match,matchList, tokenList, osuToken
+from objects import glob, streamList, match, matchList, tokenList, osuToken
 
 # Some common regexes, compiled to increase performance.
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
@@ -24,6 +24,10 @@ npRegex = re.compile(
 
 
 def connect() -> None:
+    token = tokenList.getTokenFromUserID(999)
+    if token is not None:
+        return
+
     with RedLock(
         "bancho:locks:tokens",
         retry_delay=50,
