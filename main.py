@@ -86,10 +86,6 @@ if __name__ == "__main__":
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        # log("Ensuring folders.", Ansi.LMAGENTA)
-        # if not os.path.exists(".data"):
-        #     os.makedirs(".data", 0o770)
-
         # Connect to db
         try:
             log("Connecting to SQL.", Ansi.LMAGENTA)
@@ -118,27 +114,12 @@ if __name__ == "__main__":
             log(f"Error connecting to redis.", Ansi.LRED)
             raise
 
-        # TODO: remove this once we're done testing
-        # glob.redis.flushall()
-
-        # Empty redis cache
-        # try:
-        #     glob.redis.set("ripple:online_users", 0)
-        #     glob.redis.delete(*glob.redis.keys("peppy:*"))
-        #     glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
-        # except redis.exceptions.ResponseError:
-        #     # Script returns error if there are no keys starting with peppy:*
-        #     pass
-
         # Load bancho_settings
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
         except:
             log(f"Error loading bancho settings.", Ansi.LMAGENTA)
             raise
-
-        # Delete old bancho sessions
-        tokenList.deleteBanchoSessions()
 
         # Create threads pool
         try:

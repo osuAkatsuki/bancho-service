@@ -21,6 +21,7 @@ from objects import osuToken
 #     self.tokens: MutableMapping[str, osuToken.token] = {}
 #     self._lock = threading.Lock()
 
+
 def addToken(
     user_id: int,
     ip: str = "",
@@ -39,7 +40,9 @@ def addToken(
     :param tournament: if True, flag this client as a tournement client. Default: True.
     :return: token object
     """
-    res = glob.db.fetch("SELECT username, privileges, whitelist FROM users WHERE id = %s", [user_id])
+    res = glob.db.fetch(
+        "SELECT username, privileges, whitelist FROM users WHERE id = %s", [user_id]
+    )
     assert res is not None
 
     token = osuToken.create_token(
@@ -66,6 +69,7 @@ def addToken(
     glob.redis.incr("ripple:online_users")
     return token
 
+
 def deleteToken(token_id: str) -> None:
     """
     Delete a token from token list if it exists
@@ -84,6 +88,7 @@ def deleteToken(token_id: str) -> None:
     osuToken.delete_token(token_id)
     glob.redis.decr("ripple:online_users")
 
+
 def getUserIDFromToken(token_id: str) -> Optional[int]:
     """
     Get user ID from a token
@@ -97,6 +102,7 @@ def getUserIDFromToken(token_id: str) -> Optional[int]:
 
     return token["user_id"]
 
+
 @overload
 def getTokenFromUserID(
     userID: int,
@@ -105,6 +111,7 @@ def getTokenFromUserID(
 ) -> Optional[osuToken.Token]:
     ...
 
+
 @overload
 def getTokenFromUserID(
     userID: int,
@@ -112,6 +119,7 @@ def getTokenFromUserID(
     _all: Literal[True] = ...,
 ) -> list[osuToken.Token]:
     ...
+
 
 def getTokenFromUserID(
     userID: int,
@@ -142,6 +150,7 @@ def getTokenFromUserID(
     if _all:
         return ret
 
+
 @overload
 def getTokenFromUsername(
     username: str,
@@ -151,6 +160,7 @@ def getTokenFromUsername(
 ) -> Optional[osuToken.Token]:
     ...
 
+
 @overload
 def getTokenFromUsername(
     username: str,
@@ -159,6 +169,7 @@ def getTokenFromUsername(
     _all: Literal[True] = ...,
 ) -> list[osuToken.Token]:
     ...
+
 
 def getTokenFromUsername(
     username: str,
@@ -197,6 +208,7 @@ def getTokenFromUsername(
     if _all:
         return ret
 
+
 def deleteOldTokens(userID: int) -> None:
     """
     Delete old userID's tokens if found
@@ -211,8 +223,8 @@ def deleteOldTokens(userID: int) -> None:
             delete.append(token["token_id"])
 
     for i in delete:
-        print('logging out', i)
         logoutEvent.handle(i)
+
 
 def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
     """
@@ -233,6 +245,7 @@ def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
         if shouldEnqueue:
             osuToken.enqueue(value["token_id"], packet)
 
+
 def enqueueAll(packet: bytes) -> None:
     """
     Enqueue packet(s) to every connected user
@@ -242,6 +255,7 @@ def enqueueAll(packet: bytes) -> None:
     """
     for token_id in osuToken.get_token_ids():
         osuToken.enqueue(token_id, packet)
+
 
 def usersTimeoutCheckLoop() -> None:
     """
@@ -294,6 +308,7 @@ def usersTimeoutCheckLoop() -> None:
         # Schedule a new check (endless loop)
         threading.Timer(100, usersTimeoutCheckLoop).start()
 
+
 def spamProtectionResetLoop() -> None:
     """
     Start spam protection reset loop.
@@ -314,6 +329,7 @@ def spamProtectionResetLoop() -> None:
         # Schedule a new check (endless loop)
         threading.Timer(10, spamProtectionResetLoop).start()
 
+
 def deleteBanchoSessions() -> None:
     """
     Remove all `peppy:sessions:*` redis keys.
@@ -330,6 +346,7 @@ def deleteBanchoSessions() -> None:
         )
     except redis.RedisError:
         pass
+
 
 def tokenExists(
     username: Optional[str] = None,
