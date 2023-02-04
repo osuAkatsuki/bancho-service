@@ -142,12 +142,6 @@ if __name__ == "__main__":
         streamList.add("main")
         streamList.add("lobby")
 
-        log("Starting background loops.", Ansi.LMAGENTA)
-
-        tokenList.usersTimeoutCheckLoop()
-        tokenList.spamProtectionResetLoop()
-        # glob.matches.cleanupLoop()
-
         if not settings.LOCALIZE_ENABLE:
             log("User localization is disabled.", Ansi.LYELLOW)
 
@@ -193,6 +187,11 @@ if __name__ == "__main__":
             threading.Thread(
                 target=lambda: ircserver.main(port=settings.IRC_PORT),
             ).start()
+
+        log("Starting background loops.", Ansi.LMAGENTA)
+
+        tokenList.usersTimeoutCheckLoop()
+        tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
         glob.groupPrivileges = {
