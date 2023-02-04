@@ -107,6 +107,10 @@ def addChannel(
     :param hidden: if True, thic channel won't be shown in channels list
     :return:
     """
+    channels = getChannelNames()
+    if name in channels:
+        return
+
     streamList.add(f"chat/{name}")
     glob.redis.sadd("bancho:channels", name)
     glob.redis.set(
