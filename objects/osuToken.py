@@ -471,8 +471,8 @@ def enqueue(token_id: str, data: bytes) -> None:
 
     with RedLock(
         f"{make_key(token_id)}:locks:packet_queue",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         # Never enqueue for IRC clients or Aika
         if token["irc"] or token["user_id"] == 999:
@@ -491,8 +491,8 @@ def dequeue(token_id: str) -> bytes:
 
     with RedLock(
         f"{make_key(token_id)}:locks:packet_queue",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
         raw_packets.reverse()  # redis returns backwards
@@ -594,8 +594,8 @@ def startSpectating(token_id: str, host_token_id: str) -> None:
     """
     with RedLock(
         f"{make_key(token_id)}:locks:spectating",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         token = get_token(token_id)
         if token is None:
@@ -681,8 +681,8 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     if get_lock:
         redlock = RedLock(
             f"{make_key(token_id)}:locks:spectating",
-            retry_delay=50,
-            retry_times=20,
+            retry_delay=100,
+            retry_times=500,
         )
 
     try:

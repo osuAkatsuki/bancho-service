@@ -23,8 +23,8 @@ def handle(userToken: Token, rawPacketData: bytes):
     # Check password
     with RedLock(
         f"{match.make_key(matchID)}:lock",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         if multiplayer_match["match_password"] not in ("", password):
             osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)

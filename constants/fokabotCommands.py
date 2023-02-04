@@ -515,8 +515,8 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
         # Disconnect everyone but mod/admins
         with RedLock(
             "bancho:locks:tokens",
-            retry_delay=50,
-            retry_times=20,
+            retry_delay=100,
+            retry_times=500,
         ):
             for value in osuToken.get_tokens():
                 if not osuToken.is_staff(value["privileges"]):

@@ -410,8 +410,8 @@ def sendMessage(
                 if fokaMessage["hidden"]:  # Send to user & gmt+
                     with RedLock(
                         "bancho:locks:tokens",
-                        retry_delay=50,
-                        retry_times=20,
+                        retry_delay=100,
+                        retry_times=500,
                     ):  # Generate admin token list
                         send_to = {
                             t["token_id"]
@@ -658,8 +658,8 @@ def IRCConnect(username: str) -> None:
 
     with RedLock(
         "bancho:locks:tokens",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         tokenList.deleteOldTokens(user_id)
         tokenList.addToken(user_id, irc=True)

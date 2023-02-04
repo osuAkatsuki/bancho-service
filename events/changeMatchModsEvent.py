@@ -24,8 +24,8 @@ def handle(userToken: Token, rawPacketData: bytes):
     # Set slot or match mods according to modType
     with RedLock(
         f"{match.make_key(match_id)}:lock",
-        retry_delay=50, # ms
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         if multiplayer_match["match_mod_mode"] == matchModModes.FREE_MOD:
             if userToken["user_id"] == multiplayer_match["host_user_id"]:

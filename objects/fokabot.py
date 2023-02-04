@@ -30,8 +30,8 @@ def connect() -> None:
 
     with RedLock(
         "bancho:locks:tokens",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         token = tokenList.addToken(999)
         assert token is not None
@@ -44,8 +44,8 @@ def connect() -> None:
 def disconnect() -> None:
     with RedLock(
         "bancho:locks:tokens",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         token = tokenList.getTokenFromUserID(999)
         assert token is not None

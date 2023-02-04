@@ -19,8 +19,8 @@ def handle(userToken: Token, rawPacketData: bytes):
 
     with RedLock(
         f"{match.make_key(match_id)}:lock",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         match.userChangeSlot(
             multiplayer_match["match_id"],

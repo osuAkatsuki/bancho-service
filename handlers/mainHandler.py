@@ -176,8 +176,8 @@ class handler(requestsManager.asyncRequestHandler):
                 # Token exists, get its object and lock it
                 redlock = RedLock(
                     f"{osuToken.make_key(userToken['token_id'])}:processing_lock",
-                    retry_delay=50, # ms
-                    retry_times=20,
+                    retry_delay=100, # ms
+                    retry_times=500,
                 )
                 redlock.acquire()
 

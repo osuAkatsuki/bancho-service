@@ -17,8 +17,8 @@ def handle(userToken: Token, _):
 
     with RedLock(
         f"{match.make_key(userToken['match_id'])}:lock",
-        retry_delay=50,
-        retry_times=20,
+        retry_delay=100,
+        retry_times=500,
     ):
         # Host check
         if userToken['user_id'] != multiplayer_match["host_user_id"]:
