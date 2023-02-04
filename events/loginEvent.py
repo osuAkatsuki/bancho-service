@@ -156,8 +156,8 @@ def handle(
 
         with RedLock(
             "bancho:locks:tokens",
-            retry_delay=50,
-            retry_times=20,
+            retry_delay=100,
+            retry_times=50,
         ):
             if not isTournament:
                 tokenList.deleteOldTokens(userID)
