@@ -9,7 +9,7 @@ from constants import serverPackets, matchScoringTypes, matchModModes, matchTeam
 from objects import slot
 from objects import glob
 from objects import match
-from objects import streamList, channelList, tokenList
+from objects import streamList, channelList, tokenList, osuToken
 
 
 def make_key() -> str:
@@ -99,6 +99,7 @@ def disposeMatch(match_id: int) -> None:
                 # don't dispose the match twice when we remove all players
                 disposeMatch=False,
             )
+            osuToken.partChannel(_token["token_id"], f"#multi_{match_id}")
 
     stream_name = match.create_stream_name(match_id)
     playing_stream_name = match.create_playing_stream_name(match_id)
