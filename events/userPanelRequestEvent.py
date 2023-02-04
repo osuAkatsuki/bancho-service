@@ -4,7 +4,7 @@ from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
 from objects.osuToken import Token
-
+from objects import osuToken
 
 def handle(userToken: Token, rawPacketData: bytes):
     # Read userIDs list
@@ -18,4 +18,4 @@ def handle(userToken: Token, rawPacketData: bytes):
     for i in packetData["users"]:
         # Enqueue userpanel packets relative to this user
         log.debug(f"Sending panel for user {i}.")
-        userToken.enqueue(serverPackets.userPanel(i))
+        osuToken.enqueue(userToken["token_id"], serverPackets.userPanel(i))

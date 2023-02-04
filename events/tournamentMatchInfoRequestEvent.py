@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from constants import clientPackets
 from objects import match
+from objects import osuToken
 from objects.osuToken import Token
 from constants import serverPackets
 
@@ -25,7 +26,7 @@ def handle(userToken: Token, rawPacketData: bytes):
             # TODO: is this correct behaviour?
             # ripple was doing this before the stateless refactor,
             # but i'm pretty certain the osu! client won't like this.
-            userToken.enqueue(b"")
+            osuToken.enqueue(userToken["token_id"], b"")
             return None
 
-        userToken.enqueue(packet_data)
+        osuToken.enqueue(userToken["token_id"], packet_data)

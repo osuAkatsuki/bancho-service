@@ -301,10 +301,9 @@ def handle(
                 expireDate - current_time <= 86400 * 7
             ):  # Notify within 7 days of expiry
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
-                userToken.enqueue(
-                    serverPackets.notification(
-                        f"Your {rolename} tag expires in {expireIn}.",
-                    ),
+                osuToken.enqueue(
+                    userToken["token_id"],
+                    f"Your {rolename} tag expires in {expireIn}."
                 )
 
         # Set silence end UNIX time in token
