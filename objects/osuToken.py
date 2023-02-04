@@ -546,7 +546,7 @@ def partChannel(token_id: str, channel_name: str) -> None:
 
     :param channel_name: channel name
     """
-    joined_channels = glob.redis.smembers(f"{make_key(token_id)}:channels")
+    joined_channels = get_joined_channels(token_id)
     if channel_name not in joined_channels:
         raise exceptions.userNotInChannelException()
 
