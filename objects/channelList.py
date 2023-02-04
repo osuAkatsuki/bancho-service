@@ -10,11 +10,12 @@ from constants import exceptions
 from helpers import chatHelper as chat
 import json
 from objects import glob, match
-from objects import stream,streamList, osuToken, tokenList
+from objects import stream, streamList, osuToken, tokenList
 import logging
 
 # bancho:channels
 # bancho:channels:{channel_name}
+
 
 class Channel(TypedDict):
     name: str
@@ -28,6 +29,7 @@ class Channel(TypedDict):
 def make_key(channel_name: str) -> str:
     # TODO: do we need a channel id? redis keys cannot have spaces.
     return f"bancho:channels:{channel_name}"
+
 
 def loadChannels() -> None:
     """
@@ -50,6 +52,7 @@ def loadChannels() -> None:
                 instance=False,
             )
 
+
 def getChannelNames() -> set[str]:
     """
     Get all channels from channels list
@@ -57,6 +60,7 @@ def getChannelNames() -> set[str]:
     """
     raw_channel_names: set[bytes] = glob.redis.smembers("bancho:channels")
     return {name.decode() for name in raw_channel_names}
+
 
 def getChannel(channel_name: str) -> Optional[Channel]:
     """
@@ -68,6 +72,7 @@ def getChannel(channel_name: str) -> Optional[Channel]:
         return None
     return json.loads(raw_channel)
 
+
 def getChannels() -> list[Channel]:
     """
     Get all channels from channels list
@@ -77,9 +82,12 @@ def getChannels() -> list[Channel]:
     for channel_name in getChannelNames():
         channel = getChannel(channel_name)
         if channel is None:
-            breakpoint()
+            continue
+
         channels.append(channel)
+
     return channels
+
 
 def addChannel(
     name: str,
@@ -103,14 +111,16 @@ def addChannel(
     glob.redis.sadd("bancho:channels", name)
     glob.redis.set(
         make_key(name),
-        json.dumps({
-            "name": name,
-            "description": description,
-            "public_read": public_read,
-            "public_write": public_write,
-            "instance": instance,
-            "moderated": moderated,
-        }),
+        json.dumps(
+            {
+                "name": name,
+                "description": description,
+                "public_read": public_read,
+                "public_write": public_write,
+                "instance": instance,
+                "moderated": moderated,
+            }
+        ),
     )
     # Make Foka join the channel
     fokaToken = tokenList.getTokenFromUserID(999)
@@ -149,6 +159,7 @@ def removeChannel(name: str) -> None:
     glob.redis.srem("bancho:channels", name)
     log(f"Removed channel {name}.")
 
+
 def updateChannel(
     name: str,
     description: Optional[str] = None,
@@ -183,6 +194,7 @@ def updateChannel(
     glob.redis.set(make_key(name), json.dumps(channel))
     log(f"Updated channel {name}.")
 
+
 def getMatchIDFromChannel(channel_name: str) -> int:
     if not channel_name.lower().startswith("#multi_"):
         raise exceptions.wrongChannelException()
@@ -196,6 +208,7 @@ def getMatchIDFromChannel(channel_name: str) -> int:
         raise exceptions.matchNotFoundException()
 
     return matchID
+
 
 def getSpectatorHostUserIDFromChannel(channel_name: str) -> int:
     if not channel_name.lower().startswith("#spect_"):
