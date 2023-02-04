@@ -20,7 +20,7 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from helpers import chatHelper as chat
-from objects import glob,streamList, match
+from objects import glob, streamList, match
 
 from typing import TypedDict
 
@@ -110,7 +110,6 @@ class Token(TypedDict):
     # self.joinStream("main")
 
 
-
 def safeUsername(username: str) -> str:
     """
     Return `username`'s safe username
@@ -122,10 +121,13 @@ def safeUsername(username: str) -> str:
 
     return username.lower().strip().replace(" ", "_")
 
+
 # CRUD
+
 
 def make_key(token_id: str) -> str:
     return f"bancho:tokens:{token_id}"
+
 
 def create_token(
     user_id: int,
@@ -189,9 +191,11 @@ def create_token(
     glob.redis.set(make_key(token_id), json.dumps(token))
     return token
 
+
 def get_token_ids() -> set[str]:
     raw_token_ids: set[bytes] = glob.redis.smembers("bancho:tokens")
     return {token_id.decode() for token_id in raw_token_ids}
+
 
 def get_token(token_id: str) -> Optional[Token]:
     token = glob.redis.get(make_key(token_id))
@@ -199,8 +203,13 @@ def get_token(token_id: str) -> Optional[Token]:
         return None
     return json.loads(token)
 
+
 def get_tokens() -> list[Token]:
-    return [json.loads(token) for _, token in glob.redis.hgetall("bancho:tokens:json").items()]
+    return [
+        json.loads(token)
+        for _, token in glob.redis.hgetall("bancho:tokens:json").items()
+    ]
+
 
 def get_token_by_user_id(user_id: int) -> Optional[Token]:
     token_id: Optional[bytes] = glob.redis.get(f"bancho:tokens:ids:{user_id}")
@@ -211,8 +220,11 @@ def get_token_by_user_id(user_id: int) -> Optional[Token]:
     if token is not None:
         return token
 
+
 def get_token_by_username(username: str) -> Optional[Token]:
-    token_id: Optional[bytes] = glob.redis.get(f"bancho:tokens:names:{safeUsername(username)}")
+    token_id: Optional[bytes] = glob.redis.get(
+        f"bancho:tokens:names:{safeUsername(username)}"
+    )
     if token_id is None:
         return None
 
@@ -220,10 +232,13 @@ def get_token_by_username(username: str) -> Optional[Token]:
     if token is not None:
         return token
 
+
 class MissingType:
     pass
 
+
 from typing import Union
+
 MISSING = MissingType()
 
 # TODO: the things that can actually be Optional need to have different defaults
@@ -244,7 +259,7 @@ def update_token(
     spectating_user_id: Union[Optional[int], MissingType] = MISSING,
     latitude: Optional[float] = None,
     longitude: Optional[float] = None,
-    ip: Optional[str] = None, # ?
+    ip: Optional[str] = None,  # ?
     country: Optional[int] = None,
     away_message: Union[Optional[str], MissingType] = MISSING,
     match_id: Union[Optional[int], MissingType] = MISSING,
@@ -356,52 +371,70 @@ def delete_token(token_id: str) -> None:
 
 # joined channels
 
+
 def get_joined_channels(token_id: str) -> set[str]:
     """Returns a set of channel names"""
     raw_channels: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:channels")
     return {x.decode() for x in raw_channels}
 
+
 # spectators
+
 
 def get_spectators(token_id: str) -> set[int]:
     raw_spectators: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:spectators")
     return {int(raw_spectator) for raw_spectator in raw_spectators}
 
+
 def remove_spectator(token_id: str, spectator_user_id: int) -> None:
     glob.redis.srem(f"{make_key(token_id)}:spectators", spectator_user_id)
+
 
 def add_spectator(token_id: str, spectator_user_id: int) -> None:
     glob.redis.sadd(f"{make_key(token_id)}:spectators", spectator_user_id)
 
+
 # streams
+
 
 def get_streams(token_id: str) -> set[str]:
     raw_streams: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:streams")
     return {raw_stream.decode() for raw_stream in raw_streams}
 
+
 def add_stream(token_id: str, stream_name: str) -> None:
     glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
 
+
 def remove_stream(token_id: str, stream_name: str) -> None:
     glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
+
 
 # messages
 # (list) bancho:tokens:{token_id}:message_history
 
 
 def get_message_history(token_id: str) -> list[str]:
-    raw_history: list[bytes] = glob.redis.lrange(f"{make_key(token_id)}:message_history", 0, -1)
+    raw_history: list[bytes] = glob.redis.lrange(
+        f"{make_key(token_id)}:message_history", 0, -1
+    )
     return [raw_message.decode() for raw_message in raw_history]
+
 
 def add_message_to_history(token_id: str, message: str) -> None:
     glob.redis.rpush(f"{make_key(token_id)}:message_history", message)
 
+
 # away messages
 # (set[userid]) bancho:tokens:{token_id}:sent_away_messages
 
+
 def get_sent_away_messages(token_id: str) -> set[str]:
-    raw_messages: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:sent_away_messages")
+    raw_messages: set[bytes] = glob.redis.smembers(
+        f"{make_key(token_id)}:sent_away_messages"
+    )
     return {raw_message.decode() for raw_message in raw_messages}
+
 
 def add_sent_away_message(token_id: str, user_id: int) -> None:
     glob.redis.sadd(f"{make_key(token_id)}:sent_away_messages", user_id)
@@ -409,13 +442,17 @@ def add_sent_away_message(token_id: str, user_id: int) -> None:
 
 # properties
 
+
 def is_staff(token_privileges: int) -> bool:
-	return token_privileges & privileges.ADMIN_CHAT_MOD != 0
+    return token_privileges & privileges.ADMIN_CHAT_MOD != 0
+
 
 def is_restricted(token_privileges: int) -> bool:
-	return token_privileges & privileges.USER_PUBLIC == 0
+    return token_privileges & privileges.USER_PUBLIC == 0
+
 
 #####
+
 
 def enqueue(token_id: str, data: bytes) -> None:
     """
@@ -441,6 +478,7 @@ def enqueue(token_id: str, data: bytes) -> None:
 
         glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
 
+
 def dequeue(token_id: str) -> bytes:
     token = get_token(token_id)
     if token is None:
@@ -452,7 +490,7 @@ def dequeue(token_id: str) -> bytes:
         retry_times=20,
     ):
         raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
-        raw_packets.reverse() # redis returns backwards
+        raw_packets.reverse()  # redis returns backwards
 
         # clear the packets we read
         glob.redis.delete(f"{make_key(token_id)}:packet_queue")
@@ -501,6 +539,7 @@ def joinChannel(token_id: str, channel_name: str) -> None:
     client_name = channel_utils.get_client_name(channel_name)
     enqueue(token_id, serverPackets.channelJoinSuccess(client_name))
 
+
 def partChannel(token_id: str, channel_name: str) -> None:
     """
     Remove channel from joined channels list
@@ -513,6 +552,7 @@ def partChannel(token_id: str, channel_name: str) -> None:
 
     glob.redis.srem(f"{make_key(token_id)}:channels", channel_name)
     leaveStream(token_id, f"chat/{channel_name}")
+
 
 def setLocation(token_id: str, latitude: float, longitude: float) -> None:
     """
@@ -530,6 +570,7 @@ def setLocation(token_id: str, latitude: float, longitude: float) -> None:
         latitude=latitude,
         longitude=longitude,
     )
+
 
 def startSpectating(token_id: str, host_token_id: str) -> None:
     """
@@ -552,7 +593,7 @@ def startSpectating(token_id: str, host_token_id: str) -> None:
             raise exceptions.tokenNotFoundException()
 
         # Stop spectating old client
-        stopSpectating(token_id, get_lock=False) # (we already have the lock)
+        stopSpectating(token_id, get_lock=False)  # (we already have the lock)
 
         # Set new spectator host
         update_token(
@@ -587,7 +628,7 @@ def startSpectating(token_id: str, host_token_id: str) -> None:
             force=True,
         )
 
-        spectators = get_spectators(host_token['token_id'])
+        spectators = get_spectators(host_token["token_id"])
         if len(spectators) == 1:
             # First spectator, send #spectator join to host too
             chat.joinChannel(
@@ -603,13 +644,14 @@ def startSpectating(token_id: str, host_token_id: str) -> None:
         )
 
         # Get current spectators list
-        spectators = get_spectators(host_token['token_id'])
+        spectators = get_spectators(host_token["token_id"])
         for spectator_user_id in spectators:
             if spectator_user_id != token["user_id"]:
                 enqueue(
                     token_id,
                     serverPackets.fellowSpectatorJoined(token["user_id"]),
                 )
+
 
 def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     """
@@ -647,12 +689,14 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
         leaveStream(token_id, stream_name)
 
         if host_token:
-            remove_spectator(host_token['token_id'], token['user_id'])
-            enqueue(host_token["token_id"], serverPackets.removeSpectator(token["user_id"]))
+            remove_spectator(host_token["token_id"], token["user_id"])
+            enqueue(
+                host_token["token_id"], serverPackets.removeSpectator(token["user_id"])
+            )
 
             fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
             # and to all other spectators
-            spectators = get_spectators(host_token['token_id'])
+            spectators = get_spectators(host_token["token_id"])
             for spectator in spectators:
                 spectator_token = get_token_by_user_id(spectator)
                 if spectator_token is None:
@@ -692,6 +736,7 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
         if redlock is not None:
             redlock.release()
 
+
 def updatePingTime(token_id: str) -> None:
     """
     Update latest ping time to current time
@@ -706,6 +751,7 @@ def updatePingTime(token_id: str) -> None:
         token_id,
         ping_time=time(),
     )
+
 
 def joinMatch(token_id: str, match_id: int) -> None:
     """
@@ -754,6 +800,7 @@ def joinMatch(token_id: str, match_id: int) -> None:
         # maybe not all users are ready.
         match.sendReadyStatus(multiplayer_match["match_id"])
 
+
 def leaveMatch(token_id: str) -> None:
     """
     Leave joined match, match stream and match channel
@@ -776,7 +823,9 @@ def leaveMatch(token_id: str) -> None:
         force=True,
     )
     leaveStream(token_id, match.create_stream_name(token["match_id"]))
-    leaveStream(token_id, match.create_playing_stream_name(token["match_id"]))  # optional
+    leaveStream(
+        token_id, match.create_playing_stream_name(token["match_id"])
+    )  # optional
 
     # Set usertoken match to -1
     leaving_match_id = token["match_id"]
@@ -797,6 +846,7 @@ def leaveMatch(token_id: str) -> None:
         # If an user leaves, then the ready status of the match changes and
         # maybe all users are ready. Or maybe nobody is in the match anymore
         match.sendReadyStatus(multiplayer_match["match_id"])
+
 
 def kick(
     token_id: str,
@@ -824,6 +874,7 @@ def kick(
 
     # Logout event
     logoutEvent.handle(token_id, deleteToken=token["irc"])
+
 
 def silence(
     token_id: str,
@@ -862,6 +913,7 @@ def silence(
     # Send silenced packet to everyone else
     streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
 
+
 def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     """
     Silences the user if is spamming.
@@ -887,6 +939,7 @@ def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     if token["spam_rate"] > acceptable_rate:
         silence(token_id, 600, "Spamming (auto spam protection)")
 
+
 def isSilenced(token_id: str) -> bool:
     """
     Returns True if this user is silenced, otherwise False
@@ -898,6 +951,7 @@ def isSilenced(token_id: str) -> bool:
         raise exceptions.tokenNotFoundException()
 
     return token["silence_end_time"] - time() > 0
+
 
 def getSilenceSecondsLeft(token_id: str) -> int:
     """
@@ -911,6 +965,7 @@ def getSilenceSecondsLeft(token_id: str) -> int:
         raise exceptions.tokenNotFoundException()
 
     return max(0, token["silence_end_time"] - int(time()))
+
 
 def updateCachedStats(token_id: str) -> None:
     """
@@ -949,6 +1004,7 @@ def updateCachedStats(token_id: str) -> None:
         pp=stats["pp"],
     )
 
+
 def checkRestricted(token_id: str) -> None:
     """
     Check if this token is restricted. If so, send Aika message
@@ -966,6 +1022,7 @@ def checkRestricted(token_id: str) -> None:
     elif not restricted and old_restricted != restricted:
         resetRestricted(token_id)
 
+
 def checkBanned(token_id: str) -> None:
     """
     Check if this user is banned. If so, disconnect it.
@@ -979,6 +1036,7 @@ def checkBanned(token_id: str) -> None:
     if userUtils.isBanned(token["user_id"]):
         enqueue(token_id, serverPackets.loginBanned)
         logoutEvent.handle(token_id, deleteToken=False)
+
 
 def setRestricted(token_id: str) -> None:
     """
@@ -997,6 +1055,7 @@ def setRestricted(token_id: str) -> None:
         "Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
     )
 
+
 def resetRestricted(token_id: str) -> None:
     """
     Send Aika message to alert the user that he has been unrestricted
@@ -1014,6 +1073,7 @@ def resetRestricted(token_id: str) -> None:
         "Your account has been unrestricted! Please log in again.",
     )
 
+
 def joinStream(token_id: str, name: str) -> None:
     """
     Join a packet stream, or create it if the stream doesn't exist.
@@ -1028,6 +1088,7 @@ def joinStream(token_id: str, name: str) -> None:
     streamList.join(name, token_id=token_id)
     if name not in get_streams(token_id):
         add_stream(token_id, name)
+
 
 def leaveStream(token_id: str, name: str) -> None:
     """
@@ -1044,6 +1105,7 @@ def leaveStream(token_id: str, name: str) -> None:
     if name in get_streams(token_id):
         remove_stream(token_id, name)
 
+
 def leaveAllStreams(token_id: str) -> None:
     """
     Leave all joined packet streams
@@ -1056,6 +1118,7 @@ def leaveAllStreams(token_id: str) -> None:
 
     for stream in get_streams(token_id):
         leaveStream(token_id, stream)
+
 
 def awayCheck(token_id: str, user_id: int) -> bool:
     """
@@ -1073,6 +1136,7 @@ def awayCheck(token_id: str, user_id: int) -> bool:
         return False
     add_sent_away_message(token_id, user_id)
     return True
+
 
 def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
     """
@@ -1094,6 +1158,7 @@ def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
         token_id,
         f"{strftime('%H:%M', localtime())} - {token['username']}@{channel}: {message[:1000]}",
     )
+
 
 def getMessagesBufferString(token_id: str) -> str:
     """

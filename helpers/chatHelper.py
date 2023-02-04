@@ -15,7 +15,7 @@ from objects import fokabot, stream, osuToken
 
 
 from redlock import RedLock
-from objects import glob, streamList,channelList,tokenList
+from objects import glob, streamList, channelList, tokenList
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -142,7 +142,7 @@ def partChannel(
             if token["spectating_user_id"] is None:
                 spectating_user_id = userID
             else:
-                spectating_user_id = token['spectating_user_id']
+                spectating_user_id = token["spectating_user_id"]
             channel_name = f"#spect_{spectating_user_id}"
         elif channel_name == "#multiplayer":
             channel_name = f"#multi_{token['match_id']}"
@@ -160,7 +160,7 @@ def partChannel(
         if channel is None:
             raise exceptions.channelUnknownException()
 
-        if channel['instance'] and not token["irc"] and not force:
+        if channel["instance"] and not token["irc"] and not force:
             raise exceptions.channelUnknownException()
 
         # Make sure the user is in the channel
@@ -173,17 +173,15 @@ def partChannel(
         # Delete temporary channel if everyone left
         key = f"chat/{channel_name}"
         if key in streamList.getStreams():
-            if (
-                channel["instance"]
-                and stream.getClientCount(key) - 1
-                == 0
-            ):
+            if channel["instance"] and stream.getClientCount(key) - 1 == 0:
                 channelList.removeChannel(channel_name)
 
         # Force close tab if needed
         # NOTE: Maybe always needed, will check later
         if kick:
-            osuToken.enqueue(token["token_id"], serverPackets.channelKicked(channelClient))
+            osuToken.enqueue(
+                token["token_id"], serverPackets.channelKicked(channelClient)
+            )
 
         # IRC part
         if settings.IRC_ENABLE and toIRC:
@@ -321,16 +319,29 @@ def sendMessage(
             # Make sure we have write permissions.
             if (
                 # you need premium for #premium
-                (to == "#premium" and userToken["privileges"] & privileges.USER_PREMIUM == 0) and
+                (
+                    to == "#premium"
+                    and userToken["privileges"] & privileges.USER_PREMIUM == 0
+                )
+                and
                 # you need supporter for #supporter
-                (to == "#supporter" and userToken["privileges"] & privileges.USER_DONOR == 0)
-                and not (channel["publicWrite"] or osuToken.is_staff(userToken["privileges"]))
+                (
+                    to == "#supporter"
+                    and userToken["privileges"] & privileges.USER_DONOR == 0
+                )
+                and not (
+                    channel["publicWrite"]
+                    or osuToken.is_staff(userToken["privileges"])
+                    or userToken["user_id"] == 999
+                )
             ):
                 raise exceptions.channelNoPermissionsException()
 
             # Check message for commands
             if not action_msg:
-                fokaMessage = fokabot.fokabotResponse(userToken["username"], to, message)
+                fokaMessage = fokabot.fokabotResponse(
+                    userToken["username"], to, message
+                )
             else:
                 fokaMessage = None
 
@@ -403,11 +414,13 @@ def sendMessage(
                         "bancho:locks:tokens",
                         retry_delay=50,
                         retry_times=20,
-                    ): # Generate admin token list
+                    ):  # Generate admin token list
                         send_to = {
                             t["token_id"]
-                            for t in osuToken.get_tokens() # TODO: use redis
-                            if t["token_id"] != token_id and osuToken.is_staff(t["privileges"]) and t["user_id"] != 999
+                            for t in osuToken.get_tokens()  # TODO: use redis
+                            if t["token_id"] != token_id
+                            and osuToken.is_staff(t["privileges"])
+                            and t["user_id"] != 999
                         }
 
                     # Send their command
@@ -428,11 +441,15 @@ def sendMessage(
                     )
                 else:  # Send to all streams
                     osuToken.addMessageInBuffer(token_id, to, message)
-                    streamList.broadcast(f"chat/{to}", msg_packet, but=[userToken["token_id"]])
+                    streamList.broadcast(
+                        f"chat/{to}", msg_packet, but=[userToken["token_id"]]
+                    )
                     sendMessage(glob.BOT_NAME, to, fokaMessage["response"])
             else:
                 osuToken.addMessageInBuffer(token_id, to, message)
-                streamList.broadcast(f"chat/{to}", msg_packet, but=[userToken["token_id"]])
+                streamList.broadcast(
+                    f"chat/{to}", msg_packet, but=[userToken["token_id"]]
+                )
         else:
             # USER
             # Make sure recipient user is connected
@@ -461,11 +478,9 @@ def sendMessage(
                     raise exceptions.userRestrictedException()
 
                 # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
-                if (
-                    recipient_token["block_non_friends_dm"]
-                    and userToken["user_id"]
-                    not in userUtils.getFriendList(recipient_token["user_id"])
-                ):
+                if recipient_token["block_non_friends_dm"] and userToken[
+                    "user_id"
+                ] not in userUtils.getFriendList(recipient_token["user_id"]):
                     osuToken.enqueue(
                         token_id,
                         serverPackets.targetBlockingDMs(
@@ -486,7 +501,9 @@ def sendMessage(
 
             if to == glob.BOT_NAME:
                 # Check message for commands
-                fokaMessage = fokabot.fokabotResponse(userToken["username"], to, message)
+                fokaMessage = fokabot.fokabotResponse(
+                    userToken["username"], to, message
+                )
 
                 if fokaMessage:
                     sendMessage(glob.BOT_NAME, fro, fokaMessage["response"])
@@ -522,7 +539,10 @@ def sendMessage(
 
         return 0
     except exceptions.userSilencedException:
-        osuToken.enqueue(token_id, serverPackets.silenceEndTime(osuToken.getSilenceSecondsLeft(token_id)))
+        osuToken.enqueue(
+            token_id,
+            serverPackets.silenceEndTime(osuToken.getSilenceSecondsLeft(token_id)),
+        )
         log.warning(f"{userToken['username']} tried to send a message during silence.")
         return 404
     except exceptions.channelModeratedException:
@@ -559,10 +579,13 @@ def sendMessage(
         )
         return 404
     except exceptions.invalidArgumentsException:
-        log.warning(f"{userToken['username']} tried to send an invalid message to {to}.")
+        log.warning(
+            f"{userToken['username']} tried to send an invalid message to {to}."
+        )
         return 404
     except Exception as e:  # unhandled
         import traceback
+
         traceback.print_exc()
         log.warning(f"chatHelper {e}")
 
@@ -642,7 +665,7 @@ def IRCDisconnect(username: str) -> None:
         log.warning(f"{username} doesn't exist.")
         return
 
-    logoutEvent.handle(token["token_id"]) # TODO
+    logoutEvent.handle(token["token_id"])  # TODO
     log.info(f"{username} disconnected from IRC.")
 
 
@@ -692,7 +715,7 @@ def IRCAway(username: str, message: str) -> Optional[int]:
     userID = userUtils.getID(username)
     if not userID:
         log.warning(f"{username} doesn't exist.")
-        return # TODO: should this be returning a code?
+        return  # TODO: should this be returning a code?
 
     token = osuToken.get_token_by_user_id(userID)
     if token is None:
