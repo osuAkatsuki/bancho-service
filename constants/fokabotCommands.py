@@ -32,7 +32,7 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
 from objects import fokabot, channelList, match, tokenList
-from objects import glob, matchList,streamList, slot, osuToken
+from objects import glob, matchList, streamList, slot, osuToken
 
 """
 Commands callbacks
@@ -751,7 +751,9 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
             ignoreIRC=True,
         )
         return (
-            chimuMessage(spectatorHostToken["beatmap_id"]) if spectatorHostToken else None
+            chimuMessage(spectatorHostToken["beatmap_id"])
+            if spectatorHostToken
+            else None
         )
 
     # Run the command in PM only
@@ -1061,10 +1063,7 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     # Set mods
     token["last_np"]["mods"] = _mods
-    osuToken.update_token(
-        token["token_id"],
-        last_np=token["last_np"]
-    )
+    osuToken.update_token(token["token_id"], last_np=token["last_np"])
 
     # Return tillerino message for that beatmap with mods
     return getPPMessage(token["user_id"])
@@ -1187,7 +1186,7 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     "beatmap_id": data["bid"],
                     "mods": data["mods"],
                     "accuracy": data["accuracy"],
-                }
+                },
             )
             oppaiData = getPPMessage(token["user_id"], just_data=True)
             if isinstance(oppaiData, str):
@@ -1436,7 +1435,9 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
 
     for token in tokenList.getTokenFromUserID(userID, _all=True):
         osuToken.enqueue(token["token_id"], notif_pkt)
-        osuToken.kick(token["token_id"], )
+        osuToken.kick(
+            token["token_id"],
+        )
 
     userUtils.appendNotes(userID, f"Changed username: '{fro}' -> '{newUsername}'.")
     log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
@@ -1807,9 +1808,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Match size changed to {matchSize}."
 
     def mpForce() -> Optional[str]:
-        froToken = glob.tokens.getTokenFromUsername(fro, ignoreIRC=True)
+        froToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
 
-        if not froToken or not froToken.privileges & privileges.ADMIN_CAKER:
+        if not froToken or not froToken["privileges"] & privileges.ADMIN_CAKER:
             return
 
         if len(message) != 3 or not message[2].isnumeric():
@@ -1942,7 +1943,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 return
             return "Starting match"
         else:
-            multiplayer_match = match.update_match(multiplayer_match["match_id"], is_starting=True)
+            multiplayer_match = match.update_match(
+                multiplayer_match["match_id"], is_starting=True
+            )
             assert multiplayer_match is not None
             threading.Timer(1.00, _decreaseTimer, [startTime - 1]).start()
             return (
@@ -1973,7 +1976,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         match.invite(multiplayer_match["match_id"], fro=999, to=userID)
 
-        osuToken.enqueue(token["token_id"],
+        osuToken.enqueue(
+            token["token_id"],
             serverPackets.notification(
                 "Please accept the invite you've just received from "
                 f"{glob.BOT_NAME} to enter your tourney match.",
@@ -2036,7 +2040,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         match_team_type = int(message[1])
         match_scoring_type = (
-            int(message[2]) if len(message) >= 3 else multiplayer_match["match_scoring_type"]
+            int(message[2])
+            if len(message) >= 3
+            else multiplayer_match["match_scoring_type"]
         )
         if not 0 <= match_team_type <= 3:
             raise exceptions.invalidArgumentsException(
@@ -2166,7 +2172,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 ):
                     _mods |= modMap[m]
 
-        new_match_mod_mode = matchModModes.FREE_MOD if freemods else matchModModes.NORMAL
+        new_match_mod_mode = (
+            matchModModes.FREE_MOD if freemods else matchModModes.NORMAL
+        )
         multiplayer_match = match.update_match(
             multiplayer_match["match_id"],
             match_mod_mode=new_match_mod_mode,
@@ -2276,8 +2284,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             new_scoring_type = matchScoringTypes.SCORE
 
         multiplayer_match = match.update_match(
-            multiplayer_match["match_id"],
-            match_scoring_type=new_scoring_type
+            multiplayer_match["match_id"], match_scoring_type=new_scoring_type
         )
         assert multiplayer_match is not None
 
@@ -2396,8 +2403,8 @@ def runPython(fro: str, chan: str, message: list[str]) -> str:
 @command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
 def reload(fro: str, chan: str, message: list[str]) -> str:
     """Reload a python module, by name (relative to pep.py)."""
-    if fro != 'cmyui':
-        return 'no :)'
+    if fro != "cmyui":
+        return "no :)"
 
     if len(message) != 1:
         return "Invalid syntax: !reload <module>"
@@ -2413,11 +2420,13 @@ def reload(fro: str, chan: str, message: list[str]) -> str:
         for child in children:
             mod = getattr(mod, child)
     except AttributeError:
-        return f"Failed at {child}." # type: ignore
+        return f"Failed at {child}."  # type: ignore
 
     import importlib
+
     mod = importlib.reload(mod)
     return f"Reloaded {mod.__name__}"
+
 
 # used in fokabot.py, here so we can !reload constants.fokabotCommands
 _commands = {
