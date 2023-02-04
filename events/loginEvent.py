@@ -410,8 +410,8 @@ def handle(
         # Send online users' panels
         with RedLock(
             "bancho:locks:tokens",
-            retry_delay=50,
-            retry_times=20,
+            retry_delay=100,
+            retry_times=50,
         ):
             for token in osuToken.get_tokens():
                 if not osuToken.is_restricted(token["privileges"]):
