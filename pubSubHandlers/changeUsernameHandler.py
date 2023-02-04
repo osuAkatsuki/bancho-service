@@ -4,7 +4,7 @@ from common.constants import actions
 from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob, tokenList
+from objects import glob, tokenList, osuToken
 
 
 def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
