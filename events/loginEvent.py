@@ -22,7 +22,15 @@ from helpers import chatHelper as chat
 from helpers import countryHelper
 from helpers import locationHelper
 from redlock import RedLock
-from objects import glob, streamList,channelList,stream,verifiedCache,osuToken,tokenList
+from objects import (
+    glob,
+    streamList,
+    channelList,
+    stream,
+    verifiedCache,
+    osuToken,
+    tokenList,
+)
 
 if TYPE_CHECKING:
     import tornado.web
@@ -114,32 +122,31 @@ def handle(
 
         """ No login errors! """
 
-        firstLogin = False
         # Verify this user (if pending activation)
-        # firstLogin = False
-        # if pending_verification or not userUtils.hasVerifiedHardware(userID):
-        #     if userUtils.verifyUser(userID, clientData):
-        #         # Valid account
-        #         log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
-        #         verifiedCache.set(userID, True)
-        #         firstLogin = True
-        #     else:
-        #         # Multiaccount detected
-        #         log(
-        #             f"{username} ({userID}) tried to create another account.",
-        #             Ansi.LRED,
-        #         )
-        #         verifiedCache.set(userID, False)
-        #         # raise exceptions.loginBannedException()
+        firstLogin = False
+        if pending_verification or not userUtils.hasVerifiedHardware(userID):
+            if userUtils.verifyUser(userID, clientData):
+                # Valid account
+                log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
+                verifiedCache.set(userID, True)
+                firstLogin = True
+            else:
+                # Multiaccount detected
+                log(
+                    f"{username} ({userID}) tried to create another account.",
+                    Ansi.LRED,
+                )
+                verifiedCache.set(userID, False)
+                raise exceptions.loginBannedException()
 
         # Save HWID in db for multiaccount detection
-        # hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
+        hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
 
         # This is false only if HWID is empty
         # if HWID is banned, we get restricted so there's no
         # need to deny bancho access
-        # if not hwAllowed:
-        #     raise exceptions.haxException()
+        if not hwAllowed:
+            raise exceptions.haxException()
 
         # Log user IP
         userUtils.logIP(userID, requestIP)
@@ -173,7 +180,7 @@ def handle(
         )
 
         # Check restricted mode (and eventually send message)
-        # osuToken.checkRestricted(userToken["token_id"])
+        osuToken.checkRestricted(userToken["token_id"])
 
         """ osu!Akatuki account freezing. """
 
@@ -347,10 +354,19 @@ def handle(
         # Send all needed login packets
         osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
         osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
-        osuToken.enqueue(userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds))
-        osuToken.enqueue(userToken["token_id"], serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament))
-        osuToken.enqueue(userToken["token_id"], serverPackets.userPanel(userID, force=True))
-        osuToken.enqueue(userToken["token_id"], serverPackets.userStats(userID, force=True))
+        osuToken.enqueue(
+            userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds)
+        )
+        osuToken.enqueue(
+            userToken["token_id"],
+            serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
+        )
+        osuToken.enqueue(
+            userToken["token_id"], serverPackets.userPanel(userID, force=True)
+        )
+        osuToken.enqueue(
+            userToken["token_id"], serverPackets.userStats(userID, force=True)
+        )
 
         # Default opened channels.
         chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
@@ -370,7 +386,9 @@ def handle(
         for channel in channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
                 client_count = stream.getClientCount(f"chat/{channel['name']}")
-                packet_data = serverPackets.channelInfo(channel["name"], channel["description"], client_count)
+                packet_data = serverPackets.channelInfo(
+                    channel["name"], channel["description"], client_count
+                )
                 osuToken.enqueue(userToken["token_id"], packet_data)
 
         # Channel info end.
@@ -381,7 +399,10 @@ def handle(
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
-            osuToken.enqueue(userToken["token_id"], serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
+            osuToken.enqueue(
+                userToken["token_id"],
+                serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
+            )
 
         # Save token in redis
         glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
@@ -394,7 +415,9 @@ def handle(
         ):
             for token in osuToken.get_tokens():
                 if not osuToken.is_restricted(token["privileges"]):
-                    osuToken.enqueue(userToken["token_id"], serverPackets.userPanel(token["user_id"]))
+                    osuToken.enqueue(
+                        userToken["token_id"], serverPackets.userPanel(token["user_id"])
+                    )
 
         # Get location and country from ip.zxq.co or database. If the user is a donor, then yee
         if settings.LOCALIZE_ENABLE and (
