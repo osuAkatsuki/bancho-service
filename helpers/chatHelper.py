@@ -313,23 +313,25 @@ def sendMessage(
                 raise exceptions.channelNoPermissionsException()
 
             # Make sure we have write permissions.
+
+            # premium requires premium
             if (
-                # you need premium for #premium
-                (
-                    to == "#premium"
-                    and userToken["privileges"] & privileges.USER_PREMIUM == 0
-                )
-                and
-                # you need supporter for #supporter
-                (
-                    to == "#supporter"
-                    and userToken["privileges"] & privileges.USER_DONOR == 0
-                )
-                and not (
-                    channel["publicWrite"]
-                    or osuToken.is_staff(userToken["privileges"])
-                    or userToken["user_id"] == 999
-                )
+                to == "#premium"
+                and userToken["privileges"] & privileges.USER_PREMIUM == 0
+            ):
+                raise exceptions.channelNoPermissionsException()
+
+            # supporter requires supporter
+            if (
+                to == "#supporter"
+                and userToken["privileges"] & privileges.USER_DONOR == 0
+            ):
+                raise exceptions.channelNoPermissionsException()
+
+            # non-public channels require staff or bot
+            if not channel["public_write"] and not (
+                osuToken.is_staff(userToken["privileges"])
+                or userToken["user_id"] == 999
             ):
                 raise exceptions.channelNoPermissionsException()
 
