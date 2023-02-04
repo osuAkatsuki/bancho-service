@@ -91,14 +91,6 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
         ):
             return None
 
-        # If this is an !mp command in a match, make sure the user is a referee.
-        if chan.startswith("#multi_") and cmd["trigger"] == "!mp":
-            multiplayer_match = matchList.getMatchFromChannel(chan)
-            assert multiplayer_match is not None
-
-            if userID not in match.get_referees(multiplayer_match["match_id"]):
-                return None
-
         # Check argument number
         message_split = message.split(" ")
         if cmd["syntax"] and len(message_split) <= cmd["syntax"].count(" ") + 1:

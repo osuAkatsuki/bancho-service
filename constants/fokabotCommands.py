@@ -1695,6 +1695,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Contains many multiplayer subcommands (TODO: document them as well)."""
 
     def mpAddRefer():
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp addref <user>",
@@ -1712,6 +1718,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Added {username} to referees"
 
     def mpRemoveRefer():
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp addref <user>",
@@ -1730,6 +1742,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Removed {username} from referees"
 
     def mpListRefer() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
@@ -1785,11 +1803,23 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     #     return f"Attempting to join match #{matchID}!"
 
     def mpClose() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         matchID = channelList.getMatchIDFromChannel(chan)
         matchList.disposeMatch(matchID)
         return f"Multiplayer match #{matchID} disposed successfully."
 
     def mpLock() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
@@ -1797,6 +1827,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "This match has been locked."
 
     def mpUnlock() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
@@ -1804,6 +1840,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "This match has been unlocked."
 
     def mpSize() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if (
             len(message) < 2
             or not message[1].isnumeric()
@@ -1821,6 +1863,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Match size changed to {matchSize}."
 
     def mpForce() -> Optional[str]:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         froToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
 
         if not froToken or not froToken["privileges"] & privileges.ADMIN_CAKER:
@@ -1840,6 +1888,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Joined match."
 
     def mpMove() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if (
             len(message) < 3
             or not message[2].isnumeric()
@@ -1868,6 +1922,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
 
     def mpHost() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp host <username>.",
@@ -1890,6 +1950,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
 
     def mpClearHost() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
@@ -1897,6 +1963,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Host has been removed from this match."
 
     def mpStart() -> Optional[str]:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         def _start() -> bool:
             multiplayer_match = matchList.getMatchFromChannel(chan)
             assert multiplayer_match is not None
@@ -2010,6 +2082,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"An invite to this match has been sent to {username}."
 
     def mpMap() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if (
             len(message) < 2
             or not message[1].isnumeric()
@@ -2049,6 +2127,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Match map has been updated."
 
     def mpSet() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if (
             len(message) < 2
             or not message[1].isnumeric()
@@ -2102,6 +2186,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Match settings have been updated!"
 
     def mpAbort():
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
@@ -2109,6 +2199,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Match aborted!"
 
     def mpKick() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp kick <username>.",
@@ -2135,6 +2231,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"{username} has been kicked from the match."
 
     def mpPassword() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         password = "" if len(message) < 2 or not message[1].strip() else message[1]
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
@@ -2143,6 +2245,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Match password has been changed!"
 
     def mpRandomPassword() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         password = secrets.token_hex(16)
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
@@ -2151,6 +2259,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Match password has been randomized."
 
     def mpMods() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) != 2 or len(message[1]) % 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp mods <mods, e.g. hdhr>",
@@ -2212,6 +2326,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "Match mods have been updated!"
 
     def mpTeam() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 3:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp team <username> <colour>.",
@@ -2240,6 +2360,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"{username} is now in {colour} team"
 
     def mpSettings() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
@@ -2294,6 +2420,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "".join(msg).rstrip(" | " if single else "\n")
 
     def mpScoreV() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 2 or message[1] not in {"1", "2"}:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp scorev <1|2>.",
