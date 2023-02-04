@@ -157,7 +157,7 @@ def handle(
         with RedLock(
             "bancho:locks:tokens",
             retry_delay=100,
-            retry_times=50,
+            retry_times=500,
         ):
             if not isTournament:
                 tokenList.deleteOldTokens(userID)
@@ -411,7 +411,7 @@ def handle(
         with RedLock(
             "bancho:locks:tokens",
             retry_delay=100,
-            retry_times=50,
+            retry_times=500,
         ):
             for token in osuToken.get_tokens():
                 if not osuToken.is_restricted(token["privileges"]):
