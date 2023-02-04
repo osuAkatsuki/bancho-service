@@ -5,14 +5,16 @@ from typing import Optional
 
 from common.log import logUtils as log
 from common.constants import mods
-from constants import serverPackets,matchScoringTypes,matchModModes,matchTeamTypes
+from constants import serverPackets, matchScoringTypes, matchModModes, matchTeamTypes
 from objects import slot
 from objects import glob
 from objects import match
-from objects import streamList,channelList, tokenList
+from objects import streamList, channelList, tokenList
+
 
 def make_key() -> str:
     return "bancho:matches"
+
 
 def createMatch(
     match_name: str,
@@ -49,15 +51,15 @@ def createMatch(
         match_scoring_type=matchScoringTypes.SCORE,
         match_team_type=matchTeamTypes.HEAD_TO_HEAD,
         match_mod_mode=matchModModes.FREE_MOD,
-        seed=0, # TODO: what's the size, signedness, and time to set this?
+        seed=0,  # TODO: what's the size, signedness, and time to set this?
         is_tourney=is_tourney,
         is_locked=False,
         is_starting=False,
         is_in_progress=False,
         creation_time=time(),
     )
-    streamList.add(match.create_stream_name(multiplayer_match['match_id']))
-    streamList.add(match.create_playing_stream_name(multiplayer_match['match_id']))
+    streamList.add(match.create_stream_name(multiplayer_match["match_id"]))
+    streamList.add(match.create_playing_stream_name(multiplayer_match["match_id"]))
     channelList.addChannel(
         f"#multi_{multiplayer_match['match_id']}",
         description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
@@ -68,6 +70,7 @@ def createMatch(
     )
 
     return multiplayer_match["match_id"]
+
 
 def disposeMatch(match_id: int) -> None:
     """
@@ -97,9 +100,6 @@ def disposeMatch(match_id: int) -> None:
                 disposeMatch=False,
             )
 
-    # Delete chat channel
-    channelList.removeChannel(f"#multi_{match_id}")
-
     stream_name = match.create_stream_name(match_id)
     playing_stream_name = match.create_playing_stream_name(match_id)
 
@@ -115,7 +115,10 @@ def disposeMatch(match_id: int) -> None:
     # Send match dispose packet to everyone in lobby
     streamList.broadcast("lobby", serverPackets.disposeMatch(match_id))
     match.delete_match(match_id)
-    log.info(f"MPROOM{match_id}: Room disposed manually")
+
+    # Delete chat channel
+    channelList.removeChannel(f"#multi_{match_id}")
+
 
 # deleting this code 2022-12-30 because
 # https://twitter.com/elonmusk/status/1606624671100997634?cxt=HHwWhMDUhYmo8MssAAAA
@@ -159,12 +162,15 @@ def disposeMatch(match_id: int) -> None:
 #         # Schedule a new check (endless loop)
 #         Timer(30, self.cleanupLoop).start()
 
+
 def matchExists(matchID: int) -> bool:
     return matchID in match.get_match_ids()
+
 
 def getMatchByID(match_id: int) -> Optional[match.Match]:
     if matchExists(match_id):
         return match.get_match(match_id)
+
 
 # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
 def getMatchFromChannel(chan: str) -> Optional[match.Match]:
