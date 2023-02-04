@@ -73,7 +73,7 @@ def joinChannel(
             glob.ircServer.banchoJoinChannel(token["username"], channel_name)
 
         # Console output
-        log.info(f"{token['username']} joined channel {channel}")
+        # log.info(f"{token['username']} joined channel {channel}")
 
         # IRC code return
         return 0
