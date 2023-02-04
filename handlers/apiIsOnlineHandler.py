@@ -40,9 +40,7 @@ class handler(requestsManager.asyncRequestHandler):
             else:
                 if username:
                     data["result"] = (
-                        True
-                        if tokenList.getTokenFromUsername(username, safe=True)
-                        else False
+                        True if tokenList.getTokenFromUsername(username) else False
                     )
                 else:
                     data["result"] = (

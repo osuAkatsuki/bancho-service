@@ -442,7 +442,14 @@ def sendMessage(
                     streamList.broadcast(
                         f"chat/{to}", msg_packet, but=[userToken["token_id"]]
                     )
-                    sendMessage(glob.BOT_NAME, to, fokaMessage["response"])
+
+                    aika_token = tokenList.getTokenFromUserID(999)
+                    assert aika_token is not None
+                    sendMessage(
+                        token_id=aika_token["token_id"],
+                        to=to,
+                        message=fokaMessage["response"],
+                    )
             else:
                 osuToken.addMessageInBuffer(token_id, to, message)
                 streamList.broadcast(
@@ -492,9 +499,9 @@ def sendMessage(
             # Away check
             if osuToken.awayCheck(recipient_token["token_id"], userToken["user_id"]):
                 sendMessage(
-                    to,
-                    fro,
-                    f"\x01ACTION is away: {recipient_token['away_message']}\x01",
+                    fro=to,
+                    to=fro,
+                    message=f"\x01ACTION is away: {recipient_token['away_message']}\x01",
                 )
 
             if to == glob.BOT_NAME:
@@ -504,7 +511,13 @@ def sendMessage(
                 )
 
                 if fokaMessage:
-                    sendMessage(glob.BOT_NAME, fro, fokaMessage["response"])
+                    aika_token = tokenList.getTokenFromUserID(999)
+                    assert aika_token is not None
+                    sendMessage(
+                        token_id=aika_token["token_id"],
+                        to=fro,
+                        message=fokaMessage["response"],
+                    )
             else:
                 packet = serverPackets.sendMessage(
                     fro=userToken["username"],

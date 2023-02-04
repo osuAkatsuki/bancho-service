@@ -1062,10 +1062,12 @@ def setRestricted(token_id: str) -> None:
     if token is None:
         raise exceptions.tokenNotFoundException()
 
+    aika_token = get_token_by_user_id(999)
+    assert aika_token is not None
     chat.sendMessage(
-        glob.BOT_NAME,
-        token["username"],
-        "Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
+        token_id=aika_token["token_id"],
+        to=token["username"],
+        message="Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
     )
 
 
@@ -1080,10 +1082,12 @@ def resetRestricted(token_id: str) -> None:
     if token is None:
         raise exceptions.tokenNotFoundException()
 
+    aika_token = get_token_by_user_id(999)
+    assert aika_token is not None
     chat.sendMessage(
-        glob.BOT_NAME,
-        token["username"],
-        "Your account has been unrestricted! Please log in again.",
+        token_id=aika_token["token_id"],
+        to=token["username"],
+        message="Your account has been unrestricted! Please log in again.",
     )
 
 

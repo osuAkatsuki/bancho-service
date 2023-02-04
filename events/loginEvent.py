@@ -198,10 +198,13 @@ def handle(
             freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
+                aika_token = tokenList.getTokenFromUserID(999)
+                assert aika_token is not None
+
                 chat.sendMessage(
-                    glob.BOT_NAME,
-                    username,
-                    "\n".join(
+                    token_id=aika_token["token_id"],
+                    to=username,
+                    message="\n".join(
                         [
                             f"Your account has been frozen by an administrator{freeze_str}",
                             "This is not a restriction, but will lead to one if ignored.",

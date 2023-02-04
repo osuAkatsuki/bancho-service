@@ -155,7 +155,6 @@ def getTokenFromUserID(
 def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = ...,
-    safe: bool = False,
     _all: Literal[False] = ...,
 ) -> Optional[osuToken.Token]:
     ...
@@ -165,7 +164,6 @@ def getTokenFromUsername(
 def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = ...,
-    safe: bool = False,
     _all: Literal[True] = ...,
 ) -> list[osuToken.Token]:
     ...
@@ -174,7 +172,6 @@ def getTokenFromUsername(
 def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = False,
-    safe: bool = False,
     _all: bool = False,
 ):
     """
@@ -182,20 +179,16 @@ def getTokenFromUsername(
 
     :param username: normal username or safe username
     :param ignoreIRC: if True, consider bancho clients only and skip IRC clients
-    :param safe: 	if True, username is a safe username,
-                    compare it with token's safe username rather than normal username
     :param _all: if True, return a list with all clients that match given username, otherwise return
                 only the first occurrence.
     :return: osuToken object or None
     """
-    # lowercase
-    who = username.lower() if not safe else username
 
     # Make sure the token exists
     ret = []
     for value in osuToken.get_tokens():
-        if (not safe and value["username"].lower() == who) or (
-            safe and value["username"].lower().replace(" ", "_") == who
+        if value["username"].lower().replace(" ", "_") == username.lower().replace(
+            " ", "_"
         ):
             if ignoreIRC and value["irc"]:
                 continue

@@ -242,8 +242,7 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
 
     # Send silence packet to target if he's connected
     targetToken = tokenList.getTokenFromUsername(
-        userUtils.safeUsername(target),
-        safe=True,
+        userUtils.safeUsername(target)
     )
     if targetToken:
         # user online, silence both in db and with packet
@@ -1286,7 +1285,13 @@ def report(fro: str, chan: str, message: list[str]) -> None:
         if msg:
             if token := tokenList.getTokenFromUsername(fro):
                 if token["irc"]:
-                    chat.sendMessage(glob.BOT_NAME, fro, msg)
+                    aika_token = tokenList.getTokenFromUserID(999)
+                    assert aika_token is not None
+                    chat.sendMessage(
+                        token_id=aika_token["token_id"],
+                        to=fro,
+                        message=msg,
+                    )
                 else:
                     osuToken.enqueue(token["token_id"], serverPackets.notification(msg))
 
@@ -1550,10 +1555,12 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
             f'beatmap [https://osu.ppy.sh/beatmaps/{rank_id} {res["song_name"]}]'
         )
 
+    aika_token = tokenList.getTokenFromUserID(999)
+    assert aika_token is not None
     chat.sendMessage(
-        glob.BOT_NAME,
-        "#announce",
-        f"{fro} has {status_readable} {beatmap_url}",
+        token_id=aika_token["token_id"],
+        to="#announce",
+        message=f"{fro} has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
 
@@ -1566,7 +1573,13 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 )
 def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
-    chat.sendMessage(glob.BOT_NAME, "#announce", " ".join(message))
+    aika_token = tokenList.getTokenFromUserID(999)
+    assert aika_token is not None
+    chat.sendMessage(
+        token_id=aika_token["token_id"],
+        to="#announce",
+        message=" ".join(message),
+    )
     return "Announcement successfully sent."
 
 
@@ -1888,16 +1901,24 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             multiplayer_match = matchList.getMatchFromChannel(chan)
             assert multiplayer_match is not None
 
+            aika_token = tokenList.getTokenFromUserID(999)
+            assert aika_token is not None
             if not match.start(multiplayer_match["match_id"]):
                 chat.sendMessage(
-                    glob.BOT_NAME,
-                    chan,
-                    "Couldn't start match. Make sure there are enough players and "
-                    "teams are valid. The match has been unlocked.",
+                    token_id=aika_token["token_id"],
+                    to=chan,
+                    message=(
+                        "Couldn't start match. Make sure there are enough players and "
+                        "teams are valid. The match has been unlocked."
+                    ),
                 )
                 return True  # Failed to start
             else:
-                chat.sendMessage(glob.BOT_NAME, chan, "Have fun!")
+                chat.sendMessage(
+                    token_id=aika_token["token_id"],
+                    to=chan,
+                    message="Have fun!",
+                )
                 return False
 
         def _decreaseTimer(t: int) -> None:
@@ -1905,11 +1926,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 _start()
             else:
                 if not t % 10 or t <= 5:
+                    aika_token = tokenList.getTokenFromUserID(999)
+                    assert aika_token is not None
                     chat.sendMessage(
-                        glob.BOT_NAME,
-                        chan,
-                        f"Match starts in {t} seconds.",
+                        token_id=aika_token["token_id"],
+                        to=chan,
+                        message=f"Match starts in {t} seconds.",
                     )
+
                 threading.Timer(1.00, _decreaseTimer, [t - 1]).start()
 
         if len(message) < 2 or not message[1].isnumeric():

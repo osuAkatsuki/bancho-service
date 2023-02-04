@@ -672,7 +672,13 @@ def allPlayersCompleted(match_id: int) -> None:
         multiplayer_match["is_tourney"]
         and channel_name in channelList.getChannelNames()
     ):
-        chat.sendMessage(glob.BOT_NAME, channel_name, "Match has just finished.")
+        aika_token = tokenList.getTokenFromUserID(999)
+        assert aika_token is not None
+        chat.sendMessage(
+            token_id=aika_token["token_id"],
+            to=channel_name,
+            message="Match has just finished.",
+        )
 
 
 def resetSlots(match_id: int) -> None:
@@ -1054,9 +1060,9 @@ def invite(match_id: int, fro: int, to: int) -> None:
     # Aika is too busy
     if to == 999:
         chat.sendMessage(
-            glob.BOT_NAME,
-            froToken["username"],
-            "I'd love to join your match, but I've got a job to do!.",
+            token_id=toToken["token_id"],
+            to=froToken["username"],
+            message="I'd love to join your match, but I've got a job to do!.",
         )
         return
 
@@ -1347,7 +1353,13 @@ def sendReadyStatus(match_id: int) -> None:
 
         message = " ".join(message)
 
-    chat.sendMessage(glob.BOT_NAME, channel_name, message)
+    aika_token = tokenList.getTokenFromUserID(999)
+    assert aika_token is not None
+    chat.sendMessage(
+        token_id=aika_token["token_id"],
+        to=channel_name,
+        message=message,
+    )
 
 
 # TODO: abstract these redis calls into a repository
