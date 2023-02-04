@@ -37,18 +37,13 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
         if multiplayer_match is None:
             raise exceptions.matchCreateError()
 
-        with RedLock(
-            f"{match.make_key(match_id)}:lock",
-            retry_delay=100,
-            retry_times=500,
-        ):
-            # Join that match
-            osuToken.joinMatch(token["token_id"], match_id)
+        # Join that match
+        osuToken.joinMatch(token["token_id"], match_id)
 
-            # Give host to match creator
-            match.setHost(match_id, token["user_id"])
-            match.sendUpdates(match_id)
-            match.changePassword(match_id, packetData["matchPassword"])
+        # Give host to match creator
+        match.setHost(match_id, token["user_id"])
+        match.sendUpdates(match_id)
+        match.changePassword(match_id, packetData["matchPassword"])
     except exceptions.matchCreateError:
         log.error("Error while creating match!")
         osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)

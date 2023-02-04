@@ -469,19 +469,14 @@ def enqueue(token_id: str, data: bytes) -> None:
     if token is None:
         raise exceptions.tokenNotFoundException()
 
-    with RedLock(
-        f"{make_key(token_id)}:locks:packet_queue",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        # Never enqueue for IRC clients or Aika
-        if token["irc"] or token["user_id"] == 999:
-            return
+    # Never enqueue for IRC clients or Aika
+    if token["irc"] or token["user_id"] == 999:
+        return
 
-        if len(data) >= 10 * 10**6:
-            logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
+    if len(data) >= 10 * 10**6:
+        logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
-        glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
+    glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
 
 
 def dequeue(token_id: str) -> bytes:
@@ -489,16 +484,11 @@ def dequeue(token_id: str) -> bytes:
     if token is None:
         raise exceptions.tokenNotFoundException()
 
-    with RedLock(
-        f"{make_key(token_id)}:locks:packet_queue",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
-        raw_packets.reverse()  # redis returns backwards
+    raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
+    raw_packets.reverse()  # redis returns backwards
 
-        # clear the packets we read
-        glob.redis.delete(f"{make_key(token_id)}:packet_queue")
+    # clear the packets we read
+    glob.redis.delete(f"{make_key(token_id)}:packet_queue")
 
     return b"".join([bytes(json.loads(raw_packet)) for raw_packet in raw_packets])
 
@@ -592,78 +582,73 @@ def startSpectating(token_id: str, host_token_id: str) -> None:
 
     :param host: host osuToken object
     """
-    with RedLock(
-        f"{make_key(token_id)}:locks:spectating",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        token = get_token(token_id)
-        if token is None:
-            raise exceptions.tokenNotFoundException()
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        host_token = get_token(host_token_id)
-        if host_token is None:
-            raise exceptions.tokenNotFoundException()
+    host_token = get_token(host_token_id)
+    if host_token is None:
+        raise exceptions.tokenNotFoundException()
 
-        # Stop spectating old client
-        stopSpectating(token_id, get_lock=False)  # (we already have the lock)
+    # Stop spectating old client
+    stopSpectating(token_id, get_lock=False)  # (we already have the lock)
 
-        # Set new spectator host
-        update_token(
-            token_id,
-            spectating_token_id=host_token_id,
-            spectating_user_id=host_token["user_id"],
-        )
+    # Set new spectator host
+    update_token(
+        token_id,
+        spectating_token_id=host_token_id,
+        spectating_user_id=host_token["user_id"],
+    )
 
-        # Add us to host's spectator list
-        add_spectator(host_token_id, token["user_id"])
+    # Add us to host's spectator list
+    add_spectator(host_token_id, token["user_id"])
 
-        # Create and join spectator stream
-        streamName = f"spect/{host_token['user_id']}"
-        streamList.add(streamName)
-        joinStream(token_id, streamName)
-        joinStream(host_token_id, streamName)
+    # Create and join spectator stream
+    streamName = f"spect/{host_token['user_id']}"
+    streamList.add(streamName)
+    joinStream(token_id, streamName)
+    joinStream(host_token_id, streamName)
 
-        # Send spectator join packet to host
-        enqueue(host_token_id, serverPackets.addSpectator(token["user_id"]))
+    # Send spectator join packet to host
+    enqueue(host_token_id, serverPackets.addSpectator(token["user_id"]))
 
-        # Create and join #spectator (#spect_userid) channel
-        channelList.addChannel(
-            name=f"#spect_{host_token['user_id']}",
-            description=f"Spectator lobby for host {host_token['username']}",
-            public_read=True,
-            public_write=False,
-            instance=True,
-        )
+    # Create and join #spectator (#spect_userid) channel
+    channelList.addChannel(
+        name=f"#spect_{host_token['user_id']}",
+        description=f"Spectator lobby for host {host_token['username']}",
+        public_read=True,
+        public_write=False,
+        instance=True,
+    )
+    chat.joinChannel(
+        token_id=token_id,
+        channel_name=f"#spect_{host_token['user_id']}",
+        force=True,
+    )
+
+    spectators = get_spectators(host_token["token_id"])
+    if len(spectators) == 1:
+        # First spectator, send #spectator join to host too
         chat.joinChannel(
-            token_id=token_id,
+            token_id=host_token_id,
             channel_name=f"#spect_{host_token['user_id']}",
             force=True,
         )
 
-        spectators = get_spectators(host_token["token_id"])
-        if len(spectators) == 1:
-            # First spectator, send #spectator join to host too
-            chat.joinChannel(
-                token_id=host_token_id,
-                channel_name=f"#spect_{host_token['user_id']}",
-                force=True,
+    # Send fellow spectator join to all clients
+    streamList.broadcast(
+        streamName,
+        serverPackets.fellowSpectatorJoined(token["user_id"]),
+    )
+
+    # Get current spectators list
+    spectators = get_spectators(host_token["token_id"])
+    for spectator_user_id in spectators:
+        if spectator_user_id != token["user_id"]:
+            enqueue(
+                token_id,
+                serverPackets.fellowSpectatorJoined(token["user_id"]),
             )
-
-        # Send fellow spectator join to all clients
-        streamList.broadcast(
-            streamName,
-            serverPackets.fellowSpectatorJoined(token["user_id"]),
-        )
-
-        # Get current spectators list
-        spectators = get_spectators(host_token["token_id"])
-        for spectator_user_id in spectators:
-            if spectator_user_id != token["user_id"]:
-                enqueue(
-                    token_id,
-                    serverPackets.fellowSpectatorJoined(token["user_id"]),
-                )
 
 
 def stopSpectating(token_id: str, get_lock: bool = True) -> None:
@@ -677,77 +662,62 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     if token is None:
         raise exceptions.tokenNotFoundException()
 
-    redlock = None
-    if get_lock:
-        redlock = RedLock(
-            f"{make_key(token_id)}:locks:spectating",
-            retry_delay=100,
-            retry_times=500,
+    # Remove our token id from host's spectators
+    if token["spectating_token_id"] is None:
+        return
+
+    host_token = get_token(token["spectating_token_id"])
+    stream_name = f"spect/{token['spectating_user_id']}"
+
+    # Remove us from host's spectators list,
+    # leave spectator stream
+    # and end the spectator left packet to host
+    leaveStream(token_id, stream_name)
+
+    if host_token:
+        remove_spectator(host_token["token_id"], token["user_id"])
+        enqueue(
+            host_token["token_id"], serverPackets.removeSpectator(token["user_id"])
         )
 
-    try:
-        if redlock is not None:
-            redlock.acquire()
+        fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
+        # and to all other spectators
+        spectators = get_spectators(host_token["token_id"])
+        for spectator in spectators:
+            spectator_token = get_token_by_user_id(spectator)
+            if spectator_token is None:
+                continue
 
-        # Remove our token id from host's spectators
-        if token["spectating_token_id"] is None:
-            return
+            enqueue(spectator_token["token_id"], fellow_left_packet)
 
-        host_token = get_token(token["spectating_token_id"])
-        stream_name = f"spect/{token['spectating_user_id']}"
-
-        # Remove us from host's spectators list,
-        # leave spectator stream
-        # and end the spectator left packet to host
-        leaveStream(token_id, stream_name)
-
-        if host_token:
-            remove_spectator(host_token["token_id"], token["user_id"])
-            enqueue(
-                host_token["token_id"], serverPackets.removeSpectator(token["user_id"])
+        # If nobody is spectating the host anymore, close #spectator channel
+        # and remove host from spect stream too
+        if not spectators:
+            chat.partChannel(
+                token_id=host_token["token_id"],
+                channel_name=f"#spect_{host_token['user_id']}",
+                kick=True,
+                force=True,
             )
+            leaveStream(host_token["token_id"], stream_name)
 
-            fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
-            # and to all other spectators
-            spectators = get_spectators(host_token["token_id"])
-            for spectator in spectators:
-                spectator_token = get_token_by_user_id(spectator)
-                if spectator_token is None:
-                    continue
+        # Console output
+        # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
 
-                enqueue(spectator_token["token_id"], fellow_left_packet)
+    # Part #spectator channel
+    chat.partChannel(
+        token_id=token_id,
+        channel_name=f"#spect_{token['spectating_user_id']}",
+        kick=True,
+        force=True,
+    )
 
-            # If nobody is spectating the host anymore, close #spectator channel
-            # and remove host from spect stream too
-            if not spectators:
-                chat.partChannel(
-                    token_id=host_token["token_id"],
-                    channel_name=f"#spect_{host_token['user_id']}",
-                    kick=True,
-                    force=True,
-                )
-                leaveStream(host_token["token_id"], stream_name)
-
-            # Console output
-            # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
-
-        # Part #spectator channel
-        chat.partChannel(
-            token_id=token_id,
-            channel_name=f"#spect_{token['spectating_user_id']}",
-            kick=True,
-            force=True,
-        )
-
-        # Set our spectating user to None
-        update_token(
-            token_id,
-            spectating_token_id=None,
-            spectating_user_id=None,
-        )
-    finally:
-        if redlock is not None:
-            redlock.release()
+    # Set our spectating user to None
+    update_token(
+        token_id,
+        spectating_token_id=None,
+        spectating_user_id=None,
+    )
 
 
 def updatePingTime(token_id: str) -> None:

@@ -513,14 +513,9 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
         who = []
 
         # Disconnect everyone but mod/admins
-        with RedLock(
-            "bancho:locks:tokens",
-            retry_delay=100,
-            retry_times=500,
-        ):
-            for value in osuToken.get_tokens():
-                if not osuToken.is_staff(value["privileges"]):
-                    who.append(value["user_id"])
+        for value in osuToken.get_tokens():
+            if not osuToken.is_staff(value["privileges"]):
+                who.append(value["user_id"])
 
         streamList.broadcast(
             "main",

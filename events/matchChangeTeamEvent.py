@@ -17,9 +17,4 @@ def handle(userToken: Token, _):
         return
 
     # Change team
-    with RedLock(
-        f"{match.make_key(userToken['match_id'])}:lock",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        match.changeTeam(multiplayer_match["match_id"], userToken["user_id"])
+    match.changeTeam(multiplayer_match["match_id"], userToken["user_id"])

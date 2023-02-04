@@ -17,13 +17,8 @@ def handle(userToken: Token, rawPacketData: bytes):
         return
 
     # Send invite
-    with RedLock(
-        f"{match.make_key(userToken['match_id'])}:lock",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        match.invite(
-            multiplayer_match["match_id"],
-            userToken["user_id"],
-            clientPackets.matchInvite(rawPacketData)["userID"],
-        )
+    match.invite(
+        multiplayer_match["match_id"],
+        userToken["user_id"],
+        clientPackets.matchInvite(rawPacketData)["userID"],
+    )

@@ -154,23 +154,18 @@ def handle(
         # Delete old tokens for that user and generate a new one
         isTournament = rgx["stream"] == "tourney"
 
-        with RedLock(
-            "bancho:locks:tokens",
-            retry_delay=100,
-            retry_times=500,
-        ):
-            if not isTournament:
-                tokenList.deleteOldTokens(userID)
+        if not isTournament:
+            tokenList.deleteOldTokens(userID)
 
-            userToken = tokenList.addToken(
-                userID,
-                ip=requestIP,
-                irc=False,
-                utc_offset=utc_offset,
-                tournament=isTournament,
-                block_non_friends_dm=block_non_friends_dm,
-            )
-            responseTokenString = userToken["token_id"]
+        userToken = tokenList.addToken(
+            userID,
+            ip=requestIP,
+            irc=False,
+            utc_offset=utc_offset,
+            tournament=isTournament,
+            block_non_friends_dm=block_non_friends_dm,
+        )
+        responseTokenString = userToken["token_id"]
 
         # Console output
         log(
@@ -410,16 +405,11 @@ def handle(
         glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
 
         # Send online users' panels
-        with RedLock(
-            "bancho:locks:tokens",
-            retry_delay=100,
-            retry_times=500,
-        ):
-            for token in osuToken.get_tokens():
-                if not osuToken.is_restricted(token["privileges"]):
-                    osuToken.enqueue(
-                        userToken["token_id"], serverPackets.userPanel(token["user_id"])
-                    )
+        for token in osuToken.get_tokens():
+            if not osuToken.is_restricted(token["privileges"]):
+                osuToken.enqueue(
+                    userToken["token_id"], serverPackets.userPanel(token["user_id"])
+                )
 
         # Get location and country from ip.zxq.co or database. If the user is a donor, then yee
         if settings.LOCALIZE_ENABLE and (

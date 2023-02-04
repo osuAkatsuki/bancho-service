@@ -408,18 +408,13 @@ def sendMessage(
 
             if fokaMessage:
                 if fokaMessage["hidden"]:  # Send to user & gmt+
-                    with RedLock(
-                        "bancho:locks:tokens",
-                        retry_delay=100,
-                        retry_times=500,
-                    ):  # Generate admin token list
-                        send_to = {
-                            t["token_id"]
-                            for t in osuToken.get_tokens()  # TODO: use redis
-                            if t["token_id"] != token_id
-                            and osuToken.is_staff(t["privileges"])
-                            and t["user_id"] != 999
-                        }
+                    send_to = {
+                        t["token_id"]
+                        for t in osuToken.get_tokens()  # TODO: use redis
+                        if t["token_id"] != token_id
+                        and osuToken.is_staff(t["privileges"])
+                        and t["user_id"] != 999
+                    }
 
                     # Send their command
                     streamList.broadcast_limited(f"chat/{to}", msg_packet, send_to)
@@ -656,13 +651,8 @@ def IRCConnect(username: str) -> None:
         log.warning(f"{username} doesn't exist.")
         return
 
-    with RedLock(
-        "bancho:locks:tokens",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        tokenList.deleteOldTokens(user_id)
-        tokenList.addToken(user_id, irc=True)
+    tokenList.deleteOldTokens(user_id)
+    tokenList.addToken(user_id, irc=True)
 
     streamList.broadcast("main", serverPackets.userPanel(user_id))
     log.info(f"{username} logged in from IRC.")

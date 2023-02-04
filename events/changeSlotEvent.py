@@ -17,13 +17,8 @@ def handle(userToken: Token, rawPacketData: bytes):
 
     packetData = clientPackets.changeSlot(rawPacketData)
 
-    with RedLock(
-        f"{match.make_key(match_id)}:lock",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        match.userChangeSlot(
-            multiplayer_match["match_id"],
-            userToken["user_id"],
-            packetData["slotID"],
-        )
+    match.userChangeSlot(
+        multiplayer_match["match_id"],
+        userToken["user_id"],
+        packetData["slotID"],
+    )

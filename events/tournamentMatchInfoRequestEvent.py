@@ -16,17 +16,12 @@ def handle(userToken: Token, rawPacketData: bytes):
     if multiplayer_match is None or not userToken.tournament:
         return
 
-    with RedLock(
-        f"{match.make_key(match_id)}:lock",
-        retry_delay=100, # ms
-        retry_times=500,
-    ):
-        packet_data = serverPackets.updateMatch(match_id)
-        if packet_data is None:
-            # TODO: is this correct behaviour?
-            # ripple was doing this before the stateless refactor,
-            # but i'm pretty certain the osu! client won't like this.
-            osuToken.enqueue(userToken["token_id"], b"")
-            return None
+    packet_data = serverPackets.updateMatch(match_id)
+    if packet_data is None:
+        # TODO: is this correct behaviour?
+        # ripple was doing this before the stateless refactor,
+        # but i'm pretty certain the osu! client won't like this.
+        osuToken.enqueue(userToken["token_id"], b"")
+        return None
 
-        osuToken.enqueue(userToken["token_id"], packet_data)
+    osuToken.enqueue(userToken["token_id"], packet_data)

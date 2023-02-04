@@ -21,17 +21,12 @@ def handle(userToken: Token, rawPacketData: bytes):
         return
 
     # Check password
-    with RedLock(
-        f"{match.make_key(matchID)}:lock",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        if multiplayer_match["match_password"] not in ("", password):
-            osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
-            log.warning(
-                f"{userToken['username']} has tried to join a mp room, but he typed the wrong password.",
-            )
-            return
+    if multiplayer_match["match_password"] not in ("", password):
+        osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
+        log.warning(
+            f"{userToken['username']} has tried to join a mp room, but he typed the wrong password.",
+        )
+        return
 
-        # Password is correct, join match
-        osuToken.joinMatch(userToken["token_id"], matchID)
+    # Password is correct, join match
+    osuToken.joinMatch(userToken["token_id"], matchID)

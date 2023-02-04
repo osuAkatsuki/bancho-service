@@ -15,13 +15,8 @@ def handle(userToken: Token, _):
     if multiplayer_match is None:
         return
 
-    with RedLock(
-        f"{match.make_key(userToken['match_id'])}:lock",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        # Host check
-        if userToken['user_id'] != multiplayer_match["host_user_id"]:
-            return
+    # Host check
+    if userToken['user_id'] != multiplayer_match["host_user_id"]:
+        return
 
-        match.start(multiplayer_match["match_id"])
+    match.start(multiplayer_match["match_id"])

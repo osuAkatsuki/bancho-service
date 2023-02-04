@@ -28,29 +28,19 @@ def connect() -> None:
     if token is not None:
         return
 
-    with RedLock(
-        "bancho:locks:tokens",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        token = tokenList.addToken(999)
-        assert token is not None
+    token = tokenList.addToken(999)
+    assert token is not None
 
-        osuToken.update_token(token["token_id"], action_id=actions.IDLE)
-        streamList.broadcast("main", serverPackets.userPanel(999))
-        streamList.broadcast("main", serverPackets.userStats(999))
+    osuToken.update_token(token["token_id"], action_id=actions.IDLE)
+    streamList.broadcast("main", serverPackets.userPanel(999))
+    streamList.broadcast("main", serverPackets.userStats(999))
 
 
 def disconnect() -> None:
-    with RedLock(
-        "bancho:locks:tokens",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        token = tokenList.getTokenFromUserID(999)
-        assert token is not None
+    token = tokenList.getTokenFromUserID(999)
+    assert token is not None
 
-        tokenList.deleteToken(token["token_id"])
+    tokenList.deleteToken(token["token_id"])
 
 
 # def reload_commands():

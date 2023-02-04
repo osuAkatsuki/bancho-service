@@ -16,19 +16,14 @@ def handle(userToken: Token, rawPacketData: bytes):
     if multiplayer_match is None:
         return
 
-    with RedLock(
-        f"{match.make_key(userToken['match_id'])}:lock",
-        retry_delay=100,
-        retry_times=500,
-    ):
-        # Host check
-        if userToken["user_id"] != multiplayer_match["host_user_id"]:
-            return
+    # Host check
+    if userToken["user_id"] != multiplayer_match["host_user_id"]:
+        return
 
-        # Make sure we aren't locking our slot
-        ourSlot = match.getUserSlotID(multiplayer_match["match_id"], userToken["user_id"])
-        if packetData["slotID"] == ourSlot:
-            return
+    # Make sure we aren't locking our slot
+    ourSlot = match.getUserSlotID(multiplayer_match["match_id"], userToken["user_id"])
+    if packetData["slotID"] == ourSlot:
+        return
 
-        # Lock/Unlock slot
-        match.toggleSlotLocked(multiplayer_match["match_id"], packetData["slotID"])
+    # Lock/Unlock slot
+    match.toggleSlotLocked(multiplayer_match["match_id"], packetData["slotID"])
