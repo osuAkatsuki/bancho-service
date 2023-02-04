@@ -310,7 +310,7 @@ def sendMessage(
             if to not in osuToken.get_joined_channels(token_id):
                 # I'm too lazy to put and test the correct IRC error code here...
                 # but IRC is not strict at all so who cares
-                raise exceptions.channelNoPermissionsException()
+                raise exceptions.userNotInChannelException()
 
             # Make sure we have write permissions.
 
@@ -542,6 +542,11 @@ def sendMessage(
             serverPackets.silenceEndTime(osuToken.getSilenceSecondsLeft(token_id)),
         )
         log.warning(f"{userToken['username']} tried to send a message during silence.")
+        return 404
+    except exceptions.userNotInChannelException:
+        log.warning(
+            f"{userToken['username']} tried to send a message to channel to {to}, but they are not in the channel."
+        )
         return 404
     except exceptions.channelModeratedException:
         log.warning(
