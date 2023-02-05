@@ -42,8 +42,8 @@ from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
-# import ddtrace
-# ddtrace.patch_all()
+import ddtrace
+ddtrace.patch_all()
 
 
 def make_app():
