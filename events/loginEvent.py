@@ -298,7 +298,7 @@ def handle(
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
                 osuToken.enqueue(
                     userToken["token_id"],
-                    f"Your {rolename} tag expires in {expireIn}."
+                    serverPackets.notification(f"Your {rolename} tag expires in {expireIn}."),
                 )
 
         # Set silence end UNIX time in token
