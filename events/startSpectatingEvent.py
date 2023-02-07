@@ -3,28 +3,28 @@ from __future__ import annotations
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import exceptions
-from objects import glob
-from objects.osuToken import token
+from objects.osuToken import Token
+from objects import osuToken, tokenList
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     try:
         # Start spectating packet
         packetData = clientPackets.startSpectating(rawPacketData)
 
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
-            userToken.stopSpectating()
+            osuToken.stopSpectating(userToken["token_id"], )
             return
 
         # Get host token
-        targetToken = glob.tokens.getTokenFromUserID(packetData["userID"])
+        targetToken = tokenList.getTokenFromUserID(packetData["userID"])
         if targetToken is None:
             raise exceptions.tokenNotFoundException
 
         # Start spectating new user
-        userToken.startSpectating(targetToken)
+        osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
         log.warning("Spectator start: token not found.")
-        userToken.stopSpectating()
+        osuToken.stopSpectating(userToken["token_id"], )

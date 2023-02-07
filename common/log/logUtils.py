@@ -3,6 +3,8 @@ from __future__ import annotations
 from os import name
 from sys import stdout as _stdout
 from typing import Optional
+from common.web.discord import Webhook
+from requests import RequestException
 
 import settings
 from common import generalUtils
@@ -12,13 +14,26 @@ from objects import glob
 
 ENDL = "\n" if name == "posix" else "\r\n"
 
+MAX_DISCORD_WEBHOOK_RETRIES = 5
+
+def send_discord_webhook(message: str, webhook_url: str) -> None:
+    embed = Webhook(webhook_url, color=0x542CB8)
+    embed.add_field(name="** **", value=message)
+    embed.set_footer(text=f"Akatsuki Anticheat")
+    embed.set_thumbnail("https://akatsuki.pw/static/logos/logo.png")
+
+    for _ in range(MAX_DISCORD_WEBHOOK_RETRIES):
+        try:
+            embed.post()
+            break
+        except RequestException:
+            continue
 
 def logMessage(
     message: str,
     alertType: str = "INFO",
     messageColor: Optional[str] = bcolors.ENDC,
     discord: Optional[str] = None,
-    out_file: Optional[str] = None,
     stdout: bool = True,
 ) -> None:
     """
@@ -27,8 +42,7 @@ def logMessage(
     :param message: message to log
     :param alertType: alert type string. Can be INFO, WARNING, ERROR or DEBUG. Default: INFO
     :param messageColor: message console ANSI color. Default: no color
-    :param discord: Discord channel acronym for Schiavo. If None, don't log to Discord. Default: None
-    :param of:	Output file name (inside .data folder). If None, don't log to file. Default: None
+    :param discord: If None, don't log to Discord. Default: None
     :param stdout: If True, log to stdout (print). Default: True
     :return:
     """
@@ -70,16 +84,14 @@ def logMessage(
     if discord is not None:
         # send to discord, if provided
         if discord == "ac_general":
-            glob.schiavo.sendACGeneral(message)
+            send_discord_webhook(message, settings.WEBHOOK_AC_GENERAL)
+
         elif discord == "ac_confidential":
-            glob.schiavo.sendACConfidential(message)
+            send_discord_webhook(message, settings.WEBHOOK_AC_CONFIDENTIAL)
         else:
             error(f"Unknown discord webhook {discord}")
 
-    if out_file is not None:
-        # send to file, if provided
-        file_msg = f"[{generalUtils.getTimestamp(full=True)}] {alertType} - {message}"
-        glob.fileBuffers.write(f".data/{out_file}", f"{file_msg}{ENDL}")
+    # TODO: save to sql?
 
 
 def warning(message: str, discord: Optional[str] = None) -> None:
@@ -87,7 +99,7 @@ def warning(message: str, discord: Optional[str] = None) -> None:
     Log a warning to stdout and optionally to Discord
 
     :param message: warning message
-    :param discord: Discord channel acronym for Schiavo. If None, don't log to Discord. Default: None
+    :param discord: If None, don't log to Discord. Default: None
     :return:
     """
     logMessage(message, "WARNING", bcolors.YELLOW, discord)
@@ -98,7 +110,7 @@ def error(message: str, discord: Optional[str] = None) -> None:
     Log a warning message to stdout and optionally to Discord
 
     :param message: warning message
-    :param discord: Discord channel acronym for Schiavo. If None, don't log to Discord. Default: None
+    :param discord: If None, don't log to Discord. Default: None
     :return:
     """
     logMessage(message, "ERROR", bcolors.RED, discord)
@@ -109,7 +121,7 @@ def info(message: str, discord: Optional[str] = None) -> None:
     Log an info message to stdout and optionally to Discord
 
     :param message: info message
-    :param discord: Discord channel acronym for Schiavo. If None, don't log to Discord. Default: None
+    :param discord: If None, don't log to Discord. Default: None
     :return:
     """
     logMessage(message, "INFO", bcolors.ENDC, discord)
@@ -135,7 +147,7 @@ def chat(message: str, discord: Optional[str] = None) -> None:
     :param discord: if True, send the message to discord
     :return:
     """
-    logMessage(message, "CHAT", bcolors.BLUE, discord, out_file="chatlog_public.txt")
+    logMessage(message, "CHAT", bcolors.BLUE, discord)
 
 
 def pm(message: str, discord: Optional[str] = None) -> None:
@@ -151,7 +163,6 @@ def pm(message: str, discord: Optional[str] = None) -> None:
         "CHAT",
         None,
         discord,
-        out_file="chatlog_private.txt",
         stdout=False,
     )
 

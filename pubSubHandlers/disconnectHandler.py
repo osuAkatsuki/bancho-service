@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from common.redis import generalPubSubHandler
-from objects import glob
+from objects import tokenList, osuToken
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):
@@ -13,5 +13,5 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (data := super().parseData(data)) is None:
             return
 
-        if targetToken := glob.tokens.getTokenFromUserID(data["userID"]):
-            targetToken.kick(data["reason"], "pubsub_kick")
+        if targetToken := tokenList.getTokenFromUserID(data["userID"]):
+            osuToken.kick(targetToken["token_id"], data["reason"], "pubsub_kick")

@@ -1,28 +1,29 @@
 from __future__ import annotations
 
 from constants import clientPackets
-from objects import glob
-from objects.osuToken import token
+from objects import match
+from objects.osuToken import Token
+
+from redlock import RedLock
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Get packet data
     packetData = clientPackets.lockSlot(rawPacketData)
 
     # Make sure the match exists
-    matchID = userToken.matchID
-    if matchID not in glob.matches.matches:
+    multiplayer_match = match.get_match(userToken["match_id"])
+    if multiplayer_match is None:
         return
 
-    with glob.matches.matches[matchID] as match:
-        # Host check
-        if userToken.userID != match.hostUserID:
-            return
+    # Host check
+    if userToken["user_id"] != multiplayer_match["host_user_id"]:
+        return
 
-        # Make sure we aren't locking our slot
-        ourSlot = match.getUserSlotID(userToken.userID)
-        if packetData["slotID"] == ourSlot:
-            return
+    # Make sure we aren't locking our slot
+    ourSlot = match.getUserSlotID(multiplayer_match["match_id"], userToken["user_id"])
+    if packetData["slotID"] == ourSlot:
+        return
 
-        # Lock/Unlock slot
-        match.toggleSlotLocked(packetData["slotID"])
+    # Lock/Unlock slot
+    match.toggleSlotLocked(multiplayer_match["match_id"], packetData["slotID"])

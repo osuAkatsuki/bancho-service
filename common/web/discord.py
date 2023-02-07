@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime as dt
+from typing import Any
 from json import dumps
 from time import time
 
@@ -80,7 +81,7 @@ class Webhook:
         data = {}
 
         data["embeds"] = []
-        embed = defaultdict(dict)
+        embed: dict[str, Any] = defaultdict(dict)
         if self.msg:
             data["content"] = self.msg
         if self.author:

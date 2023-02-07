@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import importlib
 import random
 import re
 import secrets
-import subprocess
 import threading
 import time  # me so lazy
 from typing import Any
 from typing import Callable
 from typing import Optional
+from redlock import RedLock
 
 import orjson
 import requests
@@ -32,8 +31,8 @@ from constants import serverPackets
 from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
-from objects import fokabot
-from objects import glob
+from objects import fokabot, channelList, match, tokenList
+from objects import glob, matchList, streamList, slot, osuToken
 
 """
 Commands callbacks
@@ -118,7 +117,7 @@ def alert(fro: str, chan: str, message: list[str]) -> None:
     if not (msg := " ".join(message).strip()):
         return
 
-    glob.streams.broadcast("main", serverPackets.notification(msg))
+    streamList.broadcast("main", serverPackets.notification(msg))
 
 
 @command(
@@ -136,19 +135,19 @@ def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if not (targetID := userUtils.getID(target)):
         return "Could not find user."
 
-    if not (targetToken := glob.tokens.getTokenFromUserID(targetID)):
+    if not (targetToken := osuToken.get_token_by_user_id(targetID)):
         return "User offline"
 
-    targetToken.enqueue(serverPackets.notification(msg))
+    osuToken.enqueue(targetToken["token_id"], serverPackets.notification(msg))
     return "Alerted user."
 
 
 @command(trigger="!moderated", privs=privileges.ADMIN_CHAT_MOD, hidden=True)
-def moderated(fro: str, chan: str, message: list[str]) -> str:
+def moderated(fro: str, channel_name: str, message: list[str]) -> str:
     """Set moderated mode for the current channel."""
     try:
         # Make sure we are in a channel and not PM
-        if not chan.startswith("#"):
+        if not channel_name.startswith("#"):
             raise exceptions.moderatedPMException
 
         # Get on/off
@@ -158,8 +157,12 @@ def moderated(fro: str, chan: str, message: list[str]) -> str:
                 enable = False
 
         # Turn on/off moderated mode
-        glob.channels.channels[chan].moderated = enable
+        # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
+        channelList.updateChannel(channel_name, moderated=enable)
+
         return f'This channel is {"now" if enable else "no longer"} in moderated mode!'
+    except exceptions.channelUnknownException:
+        return "Channel doesn't exist. (??? contact cmyui(#0425))"
     except exceptions.moderatedPMException:
         return "You are trying to put a private chat in moderated mode.. Let that sink in for a second.."
 
@@ -179,11 +182,11 @@ def kick(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := userUtils.getID(target)):
         return "Could not find user"
 
-    if not (tokens := glob.tokens.getTokenFromUserID(targetID, _all=True)):
+    if not (tokens := tokenList.getTokenFromUserID(targetID, _all=True)):
         return "Target not online."
 
-    for i in tokens:
-        i.kick()
+    for token in tokens:
+        osuToken.kick(token["token_id"])
 
     return f"{target} has been kicked from the server."
 
@@ -238,13 +241,12 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
         return "Invalid silence time. Max silence time is 4 weeks."
 
     # Send silence packet to target if he's connected
-    targetToken = glob.tokens.getTokenFromUsername(
-        userUtils.safeUsername(target),
-        safe=True,
+    targetToken = tokenList.getTokenFromUsername(
+        userUtils.safeUsername(target)
     )
     if targetToken:
         # user online, silence both in db and with packet
-        targetToken.silence(silenceTime, reason, userID)
+        osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
     else:
         # User offline, silence user only in db
         userUtils.silence(targetID, silenceTime, reason, userID)
@@ -272,9 +274,9 @@ def removeSilence(fro: str, chan: str, message: list[str]) -> str:
         return f"{target}: user not found."
 
     # Send new silence end packet to user if he's online
-    if targetToken := glob.tokens.getTokenFromUserID(targetID):
+    if targetToken := osuToken.get_token_by_user_id(targetID):
         # Remove silence in db and ingame
-        targetToken.silence(0, "", userID)
+        osuToken.silence(targetToken["token_id"], 0, "", userID)
     else:
         # Target offline, remove silence in db
         userUtils.silence(targetID, 0, "", userID)
@@ -312,8 +314,8 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
     userUtils.ban(targetID)
 
     # Send ban packet to the user if he's online
-    if targetToken := glob.tokens.getTokenFromUserID(targetID):
-        targetToken.enqueue(serverPackets.loginBanned)
+    if targetToken := osuToken.get_token_by_user_id(targetID):
+        osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
     log.rap(userID, f"has banned {target} ({targetID}) for {reason}")
     log.ac(
@@ -390,8 +392,8 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
     userUtils.restrict(targetID)
 
     # Send restricted mode packet to this user if he's online
-    if targetToken := glob.tokens.getTokenFromUserID(targetID):
-        targetToken.setRestricted()
+    if targetToken := osuToken.get_token_by_user_id(targetID):
+        osuToken.setRestricted(targetToken["token_id"])
 
     log.rap(userID, f"has restricted {target} ({targetID}) for: {reason}")
     log.ac(
@@ -511,12 +513,11 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
         who = []
 
         # Disconnect everyone but mod/admins
-        with glob.tokens:
-            for value in glob.tokens.tokens.values():
-                if not value.staff:
-                    who.append(value.userID)
+        for value in osuToken.get_tokens():
+            if not osuToken.is_staff(value["privileges"]):
+                who.append(value["user_id"])
 
-        glob.streams.broadcast(
+        streamList.broadcast(
             "main",
             serverPackets.notification(
                 " ".join(
@@ -527,7 +528,8 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
                 ),
             ),
         )
-        glob.tokens.multipleEnqueue(serverPackets.loginError, who)
+
+        tokenList.multipleEnqueue(serverPackets.loginError, who)
         msg = "The server is now in maintenance mode!"
     else:
         # We have turned off maintenance mode
@@ -553,7 +555,7 @@ def systemStatus(fro: str, chan: str, message: list[str]) -> str:
     letsVersion = letsVersion.decode("utf-8") if letsVersion else r"¯\_(ツ)_/¯"
 
     msg = [
-        f"bancho-service v{glob.VERSION}",
+        f"bancho-service",
         "made by the Akatsuki, and Ripple teams\n",
         "=== BANCHO STATS ===",
         f'Connected users: {data["connectedUsers"]}',
@@ -579,12 +581,16 @@ def systemStatus(fro: str, chan: str, message: list[str]) -> str:
 
 
 def getPPMessage(userID: int, just_data: bool = False) -> Any:
-    if not (token := glob.tokens.getTokenFromUserID(userID)):
+    if not (token := osuToken.get_token_by_user_id(userID)):
         return
 
-    currentMap = token.tillerino[0]
-    currentMods = token.tillerino[1]
-    currentAcc = token.tillerino[2]
+    current_info = token["last_np"]
+    if current_info is None:
+        return
+
+    currentMap = current_info["beatmap_id"]
+    currentMods = current_info["mods"]
+    currentAcc = current_info["accuracy"]
 
     # Send request to LESS api
     try:
@@ -635,7 +641,7 @@ def getPPMessage(userID: int, just_data: bool = False) -> Any:
             ),
         )
     else:
-        msg.append(f'{token.tillerino[2]:.2f}%: {data["pp"][0]:.2f}pp')
+        msg.append(f'{currentAcc:.2f}%: {data["pp"][0]:.2f}pp')
 
     # BPM
     msg.append(f'| ♪ {data["bpm"]} |')
@@ -676,36 +682,38 @@ def chimuMessage(beatmapID: int) -> str:
     return "\n".join(ret)
 
 
-@command(  # TODO: multiple triggers
-    trigger="!bloodcat",
+@command(
+    trigger="!chimu",
     hidden=False,
 )
 def chimu(fro: str, chan: str, message: list[str]) -> str:
     """Get a download link for the beatmap in the current context (multi, spectator)."""
     try:
-        matchID = glob.channels.getMatchIDFromChannel(chan)
+        match_id = channelList.getMatchIDFromChannel(chan)
     except exceptions.wrongChannelException:
-        matchID = None
+        match_id = None
 
-    if matchID:
-        beatmapID = glob.matches.getMatchByID(matchID).beatmapID  # Multiplayer
+    if match_id:
+        multiplayer_match = matchList.getMatchByID(match_id)
+        assert multiplayer_match is not None
+        beatmap_id = multiplayer_match["beatmap_id"]
     else:  # Spectator
         try:
-            spectatorHostUserID = glob.channels.getSpectatorHostUserIDFromChannel(chan)
+            spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         except exceptions.wrongChannelException:
             spectatorHostUserID = None
             return "This command is only usable when either spectating a user, or playing multiplayer."
 
-        spectatorHostToken = glob.tokens.getTokenFromUserID(
+        spectatorHostToken = tokenList.getTokenFromUserID(
             spectatorHostUserID,
             ignoreIRC=True,
         )
         if not spectatorHostToken:
             return "The spectator host is offline. If this makes no sense, please report it to [https://akatsuki.pw/u/1001 cmyui]."
 
-        beatmapID = spectatorHostToken.beatmapID
+        beatmap_id = spectatorHostToken["beatmap_id"]
 
-    return chimuMessage(beatmapID)
+    return chimuMessage(beatmap_id)
 
 
 @command(
@@ -726,18 +734,20 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
 )
 def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # don't document this, don't want it showing up in !help
-    if not (token := glob.tokens.getTokenFromUsername(fro)):
+    if not (token := tokenList.getTokenFromUsername(fro)):
         return
 
     # Chimu trigger for #spect_
     if chan.startswith("#spect_"):
-        spectatorHostUserID = glob.channels.getSpectatorHostUserIDFromChannel(chan)
-        spectatorHostToken = glob.tokens.getTokenFromUserID(
+        spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
+        spectatorHostToken = tokenList.getTokenFromUserID(
             spectatorHostUserID,
             ignoreIRC=True,
         )
         return (
-            chimuMessage(spectatorHostToken.beatmapID) if spectatorHostToken else None
+            chimuMessage(spectatorHostToken["beatmap_id"])
+            if spectatorHostToken
+            else None
         )
 
     # Run the command in PM only
@@ -787,8 +797,16 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     beatmapID = int(match["id"])
 
     # Return tillerino message
-    token.tillerino = [beatmapID, _mods, -1.0]
-    return getPPMessage(token.userID)
+    osuToken.update_token(
+        token["token_id"],
+        last_np={
+            "beatmap_id": beatmapID,
+            "mods": _mods,
+            "accuracy": -1.0,
+        },
+    )
+
+    return getPPMessage(token["user_id"])
 
 
 # @command(
@@ -840,7 +858,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #             ):
 #                 _mods |= modMap.get(m, mods.NOMOD)
 
-#     if not (token := glob.tokens.getTokenFromUsername(fro)):
+#     if not (token := tokenList.getTokenFromUsername(fro)):
 #         return
 
 #     # get the user's top plays, we will need these for the algorithm.
@@ -997,10 +1015,10 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if chan.startswith("#"):
         return
 
-    if not (token := glob.tokens.getTokenFromUsername(fro)):
+    if not (token := tokenList.getTokenFromUsername(fro)):
         return
 
-    if not token.tillerino[0]:
+    if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
 
     # Check passed mods and convert to enum
@@ -1017,7 +1035,7 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
         "NC": mods.NIGHTCORE,
         "FL": mods.FLASHLIGHT,
         "SO": mods.SPUNOUT,
-        "AP": mods.RELAX2,
+        "AP": mods.AUTOPILOT,
         "PF": mods.PERFECT,
         "V2": mods.SCOREV2,
     }
@@ -1031,17 +1049,18 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
             or (m == "EZ" and _mods & mods.HARDROCK)
             or (m == "HR" and _mods & mods.EASY)
             or (m == "AP" and _mods & mods.RELAX)
-            or (m == "RX" and _mods & mods.RELAX2)
+            or (m == "RX" and _mods & mods.AUTOPILOT)
             or (m == "PF" and _mods & mods.SUDDENDEATH)
             or (m == "SD" and _mods & mods.PERFECT)
         ):
             _mods |= modMap.get(m, mods.NOMOD)
 
     # Set mods
-    token.tillerino[1] = _mods
+    token["last_np"]["mods"] = _mods
+    osuToken.update_token(token["token_id"], last_np=token["last_np"])
 
     # Return tillerino message for that beatmap with mods
-    return getPPMessage(token.userID)
+    return getPPMessage(token["user_id"])
 
 
 # @command(
@@ -1057,7 +1076,7 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #            return
 #
 #        # Get token and user ID
-#        token = glob.tokens.getTokenFromUsername(fro)
+#        token = tokenList.getTokenFromUsername(fro)
 #        if not token:
 #            return
 #        userID = token.userID
@@ -1086,12 +1105,12 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
 @command(trigger="!last", hidden=False)
 def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Show information about your most recently submitted score."""
-    if not (token := glob.tokens.getTokenFromUsername(fro)):
+    if not (token := tokenList.getTokenFromUsername(fro)):
         return
 
-    if token.autopilot:
+    if token["autopilot"]:
         table = "scores_ap"
-    elif token.relax:
+    elif token["relax"]:
         table = "scores_relax"
     else:
         table = "scores"
@@ -1155,10 +1174,15 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if data["play_mode"] != gameModes.CTB:
         stars = data[diffString]
         if data["mods"]:
-            token.tillerino[0] = data["bid"]
-            token.tillerino[1] = data["mods"]
-            token.tillerino[2] = data["accuracy"]
-            oppaiData = getPPMessage(token.userID, just_data=True)
+            osuToken.update_token(
+                token["token_id"],
+                last_np={
+                    "beatmap_id": data["bid"],
+                    "mods": data["mods"],
+                    "accuracy": data["accuracy"],
+                },
+            )
+            oppaiData = getPPMessage(token["user_id"], just_data=True)
             if isinstance(oppaiData, str):
                 return oppaiData  # error
 
@@ -1221,8 +1245,8 @@ def report(fro: str, chan: str, message: list[str]) -> None:
 
         # Get the token if possible
         chatlog = ""
-        if token := glob.tokens.getTokenFromUserID(targetID):
-            chatlog = token.getMessagesBufferString()
+        if token := osuToken.get_token_by_user_id(targetID):
+            chatlog = osuToken.getMessagesBufferString(token["token_id"])
 
         # Everything is fine, submit report
         glob.db.execute(
@@ -1254,11 +1278,17 @@ def report(fro: str, chan: str, message: list[str]) -> None:
         raise
     finally:
         if msg:
-            if token := glob.tokens.getTokenFromUsername(fro):
-                if token.irc:
-                    chat.sendMessage(glob.BOT_NAME, fro, msg)
+            if token := tokenList.getTokenFromUsername(fro):
+                if token["irc"]:
+                    aika_token = tokenList.getTokenFromUserID(999)
+                    assert aika_token is not None
+                    chat.sendMessage(
+                        token_id=aika_token["token_id"],
+                        to=fro,
+                        message=msg,
+                    )
                 else:
-                    token.enqueue(serverPackets.notification(msg))
+                    osuToken.enqueue(token["token_id"], serverPackets.notification(msg))
 
 
 @command(trigger="!vdiscord", syntax="<discord_user_id>", hidden=True)
@@ -1281,7 +1311,7 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
         [discordID],
     )
 
-    if res["osu_id"] is None:
+    if res is None or res["osu_id"] is None:
         return "Please use !linkosu in Akatsuki's Discord server first."
     elif res["osu_id"] > 0:
         return (
@@ -1341,7 +1371,7 @@ def unfreeze(fro: str, chan: str, message: list[str]) -> str:
 @command(trigger="!update", privs=privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
 def updateServer(fro: str, chan: str, message: list[str]) -> None:
     """Broadcast a notification to all online players, and reboot the server after a short delay."""
-    glob.streams.broadcast(
+    streamList.broadcast(
         "main",
         serverPackets.notification(
             "\n".join(
@@ -1403,9 +1433,11 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         ),
     )
 
-    for t in glob.tokens.getTokenFromUserID(userID, _all=True):
-        t.enqueue(notif_pkt)
-        t.kick()
+    for token in tokenList.getTokenFromUserID(userID, _all=True):
+        osuToken.enqueue(token["token_id"], notif_pkt)
+        osuToken.kick(
+            token["token_id"],
+        )
 
     userUtils.appendNotes(userID, f"Changed username: '{fro}' -> '{newUsername}'.")
     log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
@@ -1418,17 +1450,17 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     syntax="<rank/love/unrank> <set/map>",
     hidden=True,
 )
-def editMap(fro: str, chan: str, message: list[str]) -> str:
+def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Edit the ranked status of the last /np'ed map."""
     # Rank, unrank, and love maps with a single command.
     # Syntax: /np
     #         !map <rank/unrank/love> <set/map>
     message = [m.lower() for m in message]
 
-    if not (token := glob.tokens.getTokenFromUsername(fro)):
+    if not (token := tokenList.getTokenFromUsername(fro)):
         return
 
-    if not token.tillerino[0]:
+    if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
 
     if message[0] not in {"rank", "unrank", "love"}:
@@ -1450,7 +1482,7 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
         res := glob.db.fetch(  # bsid is needed for dl link so we need it either way
             "SELECT ranked, beatmapset_id, song_name, hit_length "
             "FROM beatmaps WHERE beatmap_id = %s",
-            [token.tillerino[0]],
+            [token["last_np"]["beatmap_id"]],
         )
     ):
         return "Could not find beatmap."
@@ -1458,7 +1490,7 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
     if res["ranked"] == status:
         return f"That map is already {status_readable.lower()}."
 
-    rank_id = res["beatmapset_id"] if is_set else token.tillerino[0]
+    rank_id = res["beatmapset_id"] if is_set else token["last_np"]["beatmap_id"]
 
     # Fix relax scores on the map (if going to/coming from loved).
     # Due to the way we handle loved on relax, this is nescessary.
@@ -1473,14 +1505,17 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
     # Update map's ranked status.
     glob.db.execute(
         "UPDATE beatmaps SET ranked = %s, ranked_status_freezed = 1, "
-        f"rankedby = {token.userID} WHERE {scope} = %s",
+        f"rankedby = {token['user_id']} WHERE {scope} = %s",
         [status, rank_id],
     )
 
-    for md5 in glob.db.fetchAll(
+    beatmap_md5s = glob.db.fetchAll(
         f"SELECT beatmap_md5 FROM beatmaps WHERE {scope} = %s",
         [rank_id],
-    ):
+    )
+    assert beatmap_md5s is not None
+
+    for md5 in beatmap_md5s:
         glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
 
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
@@ -1498,8 +1533,8 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
             for k, v in {
                 "New status": status_readable,
                 "Previous status": status_to_readable(res["ranked"]),
-                "Nominator": f"[{fro}]({userUtils.getProfile(token.userID)})",
-                "Beatmap Listing": f"[Click here](https://akatsuki.pw/b/{token.tillerino[0]})",
+                "Nominator": f"[{fro}]({userUtils.getProfile(token['user_id'])})",
+                "Beatmap Listing": f"[Click here](https://akatsuki.pw/b/{token['last_np']['beatmap_id']})",
                 "Download link": f'[Click here](https://akatsuki.pw/d/{res["beatmapset_id"]})',
                 "Beatmap Length": generalUtils.secondsToReadable(res["hit_length"]),
             }.items()
@@ -1515,10 +1550,12 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
             f'beatmap [https://osu.ppy.sh/beatmaps/{rank_id} {res["song_name"]}]'
         )
 
+    aika_token = tokenList.getTokenFromUserID(999)
+    assert aika_token is not None
     chat.sendMessage(
-        glob.BOT_NAME,
-        "#announce",
-        f"{fro} has {status_readable} {beatmap_url}",
+        token_id=aika_token["token_id"],
+        to="#announce",
+        message=f"{fro} has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
 
@@ -1531,7 +1568,13 @@ def editMap(fro: str, chan: str, message: list[str]) -> str:
 )
 def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
-    chat.sendMessage(glob.BOT_NAME, "#announce", " ".join(message))
+    aika_token = tokenList.getTokenFromUserID(999)
+    assert aika_token is not None
+    chat.sendMessage(
+        token_id=aika_token["token_id"],
+        to="#announce",
+        message=" ".join(message),
+    )
     return "Announcement successfully sent."
 
 
@@ -1565,15 +1608,15 @@ def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!whoranked", hidden=True)
-def getMapNominator(fro: str, chan: str, message: list[str]) -> str:
+def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Get the nominator for the last /np'ed map."""
-    if not (token := glob.tokens.getTokenFromUsername(fro)):
+    if not (token := tokenList.getTokenFromUsername(fro)):
         return
 
-    if not token.tillerino[0]:
+    if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
 
-    if not (res := userUtils.getMapNominator(token.tillerino[0])):
+    if not (res := userUtils.getMapNominator(token["last_np"]["beatmap_id"])):
         return "That map isn't stored in our database."
     elif not res["rankedby"]:
         return "Our logs sadly do not go back far enough to find this data."
@@ -1597,7 +1640,7 @@ def competitionMap(fro: str, chan: str, message: list[str]) -> str:
     return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(userUtils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
 
 def announceContest(fro: str, chan: str, message: list[str]) -> None:
-    glob.streams.broadcast("main", serverPackets.notification('\n'.join([
+    streamList.broadcast("main", serverPackets.notification('\n'.join([
         'A new contest has begun!',
         'To view details, please use the !contest command.\n',
         'Best of luck!'
@@ -1647,30 +1690,45 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Contains many multiplayer subcommands (TODO: document them as well)."""
 
     def mpAddRefer():
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp addref <user>",
             )
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username")
 
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user")
-        match.add_referee(userID)
+        match.add_referee(multiplayer_match["match_id"], userID)
 
         return f"Added {username} to referees"
 
     def mpRemoveRefer():
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp addref <user>",
             )
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username")
@@ -1678,15 +1736,24 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user")
 
-        match.remove_referee(userID)
+        match.remove_referee(multiplayer_match["match_id"], userID)
         return f"Removed {username} from referees"
 
     def mpListRefer() -> str:
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
         ref_usernames: list[str] = []
-        for id in match.refers:
+        for id in match.get_referees(multiplayer_match["match_id"]):
             username = userUtils.getUsername(id)
             assert username is not None
             ref_usernames.append(username)
@@ -1703,58 +1770,80 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (matchName := " ".join(message[1:]).strip()):
             raise exceptions.invalidArgumentsException("Match name must not be empty!")
 
-        matchID = glob.matches.createMatch(
+        matchID = matchList.createMatch(
             matchName,
-            secrets.token_hex(16),
-            0,
-            "Tournament",
-            "",
-            0,
-            -1,
-            isTourney=True,
+            match_password=secrets.token_hex(16),
+            beatmap_id=0,
+            beatmap_name="Tournament",
+            beatmap_md5="",
+            game_mode=0,
+            host_user_id=-1,
+            is_tourney=True,
         )
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
 
-        match.sendUpdates()
+        match.sendUpdates(multiplayer_match["match_id"])
         return f"Tourney match #{matchID} created!"
 
-    def mpJoin() -> str:
-        if len(message) < 2 or not message[1].isnumeric():
-            raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp join <id>",
-            )
-        matchID = int(message[1])
-        userToken = glob.tokens.getTokenFromUsername(fro, ignoreIRC=True)
-        if userToken is None:
-            raise exceptions.invalidArgumentsException(
-                f"No game clients found for {fro}, can't join the match. "
-                "If you're a referee and you want to join the chat "
-                f"channel from IRC, use /join #multi_{matchID} instead.",
-            )
-        userToken.joinMatch(matchID)
-        return f"Attempting to join match #{matchID}!"
+    # def mpJoin() -> str:
+    #     if len(message) < 2 or not message[1].isnumeric():
+    #         raise exceptions.invalidArgumentsException(
+    #             "Incorrect syntax: !mp join <id>",
+    #         )
+    #     matchID = int(message[1])
+    #     userToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
+    #     if userToken is None:
+    #         raise exceptions.invalidArgumentsException(
+    #             f"No game clients found for {fro}, can't join the match. "
+    #             "If you're a referee and you want to join the chat "
+    #             f"channel from IRC, use /join #multi_{matchID} instead.",
+    #         )
+
+    #     osuToken.joinMatch(userToken["token_id"], matchID)
+    #     return f"Attempting to join match #{matchID}!"
 
     def mpClose() -> str:
-        matchID = glob.channels.getMatchIDFromChannel(chan)
-        glob.matches.disposeMatch(matchID)
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        matchID = channelList.getMatchIDFromChannel(chan)
+        if userID not in match.get_referees(matchID):
+            return None
+
+        matchList.disposeMatch(matchID)
         return f"Multiplayer match #{matchID} disposed successfully."
 
     def mpLock() -> str:
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        match.isLocked = True
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        match.update_match(multiplayer_match["match_id"], is_locked=True)
         return "This match has been locked."
 
     def mpUnlock() -> str:
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        match.isLocked = False
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        match.update_match(multiplayer_match["match_id"], is_locked=False)
         return "This match has been unlocked."
 
     def mpSize() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if (
             len(message) < 2
             or not message[1].isnumeric()
@@ -1765,16 +1854,22 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "Incorrect syntax: !mp size <slots(2-16)>.",
             )
         matchSize = int(message[1])
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
-        match.forceSize(matchSize)
+        match.forceSize(multiplayer_match["match_id"], matchSize)
         return f"Match size changed to {matchSize}."
 
     def mpForce() -> Optional[str]:
-        froToken = glob.tokens.getTokenFromUsername(fro, ignoreIRC=True)
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        if not froToken or not froToken.privileges & privileges.ADMIN_CAKER:
+        froToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
+
+        if not froToken or not froToken["privileges"] & privileges.ADMIN_CAKER:
             return
 
         if len(message) != 3 or not message[2].isnumeric():
@@ -1782,15 +1877,22 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         username = message[1]
         matchID = int(message[2])
-        userToken = glob.tokens.getTokenFromUsername(username, ignoreIRC=True)
+        
+        if userID not in match.get_referees(matchID):
+            return None
+        
+        userToken = tokenList.getTokenFromUsername(username, ignoreIRC=True)
         if not userToken:
             return
 
-        if not userToken.joinMatch(matchID):
+        if not osuToken.joinMatch(userToken["token_id"], matchID):
             return "Failed to join match."
         return "Joined match."
 
     def mpMove() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if (
             len(message) < 3
             or not message[2].isnumeric()
@@ -1807,10 +1909,13 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
-        success = match.userChangeSlot(userID, newSlotID)
+        success = match.userChangeSlot(multiplayer_match["match_id"], userID, newSlotID)
 
         return (
             f"{username} moved to slot {newSlotID}."
@@ -1819,6 +1924,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
 
     def mpHost() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp host <username>.",
@@ -1830,10 +1938,13 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
-        success = match.setHost(userID)
+        success = match.setHost(multiplayer_match["match_id"], userID)
         return (
             f"{username} is now the host"
             if success
@@ -1841,27 +1952,47 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
 
     def mpClearHost() -> str:
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        match.removeHost()
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        match.removeHost(multiplayer_match["match_id"])
         return "Host has been removed from this match."
 
     def mpStart() -> Optional[str]:
-        def _start() -> bool:
-            match = glob.matches.getMatchFromChannel(chan)
-            assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-            if not match.start():
+        def _start() -> bool:
+            multiplayer_match = matchList.getMatchFromChannel(chan)
+            assert multiplayer_match is not None
+
+            if userID not in match.get_referees(multiplayer_match["match_id"]):
+                return None
+
+            aika_token = tokenList.getTokenFromUserID(999)
+            assert aika_token is not None
+            if not match.start(multiplayer_match["match_id"]):
                 chat.sendMessage(
-                    glob.BOT_NAME,
-                    chan,
-                    "Couldn't start match. Make sure there are enough players and "
-                    "teams are valid. The match has been unlocked.",
+                    token_id=aika_token["token_id"],
+                    to=chan,
+                    message=(
+                        "Couldn't start match. Make sure there are enough players and "
+                        "teams are valid. The match has been unlocked."
+                    ),
                 )
                 return True  # Failed to start
             else:
-                chat.sendMessage(glob.BOT_NAME, chan, "Have fun!")
+                chat.sendMessage(
+                    token_id=aika_token["token_id"],
+                    to=chan,
+                    message="Have fun!",
+                )
                 return False
 
         def _decreaseTimer(t: int) -> None:
@@ -1869,11 +2000,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 _start()
             else:
                 if not t % 10 or t <= 5:
+                    aika_token = tokenList.getTokenFromUserID(999)
+                    assert aika_token is not None
                     chat.sendMessage(
-                        glob.BOT_NAME,
-                        chan,
-                        f"Match starts in {t} seconds.",
+                        token_id=aika_token["token_id"],
+                        to=chan,
+                        message=f"Match starts in {t} seconds.",
                     )
+
                 threading.Timer(1.00, _decreaseTimer, [t - 1]).start()
 
         if len(message) < 2 or not message[1].isnumeric():
@@ -1882,16 +2016,22 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             startTime = int(message[1])
 
         force = len(message) > 1 and message[1].lower() == "force"
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
         # Force everyone to ready
         someoneNotReady = False
-        for i, slot in enumerate(match.slots):
-            if slot.status != slotStatuses.READY and slot.user:
+        slots = slot.get_slots(multiplayer_match["match_id"])
+        assert len(slots) == 16
+
+        for slot_id, _slot in enumerate(slots):
+            if _slot["status"] != slotStatuses.READY and _slot["user_token"]:
                 someoneNotReady = True
                 if force:
-                    match.toggleSlotReady(i)
+                    match.toggleSlotReady(multiplayer_match["match_id"], slot_id)
 
         if someoneNotReady and not force:
             return (
@@ -1904,7 +2044,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 return
             return "Starting match"
         else:
-            match.isStarting = True
+            multiplayer_match = match.update_match(
+                multiplayer_match["match_id"], is_starting=True
+            )
+            assert multiplayer_match is not None
+            
+            if userID not in match.get_referees(multiplayer_match["match_id"]):
+                return None
+
             threading.Timer(1.00, _decreaseTimer, [startTime - 1]).start()
             return (
                 f"Match starts in {startTime} seconds. The match has been locked. "
@@ -1924,17 +2071,18 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
-        if not (token := glob.tokens.getTokenFromUserID(userID, ignoreIRC=True)):
+        if not (token := tokenList.getTokenFromUserID(userID, ignoreIRC=True)):
             raise exceptions.invalidUserException(
                 "That user is not connected to Akatsuki right now.",
             )
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
 
-        match.invite(999, userID)
+        match.invite(multiplayer_match["match_id"], fro=999, to=userID)
 
-        token.enqueue(
+        osuToken.enqueue(
+            token["token_id"],
             serverPackets.notification(
                 "Please accept the invite you've just received from "
                 f"{glob.BOT_NAME} to enter your tourney match.",
@@ -1943,6 +2091,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"An invite to this match has been sent to {username}."
 
     def mpMap() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if (
             len(message) < 2
             or not message[1].isnumeric()
@@ -1966,18 +2117,28 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "order to cache it, then try again.",
             )
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
-        match.beatmapID = beatmapID
-        match.beatmapName = beatmapData["song_name"]
-        match.beatmapMD5 = beatmapData["beatmap_md5"]
-        match.gameMode = gameMode
-        match.resetReady()
-        match.sendUpdates()
+        multiplayer_match = match.update_match(
+            multiplayer_match["match_id"],
+            beatmap_id=beatmapID,
+            beatmap_name=beatmapData["song_name"],
+            beatmap_md5=beatmapData["beatmap_md5"],
+            game_mode=gameMode,
+        )
+        assert multiplayer_match is not None
+        match.resetReady(multiplayer_match["match_id"])
+        match.sendUpdates(multiplayer_match["match_id"])
         return "Match map has been updated."
 
     def mpSet() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if (
             len(message) < 2
             or not message[1].isnumeric()
@@ -1988,45 +2149,69 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "Incorrect syntax: !mp set <teammode> [<scoremode>] [<size>].",
             )
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
 
-        matchTeamType = int(message[1])
-        matchScoringType = (
-            int(message[2]) if len(message) >= 3 else match.matchScoringType
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        match_team_type = int(message[1])
+        match_scoring_type = (
+            int(message[2])
+            if len(message) >= 3
+            else multiplayer_match["match_scoring_type"]
         )
-        if not 0 <= matchTeamType <= 3:
+        if not 0 <= match_team_type <= 3:
             raise exceptions.invalidArgumentsException(
                 "Match team type must be between 0 and 3.",
             )
-        if not 0 <= matchScoringType <= 3:
+        if not 0 <= match_scoring_type <= 3:
             raise exceptions.invalidArgumentsException(
                 "Match scoring type must be between 0 and 3.",
             )
-        oldMatchTeamType = match.matchTeamType
-        match.matchTeamType = matchTeamType
-        match.matchScoringType = matchScoringType
-        if len(message) >= 4:
-            match.forceSize(int(message[3]))
-        if match.matchTeamType != oldMatchTeamType:
-            match.initializeTeams()
-        if (
-            match.matchTeamType == matchTeamTypes.TAG_COOP
-            or match.matchTeamType == matchTeamTypes.TAG_TEAM_VS
-        ):
-            match.matchModMode = matchModModes.NORMAL
+        oldMatchTeamType = multiplayer_match["match_team_type"]
+        multiplayer_match = match.update_match(
+            multiplayer_match["match_id"],
+            match_team_type=match_team_type,
+            match_scoring_type=match_scoring_type,
+        )
+        assert multiplayer_match is not None
 
-        match.sendUpdates()
+        if len(message) >= 4:
+            match.forceSize(multiplayer_match["match_id"], int(message[3]))
+        if multiplayer_match["match_team_type"] != oldMatchTeamType:
+            match.initializeTeams(multiplayer_match["match_id"])
+        if (
+            multiplayer_match["match_team_type"] == matchTeamTypes.TAG_COOP
+            or multiplayer_match["match_team_type"] == matchTeamTypes.TAG_TEAM_VS
+        ):
+            multiplayer_match = match.update_match(
+                multiplayer_match["match_id"],
+                match_mod_mode=matchModModes.NORMAL,
+            )
+            assert multiplayer_match is not None
+
+        match.sendUpdates(multiplayer_match["match_id"])
         return "Match settings have been updated!"
 
     def mpAbort():
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        match.abort()
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+
+        match.abort(multiplayer_match["match_id"])
         return "Match aborted!"
 
     def mpKick() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp kick <username>.",
@@ -2038,43 +2223,65 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
 
-        if not (slotID := match.getUserSlotID(userID)):
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        if not (slotID := match.getUserSlotID(multiplayer_match["match_id"], userID)):
             raise exceptions.userNotFoundException(
                 "The specified user is not in this match.",
             )
 
+        # toggle slot lock twice to kick the user
         for _ in range(2):
-            match.toggleSlotLocked(slotID)
+            match.toggleSlotLocked(multiplayer_match["match_id"], slotID)
 
         return f"{username} has been kicked from the match."
 
     def mpPassword() -> str:
-        password = "" if len(message) < 2 or not message[1].strip() else message[1]
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        match.changePassword(password)
+        password = "" if len(message) < 2 or not message[1].strip() else message[1]
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        match.changePassword(multiplayer_match["match_id"], password)
         return "Match password has been changed!"
 
     def mpRandomPassword() -> str:
-        password = secrets.token_hex(16)
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
 
-        match.changePassword(password)
+        password = secrets.token_hex(16)
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        match.changePassword(multiplayer_match["match_id"], password)
         return "Match password has been randomized."
 
     def mpMods() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) != 2 or len(message[1]) % 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp mods <mods, e.g. hdhr>",
             )
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
         modMap = {
             "NF": mods.NOFAIL,
@@ -2089,7 +2296,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             "NC": mods.NIGHTCORE,
             "FL": mods.FLASHLIGHT,
             "SO": mods.SPUNOUT,
-            "AP": mods.RELAX2,
+            "AP": mods.AUTOPILOT,
             "PF": mods.PERFECT,
             "V2": mods.SCOREV2,
         }
@@ -2106,24 +2313,32 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
                     or (m == "EZ" and _mods & mods.HARDROCK)
                     or (m == "HR" and _mods & mods.EASY)
-                    or (m == "AP" and _mods & mods.RELAX)
-                    or (m == "RX" and _mods & mods.RELAX2)
+                    or (m == "RX" and _mods & mods.RELAX)
+                    or (m == "AP" and _mods & mods.AUTOPILOT)
                     or (m == "PF" and _mods & mods.SUDDENDEATH)
                     or (m == "SD" and _mods & mods.PERFECT)
                 ):
-                    _mods |= modMap.get(m)
+                    _mods |= modMap[m]
 
-        match.matchModMode = (
+        new_match_mod_mode = (
             matchModModes.FREE_MOD if freemods else matchModModes.NORMAL
         )
+        multiplayer_match = match.update_match(
+            multiplayer_match["match_id"],
+            match_mod_mode=new_match_mod_mode,
+        )
+        assert multiplayer_match is not None
 
-        match.resetReady()
-        if match.matchModMode == matchModModes.FREE_MOD:
-            match.resetMods()
-        match.changeMods(_mods)
+        match.resetReady(multiplayer_match["match_id"])
+        if multiplayer_match["match_mod_mode"] == matchModModes.FREE_MOD:
+            match.resetMods(multiplayer_match["match_id"])
+        match.changeMods(multiplayer_match["match_id"], _mods)
         return "Match mods have been updated!"
 
     def mpTeam() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) < 3:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp team <username> <colour>.",
@@ -2140,10 +2355,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
-
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+        
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+        
         match.changeTeam(
+            multiplayer_match["match_id"],
             userID,
             matchTeams.BLUE if colour == "blue" else matchTeams.RED,
         )
@@ -2151,8 +2370,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"{username} is now in {colour} team"
 
     def mpSettings() -> str:
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
+
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
 
         single = False if len(message) < 2 else message[1].strip().lower() == "single"
         msg: list[str] = ["PLAYERS IN THIS MATCH "]
@@ -2163,31 +2388,37 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             msg.append(": ")
 
         empty = True
-        for slot in match.slots:
-            if slot.user is None:
+        slots = slot.get_slots(multiplayer_match["match_id"])
+        assert len(slots) == 16
+
+        for _slot in slots:
+            if _slot["user_token"] is None:
                 continue
+
             readableStatuses = {
                 slotStatuses.READY: "ready",
                 slotStatuses.NOT_READY: "not ready",
                 slotStatuses.NO_MAP: "no map",
                 slotStatuses.PLAYING: "playing",
             }
-            if slot.status not in readableStatuses:
+            if _slot["status"] not in readableStatuses:
                 readableStatus = "???"
             else:
-                readableStatus = readableStatuses[slot.status]
+                readableStatus = readableStatuses[_slot["status"]]
             empty = False
+            slot_token = osuToken.get_token(_slot["user_token"])
+            assert slot_token is not None
             msg.append(
                 "* [{team}] <{status}> ~ {username}{mods}{nl}".format(
                     team="red"
-                    if slot.team == matchTeams.RED
+                    if _slot["team"] == matchTeams.RED
                     else "blue"
-                    if slot.team == matchTeams.BLUE
+                    if _slot["team"] == matchTeams.BLUE
                     else "!! no team !!",
                     status=readableStatus,
-                    username=glob.tokens.tokens[slot.user].username,
-                    mods=f" (+ {scoreUtils.readableMods(slot.mods)})"
-                    if slot.mods > 0
+                    username=slot_token["username"],
+                    mods=f" (+ {scoreUtils.readableMods(_slot['mods'])})"
+                    if _slot["mods"] > 0
                     else "",
                     nl=" | " if single else "\n",
                 ),
@@ -2199,18 +2430,31 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "".join(msg).rstrip(" | " if single else "\n")
 
     def mpScoreV() -> str:
+        if not (userID := userUtils.getIDSafe(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) < 2 or message[1] not in {"1", "2"}:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp scorev <1|2>.",
             )
 
-        match = glob.matches.getMatchFromChannel(chan)
-        assert match is not None
+        multiplayer_match = matchList.getMatchFromChannel(chan)
+        assert multiplayer_match is not None
 
-        match.matchScoringType = (
-            matchScoringTypes.SCORE_V2 if message[1] == "2" else matchScoringTypes.SCORE
+        if userID not in match.get_referees(multiplayer_match["match_id"]):
+            return None
+
+        if message[1] == "2":
+            new_scoring_type = matchScoringTypes.SCORE_V2
+        else:
+            new_scoring_type = matchScoringTypes.SCORE
+
+        multiplayer_match = match.update_match(
+            multiplayer_match["match_id"], match_scoring_type=new_scoring_type
         )
-        match.sendUpdates()
+        assert multiplayer_match is not None
+
+        match.sendUpdates(multiplayer_match["match_id"])
         return f"Match scoring type set to scorev{message[1]}."
 
     def mpHelp() -> str:
@@ -2223,7 +2467,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             "listref": mpListRefer,
             "make": mpMake,
             "close": mpClose,
-            "join": mpJoin,
+            # "join": mpJoin,
             "force": mpForce,
             "lock": mpLock,
             "unlock": mpUnlock,
@@ -2274,7 +2518,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #    if not (targetID := userUtils.getIDSafe(target)):
 #        return f'{target}: user not found.'
 #
-#    userToken = glob.tokens.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)
+#    userToken = osuToken.get_token_by_user_id(targetID, ignoreIRC=True, _all=False)
 #    userToken.enqueue(serverPackets.rtx(message))
 #    return ':box_flushed:'
 
@@ -2294,30 +2538,60 @@ def crashClient(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := userUtils.getID(target)):
         return f"{target} not found."
 
-    userToken = glob.tokens.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)
+    userToken = tokenList.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)
     assert userToken is not None
 
-    invalid_pkt = serverPackets.invalidChatMessage(target)
+    packet_data = serverPackets.invalidChatMessage(target)
 
     for _ in range(16):  # takes a few to crash
-        userToken.enqueue(invalid_pkt)
+        osuToken.enqueue(userToken["token_id"], packet_data)
 
     return "deletus"
 
 
-# @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
-# def runPython(fro: str, chan: str, message: list[str]) -> str:
-#     # NOTE: not documented on purpose
-#     lines = " ".join(message).split(r"\n")
-#     definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
+@command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
+def runPython(fro: str, chan: str, message: list[str]) -> str:
+    # NOTE: not documented on purpose
+    lines = " ".join(message).split(r"\n")
+    definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
 
-#     try:
-#         exec(definition)  # define function
-#         ret = str(locals()["__py"](fro, chan, message))  # run it
-#     except Exception as e:
-#         ret = f"{e.__class__}: {e}"
+    try:
+        exec(definition)  # define function
+        ret = str(locals()["__py"](fro, chan, message))  # run it
+    except Exception as e:
+        ret = f"{e.__class__}: {e}"
 
-#     return ret
+    return ret
+
+
+# NOTE: this is dangerous, namely because ids of singletons (and other object)
+# will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
+@command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
+def reload(fro: str, chan: str, message: list[str]) -> str:
+    """Reload a python module, by name (relative to pep.py)."""
+    if fro != "cmyui":
+        return "no :)"
+
+    if len(message) != 1:
+        return "Invalid syntax: !reload <module>"
+
+    parent, *children = message[0].split(".")
+
+    try:
+        mod = __import__(parent)
+    except ModuleNotFoundError:
+        return "Module not found."
+
+    try:
+        for child in children:
+            mod = getattr(mod, child)
+    except AttributeError:
+        return f"Failed at {child}."  # type: ignore
+
+    import importlib
+
+    mod = importlib.reload(mod)
+    return f"Reloaded {mod.__name__}"
 
 
 # used in fokabot.py, here so we can !reload constants.fokabotCommands

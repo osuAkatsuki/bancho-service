@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from events import matchBeatmapEvent
-from objects.osuToken import token
+from objects.osuToken import Token
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     matchBeatmapEvent.handle(userToken, rawPacketData, True)

@@ -32,7 +32,7 @@ from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig
 from objects import fokabot
-from objects import glob
+from objects import glob, streamList, channelList, match, osuToken, tokenList
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
 from pubSubHandlers import disconnectHandler
@@ -42,8 +42,8 @@ from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
-# import ddtrace
-# ddtrace.patch_all()
+import ddtrace
+ddtrace.patch_all()
 
 
 def make_app():
@@ -74,18 +74,17 @@ if __name__ == "__main__":
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to Akatsuki's bancho-service v{glob.VERSION}", Ansi.LGREEN)
+        log(f"Welcome to Akatsuki's bancho-service", Ansi.LGREEN)
         log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
         log(
             f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/bancho-service",
             Ansi.LGREEN,
         )
         log("Press CTRL+C to exit\n", Ansi.LGREEN)
-        os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        log("Ensuring folders.", Ansi.LMAGENTA)
-        if not os.path.exists(".data"):
-            os.makedirs(".data", 0o770)
+        # TODO: do we need this anymore now with stateless design?
+        # (not using filesystem anymore for things like .data/)
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
         # Connect to db
         try:
@@ -115,27 +114,12 @@ if __name__ == "__main__":
             log(f"Error connecting to redis.", Ansi.LRED)
             raise
 
-        # Empty redis cache
-        try:
-            glob.redis.set("ripple:online_users", 0)
-            glob.redis.delete(*glob.redis.keys("peppy:*"))
-            glob.redis.delete(*glob.redis.keys("akatsuki:sessions:*"))
-        except redis.exceptions.ResponseError:
-            # Script returns error if there are no keys starting with peppy:*
-            pass
-
-        # Save peppy version in redis
-        glob.redis.set("peppy:version", glob.VERSION)
-
         # Load bancho_settings
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
         except:
             log(f"Error loading bancho settings.", Ansi.LMAGENTA)
             raise
-
-        # Delete old bancho sessions
-        glob.tokens.deleteBanchoSessions()
 
         # Create threads pool
         try:
@@ -149,25 +133,14 @@ if __name__ == "__main__":
             )
             raise
 
-        # Get build date for login notifications
-        with open("build.date") as f:
-            timestamp = dt.utcfromtimestamp(int(f.read()))
-            glob.latestBuild = timestamp.strftime("%b %d %Y")
-
         log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
         fokabot.connect()
 
-        glob.channels.loadChannels()
+        channelList.loadChannels()
 
         # Initialize stremas
-        glob.streams.add("main")
-        glob.streams.add("lobby")
-
-        log("Starting background loops.", Ansi.LMAGENTA)
-
-        glob.tokens.usersTimeoutCheckLoop()
-        glob.tokens.spamProtectionResetLoop()
-        glob.matches.cleanupLoop()
+        streamList.add("main")
+        streamList.add("lobby")
 
         if not settings.LOCALIZE_ENABLE:
             log("User localization is disabled.", Ansi.LYELLOW)
@@ -189,22 +162,16 @@ if __name__ == "__main__":
                     periodicChecks=[
                         datadogClient.periodicCheck(
                             "online_users",
-                            lambda: len(glob.tokens.tokens),
+                            lambda: len(osuToken.get_token_ids()),
                         ),
                         datadogClient.periodicCheck(
                             "multiplayer_matches",
-                            lambda: len(glob.matches.matches),
+                            lambda: len(match.get_match_ids()),
                         ),
-                        # datadogClient.periodicCheck("ram_clients", lambda: generalUtils.getTotalSize(glob.tokens)),
-                        # datadogClient.periodicCheck("ram_matches", lambda: generalUtils.getTotalSize(glob.matches)),
-                        # datadogClient.periodicCheck("ram_channels", lambda: generalUtils.getTotalSize(glob.channels)),
-                        # datadogClient.periodicCheck("ram_file_buffers", lambda: generalUtils.getTotalSize(glob.fileBuffers)),
-                        # datadogClient.periodicCheck("ram_file_locks", lambda: generalUtils.getTotalSize(glob.fLocks)),
-                        # datadogClient.periodicCheck("ram_datadog", lambda: generalUtils.getTotalSize(glob.datadogClient)),
-                        # datadogClient.periodicCheck("ram_verified_cache", lambda: generalUtils.getTotalSize(glob.verifiedCache)),
-                        # datadogClient.periodicCheck("ram_irc", lambda: generalUtils.getTotalSize(glob.ircServer)),
-                        # datadogClient.periodicCheck("ram_tornado", lambda: generalUtils.getTotalSize(glob.application)),
-                        # datadogClient.periodicCheck("ram_db", lambda: generalUtils.getTotalSize(glob.db)),
+                        datadogClient.periodicCheck(
+                            "chat_channels",
+                            lambda: len(channelList.getChannelNames()),
+                        ),
                     ],
                 )
         except:
@@ -220,6 +187,11 @@ if __name__ == "__main__":
             threading.Thread(
                 target=lambda: ircserver.main(port=settings.IRC_PORT),
             ).start()
+
+        log("Starting background loops.", Ansi.LMAGENTA)
+
+        tokenList.usersTimeoutCheckLoop()
+        tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
         glob.groupPrivileges = {

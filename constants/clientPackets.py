@@ -128,7 +128,7 @@ def matchSettings(stream):
     start = result["end"]
 
     # Second part (this one somewhat depends on match state)
-    struct = [
+    struct: list[tuple[str, int]] = [
         (f"slot{i}ID", dataTypes.SINT32)
         for i in range(16)
         if data[f"slot{i}Status"] not in (slotStatuses.FREE, slotStatuses.LOCKED)

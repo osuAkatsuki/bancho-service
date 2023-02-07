@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from common.redis import generalPubSubHandler
-from objects import glob
+from objects import glob, tokenList, osuToken
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):
@@ -13,5 +13,5 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
-        if targetToken := glob.tokens.getTokenFromUserID(userID):
-            targetToken.silence()
+        if targetToken := tokenList.getTokenFromUserID(userID):
+            osuToken.silence(targetToken["token_id"])
