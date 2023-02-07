@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from threading import Lock
-from threading import RLock
+from redlock import RedLock
 from time import localtime
 from time import strftime
 from time import time
+from common import channel_utils
+from objects import channelList
+import logging
+import json
 from typing import Optional
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from common.constants import actions
@@ -18,690 +20,1139 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from helpers import chatHelper as chat
-from objects import glob
+from objects import glob, streamList, match
 
-if TYPE_CHECKING:
-    from objects import channel
-    from objects import osuToken
+from typing import TypedDict
+
+# (set) bancho:tokens
+# (json obj) bancho:tokens:{token_id}
+# (set) bancho:tokens:{token_id}:streams
+# (set) bancho:tokens:{token_id}:channels
+# (set[userid]) bancho:tokens:{token_id}:spectators
+# (list) bancho:tokens:{token_id}:messages
+# (list[userid]) bancho:tokens:{token_id}:sent_away_messages
+# (list) bancho:tokens:{token_id}:packet_queue
 
 
-class token:
-    __slots__ = (
-        "userID",
-        "username",
-        "safeUsername",
-        "privileges",
-        "whitelist",
-        "staff",
-        "restricted",
-        "irc",
-        "kicked",
-        "loginTime",
-        "pingTime",
-        "timeOffset",
-        "streams",
-        "tournament",
-        "messagesBuffer",
-        "blockNonFriendsDM",
-        "spectators",
-        "spectating",
-        "spectatingUserID",
-        "location",
-        "joinedChannels",
-        "ip",
-        "country",
-        "awayMessage",
-        "sentAway",
-        "matchID",
-        "tillerino",
-        "silenceEndTime",
-        "protocolVersion",
-        "queue",
-        "spamRate",
-        "actionID",
-        "actionText",
-        "actionMd5",
-        "actionMods",
-        "gameMode",
-        "relax",
-        "autopilot",
-        "beatmapID",
-        "rankedScore",
-        "accuracy",
-        "playcount",
-        "totalScore",
-        "gameRank",
-        "pp",
-        "token",
-        "processingLock",
-        "_bufferLock",
-        "_spectLock",
+class LastNp(TypedDict):
+    beatmap_id: int
+    mods: int
+    accuracy: float
+
+
+# self,
+# userID: int,
+# token_: Optional[str] = None,
+# ip: str = "",
+# irc: bool = False,
+# timeOffset: int = 0,
+# tournament: bool = False,
+
+
+class Token(TypedDict):
+    token_id: str
+    user_id: int
+    username: str
+    # safe_username: str
+    privileges: int
+    whitelist: int  # TODO: this is fuckignstupid
+    # staff: bool
+    # restricted: bool
+    irc: bool
+    kicked: bool
+    login_time: float
+    ping_time: float
+    utc_offset: int
+    # streams: list[stream.Stream]
+    tournament: bool
+    # messages_buffer: list[str]
+    block_non_friends_dm: bool
+    # spectators: list[osuToken.Token]
+    spectating_token_id: Optional[str]
+    spectating_user_id: Optional[int]
+    # spectator_lock: RLock
+    latitude: float
+    longitude: float
+    # joinedChannels: list[str]
+    ip: str
+    country: int
+    away_message: Optional[str]
+    # sent_away_messages: list[int]
+    match_id: Optional[int]
+    last_np: Optional[LastNp]
+    silence_end_time: int
+    protocol_version: int
+    # packet_queue: list[int]
+    # packet_queue_lock: Lock
+    spam_rate: int
+
+    # stats
+    action_id: int
+    action_text: str
+    action_md5: str
+    action_mods: int
+    game_mode: int
+    relax: bool
+    autopilot: bool
+    beatmap_id: int
+    ranked_score: int
+    accuracy: float
+    playcount: int
+    total_score: int
+    global_rank: int
+    pp: int
+
+    # processing_lock: Lock
+
+    # self.updateCachedStats()
+    # if ip != "":
+    #     userUtils.saveBanchoSession(self.userID, self.ip)
+    # self.joinStream("main")
+
+
+def safeUsername(username: str) -> str:
+    """
+    Return `username`'s safe username
+    (all lowercase and underscores instead of spaces)
+
+    :param username: unsafe username
+    :return: safe username
+    """
+
+    return username.lower().strip().replace(" ", "_")
+
+
+# CRUD
+
+
+def make_key(token_id: str) -> str:
+    return f"bancho:tokens:{token_id}"
+
+
+def create_token(
+    user_id: int,
+    username: str,
+    privileges: int,
+    whitelist: int,
+    ip: str,
+    utc_offset: int,
+    irc: bool,
+    tournament: bool,
+    block_non_friends_dm: bool = False,
+) -> Token:
+    token_id = str(uuid4())
+    creation_time = time()
+
+    token: Token = {
+        "token_id": token_id,
+        "user_id": user_id,
+        "username": username,
+        "privileges": privileges,
+        "whitelist": whitelist,
+        "irc": irc,
+        "kicked": False,
+        "login_time": creation_time,
+        "ping_time": creation_time,
+        "utc_offset": utc_offset,
+        "tournament": tournament,
+        "block_non_friends_dm": block_non_friends_dm,
+        "spectating_token_id": None,
+        "spectating_user_id": None,
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "ip": ip,
+        "country": 0,
+        "away_message": None,
+        "match_id": None,
+        "last_np": None,
+        "silence_end_time": 0,
+        "protocol_version": 0,
+        "spam_rate": 0,
+        "action_id": actions.IDLE,
+        "action_text": "",
+        "action_md5": "",
+        "action_mods": 0,
+        "game_mode": gameModes.STD,
+        "relax": False,
+        "autopilot": False,
+        "beatmap_id": 0,
+        "ranked_score": 0,
+        "accuracy": 0.0,
+        "playcount": 0,
+        "total_score": 0,
+        "global_rank": 0,
+        "pp": 0,
+    }
+
+    glob.redis.sadd("bancho:tokens", token_id)
+    glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
+    glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
+    glob.redis.set(f"bancho:tokens:names:{safeUsername(token['username'])}", token_id)
+    glob.redis.set(make_key(token_id), json.dumps(token))
+    return token
+
+
+def get_token_ids() -> set[str]:
+    raw_token_ids: set[bytes] = glob.redis.smembers("bancho:tokens")
+    return {token_id.decode() for token_id in raw_token_ids}
+
+
+def get_token(token_id: str) -> Optional[Token]:
+    token = glob.redis.get(make_key(token_id))
+    if token is None:
+        return None
+    return json.loads(token)
+
+
+def get_tokens() -> list[Token]:
+    return [
+        json.loads(token)
+        for _, token in glob.redis.hgetall("bancho:tokens:json").items()
+    ]
+
+
+def get_token_by_user_id(user_id: int) -> Optional[Token]:
+    token_id: Optional[bytes] = glob.redis.get(f"bancho:tokens:ids:{user_id}")
+    if token_id is None:
+        return None
+
+    token = get_token(token_id.decode())
+    if token is not None:
+        return token
+
+
+def get_token_by_username(username: str) -> Optional[Token]:
+    token_id: Optional[bytes] = glob.redis.get(
+        f"bancho:tokens:names:{safeUsername(username)}"
+    )
+    if token_id is None:
+        return None
+
+    token = get_token(token_id.decode())
+    if token is not None:
+        return token
+
+
+class MissingType:
+    pass
+
+
+from typing import Union
+
+MISSING = MissingType()
+
+# TODO: the things that can actually be Optional need to have different defaults
+def update_token(
+    token_id: str,
+    # user_id: Optional[int] = None,
+    username: Optional[str] = None,
+    privileges: Optional[int] = None,
+    whitelist: Optional[int] = None,
+    irc: Optional[bool] = None,
+    kicked: Optional[bool] = None,
+    # login_time: Optional[float] = None,
+    ping_time: Optional[float] = None,
+    # utc_offset: Optional[int] = None,
+    # tournament: Optional[bool] = None,
+    block_non_friends_dm: Optional[bool] = None,
+    spectating_token_id: Union[Optional[str], MissingType] = MISSING,
+    spectating_user_id: Union[Optional[int], MissingType] = MISSING,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    ip: Optional[str] = None,  # ?
+    country: Optional[int] = None,
+    away_message: Union[Optional[str], MissingType] = MISSING,
+    match_id: Union[Optional[int], MissingType] = MISSING,
+    last_np: Union[Optional[LastNp], MissingType] = MISSING,
+    silence_end_time: Optional[int] = None,
+    protocol_version: Optional[int] = None,
+    spam_rate: Optional[int] = None,
+    action_id: Optional[int] = None,
+    action_text: Optional[str] = None,
+    action_md5: Optional[str] = None,
+    action_mods: Optional[int] = None,
+    game_mode: Optional[int] = None,
+    relax: Optional[bool] = None,
+    autopilot: Optional[bool] = None,
+    beatmap_id: Optional[int] = None,
+    ranked_score: Optional[int] = None,
+    accuracy: Optional[float] = None,
+    playcount: Optional[int] = None,
+    total_score: Optional[int] = None,
+    global_rank: Optional[int] = None,
+    pp: Optional[int] = None,
+) -> Optional[Token]:
+    token = get_token(token_id)
+    if token is None:
+        return None
+
+    if username is not None:
+        token["username"] = username
+    if privileges is not None:
+        token["privileges"] = privileges
+    if whitelist is not None:
+        token["whitelist"] = whitelist
+    if irc is not None:
+        token["irc"] = irc
+    if kicked is not None:
+        token["kicked"] = kicked
+    if ping_time is not None:
+        token["ping_time"] = ping_time
+    if block_non_friends_dm is not None:
+        token["block_non_friends_dm"] = block_non_friends_dm
+    if not isinstance(spectating_token_id, MissingType):
+        token["spectating_token_id"] = spectating_token_id
+    if not isinstance(spectating_user_id, MissingType):
+        token["spectating_user_id"] = spectating_user_id
+    if latitude is not None:
+        token["latitude"] = latitude
+    if longitude is not None:
+        token["longitude"] = longitude
+    if ip is not None:
+        token["ip"] = ip
+    if country is not None:
+        token["country"] = country
+    if not isinstance(away_message, MissingType):
+        token["away_message"] = away_message
+    if not isinstance(match_id, MissingType):
+        token["match_id"] = match_id
+    if not isinstance(last_np, MissingType):
+        token["last_np"] = last_np
+    if silence_end_time is not None:
+        token["silence_end_time"] = silence_end_time
+    if protocol_version is not None:
+        token["protocol_version"] = protocol_version
+    if spam_rate is not None:
+        token["spam_rate"] = spam_rate
+    if action_id is not None:
+        token["action_id"] = action_id
+    if action_text is not None:
+        token["action_text"] = action_text
+    if action_md5 is not None:
+        token["action_md5"] = action_md5
+    if action_mods is not None:
+        token["action_mods"] = action_mods
+    if game_mode is not None:
+        token["game_mode"] = game_mode
+    if relax is not None:
+        token["relax"] = relax
+    if autopilot is not None:
+        token["autopilot"] = autopilot
+    if beatmap_id is not None:
+        token["beatmap_id"] = beatmap_id
+    if ranked_score is not None:
+        token["ranked_score"] = ranked_score
+    if accuracy is not None:
+        token["accuracy"] = accuracy
+    if playcount is not None:
+        token["playcount"] = playcount
+    if total_score is not None:
+        token["total_score"] = total_score
+    if global_rank is not None:
+        token["global_rank"] = global_rank
+    if pp is not None:
+        token["pp"] = pp
+    glob.redis.set(make_key(token_id), json.dumps(token))
+    glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
+    return token
+
+
+def delete_token(token_id: str) -> None:
+    token = get_token(token_id)
+    if token is None:
+        return
+
+    glob.redis.srem("bancho:tokens", token_id)
+    glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
+    glob.redis.delete(f"bancho:tokens:names:{token['username']}")
+    glob.redis.hdel("bancho:tokens:json", token_id)
+    glob.redis.delete(make_key(token_id))
+    glob.redis.delete(f"{make_key(token_id)}:channels")
+    glob.redis.delete(f"{make_key(token_id)}:spectators")
+    glob.redis.delete(f"{make_key(token_id)}:streams")
+    glob.redis.delete(f"{make_key(token_id)}:message_history")
+    glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
+
+
+# joined channels
+
+
+def get_joined_channels(token_id: str) -> set[str]:
+    """Returns a set of channel names"""
+    raw_channels: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:channels")
+    return {x.decode() for x in raw_channels}
+
+
+# spectators
+
+
+def get_spectators(token_id: str) -> set[int]:
+    raw_spectators: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:spectators")
+    return {int(raw_spectator) for raw_spectator in raw_spectators}
+
+
+def remove_spectator(token_id: str, spectator_user_id: int) -> None:
+    glob.redis.srem(f"{make_key(token_id)}:spectators", spectator_user_id)
+
+
+def add_spectator(token_id: str, spectator_user_id: int) -> None:
+    glob.redis.sadd(f"{make_key(token_id)}:spectators", spectator_user_id)
+
+
+# streams
+
+
+def get_streams(token_id: str) -> set[str]:
+    raw_streams: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:streams")
+    return {raw_stream.decode() for raw_stream in raw_streams}
+
+
+def add_stream(token_id: str, stream_name: str) -> None:
+    glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
+
+
+def remove_stream(token_id: str, stream_name: str) -> None:
+    glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
+
+
+# messages
+# (list) bancho:tokens:{token_id}:message_history
+
+
+def get_message_history(token_id: str) -> list[str]:
+    raw_history: list[bytes] = glob.redis.lrange(
+        f"{make_key(token_id)}:message_history", 0, -1
+    )
+    return [raw_message.decode() for raw_message in raw_history]
+
+
+def add_message_to_history(token_id: str, message: str) -> None:
+    glob.redis.rpush(f"{make_key(token_id)}:message_history", message)
+
+
+# away messages
+# (set[userid]) bancho:tokens:{token_id}:sent_away_messages
+
+
+def get_sent_away_messages(token_id: str) -> set[str]:
+    raw_messages: set[bytes] = glob.redis.smembers(
+        f"{make_key(token_id)}:sent_away_messages"
+    )
+    return {raw_message.decode() for raw_message in raw_messages}
+
+
+def add_sent_away_message(token_id: str, user_id: int) -> None:
+    glob.redis.sadd(f"{make_key(token_id)}:sent_away_messages", user_id)
+
+
+# properties
+
+
+def is_staff(token_privileges: int) -> bool:
+    return token_privileges & privileges.ADMIN_CHAT_MOD != 0
+
+
+def is_restricted(token_privileges: int) -> bool:
+    return token_privileges & privileges.USER_PUBLIC == 0
+
+
+#####
+
+
+def enqueue(token_id: str, data: bytes) -> None:
+    """
+    Add bytes (packets) to queue
+
+    :param data: (packet) bytes to enqueue
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    # Never enqueue for IRC clients or Aika
+    if token["irc"] or token["user_id"] == 999:
+        return
+
+    if len(data) >= 10 * 10**6:
+        logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
+
+    glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
+
+
+def dequeue(token_id: str) -> bytes:
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
+    raw_packets.reverse()  # redis returns backwards
+
+    # clear the packets we read
+    glob.redis.delete(f"{make_key(token_id)}:packet_queue")
+
+    return b"".join([bytes(json.loads(raw_packet)) for raw_packet in raw_packets])
+
+
+def joinChannel(token_id: str, channel_name: str) -> None:
+    """
+    Join a channel
+
+    :param channelObject: channel object
+    :raises: exceptions.userAlreadyInChannelException()
+                exceptions.channelNoPermissionsException()
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    current_channels = get_joined_channels(token_id)
+
+    if channel_name in current_channels:
+        raise exceptions.userAlreadyInChannelException()
+
+    channel = channelList.getChannel(channel_name)
+    if channel is None:
+        raise exceptions.channelUnknownException()
+
+    # Make sure we have read permissions.
+
+    # premium requires premium
+    if (
+        channel_name == "#premium"
+        and token["privileges"] & privileges.USER_PREMIUM == 0
+    ):
+        raise exceptions.channelNoPermissionsException()
+
+    # supporter requires supporter
+    if (
+        channel_name == "#supporter"
+        and token["privileges"] & privileges.USER_DONOR == 0
+    ):
+        raise exceptions.channelNoPermissionsException()
+
+    # non-public channels require staff or bot
+    if (not channel["public_read"]) and not (
+        is_staff(token["privileges"]) or token["user_id"] == 999
+    ):
+        raise exceptions.channelNoPermissionsException()
+
+    glob.redis.sadd(f"{make_key(token_id)}:channels", channel_name)
+    joinStream(token_id, f"chat/{channel_name}")
+
+    client_name = channel_utils.get_client_name(channel_name)
+    enqueue(token_id, serverPackets.channelJoinSuccess(client_name))
+
+
+def partChannel(token_id: str, channel_name: str) -> None:
+    """
+    Remove channel from joined channels list
+
+    :param channel_name: channel name
+    """
+    joined_channels = get_joined_channels(token_id)
+    if channel_name not in joined_channels:
+        raise exceptions.userNotInChannelException()
+
+    glob.redis.srem(f"{make_key(token_id)}:channels", channel_name)
+    leaveStream(token_id, f"chat/{channel_name}")
+
+
+def setLocation(token_id: str, latitude: float, longitude: float) -> None:
+    """
+    Set client location
+
+    :param latitude: latitude
+    :param longitude: longitude
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    update_token(
+        token_id,
+        latitude=latitude,
+        longitude=longitude,
     )
 
-    def __init__(
-        self,
-        userID: int,
-        token_: Optional[str] = None,
-        ip: str = "",
-        irc: bool = False,
-        timeOffset: int = 0,
-        tournament: bool = False,
-    ) -> None:
-        """
-        Create a token object and set userID and token
 
-        :param userID: user associated to this token
-        :param token_: 	if passed, set token to that value
-                        if not passed, token will be generated
-        :param ip: client ip. optional.
-        :param irc: if True, set this token as IRC client. Default: False.
-        :param timeOffset: the time offset from UTC for this user. Default: 0.
-        :param tournament: if True, flag this client as a tournement client. Default: True.
-        """
-        # Set stuff
-        self.userID = userID
+def startSpectating(token_id: str, host_token_id: str) -> None:
+    """
+    Set the spectating user to userID, join spectator stream and chat channel
+    and send required packets to host
 
-        res = glob.db.fetch(
-            "SELECT username, username_safe, privileges, whitelist "
-            "FROM users WHERE id = %s",
-            [userID],
+    :param host: host osuToken object
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    host_token = get_token(host_token_id)
+    if host_token is None:
+        raise exceptions.tokenNotFoundException()
+
+    # Stop spectating old client
+    stopSpectating(token_id, get_lock=False)  # (we already have the lock)
+
+    # Set new spectator host
+    update_token(
+        token_id,
+        spectating_token_id=host_token_id,
+        spectating_user_id=host_token["user_id"],
+    )
+
+    # Add us to host's spectator list
+    add_spectator(host_token_id, token["user_id"])
+
+    # Create and join spectator stream
+    streamName = f"spect/{host_token['user_id']}"
+    streamList.add(streamName)
+    joinStream(token_id, streamName)
+    joinStream(host_token_id, streamName)
+
+    # Send spectator join packet to host
+    enqueue(host_token_id, serverPackets.addSpectator(token["user_id"]))
+
+    # Create and join #spectator (#spect_userid) channel
+    channelList.addChannel(
+        name=f"#spect_{host_token['user_id']}",
+        description=f"Spectator lobby for host {host_token['username']}",
+        public_read=True,
+        public_write=False,
+        instance=True,
+    )
+    chat.joinChannel(
+        token_id=token_id,
+        channel_name=f"#spect_{host_token['user_id']}",
+        force=True,
+    )
+
+    spectators = get_spectators(host_token["token_id"])
+    if len(spectators) == 1:
+        # First spectator, send #spectator join to host too
+        chat.joinChannel(
+            token_id=host_token_id,
+            channel_name=f"#spect_{host_token['user_id']}",
+            force=True,
         )
 
-        self.username = res["username"]
-        self.safeUsername = res["username_safe"]
-        self.privileges = res["privileges"]
-        self.whitelist = res["whitelist"]  # zzz should be in privs
+    # Send fellow spectator join to all clients
+    streamList.broadcast(
+        streamName,
+        serverPackets.fellowSpectatorJoined(token["user_id"]),
+    )
 
-        # TODO: should be properties but code is shit
-        self.staff = self.privileges & privileges.ADMIN_CHAT_MOD != 0
-        self.restricted = (
-            self.privileges & privileges.USER_PUBLIC == 0
-            and self.privileges & privileges.USER_NORMAL != 0
+    # Get current spectators list
+    spectators = get_spectators(host_token["token_id"])
+    for spectator_user_id in spectators:
+        if spectator_user_id != token["user_id"]:
+            enqueue(
+                token_id,
+                serverPackets.fellowSpectatorJoined(token["user_id"]),
+            )
+
+
+def stopSpectating(token_id: str, get_lock: bool = True) -> None:
+    """
+    Stop spectating, leave spectator stream and channel
+    and send required packets to host
+
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    # Remove our token id from host's spectators
+    if token["spectating_token_id"] is None:
+        return
+
+    host_token = get_token(token["spectating_token_id"])
+    stream_name = f"spect/{token['spectating_user_id']}"
+
+    # Remove us from host's spectators list,
+    # leave spectator stream
+    # and end the spectator left packet to host
+    leaveStream(token_id, stream_name)
+
+    if host_token:
+        remove_spectator(host_token["token_id"], token["user_id"])
+        enqueue(
+            host_token["token_id"], serverPackets.removeSpectator(token["user_id"])
         )
-        # self.staff = self.privileges & privileges.ADMIN_CHAT_MOD > 0
-        # self.whitelist = userUtils.getWhitelist(self.userID)
-        # self.restricted = userUtils.isRestricted(self.userID)
 
-        self.irc = irc
-        self.kicked = False
-        self.loginTime = int(time())
-        self.pingTime = self.loginTime
-        self.timeOffset = timeOffset
-        self.streams = []
-        self.tournament = tournament
-        self.messagesBuffer = []
-        self.blockNonFriendsDM = False
+        fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
+        # and to all other spectators
+        spectators = get_spectators(host_token["token_id"])
+        for spectator in spectators:
+            spectator_token = get_token_by_user_id(spectator)
+            if spectator_token is None:
+                continue
 
-        # Default variables
-        self.spectators = []
+            enqueue(spectator_token["token_id"], fellow_left_packet)
 
-        # TODO: Move those two vars to a class
-        self.spectating = None
-        self.spectatingUserID = 0  # we need this in case we the host gets DCed
-
-        self.location = [0.0, 0.0]
-        self.joinedChannels = []
-        self.ip = ip
-        self.country = 0
-        self.awayMessage = ""
-        self.sentAway = []
-        self.matchID = -1
-        self.tillerino = [0, 0, -1.0]  # beatmap, mods, acc
-        self.silenceEndTime = 0
-        self.protocolVersion = 19
-        self.queue = bytearray()
-
-        # Spam protection
-        self.spamRate = 0
-
-        # Stats cache
-        self.actionID = actions.IDLE
-        self.actionText = ""
-        self.actionMd5 = ""
-        self.actionMods = 0
-        self.gameMode = gameModes.STD
-        self.relax = False
-        self.autopilot = False
-        self.beatmapID = 0
-        self.rankedScore = 0
-        self.accuracy = 0.0
-        self.playcount = 0
-        self.totalScore = 0
-        self.gameRank = 0
-        self.pp = 0
-
-        # Generate/set token
-        self.token = token_ if token_ else str(uuid4())
-
-        # Locks
-        self.processingLock = (
-            Lock()
-        )  # Acquired while there's an incoming packet from this user
-        self._bufferLock = Lock()  # Acquired while writing to packets buffer
-        self._spectLock = RLock()
-
-        # Set stats
-        self.updateCachedStats()
-
-        # If we have a valid ip, save bancho session in DB so we can cache LETS logins
-        if ip != "":
-            userUtils.saveBanchoSession(self.userID, self.ip)
-
-        # Join main stream
-        self.joinStream("main")
-
-    # @property
-    # def staff(self) -> bool:
-    # 	return self.privileges & privileges.ADMIN_CHAT_MOD != 0
-
-    # @property
-    # def restricted(self) -> bool:
-    # 	return self.privileges & privileges.USER_PUBLIC == 0
-
-    def enqueue(self, data: bytes) -> None:
-        """
-        Add bytes (packets) to queue
-
-        :param data: (packet) bytes to enqueue
-        """
-        with self._bufferLock:
-            # Never enqueue for IRC clients or Aika
-            if self.irc or self.userID < 999:
-                return
-
-            # Avoid memory leaks
-            if len(data) < 10 * 10**6:
-                self.queue += data
-            else:
-                log.warning(
-                    f"{self.username}'s packets buffer is above 10M!! Lost some data!",
-                )
-
-    def resetQueue(self) -> None:
-        """Resets the queue. Call when enqueued packets have been sent"""
-        with self._bufferLock:
-            self.queue.clear()
-
-    def joinChannel(self, channelObject: channel.channel) -> None:
-        """
-        Join a channel
-
-        :param channelObject: channel object
-        :raises: exceptions.userAlreadyInChannelException()
-                 exceptions.channelNoPermissionsException()
-        """
-        if channelObject.name in self.joinedChannels:
-            raise exceptions.userAlreadyInChannelException()
-
-        # Make sure we have write permissions.
-        if (
-            (
-                channelObject.name == "#premium"
-                and self.privileges & privileges.USER_PREMIUM == 0
-            )
-            or (
-                channelObject.name == "#supporter"
-                and self.privileges & privileges.USER_DONOR == 0
-            )
-            or (not channelObject.publicRead and not self.staff)
-        ) and self.userID != 999:
-            raise exceptions.channelNoPermissionsException()
-
-        self.joinedChannels.append(channelObject.name)
-        self.joinStream(f"chat/{channelObject.name}")
-        self.enqueue(serverPackets.channelJoinSuccess(channelObject.clientName))
-
-    def partChannel(self, channelObject: channel.channel) -> None:
-        """
-        Remove channel from joined channels list
-
-        :param channelObject: channel object
-        """
-        self.joinedChannels.remove(channelObject.name)
-        self.leaveStream(f"chat/{channelObject.name}")
-
-    def setLocation(self, latitude: float, longitude: float) -> None:
-        """
-        Set client location
-
-        :param latitude: latitude
-        :param longitude: longitude
-        """
-        self.location = (latitude, longitude)
-
-    def startSpectating(self, host: osuToken.token) -> None:
-        """
-        Set the spectating user to userID, join spectator stream and chat channel
-        and send required packets to host
-
-        :param host: host osuToken object
-        """
-        with self._spectLock:
-            # Stop spectating old client
-            self.stopSpectating()
-
-            # Set new spectator host
-            self.spectating = host.token
-            self.spectatingUserID = host.userID
-
-            # Add us to host's spectator list
-            host.spectators.append(self.token)
-
-            # Create and join spectator stream
-            streamName = f"spect/{host.userID}"
-            glob.streams.add(streamName)
-            self.joinStream(streamName)
-            host.joinStream(streamName)
-
-            # Send spectator join packet to host
-            host.enqueue(serverPackets.addSpectator(self.userID))
-
-            # Create and join #spectator (#spect_userid) channel
-            glob.channels.addTempChannel(f"#spect_{host.userID}")
-            chat.joinChannel(token=self, channel=f"#spect_{host.userID}", force=True)
-            if len(host.spectators) == 1:
-                # First spectator, send #spectator join to host too
-                chat.joinChannel(
-                    token=host,
-                    channel=f"#spect_{host.userID}",
-                    force=True,
-                )
-
-            # Send fellow spectator join to all clients
-            glob.streams.broadcast(
-                streamName,
-                serverPackets.fellowSpectatorJoined(self.userID),
-            )
-
-            # Get current spectators list
-            for i in host.spectators:
-                if i != self.token and i in glob.tokens.tokens:
-                    self.enqueue(
-                        serverPackets.fellowSpectatorJoined(
-                            glob.tokens.tokens[i].userID,
-                        ),
-                    )
-
-    def stopSpectating(self) -> None:
-        """
-        Stop spectating, leave spectator stream and channel
-        and send required packets to host
-
-        :return:
-        """
-        with self._spectLock:
-
-            # Remove our userID from host's spectators
-            if not self.spectating or self.spectatingUserID <= 0:
-                return
-
-            if self.spectating in glob.tokens.tokens:
-                hostToken = glob.tokens.tokens[self.spectating]
-            else:
-                hostToken = None
-
-            streamName = f"spect/{self.spectatingUserID}"
-
-            # Remove us from host's spectators list,
-            # leave spectator stream
-            # and end the spectator left packet to host
-            self.leaveStream(streamName)
-
-            if hostToken:
-                hostToken.spectators.remove(self.token)
-                hostToken.enqueue(serverPackets.removeSpectator(self.userID))
-
-                fellow_left_packet = serverPackets.fellowSpectatorLeft(self.userID)
-                # and to all other spectators
-                for i in hostToken.spectators:
-                    if i in glob.tokens.tokens:
-                        glob.tokens.tokens[i].enqueue(fellow_left_packet)
-
-                # If nobody is spectating the host anymore, close #spectator channel
-                # and remove host from spect stream too
-                if not hostToken.spectators:
-                    chat.partChannel(
-                        token=hostToken,
-                        channel=f"#spect_{hostToken.userID}",
-                        kick=True,
-                        force=True,
-                    )
-                    hostToken.leaveStream(streamName)
-
-                # Console output
-                # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
-
-            # Part #spectator channel
+        # If nobody is spectating the host anymore, close #spectator channel
+        # and remove host from spect stream too
+        if not spectators:
             chat.partChannel(
-                token=self,
-                channel=f"#spect_{self.spectatingUserID}",
+                token_id=host_token["token_id"],
+                channel_name=f"#spect_{host_token['user_id']}",
                 kick=True,
                 force=True,
             )
+            leaveStream(host_token["token_id"], stream_name)
 
-            # Set our spectating user to 0
-            self.spectating = None
-            self.spectatingUserID = 0
+        # Console output
+        # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
 
-    def updatePingTime(self) -> None:
-        """
-        Update latest ping time to current time
+    # Part #spectator channel
+    chat.partChannel(
+        token_id=token_id,
+        channel_name=f"#spect_{token['spectating_user_id']}",
+        kick=True,
+        force=True,
+    )
 
-        :return:
-        """
-        self.pingTime = int(time())
+    # Set our spectating user to None
+    update_token(
+        token_id,
+        spectating_token_id=None,
+        spectating_user_id=None,
+    )
 
-    def joinMatch(self, matchID: int) -> None:
-        """
-        Set match to matchID, join match stream and channel
 
-        :param matchID: new match ID
-        :return:
-        """
-        # Make sure the match exists
-        if matchID not in glob.matches.matches:
-            return
+def updatePingTime(token_id: str) -> None:
+    """
+    Update latest ping time to current time
 
-        # Match exists, get object
-        match = glob.matches.matches[matchID]
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        # Stop spectating
-        self.stopSpectating()
+    update_token(
+        token_id,
+        ping_time=time(),
+    )
 
-        # Leave other matches
-        if self.matchID > -1 and self.matchID != matchID:
-            self.leaveMatch()
 
-        # Try to join match
-        if not match.userJoin(self):
-            self.enqueue(serverPackets.matchJoinFail)
-            return
+def joinMatch(token_id: str, match_id: int) -> bool:
+    """
+    Set match to match_id, join match stream and channel
 
-        # Set matchID, join stream, channel and send packet
-        self.matchID = matchID
-        self.joinStream(match.streamName)
-        chat.joinChannel(token=self, channel=f"#multi_{self.matchID}", force=True)
-        self.enqueue(serverPackets.matchJoinSuccess(matchID))
+    :param match_id: new match ID
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        if match.isTourney:
-            # Alert the user if we have just joined a tourney match
-            self.enqueue(
-                serverPackets.notification("You are now in a tournament match."),
-            )
-            # If an user joins, then the ready status of the match changes and
-            # maybe not all users are ready.
-            match.sendReadyStatus()
+    # Make sure the match exists
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
+        return False
 
-    def leaveMatch(self) -> None:
-        """
-        Leave joined match, match stream and match channel
+    # Stop spectating
+    stopSpectating(token_id)
 
-        :return:
-        """
-        # Make sure we are in a match
-        if self.matchID == -1:
-            return
+    # Leave other matches
+    if token["match_id"] is not None and token["match_id"] != match_id:
+        leaveMatch(token_id)
 
-        # Part #multiplayer channel and streams (/ and /playing)
-        chat.partChannel(
-            token=self,
-            channel=f"#multi_{self.matchID}",
-            kick=True,
-            force=True,
+    # Try to join match
+    if not match.userJoin(multiplayer_match["match_id"], token_id):
+        enqueue(token_id, serverPackets.matchJoinFail)
+        return False
+
+    # Set matchID, join stream, channel and send packet
+    update_token(
+        token_id,
+        match_id=match_id,
+    )
+    joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
+    chat.joinChannel(token_id=token_id, channel_name=f"#multi_{match_id}", force=True)
+    enqueue(token_id, serverPackets.matchJoinSuccess(match_id))
+
+    if multiplayer_match["is_tourney"]:
+        # Alert the user if we have just joined a tourney match
+        enqueue(
+            token_id,
+            serverPackets.notification("You are now in a tournament match."),
         )
-        self.leaveStream(f"multi/{self.matchID}")
-        self.leaveStream(f"multi/{self.matchID}/playing")  # optional
+        # If an user joins, then the ready status of the match changes and
+        # maybe not all users are ready.
+        match.sendReadyStatus(multiplayer_match["match_id"])
+        
+    return True
 
-        # Set usertoken match to -1
-        leavingMatchID = self.matchID
-        self.matchID = -1
 
-        # Make sure the match exists
-        if leavingMatchID not in glob.matches.matches:
-            return
+def leaveMatch(token_id: str) -> None:
+    """
+    Leave joined match, match stream and match channel
 
-        # The match exists, get object
-        match = glob.matches.matches[leavingMatchID]
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        # Set slot to free
-        match.userLeft(self)
+    # Make sure we are in a match
+    if token["match_id"] is None:
+        return
 
-        if match.isTourney:
-            # If an user leaves, then the ready status of the match changes and
-            # maybe all users are ready. Or maybe nobody is in the match anymore
-            match.sendReadyStatus()
+    # Part #multiplayer channel and streams (/ and /playing)
+    chat.partChannel(
+        token_id=token_id,
+        channel_name=f"#multi_{token['match_id']}",
+        kick=True,
+        force=True,
+    )
+    leaveStream(token_id, match.create_stream_name(token["match_id"]))
+    leaveStream(
+        token_id, match.create_playing_stream_name(token["match_id"])
+    )  # optional
 
-    def kick(
-        self,
-        message: str = "You we're kicked from the server.",
-        reason: str = "kick",
-    ) -> None:
-        """
-        Kick this user from the server
+    # Set usertoken match to -1
+    leaving_match_id = token["match_id"]
+    update_token(
+        token_id,
+        match_id=None,
+    )
 
-        :param message: Notification message to send to this user.
-                        Default: "You we're kicked from the server."
-        :param reason: Kick reason, used in logs. Default: "kick"
-        :return:
-        """
-        # Send packet to target
-        log.info(f"{self.username} has been disconnected. ({reason})")
-        if message:
-            self.enqueue(serverPackets.notification(message))
+    # Make sure the match exists
+    multiplayer_match = match.get_match(leaving_match_id)
+    if multiplayer_match is None:
+        return
 
-        self.enqueue(serverPackets.loginFailed)
+    # Set slot to free
+    match.userLeft(multiplayer_match["match_id"], token_id)
 
-        # Logout event
-        logoutEvent.handle(self, deleteToken=self.irc)
+    if multiplayer_match["is_tourney"]:
+        # If an user leaves, then the ready status of the match changes and
+        # maybe all users are ready. Or maybe nobody is in the match anymore
+        match.sendReadyStatus(multiplayer_match["match_id"])
 
-    def silence(
-        self,
-        seconds: Optional[int] = None,
-        reason: str = "",
-        author: int = 999,
-    ) -> None:
-        """
-        Silences this user (db, packet and token)
 
-        :param seconds: silence length in seconds. If None, get it from db. Default: None
-        :param reason: silence reason. Default: empty string
-        :param author: userID of who has silenced the user. Default: 999 (Aika)
-        :return:
-        """
-        if seconds is None:
-            # Get silence expire from db if needed
-            seconds = max(0, userUtils.getSilenceEnd(self.userID) - int(time()))
-        else:
-            # Silence in db and token
-            userUtils.silence(self.userID, seconds, reason, author)
+def kick(
+    token_id: str,
+    message: str = "You were kicked from the server.",
+    reason: str = "kick",
+) -> None:
+    """
+    Kick this user from the server
 
-        # Silence token
-        self.silenceEndTime = int(time()) + seconds
+    :param message: Notification message to send to this user.
+                    Default: "You were kicked from the server."
+    :param reason: Kick reason, used in logs. Default: "kick"
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        # Send silence packet to user
-        self.enqueue(serverPackets.silenceEndTime(seconds))
+    # Send packet to target
+    log.info(f"{token['username']} has been disconnected. ({reason})")
+    if message:
+        enqueue(token_id, serverPackets.notification(message))
 
-        # Send silenced packet to everyone else
-        glob.streams.broadcast("main", serverPackets.userSilenced(self.userID))
+    enqueue(token_id, serverPackets.loginFailed)
 
-    def spamProtection(self, increaseSpamRate: bool = True) -> None:
-        """
-        Silences the user if is spamming.
+    # Logout event
+    logoutEvent.handle(token_id, deleteToken=token["irc"])
 
-        :param increaseSpamRate: set to True if the user has sent a new message. Default: True
-        :return:
-        """
-        # Increase the spam rate if needed
-        if increaseSpamRate:
-            self.spamRate += 1
 
-        # Silence the user if needed
-        acceptable_rate = 10
+def silence(
+    token_id: str,
+    seconds: Optional[int] = None,
+    reason: str = "",
+    author: int = 999,
+) -> None:
+    """
+    Silences this user (db, packet and token)
 
-        if self.spamRate > acceptable_rate:
-            self.silence(600, "Spamming (auto spam protection)")
+    :param seconds: silence length in seconds. If None, get it from db. Default: None
+    :param reason: silence reason. Default: empty string
+    :param author: userID of who has silenced the user. Default: 999 (Aika)
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-    def isSilenced(self) -> bool:
-        """
-        Returns True if this user is silenced, otherwise False
+    if seconds is None:
+        # Get silence expire from db if needed
+        seconds = max(0, userUtils.getSilenceEnd(token["user_id"]) - int(time()))
+    else:
+        # Silence in db and token
+        userUtils.silence(token["user_id"], seconds, reason, author)
 
-        :return: True if this user is silenced, otherwise False
-        """
-        return self.silenceEndTime - int(time()) > 0
+    # Silence token
+    update_token(
+        token_id,
+        silence_end_time=int(time()) + seconds,
+    )
 
-    def getSilenceSecondsLeft(self) -> int:
-        """
-        Returns the seconds left for this user's silence
-        (0 if user is not silenced)
+    # Send silence packet to user
+    enqueue(token_id, serverPackets.silenceEndTime(seconds))
 
-        :return: silence seconds left (or 0)
-        """
-        return max(0, self.silenceEndTime - int(time()))
+    # Send silenced packet to everyone else
+    streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
 
-    def updateCachedStats(self) -> None:
-        """
-        Update all cached stats for this token
 
-        :return:
-        """
+def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
+    """
+    Silences the user if is spamming.
 
-        if self.relax:
-            relax_int = 1
-        elif self.autopilot:
-            relax_int = 2
-        else:
-            relax_int = 0
+    :param increaseSpamRate: set to True if the user has sent a new message. Default: True
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        stats = userUtils.getUserStats(
-            self.userID,
-            self.gameMode,
-            relax_int,
-        )
-
-        if not stats:
-            log.warning("Stats query returned None")
-            return
-
-        self.rankedScore = stats["rankedScore"]
-        self.accuracy = stats["accuracy"] / 100
-        self.playcount = stats["playcount"]
-        self.totalScore = stats["totalScore"]
-        self.gameRank = stats["gameRank"]
-        self.pp = stats["pp"]
-
-    def checkRestricted(self) -> None:
-        """
-        Check if this token is restricted. If so, send Aika message
-
-        :return:
-        """
-        oldRestricted = self.restricted
-        self.restricted = userUtils.isRestricted(self.userID)
-        if self.restricted:
-            self.setRestricted()
-        elif not self.restricted and oldRestricted != self.restricted:
-            self.resetRestricted()
-
-    def checkBanned(self) -> None:
-        """
-        Check if this user is banned. If so, disconnect it.
-
-        :return:
-        """
-        if userUtils.isBanned(self.userID):
-            self.enqueue(serverPackets.loginBanned)
-            logoutEvent.handle(self, deleteToken=False)
-
-    def setRestricted(self) -> None:
-        """
-        Set this token as restricted, send Aika message to user
-        and send offline packet to everyone
-
-        :return:
-        """
-        self.restricted = True
-        chat.sendMessage(
-            glob.BOT_NAME,
-            self.username,
-            "Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
+    # Increase the spam rate if needed
+    token["spam_rate"] += 1
+    if increaseSpamRate:
+        update_token(
+            token_id,
+            spam_rate=token["spam_rate"],
         )
 
-    def resetRestricted(self) -> None:
-        """
-        Send Aika message to alert the user that he has been unrestricted
-        and he has to log in again.
+    # Silence the user if needed
+    acceptable_rate = 10
 
-        :return:
-        """
-        chat.sendMessage(
-            glob.BOT_NAME,
-            self.username,
-            "Your account has been unrestricted! Please log in again.",
-        )
+    if token["spam_rate"] > acceptable_rate:
+        silence(token_id, 600, "Spamming (auto spam protection)")
 
-    def joinStream(self, name: str) -> None:
-        """
-        Join a packet stream, or create it if the stream doesn't exist.
 
-        :param name: stream name
-        :return:
-        """
-        glob.streams.join(name, token=self.token)
-        if name not in self.streams:
-            self.streams.append(name)
+def isSilenced(token_id: str) -> bool:
+    """
+    Returns True if this user is silenced, otherwise False
 
-    def leaveStream(self, name: str) -> None:
-        """
-        Leave a packets stream
+    :return: True if this user is silenced, otherwise False
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        :param name: stream name
-        :return:
-        """
-        glob.streams.leave(name, token=self.token)
-        if name in self.streams:
-            self.streams.remove(name)
+    return token["silence_end_time"] - time() > 0
 
-    def leaveAllStreams(self) -> None:
-        """
-        Leave all joined packet streams
 
-        :return:
-        """
-        for i in self.streams:
-            self.leaveStream(i)
+def getSilenceSecondsLeft(token_id: str) -> int:
+    """
+    Returns the seconds left for this user's silence
+    (0 if user is not silenced)
 
-    def awayCheck(self, userID: int) -> bool:
-        """
-        Returns True if userID doesn't know that we are away
-        Returns False if we are not away or if userID already knows we are away
+    :return: silence seconds left (or 0)
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        :param userID: original sender userID
-        :return:
-        """
-        if not self.awayMessage or userID in self.sentAway:
-            return False
-        self.sentAway.append(userID)
-        return True
+    return max(0, token["silence_end_time"] - int(time()))
 
-    def addMessageInBuffer(self, chan: str, message: str) -> None:
-        """
-        Add a message in messages buffer (100 messages, truncated at 1000 chars).
-        Used as proof when the user gets reported.
 
-        :param chan: channel
-        :param message: message content
-        :return:
-        """
-        if len(self.messagesBuffer) > 100:
-            self.messagesBuffer = self.messagesBuffer[1:]
-        self.messagesBuffer.append(
-            f"{strftime('%H:%M', localtime())} - {self.username}@{chan}: {message[:1000]}",
-        )
+def updateCachedStats(token_id: str) -> None:
+    """
+    Update all cached stats for this token
 
-    def getMessagesBufferString(self) -> str:
-        """
-        Get the content of the messages buffer as a string
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
 
-        :return: messages buffer content as a string
-        """
-        return "\n".join(x for x in self.messagesBuffer)
+    if token["relax"]:
+        relax_int = 1
+    elif token["autopilot"]:
+        relax_int = 2
+    else:
+        relax_int = 0
+
+    stats = userUtils.getUserStats(
+        token["user_id"],
+        token["game_mode"],
+        relax_int,
+    )
+
+    if not stats:
+        log.warning("Stats query returned None")
+        return
+
+    update_token(
+        token_id,
+        ranked_score=stats["rankedScore"],
+        accuracy=stats["accuracy"] / 100,
+        playcount=stats["playcount"],
+        total_score=stats["totalScore"],
+        global_rank=stats["gameRank"],
+        pp=stats["pp"],
+    )
+
+
+def checkRestricted(token_id: str) -> None:
+    """
+    Check if this token is restricted. If so, send Aika message
+
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    old_restricted = is_restricted(token["privileges"])
+    restricted = userUtils.isRestricted(token["user_id"])
+    if restricted:
+        setRestricted(token_id)
+    elif not restricted and old_restricted != restricted:
+        resetRestricted(token_id)
+
+
+def checkBanned(token_id: str) -> None:
+    """
+    Check if this user is banned. If so, disconnect it.
+
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    if userUtils.isBanned(token["user_id"]):
+        enqueue(token_id, serverPackets.loginBanned)
+        logoutEvent.handle(token_id, deleteToken=False)
+
+
+def setRestricted(token_id: str) -> None:
+    """
+    Set this token as restricted, send Aika message to user
+    and send offline packet to everyone
+
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    aika_token = get_token_by_user_id(999)
+    assert aika_token is not None
+    chat.sendMessage(
+        token_id=aika_token["token_id"],
+        to=token["username"],
+        message="Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
+    )
+
+
+def resetRestricted(token_id: str) -> None:
+    """
+    Send Aika message to alert the user that he has been unrestricted
+    and he has to log in again.
+
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    aika_token = get_token_by_user_id(999)
+    assert aika_token is not None
+    chat.sendMessage(
+        token_id=aika_token["token_id"],
+        to=token["username"],
+        message="Your account has been unrestricted! Please log in again.",
+    )
+
+
+def joinStream(token_id: str, name: str) -> None:
+    """
+    Join a packet stream, or create it if the stream doesn't exist.
+
+    :param name: stream name
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    streamList.join(name, token_id=token_id)
+    if name not in get_streams(token_id):
+        add_stream(token_id, name)
+
+
+def leaveStream(token_id: str, name: str) -> None:
+    """
+    Leave a packets stream
+
+    :param name: stream name
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    streamList.leave(name, token_id)
+    if name in get_streams(token_id):
+        remove_stream(token_id, name)
+
+
+def leaveAllStreams(token_id: str) -> None:
+    """
+    Leave all joined packet streams
+
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    for stream in get_streams(token_id):
+        leaveStream(token_id, stream)
+
+
+def awayCheck(token_id: str, user_id: int) -> bool:
+    """
+    Returns True if user_id doesn't know that we are away
+    Returns False if we are not away or if user_id already knows we are away
+
+    :param user_id: original sender user_id
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    if not token["away_message"] or user_id in get_sent_away_messages(token_id):
+        return False
+    add_sent_away_message(token_id, user_id)
+    return True
+
+
+def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
+    """
+    Add a message in messages buffer (100 messages, truncated at 1000 chars).
+    Used as proof when the user gets reported.
+
+    :param channel: channel
+    :param message: message content
+    :return:
+    """
+    token = get_token(token_id)
+    if token is None:
+        raise exceptions.tokenNotFoundException()
+
+    message_history = get_message_history(token_id)
+    if len(message_history) > 100:
+        glob.redis.lpop(f"{make_key(token_id)}:message_history")
+    add_message_to_history(
+        token_id,
+        f"{strftime('%H:%M', localtime())} - {token['username']}@{channel}: {message[:1000]}",
+    )
+
+
+def getMessagesBufferString(token_id: str) -> str:
+    """
+    Get the content of the messages buffer as a string
+
+    :return: messages buffer content as a string
+    """
+    return "\n".join(x for x in get_message_history(token_id))

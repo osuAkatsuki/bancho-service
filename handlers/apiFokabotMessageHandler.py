@@ -11,6 +11,7 @@ from common.web import requestsManager
 from constants import exceptions
 from helpers import chatHelper
 from objects import glob
+from objects import tokenList
 
 
 class handler(requestsManager.asyncRequestHandler):
@@ -32,10 +33,13 @@ class handler(requestsManager.asyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
+            aika_token = tokenList.getTokenFromUserID(999)
+            assert aika_token is not None
+
             chatHelper.sendMessage(
-                glob.BOT_NAME,
-                self.get_argument("to").encode().decode("utf-8", "replace"),
-                self.get_argument("msg").encode().decode("utf-8", "replace"),
+                token_id=aika_token["token_id"],
+                to=self.get_argument("to").encode().decode("utf-8", "replace"),
+                message=self.get_argument("msg").encode().decode("utf-8", "replace"),
             )
 
             # Status code and message

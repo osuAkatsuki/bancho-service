@@ -122,7 +122,7 @@ def isRankable(m: int, maxCombo: int) -> bool:
     :param maxCombo: the map's max combo
     :return: True if there are no unranked mods in `m`, else False
     """  # Allow scorev2 for long maps
-    if (m & (mods.RELAX2 | mods.AUTOPLAY)) != 0:
+    if (m & (mods.AUTOPILOT | mods.AUTOPLAY)) != 0:
         # has unranked mods
         return False
 

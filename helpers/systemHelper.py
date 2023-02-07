@@ -9,7 +9,7 @@ from os import name
 from signal import SIGKILL
 from threading import Timer
 from time import time
-from typing import NoReturn
+from typing import NoReturn, Any
 
 import psutil
 
@@ -17,7 +17,8 @@ from common.constants import bcolors
 from common.log import logUtils as log
 from constants import serverPackets
 from helpers import consoleHelper
-from objects import glob
+from objects import streamList
+from objects import glob, match, osuToken
 
 
 def dispose() -> None:
@@ -27,7 +28,6 @@ def dispose() -> None:
     :return:
     """
     print("> Disposing server...")
-    glob.fileBuffers.flushAll()
     consoleHelper.printColored("Goodbye!", bcolors.GREEN)
 
 
@@ -63,12 +63,12 @@ def scheduleShutdown(
 
     # Send notification if set
     if message:
-        glob.streams.broadcast("main", serverPackets.notification(message))
+        streamList.broadcast("main", serverPackets.notification(message))
 
     # Schedule server restart packet
     Timer(
         sendRestartTime,
-        glob.streams.broadcast,
+        streamList.broadcast,
         ["main", serverPackets.banchoRestart(delay * 2 * 1000)],
     ).start()
     glob.restarting = True
@@ -91,7 +91,7 @@ def restartServer() -> NoReturn:
     _exit(0)  # restart handled by script now
 
 
-def shutdownServer() -> NoReturn:
+def shutdownServer() -> NoReturn:  # type: ignore
     """
     Shutdown bancho-service
 
@@ -103,7 +103,7 @@ def shutdownServer() -> NoReturn:
     kill(getpid(), sig)
 
 
-def getSystemInfo() -> dict[str, object]:
+def getSystemInfo() -> dict[str, Any]:
     """
     Get a dictionary with some system/server info
 
@@ -111,8 +111,8 @@ def getSystemInfo() -> dict[str, object]:
     """
     data = {
         "unix": runningUnderUnix(),
-        "connectedUsers": len(glob.tokens.tokens),
-        "matches": len(glob.matches.matches),
+        "connectedUsers": len(osuToken.get_token_ids()),
+        "matches": len(match.get_match_ids()),
     }
 
     # General stats

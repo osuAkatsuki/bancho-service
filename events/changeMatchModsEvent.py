@@ -3,29 +3,38 @@ from __future__ import annotations
 from common.constants import mods
 from constants import clientPackets
 from constants import matchModModes
-from objects import glob
-from objects.osuToken import token
+from objects import match
+from objects.osuToken import Token
+from redlock import RedLock
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     # Get packet data
     packetData = clientPackets.changeMods(rawPacketData)
 
+    match_id = userToken["match_id"]
+    if match_id is None:
+        return None
+
     # Make sure the match exists
-    if userToken.matchID not in glob.matches.matches:
-        return
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
+        return None
 
     # Set slot or match mods according to modType
-    with glob.matches.matches[userToken.matchID] as match:
-        if match.matchModMode == matchModModes.FREE_MOD:
-            if userToken.userID == match.hostUserID:
-                # Allow host to apply speed changing mods.
-                match.changeMods(packetData["mods"] & mods.SPEED_CHANGING)
+    if multiplayer_match["match_mod_mode"] == matchModModes.FREE_MOD:
+        if userToken["user_id"] == multiplayer_match["host_user_id"]:
+            # Allow host to apply speed changing mods.
+            match.changeMods(multiplayer_match["match_id"], packetData["mods"] & mods.SPEED_CHANGING)
 
-            # Set slot mods
-            slotID = match.getUserSlotID(userToken.userID)
-            if slotID is not None:  # Apply non-speed changing mods.
-                match.setSlotMods(slotID, packetData["mods"] & ~mods.SPEED_CHANGING)
-        else:
-            # Not freemod, set match mods
-            match.changeMods(packetData["mods"])
+        # Set slot mods
+        slot_id = match.getUserSlotID(multiplayer_match["match_id"], userToken["user_id"])
+        if slot_id is not None:  # Apply non-speed changing mods.
+            match.setSlotMods(
+                multiplayer_match["match_id"],
+                slot_id,
+                packetData["mods"] & ~mods.SPEED_CHANGING,
+            )
+    else:
+        # Not freemod, set match mods
+        match.changeMods(multiplayer_match["match_id"], packetData["mods"])

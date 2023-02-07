@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -18,7 +19,12 @@ REDIS_PORT = int(os.environ["REDIS_PORT"])
 REDIS_DB = int(os.environ["REDIS_DB"])
 REDIS_PASS = os.environ["REDIS_PASS"]
 
-APP_PORT = int(os.environ["APP_PORT"])
+# stupid temporary hack for load balancing
+if "--port" in sys.argv:
+    APP_PORT = int(sys.argv[sys.argv.index("--port") + 1])
+else:
+    APP_PORT = int(os.environ["APP_PORT"])
+
 APP_THREADS = int(os.environ["APP_THREADS"])
 APP_GZIP = os.environ["APP_GZIP"] == "1"
 APP_GZIP_LEVEL = int(os.environ["APP_GZIP_LEVEL"])

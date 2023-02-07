@@ -1,17 +1,23 @@
 from __future__ import annotations
 
-from objects import glob
+from objects import match, osuToken
+from objects.osuToken import Token
 
+from redlock import RedLock
 
-def handle(userToken, _, has):
+def handle(userToken: Token, _, has_beatmap: bool):
     # Make sure we are in a match
-    if userToken.matchID == -1:
+    if userToken["match_id"] is None:
         return
 
     # Make sure the match exists
-    if userToken.matchID not in glob.matches.matches:
+    multiplayer_match = match.get_match(userToken["match_id"])
+    if multiplayer_match is None:
         return
 
     # Set has beatmap/no beatmap
-    with glob.matches.matches[userToken.matchID] as match:
-        match.userHasBeatmap(userToken.userID, has)
+    match.userHasBeatmap(
+        multiplayer_match["match_id"],
+        userToken["user_id"],
+        has_beatmap,
+    )

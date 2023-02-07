@@ -8,7 +8,7 @@ import tornado.web
 
 from common.web import requestsManager
 from constants import exceptions
-from objects import glob
+from objects import verifiedCache
 
 
 class handler(requestsManager.asyncRequestHandler):
@@ -26,10 +26,8 @@ class handler(requestsManager.asyncRequestHandler):
             # -1: Not in cache
             # 0: Not verified (multiacc)
             # 1: Verified
-            userID = self.get_argument("u")
-            data["result"] = (
-                glob.verifiedCache[userID] if userID in glob.verifiedCache else -1
-            )
+            userID = int(self.get_argument("u")) # type: ignore
+            data["result"] = verifiedCache.get(userID)
 
             # Status code and message
             statusCode = 200

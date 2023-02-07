@@ -1,5 +1,6 @@
 """ Contains functions used to write specific server packets to byte streams """
 from __future__ import annotations
+from typing import Optional
 
 from common.constants import privileges
 from common.ripple import userUtils
@@ -7,7 +8,7 @@ from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
 from helpers import packetHelper
-from objects import glob
+from objects import glob, match, osuToken, tokenList
 
 
 def notification(message: str) -> bytes:
@@ -118,9 +119,9 @@ def onlineUsers() -> bytes:
     userIDs = []
 
     # Create list with all connected (and not restricted) users
-    for value in glob.tokens.tokens.values():
-        if not value.restricted:
-            userIDs.append(value.userID)
+    for value in osuToken.get_tokens():
+        if not osuToken.is_restricted(value["privileges"]):
+            userIDs.append(value["user_id"])
 
     return packetHelper.buildPacket(
         packetIDs.server_userPresenceBundle,
@@ -151,16 +152,16 @@ def userPanel(userID: int, force: bool = False) -> bytes:
         return BOT_PRESENCE
 
     # Connected and restricted check
-    userToken = glob.tokens.getTokenFromUserID(userID)
-    if not userToken or ((userToken.restricted) and not force):
+    userToken = tokenList.getTokenFromUserID(userID)
+    if not userToken or (osuToken.is_restricted(userToken["privileges"]) and not force):
         return b""
 
     # Get user data
-    username = userToken.username
-    timezone = 24 + userToken.timeOffset
-    country = userToken.country
-    gameRank = userToken.gameRank
-    latitude, longitude = userToken.location
+    username = userToken["username"]
+    timezone = 24 + userToken["utc_offset"]
+    country = userToken["country"]
+    gameRank = userToken["global_rank"]
+    latitude, longitude = userToken["latitude"], userToken["longitude"]
 
     dev_groups = []  # awful but better than like 5 sql queries
     if "developer" in glob.groupPrivileges:
@@ -171,13 +172,13 @@ def userPanel(userID: int, force: bool = False) -> bytes:
     # Get username color according to rank
     # Only admins and normal users are currently supported
     userRank = 0
-    if userToken.privileges in dev_groups:
+    if userToken["privileges"] in dev_groups:
         userRank |= userRanks.ADMIN  # Developers - darker blue
-    elif userToken.privileges & privileges.ADMIN_MANAGE_PRIVILEGES:
+    elif userToken["privileges"] & privileges.ADMIN_MANAGE_PRIVILEGES:
         userRank |= userRanks.PEPPY  # Administrators - lighter blue
-    elif userToken.privileges & privileges.ADMIN_CHAT_MOD:
+    elif userToken["privileges"] & privileges.ADMIN_CHAT_MOD:
         userRank |= userRanks.MOD  # Community Managers - orange red
-    elif userToken.privileges & privileges.USER_DONOR:
+    elif userToken["privileges"] & privileges.USER_DONOR:
         userRank |= userRanks.SUPPORTER  # Supporter & premium - darker yellow
     else:
         userRank |= userRanks.NORMAL  # Regular - lighter yellow
@@ -212,12 +213,12 @@ def userStats(userID: int, force: bool = False) -> bytes:
         return BOT_STATS
 
     # Get userID's token from tokens list
-    userToken = glob.tokens.getTokenFromUserID(userID)
+    userToken = tokenList.getTokenFromUserID(userID)
     if userToken is None:
         return b""
 
     if not force:
-        if userToken.restricted or userToken.irc or userToken.tournament:
+        if osuToken.is_restricted(userToken["privileges"]) or userToken["irc"] or userToken["tournament"]:
             return b""
 
     # If our PP is over the osu client's cap (32768), we simply send
@@ -228,21 +229,21 @@ def userStats(userID: int, force: bool = False) -> bytes:
         packetIDs.server_userStats,
         (
             (userID, dataTypes.UINT32),
-            (userToken.actionID, dataTypes.BYTE),
-            (userToken.actionText, dataTypes.STRING),
-            (userToken.actionMd5, dataTypes.STRING),
-            (userToken.actionMods, dataTypes.SINT32),
-            (userToken.gameMode, dataTypes.BYTE),
-            (userToken.beatmapID, dataTypes.SINT32),
+            (userToken["action_id"], dataTypes.BYTE),
+            (userToken["action_text"], dataTypes.STRING),
+            (userToken["action_md5"], dataTypes.STRING),
+            (userToken["action_mods"], dataTypes.SINT32),
+            (userToken["game_mode"], dataTypes.BYTE),
+            (userToken["beatmap_id"], dataTypes.SINT32),
             (
-                userToken.rankedScore if userToken.pp < 0x8000 else userToken.pp,
+                userToken["ranked_score"] if userToken["pp"] < 0x8000 else userToken["pp"],
                 dataTypes.UINT64,
             ),
-            (userToken.accuracy, dataTypes.FFLOAT),
-            (userToken.playcount, dataTypes.UINT32),
-            (userToken.totalScore, dataTypes.UINT64),
-            (userToken.gameRank, dataTypes.UINT32),
-            (userToken.pp if userToken.pp < 0x8000 else 0, dataTypes.UINT16),
+            (userToken["accuracy"], dataTypes.FFLOAT),
+            (userToken["playcount"], dataTypes.UINT32),
+            (userToken["total_score"], dataTypes.UINT64),
+            (userToken["global_rank"], dataTypes.UINT32),
+            (userToken["pp"] if userToken["pp"] < 0x8000 else 0, dataTypes.UINT16),
         ),
     )
 
@@ -293,19 +294,13 @@ def channelJoinSuccess(chan: str) -> bytes:
     )
 
 
-def channelInfo(chan: str) -> bytes:
-    if chan not in glob.channels.channels:
-        return b""
-
-    channel = glob.channels.channels[chan]
-    client_count = len(glob.streams.streams[f"chat/{chan}"].clients)
-
+def channelInfo(channel_name: str, channel_description:str, channel_playercount: int) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_channelInfo,
         (
-            (channel.name, dataTypes.STRING),
-            (channel.description, dataTypes.STRING),
-            (client_count, dataTypes.UINT16),
+            (channel_name, dataTypes.STRING),
+            (channel_description, dataTypes.STRING),
+            (channel_playercount, dataTypes.UINT16),
         ),
     )
 
@@ -378,58 +373,56 @@ def fellowSpectatorLeft(userID: int) -> bytes:
 """ Multiplayer Packets """
 
 
-def createMatch(matchID: int) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
+def createMatch(match_id: int) -> bytes:
+    # Get match binary data and build packet
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
         return b""
 
-    # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
-    matchData = match.getMatchData(censored=True)
+    matchData = match.getMatchData(match_id, censored=True)
     return packetHelper.buildPacket(packetIDs.server_newMatch, matchData)
 
 
-# TODO: Add match object argument to save some CPU
-def updateMatch(matchID: int, censored: bool = False) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
-        return b""
-
+def updateMatch(match_id: int, censored: bool = False) -> Optional[bytes]:
     # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
+        return None
+
     return packetHelper.buildPacket(
         packetIDs.server_updateMatch,
-        match.getMatchData(censored=censored),
+        match.getMatchData(match_id, censored=censored),
     )
 
 
-def matchStart(matchID: int) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
+def matchStart(match_id: int) -> bytes:
+    # Get match binary data and build packet
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
         return b""
 
-    # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
-    return packetHelper.buildPacket(packetIDs.server_matchStart, match.getMatchData())
+    return packetHelper.buildPacket(
+        packetIDs.server_matchStart,
+        match.getMatchData(match_id, censored=False),
+    )
 
 
-def disposeMatch(matchID: int) -> bytes:
+def disposeMatch(match_id: int) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_disposeMatch,
-        ((matchID, dataTypes.UINT32),),
+        ((match_id, dataTypes.UINT32),),
     )
 
 
-def matchJoinSuccess(matchID: int) -> bytes:
-    # Make sure the match exists
-    if matchID not in glob.matches.matches:
+def matchJoinSuccess(match_id: int) -> bytes:
+    # Get match binary data and build packet
+    multiplayer_match = match.get_match(match_id)
+    if multiplayer_match is None:
         return b""
 
-    # Get match binary data and build packet
-    match = glob.matches.matches[matchID]
     return packetHelper.buildPacket(
         packetIDs.server_matchJoinSuccess,
-        match.getMatchData(),
+        match.getMatchData(match_id, censored=False),
     )
 
 

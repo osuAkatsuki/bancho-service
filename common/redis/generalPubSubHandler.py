@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
+from typing import Optional, Any
 
 
 def shape(d: dict) -> dict:
@@ -28,7 +28,7 @@ class generalPubSubHandler:
         self.type = "json"
         self.strict = True
 
-    def parseData(self, data: bytes) -> Optional[object]:
+    def parseData(self, data: bytes) -> Optional[Any]:
         """
         Parse received data
 

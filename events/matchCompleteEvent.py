@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from objects import glob
+from objects import match
+from objects.osuToken import Token
 
+from redlock import RedLock
 
-def handle(userToken, _):
+def handle(userToken: Token, _):
     # Make sure we are in a match
-    if userToken.matchID == -1:
+    if userToken["match_id"] is None:
         return
 
     # Make sure the match exists
-    if userToken.matchID not in glob.matches.matches:
+    multiplayer_match = match.get_match(userToken["match_id"])
+    if multiplayer_match is None:
         return
 
     # Set our match complete
-    with glob.matches.matches[userToken.matchID] as match:
-        match.playerCompleted(userToken.userID)
+    match.playerCompleted(multiplayer_match["match_id"], userToken["user_id"])

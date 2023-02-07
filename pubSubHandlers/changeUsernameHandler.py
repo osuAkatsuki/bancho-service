@@ -4,7 +4,7 @@ from common.constants import actions
 from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob
+from objects import glob, tokenList, osuToken
 
 
 def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
@@ -16,23 +16,26 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
             f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
         if targetToken:
-            targetToken.kick(
+            osuToken.kick(
+                targetToken["token_id"],
                 f"Your username has been changed to {newUsername}. Please log in again.",
                 "username_change",
             )
     except userUtils.usernameAlreadyInUseError:
         # log.rap(999, "Username change: {} is already in use!", through="Bancho")
         if targetToken:
-            targetToken.kick(
+            osuToken.kick(
+                targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
-                "username_change_fail",
+                "username_change",
             )
     except userUtils.invalidUsernameError:
         # log.rap(999, "Username change: {} is not a valid username!", through="Bancho")
         if targetToken:
-            targetToken.kick(
+            osuToken.kick(
+                targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
-                "username_change_fail",
+                "username_change",
             )
 
 
@@ -46,11 +49,11 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             return
 
         # Get the user's token
-        if (targetToken := glob.tokens.getTokenFromUserID(data["userID"])) is None:
+        if (targetToken := tokenList.getTokenFromUserID(data["userID"])) is None:
             # If the user is offline change username immediately
             handleUsernameChange(data["userID"], data["newUsername"])
         else:
-            if targetToken.irc or targetToken.actionID not in {
+            if targetToken["irc"] or targetToken["action_id"] not in {
                 actions.PLAYING,
                 actions.MULTIPLAYING,
             }:

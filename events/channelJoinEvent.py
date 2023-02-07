@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from constants import clientPackets
 from helpers import chatHelper as chat
-from objects.osuToken import token
+from objects.osuToken import Token
 
 
-def handle(userToken: token, rawPacketData: bytes):  # Channel join packet
+def handle(userToken: Token, rawPacketData: bytes):  # Channel join packet
     chat.joinChannel(
-        token=userToken,
-        channel=clientPackets.channelJoin(rawPacketData)["channel"],
+        token_id=userToken["token_id"],
+        channel_name=clientPackets.channelJoin(rawPacketData)["channel"],
     )

@@ -2,17 +2,21 @@ from __future__ import annotations
 
 from constants import clientPackets
 from helpers import chatHelper as chat
-from objects import glob
-from objects.osuToken import token
+from objects import match, osuToken
+from objects.osuToken import Token
 
 
-def handle(userToken: token, rawPacketData: bytes):
+def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentLeaveMatchChannel(rawPacketData)
-    if packetData["matchID"] not in glob.matches.matches or not userToken.tournament:
+    if packetData["matchID"] not in match.get_match_ids() or not userToken["tournament"]:
         return
     chat.partChannel(
-        token=userToken,
-        channel=f'#multi_{packetData["matchID"]}',
+        token_id=userToken["token_id"],
+        channel_name=f'#multi_{packetData["matchID"]}',
         force=True,
     )
-    userToken.matchID = 0
+
+    osuToken.update_token(
+        userToken["token_id"],
+        match_id=None,
+    )

@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from objects import glob
-from objects.osuToken import token
+from objects import match
+from objects.osuToken import Token
+
+from redlock import RedLock
 
 
-def handle(userToken: token, _):
+def handle(userToken: Token, _):
     # Make sure we are in a match
-    if userToken.matchID == -1:
+    if userToken["match_id"] is None:
         return
 
     # Make sure the match exists
-    if userToken.matchID not in glob.matches.matches:
+    multiplayer_match = match.get_match(userToken["match_id"])
+    if multiplayer_match is None:
         return
 
     # Change team
-    with glob.matches.matches[userToken.matchID] as match:
-        match.changeTeam(userToken.userID)
+    match.changeTeam(multiplayer_match["match_id"], userToken["user_id"])

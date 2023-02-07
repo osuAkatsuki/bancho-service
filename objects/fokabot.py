@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import re
-import threading
-from queue import Queue
 from time import time
 from typing import Optional
 from typing import TypedDict
+from redlock import RedLock
 
 from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob
+from objects import glob, streamList, match, matchList, tokenList, osuToken
 
 # Some common regexes, compiled to increase performance.
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
@@ -25,20 +24,23 @@ npRegex = re.compile(
 
 
 def connect() -> None:
-    with glob.tokens:
-        token = glob.tokens.addToken(999)
+    token = tokenList.getTokenFromUserID(999)
+    if token is not None:
+        return
 
-    token.actionID = actions.IDLE
-    glob.streams.broadcast("main", serverPackets.userPanel(999))
-    glob.streams.broadcast("main", serverPackets.userStats(999))
+    token = tokenList.addToken(999)
+    assert token is not None
+
+    osuToken.update_token(token["token_id"], action_id=actions.IDLE)
+    streamList.broadcast("main", serverPackets.userPanel(999))
+    streamList.broadcast("main", serverPackets.userStats(999))
 
 
 def disconnect() -> None:
-    with glob.tokens:
-        token = glob.tokens.getTokenFromUserID(999)
-        assert token is not None
+    token = tokenList.getTokenFromUserID(999)
+    assert token is not None
 
-        glob.tokens.deleteToken(token)
+    tokenList.deleteToken(token["token_id"])
 
 
 # def reload_commands():
@@ -79,14 +81,6 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
         ):
             return None
 
-        # If this is an !mp command in a match, make sure the user is a referee.
-        if chan.startswith("#multi_") and cmd["trigger"] == "!mp":
-            match = glob.matches.getMatchFromChannel(chan)
-            assert match is not None
-
-            if not match.is_referee(userID):
-                return None
-
         # Check argument number
         message_split = message.split(" ")
         if cmd["syntax"] and len(message_split) <= cmd["syntax"].count(" ") + 1:
@@ -104,18 +98,7 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
             return resp
 
         if cmd["callback"]:
-            queue = Queue()
-            thread = threading.Thread(
-                target=lambda q, arg1, arg2, arg3: q.put(
-                    handle_command(cmd, arg1, arg2, arg3),
-                ),
-                args=(queue, fro, chan, message_split[1:]),
-                daemon=True,
-            )
-            thread.start()
-            thread.join()
-
-            resp = queue.get()
+            resp = handle_command(cmd, fro, chan, message_split[1:])
 
             if isinstance(resp, Exception):
                 raise resp

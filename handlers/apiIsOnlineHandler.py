@@ -10,6 +10,7 @@ from common.ripple import userUtils
 from common.web import requestsManager
 from constants import exceptions
 from objects import glob
+from objects import tokenList
 
 
 class handler(requestsManager.asyncRequestHandler):
@@ -39,13 +40,11 @@ class handler(requestsManager.asyncRequestHandler):
             else:
                 if username:
                     data["result"] = (
-                        True
-                        if glob.tokens.getTokenFromUsername(username, safe=True)
-                        else False
+                        True if tokenList.getTokenFromUsername(username) else False
                     )
                 else:
                     data["result"] = (
-                        True if glob.tokens.getTokenFromUserID(userID) else False
+                        True if tokenList.getTokenFromUserID(userID) else False
                     )
 
             # Status code and message
