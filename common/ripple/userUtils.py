@@ -384,7 +384,7 @@ def checkLogin(userID: int, password: str, ip: str = "") -> bool:
     # Check cached bancho session
     banchoSession = False
     if ip:
-        banchoSession = checkBanchoSession(userID, ip)
+        banchoSession = checkBanchoSessionIpLookup(userID, ip)
 
     # Return True if there's a bancho session for this user from that ip
     if banchoSession:
@@ -799,7 +799,7 @@ def IPLog(userID: int, ip: int) -> None:
     )
 
 
-def checkBanchoSession(userID: int, ip: str = ""):
+def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
     """
     Return True if there is a bancho session for `userID` from `ip`
     If `ip` is an empty string, check if there's a bancho session for that user, from any IP.
@@ -809,9 +809,9 @@ def checkBanchoSession(userID: int, ip: str = ""):
     :return: True if there's an active bancho session, else False
     """
     if ip:
-        return glob.redis.sismember(f"peppy:sessions:{userID}", ip)
+        return glob.redis.sismember(f"bancho:sessions_by_ip:{userID}", ip)
     else:
-        return glob.redis.exists(f"peppy:sessions:{userID}")
+        return glob.redis.exists(f"bancho:sessions_by_ip:{userID}")
 
 
 def is2FAEnabled(userID: int):
@@ -1355,29 +1355,12 @@ def logIP(userID: int, ip: str) -> None:
     )
 
 
-def saveBanchoSession(userID: int, ip: str) -> None:
-    """
-    Save userid and ip of this token in redis
-    Used to cache logins on LETS requests
-
-    :param userID: user ID
-    :param ip: IP address
-    :return:
-    """
-
-    glob.redis.sadd(f"peppy:sessions:{userID}", ip)
+def saveBanchoSessionIpLookup(userID: int, ip: str) -> None:
+    glob.redis.sadd(f"bancho:sessions_by_ip:{userID}", ip)
 
 
-def deleteBanchoSessions(userID: int, ip: str) -> None:
-    """
-    Delete this bancho session from redis
-
-    :param userID: user id
-    :param ip: IP address
-    :return:
-    """
-
-    glob.redis.srem(f"peppy:sessions:{userID}", ip)
+def deleteBanchoSessionIpLookup(userID: int, ip: str) -> None:
+    glob.redis.srem(f"bancho:sessions_by_ip:{userID}", ip)
 
 
 def setPrivileges(userID: int, priv: int) -> None:

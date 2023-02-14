@@ -59,7 +59,7 @@ def addToken(
 
     osuToken.updateCachedStats(token["token_id"])
     if ip != "":
-        userUtils.saveBanchoSession(token["user_id"], ip)
+        userUtils.saveBanchoSessionIpLookup(token["user_id"], ip)
 
     osuToken.joinStream(token["token_id"], "main")
 
@@ -83,7 +83,7 @@ def deleteToken(token_id: str) -> None:
         return
 
     if token["ip"]:
-        userUtils.deleteBanchoSessions(token["user_id"], token["ip"])
+        userUtils.deleteBanchoSessionIpLookup(token["user_id"], token["ip"])
 
     osuToken.delete_token(token_id)
     glob.redis.decr("ripple:online_users")
