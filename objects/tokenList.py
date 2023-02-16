@@ -286,7 +286,7 @@ def usersTimeoutCheckLoop() -> None:
                 ),
             )
             try:
-                logoutEvent.handle(token, deleteToken=False)
+                logoutEvent.handle(token, _=None)
             except Exception as e:
                 exceptions.append(e)
                 log.error(
