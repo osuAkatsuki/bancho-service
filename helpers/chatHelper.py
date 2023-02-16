@@ -671,7 +671,7 @@ def IRCDisconnect(username: str) -> None:
         log.warning(f"{username} doesn't exist.")
         return
 
-    logoutEvent.handle(token["token_id"])  # TODO
+    logoutEvent.handle(token)  # TODO
     log.info(f"{username} disconnected from IRC.")
 
 

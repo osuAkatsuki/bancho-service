@@ -183,13 +183,12 @@ def getTokenFromUsername(
                 only the first occurrence.
     :return: osuToken object or None
     """
+    username = userUtils.safeUsername(username)
 
     # Make sure the token exists
     ret = []
     for value in osuToken.get_tokens():
-        if value["username"].lower().replace(" ", "_") == username.lower().replace(
-            " ", "_"
-        ):
+        if userUtils.safeUsername(value["username"]) == username:
             if ignoreIRC and value["irc"]:
                 continue
             if _all:
@@ -210,10 +209,10 @@ def deleteOldTokens(userID: int) -> None:
     :return:
     """
     # Delete older tokens
-    delete = []
+    delete: list[osuToken.Token] = []
     for token in osuToken.get_tokens():
         if token["user_id"] == userID:
-            delete.append(token["token_id"])
+            delete.append(token)
 
     for i in delete:
         logoutEvent.handle(i)
@@ -250,6 +249,9 @@ def enqueueAll(packet: bytes) -> None:
         osuToken.enqueue(token_id, packet)
 
 
+# NOTE: this number is defined by the osu! client
+OSU_MAX_PING_DELTA = 300  # seconds
+
 def usersTimeoutCheckLoop() -> None:
     """
     Start timed out users disconnect loop.
@@ -259,9 +261,9 @@ def usersTimeoutCheckLoop() -> None:
     """
     try:
         log.debug("Checking timed out clients")
-        exceptions = []
-        timedOutTokens = []  # timed out users
-        timeoutLimit = int(time.time()) - 300  # (determined by osu)
+        exceptions: list[Exception] = []
+        timedOutTokens: list[osuToken.Token] = []  # timed out users
+        timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
         for token in osuToken.get_tokens():
             # Check timeout (fokabot is ignored)
@@ -277,16 +279,16 @@ def usersTimeoutCheckLoop() -> None:
 
         # Delete timed out users from self.tokens
         # i is token string (dictionary key)
-        for i in timedOutTokens:
-            log.warning(f"{i['username']} timed out!!")
+        for token in timedOutTokens:
+            log.warning(f"{token['username']} timed out!!")
             osuToken.enqueue(
-                i["token_id"],
+                token["token_id"],
                 serverPackets.notification(
                     "Your connection to the server timed out.",
                 ),
             )
             try:
-                logoutEvent.handle(i["token_id"], None)
+                logoutEvent.handle(token, _=None)
             except Exception as e:
                 exceptions.append(e)
                 log.error(
@@ -299,7 +301,7 @@ def usersTimeoutCheckLoop() -> None:
             raise periodicLoopException(exceptions)
     finally:
         # Schedule a new check (endless loop)
-        threading.Timer(100, usersTimeoutCheckLoop).start()
+        threading.Timer(OSU_MAX_PING_DELTA // 2, usersTimeoutCheckLoop).start()
 
 
 def spamProtectionResetLoop() -> None:

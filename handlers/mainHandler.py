@@ -217,6 +217,7 @@ class handler(requestsManager.asyncRequestHandler):
                     "Server has restarted.",
                 ) + serverPackets.banchoRestart(0)
             finally:
+                userToken = osuToken.get_token(requestTokenString)
                 # Unlock token
                 if userToken:
                     # Update ping time for timeout

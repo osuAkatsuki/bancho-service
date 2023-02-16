@@ -207,7 +207,7 @@ def get_token(token_id: str) -> Optional[Token]:
 def get_tokens() -> list[Token]:
     return [
         json.loads(token)
-        for _, token in glob.redis.hgetall("bancho:tokens:json").items()
+        for token in glob.redis.hgetall("bancho:tokens:json").values()
     ]
 
 
@@ -364,7 +364,7 @@ def delete_token(token_id: str) -> None:
 
     glob.redis.srem("bancho:tokens", token_id)
     glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
-    glob.redis.delete(f"bancho:tokens:names:{token['username']}")
+    glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
     glob.redis.hdel("bancho:tokens:json", token_id)
     glob.redis.delete(make_key(token_id))
     glob.redis.delete(f"{make_key(token_id)}:channels")
@@ -782,7 +782,7 @@ def joinMatch(token_id: str, match_id: int) -> bool:
         # If an user joins, then the ready status of the match changes and
         # maybe not all users are ready.
         match.sendReadyStatus(multiplayer_match["match_id"])
-        
+
     return True
 
 
@@ -858,7 +858,7 @@ def kick(
     enqueue(token_id, serverPackets.loginFailed)
 
     # Logout event
-    logoutEvent.handle(token_id, deleteToken=token["irc"])
+    logoutEvent.handle(token, deleteToken=token["irc"])
 
 
 def silence(
@@ -1020,7 +1020,7 @@ def checkBanned(token_id: str) -> None:
 
     if userUtils.isBanned(token["user_id"]):
         enqueue(token_id, serverPackets.loginBanned)
-        logoutEvent.handle(token_id, deleteToken=False)
+        logoutEvent.handle(token, deleteToken=False)
 
 
 def setRestricted(token_id: str) -> None:
