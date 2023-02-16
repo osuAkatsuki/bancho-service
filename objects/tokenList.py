@@ -183,13 +183,12 @@ def getTokenFromUsername(
                 only the first occurrence.
     :return: osuToken object or None
     """
+    username = userUtils.safeUsername(username)
 
     # Make sure the token exists
     ret = []
     for value in osuToken.get_tokens():
-        if value["username"].lower().replace(" ", "_") == username.lower().replace(
-            " ", "_"
-        ):
+        if userUtils.safeUsername(value["username"]) == username:
             if ignoreIRC and value["irc"]:
                 continue
             if _all:
