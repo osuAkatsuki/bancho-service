@@ -12,7 +12,7 @@ from helpers import chatHelper as chat
 from objects import glob, streamList, osuToken, tokenList
 from objects.osuToken import Token
 
-def handle(token: Token, _=None, deleteToken=True):
+def handle(token: Token, _=None, deleteToken: bool = True):
 
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to

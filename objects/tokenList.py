@@ -259,8 +259,8 @@ def usersTimeoutCheckLoop() -> None:
     """
     try:
         log.debug("Checking timed out clients")
-        exceptions = []
-        timedOutTokens = []  # timed out users
+        exceptions: list[Exception] = []
+        timedOutTokens: list[osuToken.Token] = []  # timed out users
         timeoutLimit = int(time.time()) - 300  # (determined by osu)
 
         for token in osuToken.get_tokens():
@@ -277,16 +277,16 @@ def usersTimeoutCheckLoop() -> None:
 
         # Delete timed out users from self.tokens
         # i is token string (dictionary key)
-        for i in timedOutTokens:
-            log.warning(f"{i['username']} timed out!!")
+        for token in timedOutTokens:
+            log.warning(f"{token['username']} timed out!!")
             osuToken.enqueue(
-                i["token_id"],
+                token["token_id"],
                 serverPackets.notification(
                     "Your connection to the server timed out.",
                 ),
             )
             try:
-                logoutEvent.handle(i["token_id"], None)
+                logoutEvent.handle(token, deleteToken=False)
             except Exception as e:
                 exceptions.append(e)
                 log.error(
