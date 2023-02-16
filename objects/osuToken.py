@@ -364,7 +364,7 @@ def delete_token(token_id: str) -> None:
 
     glob.redis.srem("bancho:tokens", token_id)
     glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
-    glob.redis.delete(f"bancho:tokens:names:{token['username']}")
+    glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
     glob.redis.hdel("bancho:tokens:json", token_id)
     glob.redis.delete(make_key(token_id))
     glob.redis.delete(f"{make_key(token_id)}:channels")
