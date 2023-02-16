@@ -250,6 +250,9 @@ def enqueueAll(packet: bytes) -> None:
         osuToken.enqueue(token_id, packet)
 
 
+# NOTE: this number is defined by the osu! client
+OSU_MAX_PING_DELTA = 300  # seconds
+
 def usersTimeoutCheckLoop() -> None:
     """
     Start timed out users disconnect loop.
@@ -261,7 +264,7 @@ def usersTimeoutCheckLoop() -> None:
         log.debug("Checking timed out clients")
         exceptions: list[Exception] = []
         timedOutTokens: list[osuToken.Token] = []  # timed out users
-        timeoutLimit = int(time.time()) - 300  # (determined by osu)
+        timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
         for token in osuToken.get_tokens():
             # Check timeout (fokabot is ignored)
@@ -299,7 +302,7 @@ def usersTimeoutCheckLoop() -> None:
             raise periodicLoopException(exceptions)
     finally:
         # Schedule a new check (endless loop)
-        threading.Timer(100, usersTimeoutCheckLoop).start()
+        threading.Timer(OSU_MAX_PING_DELTA // 2, usersTimeoutCheckLoop).start()
 
 
 def spamProtectionResetLoop() -> None:
