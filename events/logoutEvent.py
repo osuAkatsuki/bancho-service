@@ -10,12 +10,9 @@ import settings
 from constants import serverPackets
 from helpers import chatHelper as chat
 from objects import glob, streamList, osuToken, tokenList
+from objects.osuToken import Token
 
-
-def handle(token_id: str, _=None, deleteToken=True):
-    token = osuToken.get_token(token_id)
-    if token is None:
-        return
+def handle(token: Token, _=None, deleteToken=True):
 
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to
@@ -25,17 +22,17 @@ def handle(token_id: str, _=None, deleteToken=True):
         return
 
     # Stop spectating
-    osuToken.stopSpectating(token_id)
+    osuToken.stopSpectating(token["token_id"])
 
     # Part matches
-    osuToken.leaveMatch(token_id)
+    osuToken.leaveMatch(token["token_id"])
 
     # Part all joined channels
-    for channel_name in osuToken.get_joined_channels(token_id):
-        chat.partChannel(token_id=token_id, channel_name=channel_name)
+    for channel_name in osuToken.get_joined_channels(token["token_id"]):
+        chat.partChannel(token_id=token["token_id"], channel_name=channel_name)
 
     # Leave all joined streams
-    osuToken.leaveAllStreams(token_id)
+    osuToken.leaveAllStreams(token["token_id"])
 
     # Enqueue our disconnection to everyone else
     streamList.broadcast("main", serverPackets.userLogout(token["user_id"]))
@@ -46,10 +43,10 @@ def handle(token_id: str, _=None, deleteToken=True):
 
     # Delete token
     if deleteToken:
-        tokenList.deleteToken(token_id)
+        tokenList.deleteToken(token["token_id"])
     else:
         osuToken.update_token(
-            token_id,
+            token["token_id"],
             kicked=True,
         )
 
@@ -71,7 +68,7 @@ def handle(token_id: str, _=None, deleteToken=True):
 
     # Expire token in redis
     glob.redis.expire(
-        f"akatsuki:sessions:{token_id}",
+        f"akatsuki:sessions:{token['token_id']}",
         60 * 60,
     )  # expire in 1 hour (60 minutes)
 
