@@ -207,7 +207,7 @@ def get_token(token_id: str) -> Optional[Token]:
 def get_tokens() -> list[Token]:
     return [
         json.loads(token)
-        for _, token in glob.redis.hgetall("bancho:tokens:json").items()
+        for token in glob.redis.hgetall("bancho:tokens:json").values()
     ]
 
 
@@ -782,7 +782,7 @@ def joinMatch(token_id: str, match_id: int) -> bool:
         # If an user joins, then the ready status of the match changes and
         # maybe not all users are ready.
         match.sendReadyStatus(multiplayer_match["match_id"])
-        
+
     return True
 
 
