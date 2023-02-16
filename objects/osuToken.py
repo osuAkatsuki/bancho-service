@@ -858,7 +858,7 @@ def kick(
     enqueue(token_id, serverPackets.loginFailed)
 
     # Logout event
-    logoutEvent.handle(token_id, deleteToken=token["irc"])
+    logoutEvent.handle(token, deleteToken=token["irc"])
 
 
 def silence(
@@ -1020,7 +1020,7 @@ def checkBanned(token_id: str) -> None:
 
     if userUtils.isBanned(token["user_id"]):
         enqueue(token_id, serverPackets.loginBanned)
-        logoutEvent.handle(token_id, deleteToken=False)
+        logoutEvent.handle(token, deleteToken=False)
 
 
 def setRestricted(token_id: str) -> None:

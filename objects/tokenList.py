@@ -210,10 +210,10 @@ def deleteOldTokens(userID: int) -> None:
     :return:
     """
     # Delete older tokens
-    delete = []
+    delete: list[osuToken.Token] = []
     for token in osuToken.get_tokens():
         if token["user_id"] == userID:
-            delete.append(token["token_id"])
+            delete.append(token)
 
     for i in delete:
         logoutEvent.handle(i)
