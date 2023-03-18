@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from objects import match
 from objects.osuToken import Token
+from objects.redisLock import redisLock
 
-from redlock import RedLock
 
 def handle(userToken: Token, _):
     # Make sure we are in a match
@@ -16,4 +16,5 @@ def handle(userToken: Token, _):
         return
 
     # Set our match complete
-    match.playerCompleted(multiplayer_match["match_id"], userToken["user_id"])
+    with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+        match.playerCompleted(multiplayer_match["match_id"], userToken["user_id"])

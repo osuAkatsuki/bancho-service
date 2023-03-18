@@ -6,6 +6,7 @@ import threading
 from datetime import datetime as dt
 from multiprocessing.pool import ThreadPool
 
+import ddtrace
 import redis
 import tornado.gen
 import tornado.httpserver
@@ -31,8 +32,13 @@ from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig
+from objects import channelList
 from objects import fokabot
-from objects import glob, streamList, channelList, match, osuToken, tokenList
+from objects import glob
+from objects import match
+from objects import osuToken
+from objects import streamList
+from objects import tokenList
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
 from pubSubHandlers import disconnectHandler
@@ -42,7 +48,6 @@ from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
-import ddtrace
 ddtrace.patch_all()
 
 

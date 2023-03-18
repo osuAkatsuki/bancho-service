@@ -15,6 +15,7 @@ from constants.exceptions import periodicLoopException
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
+from objects.redisLock import redisLock
 
 
 # def __init__(self) -> None:
@@ -41,7 +42,8 @@ def addToken(
     :return: token object
     """
     res = glob.db.fetch(
-        "SELECT username, privileges, whitelist FROM users WHERE id = %s", [user_id]
+        "SELECT username, privileges, whitelist FROM users WHERE id = %s",
+        [user_id],
     )
     assert res is not None
 
@@ -252,6 +254,7 @@ def enqueueAll(packet: bytes) -> None:
 # NOTE: this number is defined by the osu! client
 OSU_MAX_PING_DELTA = 300  # seconds
 
+
 def usersTimeoutCheckLoop() -> None:
     """
     Start timed out users disconnect loop.
@@ -265,36 +268,37 @@ def usersTimeoutCheckLoop() -> None:
         timedOutTokens: list[osuToken.Token] = []  # timed out users
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
-        for token in osuToken.get_tokens():
-            # Check timeout (fokabot is ignored)
-            if (
-                token["ping_time"] < timeoutLimit
-                and token["user_id"] != 999
-                and not token["irc"]
-                and not token["tournament"]
-            ):
-                # That user has timed out, add to disconnected tokens
-                # We can't delete it while iterating or items() throws an error
-                timedOutTokens.append(token)
+        with redisLock(f"bancho:locks:tokens"):
+            for token in osuToken.get_tokens():
+                # Check timeout (fokabot is ignored)
+                if (
+                    token["ping_time"] < timeoutLimit
+                    and token["user_id"] != 999
+                    and not token["irc"]
+                    and not token["tournament"]
+                ):
+                    # That user has timed out, add to disconnected tokens
+                    # We can't delete it while iterating or items() throws an error
+                    timedOutTokens.append(token)
 
-        # Delete timed out users from self.tokens
-        # i is token string (dictionary key)
-        for token in timedOutTokens:
-            log.warning(f"{token['username']} timed out!!")
-            osuToken.enqueue(
-                token["token_id"],
-                serverPackets.notification(
-                    "Your connection to the server timed out.",
-                ),
-            )
-            try:
-                logoutEvent.handle(token, _=None)
-            except Exception as e:
-                exceptions.append(e)
-                log.error(
-                    "Something wrong happened while disconnecting a timed out client.",
+            # Delete timed out users from self.tokens
+            # i is token string (dictionary key)
+            for token in timedOutTokens:
+                log.warning(f"{token['username']} timed out!!")
+                osuToken.enqueue(
+                    token["token_id"],
+                    serverPackets.notification(
+                        "Your connection to the server timed out.",
+                    ),
                 )
-        del timedOutTokens
+                try:
+                    logoutEvent.handle(token, _=None)
+                except Exception as e:
+                    exceptions.append(e)
+                    log.error(
+                        "Something wrong happened while disconnecting a timed out client.",
+                    )
+            del timedOutTokens
 
         # Re-raise exceptions if needed
         if exceptions:

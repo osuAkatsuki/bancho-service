@@ -8,7 +8,6 @@ import time  # me so lazy
 from typing import Any
 from typing import Callable
 from typing import Optional
-from redlock import RedLock
 
 import orjson
 import requests
@@ -31,8 +30,16 @@ from constants import serverPackets
 from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
-from objects import fokabot, channelList, match, tokenList
-from objects import glob, matchList, streamList, slot, osuToken
+from objects import channelList
+from objects import fokabot
+from objects import glob
+from objects import match
+from objects import matchList
+from objects import osuToken
+from objects import slot
+from objects import streamList
+from objects import tokenList
+from objects.redisLock import redisLock
 
 """
 Commands callbacks
@@ -241,9 +248,7 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
         return "Invalid silence time. Max silence time is 4 weeks."
 
     # Send silence packet to target if he's connected
-    targetToken = tokenList.getTokenFromUsername(
-        userUtils.safeUsername(target)
-    )
+    targetToken = tokenList.getTokenFromUsername(userUtils.safeUsername(target))
     if targetToken:
         # user online, silence both in db and with packet
         osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
@@ -1699,7 +1704,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             )
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -1726,7 +1731,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -1820,7 +1825,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -1833,7 +1838,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -1856,7 +1861,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         matchSize = int(message[1])
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -1877,10 +1882,10 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         username = message[1]
         matchID = int(message[2])
-        
+
         if userID not in match.get_referees(matchID):
             return None
-        
+
         userToken = tokenList.getTokenFromUsername(username, ignoreIRC=True)
         if not userToken:
             return
@@ -1911,7 +1916,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -1940,7 +1945,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -2045,10 +2050,11 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             return "Starting match"
         else:
             multiplayer_match = match.update_match(
-                multiplayer_match["match_id"], is_starting=True
+                multiplayer_match["match_id"],
+                is_starting=True,
             )
             assert multiplayer_match is not None
-            
+
             if userID not in match.get_referees(multiplayer_match["match_id"]):
                 return None
 
@@ -2119,7 +2125,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -2204,7 +2210,6 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
-
         match.abort(multiplayer_match["match_id"])
         return "Match aborted!"
 
@@ -2247,7 +2252,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         password = "" if len(message) < 2 or not message[1].strip() else message[1]
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -2261,7 +2266,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         password = secrets.token_hex(16)
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
 
@@ -2357,10 +2362,10 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
-        
+
         if userID not in match.get_referees(multiplayer_match["match_id"]):
             return None
-        
+
         match.changeTeam(
             multiplayer_match["match_id"],
             userID,
@@ -2450,7 +2455,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             new_scoring_type = matchScoringTypes.SCORE
 
         multiplayer_match = match.update_match(
-            multiplayer_match["match_id"], match_scoring_type=new_scoring_type
+            multiplayer_match["match_id"],
+            match_scoring_type=new_scoring_type,
         )
         assert multiplayer_match is not None
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from common import channel_utils
 
 import settings
+from common import channel_utils
 from common.constants import mods
 from common.constants import privileges
 from common.log import logUtils as log
@@ -11,11 +11,14 @@ from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
-from objects import fokabot, stream, osuToken
-
-
-from redlock import RedLock
-from objects import glob, streamList, channelList, tokenList
+from objects import channelList
+from objects import fokabot
+from objects import glob
+from objects import osuToken
+from objects import stream
+from objects import streamList
+from objects import tokenList
+from objects.redisLock import redisLock
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -176,7 +179,8 @@ def partChannel(
         # NOTE: Maybe always needed, will check later
         if kick:
             osuToken.enqueue(
-                token["token_id"], serverPackets.channelKicked(channelClient)
+                token["token_id"],
+                serverPackets.channelKicked(channelClient),
             )
 
         # IRC part
@@ -329,7 +333,10 @@ def sendMessage(
                 raise exceptions.channelNoPermissionsException()
 
             # non-public channels (except multiplayer) require staff or bot
-            if (not channel["public_write"] and not (to.startswith("#multi_") or to.startswith("#spect_"))) and not (
+            if (
+                not channel["public_write"]
+                and not (to.startswith("#multi_") or to.startswith("#spect_"))
+            ) and not (
                 osuToken.is_staff(userToken["privileges"])
                 or userToken["user_id"] == 999
             ):
@@ -338,7 +345,9 @@ def sendMessage(
             # Check message for commands
             if not action_msg:
                 fokaMessage = fokabot.fokabotResponse(
-                    userToken["username"], to, message
+                    userToken["username"],
+                    to,
+                    message,
                 )
             else:
                 fokaMessage = None
@@ -435,7 +444,9 @@ def sendMessage(
                 else:  # Send to all streams
                     osuToken.addMessageInBuffer(token_id, to, message)
                     streamList.broadcast(
-                        f"chat/{to}", msg_packet, but=[userToken["token_id"]]
+                        f"chat/{to}",
+                        msg_packet,
+                        but=[userToken["token_id"]],
                     )
 
                     aika_token = tokenList.getTokenFromUserID(999)
@@ -448,7 +459,9 @@ def sendMessage(
             else:
                 osuToken.addMessageInBuffer(token_id, to, message)
                 streamList.broadcast(
-                    f"chat/{to}", msg_packet, but=[userToken["token_id"]]
+                    f"chat/{to}",
+                    msg_packet,
+                    but=[userToken["token_id"]],
                 )
         else:
             # USER
@@ -502,7 +515,9 @@ def sendMessage(
             if to == glob.BOT_NAME:
                 # Check message for commands
                 fokaMessage = fokabot.fokabotResponse(
-                    userToken["username"], to, message
+                    userToken["username"],
+                    to,
+                    message,
                 )
 
                 if fokaMessage:
@@ -553,7 +568,7 @@ def sendMessage(
         return 404
     except exceptions.userNotInChannelException:
         log.warning(
-            f"{userToken['username']} tried to send a message to channel to {to}, but they are not in the channel."
+            f"{userToken['username']} tried to send a message to channel to {to}, but they are not in the channel.",
         )
         return 404
     except exceptions.channelModeratedException:
@@ -591,7 +606,7 @@ def sendMessage(
         return 404
     except exceptions.invalidArgumentsException:
         log.warning(
-            f"{userToken['username']} tried to send an invalid message to {to}."
+            f"{userToken['username']} tried to send an invalid message to {to}.",
         )
         return 404
     except Exception as e:  # unhandled
@@ -651,8 +666,9 @@ def IRCConnect(username: str) -> None:
         log.warning(f"{username} doesn't exist.")
         return
 
-    tokenList.deleteOldTokens(user_id)
-    tokenList.addToken(user_id, irc=True)
+    with redisLock(f"bancho:locks:tokens"):
+        tokenList.deleteOldTokens(user_id)
+        tokenList.addToken(user_id, irc=True)
 
     streamList.broadcast("main", serverPackets.userPanel(user_id))
     log.info(f"{username} logged in from IRC.")

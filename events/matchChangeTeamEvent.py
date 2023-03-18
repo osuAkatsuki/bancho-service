@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from objects import match
 from objects.osuToken import Token
-
-from redlock import RedLock
+from objects.redisLock import redisLock
 
 
 def handle(userToken: Token, _):
@@ -17,4 +16,5 @@ def handle(userToken: Token, _):
         return
 
     # Change team
-    match.changeTeam(multiplayer_match["match_id"], userToken["user_id"])
+    with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+        match.changeTeam(multiplayer_match["match_id"], userToken["user_id"])

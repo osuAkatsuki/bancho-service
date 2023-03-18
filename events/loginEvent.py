@@ -21,16 +21,14 @@ from constants import serverPackets
 from helpers import chatHelper as chat
 from helpers import countryHelper
 from helpers import locationHelper
-from redlock import RedLock
-from objects import (
-    glob,
-    streamList,
-    channelList,
-    stream,
-    verifiedCache,
-    osuToken,
-    tokenList,
-)
+from objects import channelList
+from objects import glob
+from objects import osuToken
+from objects import stream
+from objects import streamList
+from objects import tokenList
+from objects import verifiedCache
+from objects.redisLock import redisLock
 
 if TYPE_CHECKING:
     import tornado.web
@@ -154,17 +152,19 @@ def handle(
         # Delete old tokens for that user and generate a new one
         isTournament = rgx["stream"] == "tourney"
 
-        if not isTournament:
-            tokenList.deleteOldTokens(userID)
+        with redisLock("bancho:locks:tokens"):
+            if not isTournament:
+                tokenList.deleteOldTokens(userID)
 
-        userToken = tokenList.addToken(
-            userID,
-            ip=requestIP,
-            irc=False,
-            utc_offset=utc_offset,
-            tournament=isTournament,
-            block_non_friends_dm=block_non_friends_dm,
-        )
+            userToken = tokenList.addToken(
+                userID,
+                ip=requestIP,
+                irc=False,
+                utc_offset=utc_offset,
+                tournament=isTournament,
+                block_non_friends_dm=block_non_friends_dm,
+            )
+
         responseTokenString = userToken["token_id"]
 
         # Console output
@@ -298,7 +298,9 @@ def handle(
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
                 osuToken.enqueue(
                     userToken["token_id"],
-                    serverPackets.notification(f"Your {rolename} tag expires in {expireIn}."),
+                    serverPackets.notification(
+                        f"Your {rolename} tag expires in {expireIn}.",
+                    ),
                 )
 
         # Set silence end UNIX time in token
@@ -352,17 +354,20 @@ def handle(
         osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
         osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
         osuToken.enqueue(
-            userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds)
+            userToken["token_id"],
+            serverPackets.silenceEndTime(silenceSeconds),
         )
         osuToken.enqueue(
             userToken["token_id"],
             serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
         )
         osuToken.enqueue(
-            userToken["token_id"], serverPackets.userPanel(userID, force=True)
+            userToken["token_id"],
+            serverPackets.userPanel(userID, force=True),
         )
         osuToken.enqueue(
-            userToken["token_id"], serverPackets.userStats(userID, force=True)
+            userToken["token_id"],
+            serverPackets.userStats(userID, force=True),
         )
 
         # Default opened channels.
@@ -384,7 +389,9 @@ def handle(
             if channel["public_read"] and not channel["instance"]:
                 client_count = stream.getClientCount(f"chat/{channel['name']}")
                 packet_data = serverPackets.channelInfo(
-                    channel["name"], channel["description"], client_count
+                    channel["name"],
+                    channel["description"],
+                    client_count,
                 )
                 osuToken.enqueue(userToken["token_id"], packet_data)
 
@@ -408,7 +415,8 @@ def handle(
         for token in osuToken.get_tokens():
             if not osuToken.is_restricted(token["privileges"]):
                 osuToken.enqueue(
-                    userToken["token_id"], serverPackets.userPanel(token["user_id"])
+                    userToken["token_id"],
+                    serverPackets.userPanel(token["user_id"]),
                 )
 
         # Get location and country from ip.zxq.co or database. If the user is a donor, then yee

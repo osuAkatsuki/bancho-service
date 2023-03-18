@@ -4,13 +4,18 @@ import re
 from time import time
 from typing import Optional
 from typing import TypedDict
-from redlock import RedLock
 
 from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob, streamList, match, matchList, tokenList, osuToken
+from objects import glob
+from objects import match
+from objects import matchList
+from objects import osuToken
+from objects import streamList
+from objects import tokenList
+from objects.redisLock import redisLock
 
 # Some common regexes, compiled to increase performance.
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
@@ -24,23 +29,25 @@ npRegex = re.compile(
 
 
 def connect() -> None:
-    token = tokenList.getTokenFromUserID(999)
-    if token is not None:
-        return
+    with redisLock(f"bancho:locks:tokens"):
+        token = tokenList.getTokenFromUserID(999)
+        if token is not None:
+            return
 
-    token = tokenList.addToken(999)
-    assert token is not None
+        token = tokenList.addToken(999)
+        assert token is not None
 
-    osuToken.update_token(token["token_id"], action_id=actions.IDLE)
-    streamList.broadcast("main", serverPackets.userPanel(999))
-    streamList.broadcast("main", serverPackets.userStats(999))
+        osuToken.update_token(token["token_id"], action_id=actions.IDLE)
+        streamList.broadcast("main", serverPackets.userPanel(999))
+        streamList.broadcast("main", serverPackets.userStats(999))
 
 
 def disconnect() -> None:
-    token = tokenList.getTokenFromUserID(999)
-    assert token is not None
+    with redisLock(f"bancho:locks:tokens"):
+        token = tokenList.getTokenFromUserID(999)
+        assert token is not None
 
-    tokenList.deleteToken(token["token_id"])
+        tokenList.deleteToken(token["token_id"])
 
 
 # def reload_commands():

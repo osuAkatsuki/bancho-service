@@ -8,7 +8,6 @@ import tornado.gen
 import tornado.web
 
 import settings
-from redlock import RedLock
 from common.log import logUtils as log
 from common.web import requestsManager
 from constants import exceptions
@@ -58,7 +57,10 @@ from events import tournamentLeaveMatchChannelEvent
 from events import tournamentMatchInfoRequestEvent
 from events import userPanelRequestEvent
 from events import userStatsRequestEvent
-from objects import glob, osuToken, tokenList
+from objects import glob
+from objects import osuToken
+from objects import tokenList
+from objects.redisLock import redisLock
 
 PACKET_PROTO = struct.Struct("<HxI")
 
@@ -174,10 +176,8 @@ class handler(requestsManager.asyncRequestHandler):
                     raise exceptions.tokenNotFoundException()
 
                 # Token exists, get its object and lock it
-                redlock = RedLock(
+                redlock = redisLock(
                     f"{osuToken.make_key(userToken['token_id'])}:processing_lock",
-                    retry_delay=100, # ms
-                    retry_times=500,
                 )
                 redlock.acquire()
 

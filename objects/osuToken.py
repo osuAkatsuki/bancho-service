@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from redlock import RedLock
+import json
+import logging
 from time import localtime
 from time import strftime
 from time import time
-from common import channel_utils
-from objects import channelList
-import logging
-import json
 from typing import Optional
+from typing import TypedDict
 from uuid import uuid4
 
+from common import channel_utils
 from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
@@ -20,9 +19,11 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from helpers import chatHelper as chat
-from objects import glob, streamList, match
-
-from typing import TypedDict
+from objects import channelList
+from objects import glob
+from objects import match
+from objects import streamList
+from objects.redisLock import redisLock
 
 # (set) bancho:tokens
 # (json obj) bancho:tokens:{token_id}
@@ -206,8 +207,7 @@ def get_token(token_id: str) -> Optional[Token]:
 
 def get_tokens() -> list[Token]:
     return [
-        json.loads(token)
-        for token in glob.redis.hgetall("bancho:tokens:json").values()
+        json.loads(token) for token in glob.redis.hgetall("bancho:tokens:json").values()
     ]
 
 
@@ -223,7 +223,7 @@ def get_token_by_user_id(user_id: int) -> Optional[Token]:
 
 def get_token_by_username(username: str) -> Optional[Token]:
     token_id: Optional[bytes] = glob.redis.get(
-        f"bancho:tokens:names:{safeUsername(username)}"
+        f"bancho:tokens:names:{safeUsername(username)}",
     )
     if token_id is None:
         return None
@@ -421,7 +421,9 @@ def remove_stream(token_id: str, stream_name: str) -> None:
 
 def get_message_history(token_id: str) -> list[str]:
     raw_history: list[bytes] = glob.redis.lrange(
-        f"{make_key(token_id)}:message_history", 0, -1
+        f"{make_key(token_id)}:message_history",
+        0,
+        -1,
     )
     return [raw_message.decode() for raw_message in raw_history]
 
@@ -436,7 +438,7 @@ def add_message_to_history(token_id: str, message: str) -> None:
 
 def get_sent_away_messages(token_id: str) -> set[str]:
     raw_messages: set[bytes] = glob.redis.smembers(
-        f"{make_key(token_id)}:sent_away_messages"
+        f"{make_key(token_id)}:sent_away_messages",
     )
     return {raw_message.decode() for raw_message in raw_messages}
 
@@ -676,9 +678,7 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
 
     if host_token:
         remove_spectator(host_token["token_id"], token["user_id"])
-        enqueue(
-            host_token["token_id"], serverPackets.removeSpectator(token["user_id"])
-        )
+        enqueue(host_token["token_id"], serverPackets.removeSpectator(token["user_id"]))
 
         fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
         # and to all other spectators
@@ -809,7 +809,8 @@ def leaveMatch(token_id: str) -> None:
     )
     leaveStream(token_id, match.create_stream_name(token["match_id"]))
     leaveStream(
-        token_id, match.create_playing_stream_name(token["match_id"])
+        token_id,
+        match.create_playing_stream_name(token["match_id"]),
     )  # optional
 
     # Set usertoken match to -1

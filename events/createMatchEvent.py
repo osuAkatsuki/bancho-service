@@ -5,9 +5,9 @@ from constants import clientPackets
 from constants import exceptions
 from constants import serverPackets
 from objects import match
-from objects import matchList, osuToken
-
-from redlock import RedLock
+from objects import matchList
+from objects import osuToken
+from objects.redisLock import redisLock
 
 
 def handle(token: osuToken.Token, rawPacketData: bytes):
@@ -37,13 +37,14 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
         if multiplayer_match is None:
             raise exceptions.matchCreateError()
 
-        # Join that match
-        osuToken.joinMatch(token["token_id"], match_id)
+        with redisLock(f"{match.make_key(match_id)}:lock"):
+            # Join that match
+            osuToken.joinMatch(token["token_id"], match_id)
 
-        # Give host to match creator
-        match.setHost(match_id, token["user_id"])
-        match.sendUpdates(match_id)
-        match.changePassword(match_id, packetData["matchPassword"])
+            # Give host to match creator
+            match.setHost(match_id, token["user_id"])
+            match.sendUpdates(match_id)
+            match.changePassword(match_id, packetData["matchPassword"])
     except exceptions.matchCreateError:
         log.error("Error while creating match!")
         osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)

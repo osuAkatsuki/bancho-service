@@ -4,10 +4,12 @@ from common.constants import mods
 from constants import clientPackets
 from constants import matchModModes
 from constants import matchTeamTypes
-from objects import match, slot, channelList
+from objects import channelList
+from objects import match
+from objects import slot
 from objects.osuToken import Token
+from objects.redisLock import redisLock
 
-from redlock import RedLock
 
 def handle(userToken: Token, rawPacketData: bytes):
     # Read new settings
@@ -21,6 +23,9 @@ def handle(userToken: Token, rawPacketData: bytes):
     multiplayer_match = match.get_match(match_id)
     if multiplayer_match is None:
         return
+
+    lock = redisLock(f"{match.make_key(match_id)}:lock")
+    lock.acquire()
 
     # Host check
     if userToken["user_id"] != multiplayer_match["host_user_id"]:
@@ -122,3 +127,5 @@ def handle(userToken: Token, rawPacketData: bytes):
 
     # Send updated settings
     match.sendUpdates(multiplayer_match["match_id"])
+
+    lock.release()
