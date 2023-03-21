@@ -413,6 +413,9 @@ def handle(
 
         # Send online users' panels
         for token in osuToken.get_tokens():
+            if not osuToken.get_token(token["token_id"]):
+                continue
+
             if not osuToken.is_restricted(token["privileges"]):
                 osuToken.enqueue(
                     userToken["token_id"],

@@ -195,7 +195,6 @@ if __name__ == "__main__":
 
         log("Starting background loops.", Ansi.LMAGENTA)
 
-        tokenList.usersTimeoutCheckLoop()
         tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
