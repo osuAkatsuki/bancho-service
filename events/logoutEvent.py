@@ -9,12 +9,8 @@ from cmyui.logging import log
 import settings
 from constants import serverPackets
 from helpers import chatHelper as chat
-from objects import glob
-from objects import osuToken
-from objects import streamList
-from objects import tokenList
+from objects import glob, streamList, osuToken, tokenList
 from objects.osuToken import Token
-
 
 def handle(token: Token, _=None, deleteToken: bool = True):
 
@@ -64,14 +60,17 @@ def handle(token: Token, _=None, deleteToken: bool = True):
             "peppy:change_username",
             orjson.dumps(
                 {
-                    "userID": token["user_id"],
+                    "userID": token['user_id'],
                     "newUsername": newUsername.decode("utf-8"),
                 },
             ),
         )
 
     # Expire token in redis
-    glob.redis.delete(f"akatsuki:sessions:{token['token_id']}")
+    glob.redis.expire(
+        f"akatsuki:sessions:{token['token_id']}",
+        60 * 60,
+    )  # expire in 1 hour (60 minutes)
 
     # Console output
     log(

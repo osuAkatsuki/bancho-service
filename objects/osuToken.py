@@ -214,10 +214,7 @@ def get_token(token_id: str) -> Optional[Token]:
         if (time() - OSU_MAX_PING_DELTA) > token_json["ping_time"] and token_json[
             "ping_time"
         ] != 0:
-            from events import logoutEvent
-
-            logoutEvent.handle(token_json)
-
+            delete_token(token["token_id"])
             return None
 
     return token_json
