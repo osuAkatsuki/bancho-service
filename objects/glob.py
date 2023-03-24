@@ -30,3 +30,6 @@ latestBuild = 0
 
 groupPrivileges: dict[str, int] = {}
 bcrypt_cache: dict[bytes, bytes] = {}
+
+running_timeout = False
+running_spam = False

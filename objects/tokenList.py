@@ -12,11 +12,11 @@ from common.log import logUtils as log
 from common.ripple import userUtils
 from constants import serverPackets
 from constants.exceptions import periodicLoopException
+from constants.exceptions import tokenNotFoundException
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
 from objects.redisLock import redisLock
-
 
 # def __init__(self) -> None:
 #     self.tokens: MutableMapping[str, osuToken.token] = {}
@@ -262,43 +262,37 @@ def usersTimeoutCheckLoop() -> None:
     CALL THIS FUNCTION ONLY ONCE!
     :return:
     """
+    running_loop: Optional[bytes] = glob.redis.get("bancho:timeout_check")
+    if running_loop is not None and running_loop.decode() == "1":
+        return
+
+    glob.redis.set("bancho:timeout_check", "1")
+    glob.running_timeout = True
+
     try:
         log.debug("Checking timed out clients")
         exceptions: list[Exception] = []
-        timedOutTokens: list[osuToken.Token] = []  # timed out users
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
-        with redisLock(f"bancho:locks:tokens"):
-            for token in osuToken.get_tokens():
-                # Check timeout (fokabot is ignored)
-                if (
-                    token["ping_time"] < timeoutLimit
-                    and token["user_id"] != 999
-                    and not token["irc"]
-                    and not token["tournament"]
-                ):
-                    # That user has timed out, add to disconnected tokens
-                    # We can't delete it while iterating or items() throws an error
-                    timedOutTokens.append(token)
-
-            # Delete timed out users from self.tokens
-            # i is token string (dictionary key)
-            for token in timedOutTokens:
+        for token in osuToken.get_tokens():
+            # Check timeout (fokabot is ignored)
+            if (
+                token["ping_time"] < timeoutLimit
+                and token["user_id"] != 999
+                and not token["irc"]
+                and not token["tournament"]
+            ):
                 log.warning(f"{token['username']} timed out!!")
-                osuToken.enqueue(
-                    token["token_id"],
-                    serverPackets.notification(
-                        "Your connection to the server timed out.",
-                    ),
-                )
+
                 try:
                     logoutEvent.handle(token, _=None)
+                except tokenNotFoundException as e:
+                    pass  # lol
                 except Exception as e:
                     exceptions.append(e)
                     log.error(
                         "Something wrong happened while disconnecting a timed out client.",
                     )
-            del timedOutTokens
 
         # Re-raise exceptions if needed
         if exceptions:
@@ -316,6 +310,13 @@ def spamProtectionResetLoop() -> None:
 
     :return:
     """
+
+    running_loop: Optional[bytes] = glob.redis.get("bancho:spam_check")
+    if running_loop is not None and running_loop.decode() == "1":
+        return
+
+    glob.redis.set("bancho:spam_check", "1")
+    glob.running_spam = True
 
     try:
         # Reset spamRate for every token

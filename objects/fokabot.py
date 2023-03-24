@@ -29,7 +29,7 @@ npRegex = re.compile(
 
 
 def connect() -> None:
-    with redisLock(f"bancho:locks:tokens"):
+    with redisLock(f"bancho:locks:aika"):
         token = tokenList.getTokenFromUserID(999)
         if token is not None:
             return
@@ -43,7 +43,7 @@ def connect() -> None:
 
 
 def disconnect() -> None:
-    with redisLock(f"bancho:locks:tokens"):
+    with redisLock(f"bancho:locks:aika"):
         token = tokenList.getTokenFromUserID(999)
         assert token is not None
 

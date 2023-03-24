@@ -233,4 +233,10 @@ if __name__ == "__main__":
         glob.application.listen(settings.APP_PORT)
         tornado.ioloop.IOLoop.instance().start()
     finally:
+        if glob.running_timeout:
+            glob.redis.set("bancho:timeout_check", "0")
+
+        if glob.running_spam:
+            glob.redis.set("bancho:spam_check", "0")
+
         system.dispose()
