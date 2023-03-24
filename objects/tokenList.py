@@ -262,13 +262,6 @@ def usersTimeoutCheckLoop() -> None:
     CALL THIS FUNCTION ONLY ONCE!
     :return:
     """
-    running_loop: Optional[bytes] = glob.redis.get("bancho:timeout_check")
-    if running_loop is not None and running_loop.decode() == "1":
-        return
-
-    glob.redis.set("bancho:timeout_check", "1")
-    glob.running_timeout = True
-
     try:
         log.debug("Checking timed out clients")
         exceptions: list[Exception] = []
@@ -310,14 +303,6 @@ def spamProtectionResetLoop() -> None:
 
     :return:
     """
-
-    running_loop: Optional[bytes] = glob.redis.get("bancho:spam_check")
-    if running_loop is not None and running_loop.decode() == "1":
-        return
-
-    glob.redis.set("bancho:spam_check", "1")
-    glob.running_spam = True
-
     try:
         # Reset spamRate for every token
         for token_id in osuToken.get_token_ids():
