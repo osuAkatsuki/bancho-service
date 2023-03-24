@@ -2,13 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from objects import glob
-from objects import osuToken
-
+from objects import glob, osuToken
 
 def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
-
 
 def getClients(stream_name: str) -> set[str]:
     """
@@ -19,7 +16,6 @@ def getClients(stream_name: str) -> set[str]:
     raw_members: set[bytes] = glob.redis.smembers(make_key(stream_name))
     return {member.decode() for member in raw_members}
 
-
 def getClientCount(stream_name: str) -> int:
     """
     Get the amount of clients in this stream
@@ -27,7 +23,6 @@ def getClientCount(stream_name: str) -> int:
     :return: amount of clients
     """
     return glob.redis.scard(make_key(stream_name))
-
 
 def addClient(stream_name: str, token_id: str) -> None:
     """
@@ -44,7 +39,6 @@ def addClient(stream_name: str, token_id: str) -> None:
         # log.info("{} has joined stream {}.".format(token, self.name))
         glob.redis.sadd(make_key(stream_name), token_id)
 
-
 def removeClient(
     stream_name: str,
     token_id: str,
@@ -60,7 +54,6 @@ def removeClient(
     if token_id in current_tokens:
         glob.redis.srem(make_key(stream_name), token_id)
 
-
 def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     """
     Send some data to all (or some) clients connected to this stream
@@ -73,11 +66,10 @@ def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
 
     for i in current_tokens:
         if i in osuToken.get_token_ids():
-            if i not in but and osuToken.get_token(i):
+            if i not in but:
                 osuToken.enqueue(i, data)
         else:
             removeClient(stream_name, token_id=i)
-
 
 def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
     """
@@ -91,11 +83,10 @@ def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
 
     for i in current_tokens:
         if i in osuToken.get_token_ids():
-            if i in users and osuToken.get_token(i):
+            if i in users:
                 osuToken.enqueue(i, data)
         else:
             removeClient(stream_name, token_id=i)
-
 
 def dispose(stream_name: str) -> None:
     """
@@ -107,7 +98,4 @@ def dispose(stream_name: str) -> None:
 
     for i in current_tokens:
         if i in osuToken.get_token_ids():
-            if not osuToken.get_token(i):
-                continue
-
             osuToken.leaveStream(i, stream_name)

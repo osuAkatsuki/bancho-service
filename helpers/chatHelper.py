@@ -419,9 +419,8 @@ def sendMessage(
                 if fokaMessage["hidden"]:  # Send to user & gmt+
                     send_to = {
                         t["token_id"]
-                        for t in osuToken.get_tokens()
+                        for t in osuToken.get_tokens()  # TODO: use redis
                         if t["token_id"] != token_id
-                        and osuToken.get_token(t["token_id"])
                         and osuToken.is_staff(t["privileges"])
                         and t["user_id"] != 999
                     }

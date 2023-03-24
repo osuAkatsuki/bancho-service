@@ -519,9 +519,6 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
 
         # Disconnect everyone but mod/admins
         for value in osuToken.get_tokens():
-            if not osuToken.get_token(value["token_id"]):
-                continue
-
             if not osuToken.is_staff(value["privileges"]):
                 who.append(value["user_id"])
 

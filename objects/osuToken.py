@@ -185,6 +185,7 @@ def create_token(
         "pp": 0,
     }
 
+    glob.redis.sadd("bancho:tokens", token_id)
     glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
     glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
     glob.redis.set(f"bancho:tokens:names:{safeUsername(token['username'])}", token_id)
@@ -193,31 +194,15 @@ def create_token(
 
 
 def get_token_ids() -> set[str]:
-    raw_token_ids: set[bytes] = set(glob.redis.hgetall("bancho:tokens:json").keys())
+    raw_token_ids: set[bytes] = glob.redis.smembers("bancho:tokens")
     return {token_id.decode() for token_id in raw_token_ids}
 
 
-# NOTE: this number is defined by the osu! client
-OSU_MAX_PING_DELTA = 300  # seconds
-
-
 def get_token(token_id: str) -> Optional[Token]:
-    with redisLock(f"bancho:locks:tokens:{token_id}"):
-        token = glob.redis.get(make_key(token_id))
-        if token is None:
-            return None
-
-        token_json: Token = json.loads(token)
-
-        # if they haven't sent a request since osu's timeout time
-        # invalidate the session
-        if (time() - OSU_MAX_PING_DELTA) > token_json["ping_time"] and token_json[
-            "ping_time"
-        ] != 0:
-            delete_token(token["token_id"])
-            return None
-
-    return token_json
+    token = glob.redis.get(make_key(token_id))
+    if token is None:
+        return None
+    return json.loads(token)
 
 
 def get_tokens() -> list[Token]:
@@ -377,6 +362,7 @@ def delete_token(token_id: str) -> None:
     if token is None:
         return
 
+    glob.redis.srem("bancho:tokens", token_id)
     glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
     glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
     glob.redis.hdel("bancho:tokens:json", token_id)

@@ -140,9 +140,6 @@ def getTokenFromUserID(
     # Make sure the token exists
     ret = []
     for value in osuToken.get_tokens():
-        if not osuToken.get_token(value["token_id"]):
-            continue
-
         if value["user_id"] == userID:
             if ignoreIRC and value["irc"]:
                 continue
@@ -193,9 +190,6 @@ def getTokenFromUsername(
     # Make sure the token exists
     ret = []
     for value in osuToken.get_tokens():
-        if not osuToken.get_token(value["token_id"]):
-            continue
-
         if userUtils.safeUsername(value["username"]) == username:
             if ignoreIRC and value["irc"]:
                 continue
@@ -219,9 +213,6 @@ def deleteOldTokens(userID: int) -> None:
     # Delete older tokens
     delete: list[osuToken.Token] = []
     for token in osuToken.get_tokens():
-        if not osuToken.get_token(token["token_id"]):
-            continue
-
         if token["user_id"] == userID:
             delete.append(token)
 
@@ -245,9 +236,6 @@ def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
         elif value["user_id"] not in who and but:
             shouldEnqueue = True
 
-        if not osuToken.get_token(value["token_id"]):
-            shouldEnqueue = False
-
         if shouldEnqueue:
             osuToken.enqueue(value["token_id"], packet)
 
@@ -260,10 +248,64 @@ def enqueueAll(packet: bytes) -> None:
     :return:
     """
     for token_id in osuToken.get_token_ids():
-        if not osuToken.get_token(token_id):
-            continue
-
         osuToken.enqueue(token_id, packet)
+
+
+# NOTE: this number is defined by the osu! client
+OSU_MAX_PING_DELTA = 300  # seconds
+
+
+def usersTimeoutCheckLoop() -> None:
+    """
+    Start timed out users disconnect loop.
+    This function will be called every `checkTime` seconds and so on, forever.
+    CALL THIS FUNCTION ONLY ONCE!
+    :return:
+    """
+    try:
+        log.debug("Checking timed out clients")
+        exceptions: list[Exception] = []
+        timedOutTokens: list[osuToken.Token] = []  # timed out users
+        timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
+
+        with redisLock(f"bancho:locks:tokens"):
+            for token in osuToken.get_tokens():
+                # Check timeout (fokabot is ignored)
+                if (
+                    token["ping_time"] < timeoutLimit
+                    and token["user_id"] != 999
+                    and not token["irc"]
+                    and not token["tournament"]
+                ):
+                    # That user has timed out, add to disconnected tokens
+                    # We can't delete it while iterating or items() throws an error
+                    timedOutTokens.append(token)
+
+            # Delete timed out users from self.tokens
+            # i is token string (dictionary key)
+            for token in timedOutTokens:
+                log.warning(f"{token['username']} timed out!!")
+                osuToken.enqueue(
+                    token["token_id"],
+                    serverPackets.notification(
+                        "Your connection to the server timed out.",
+                    ),
+                )
+                try:
+                    logoutEvent.handle(token, _=None)
+                except Exception as e:
+                    exceptions.append(e)
+                    log.error(
+                        "Something wrong happened while disconnecting a timed out client.",
+                    )
+            del timedOutTokens
+
+        # Re-raise exceptions if needed
+        if exceptions:
+            raise periodicLoopException(exceptions)
+    finally:
+        # Schedule a new check (endless loop)
+        threading.Timer(OSU_MAX_PING_DELTA // 2, usersTimeoutCheckLoop).start()
 
 
 def spamProtectionResetLoop() -> None:
@@ -278,9 +320,6 @@ def spamProtectionResetLoop() -> None:
     try:
         # Reset spamRate for every token
         for token_id in osuToken.get_token_ids():
-            if not osuToken.get_token(token_id):
-                continue
-
             osuToken.update_token(
                 token_id,
                 spam_rate=0,

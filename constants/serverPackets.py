@@ -1,6 +1,5 @@
 """ Contains functions used to write specific server packets to byte streams """
 from __future__ import annotations
-
 from typing import Optional
 
 from common.constants import privileges
@@ -9,10 +8,7 @@ from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
 from helpers import packetHelper
-from objects import glob
-from objects import match
-from objects import osuToken
-from objects import tokenList
+from objects import glob, match, osuToken, tokenList
 
 
 def notification(message: str) -> bytes:
@@ -124,9 +120,6 @@ def onlineUsers() -> bytes:
 
     # Create list with all connected (and not restricted) users
     for value in osuToken.get_tokens():
-        if not osuToken.get_token(value["token_id"]):
-            continue
-
         if not osuToken.is_restricted(value["privileges"]):
             userIDs.append(value["user_id"])
 
@@ -225,11 +218,7 @@ def userStats(userID: int, force: bool = False) -> bytes:
         return b""
 
     if not force:
-        if (
-            osuToken.is_restricted(userToken["privileges"])
-            or userToken["irc"]
-            or userToken["tournament"]
-        ):
+        if osuToken.is_restricted(userToken["privileges"]) or userToken["irc"] or userToken["tournament"]:
             return b""
 
     # If our PP is over the osu client's cap (32768), we simply send
@@ -247,9 +236,7 @@ def userStats(userID: int, force: bool = False) -> bytes:
             (userToken["game_mode"], dataTypes.BYTE),
             (userToken["beatmap_id"], dataTypes.SINT32),
             (
-                userToken["ranked_score"]
-                if userToken["pp"] < 0x8000
-                else userToken["pp"],
+                userToken["ranked_score"] if userToken["pp"] < 0x8000 else userToken["pp"],
                 dataTypes.UINT64,
             ),
             (userToken["accuracy"], dataTypes.FFLOAT),
@@ -307,11 +294,7 @@ def channelJoinSuccess(chan: str) -> bytes:
     )
 
 
-def channelInfo(
-    channel_name: str,
-    channel_description: str,
-    channel_playercount: int,
-) -> bytes:
+def channelInfo(channel_name: str, channel_description:str, channel_playercount: int) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_channelInfo,
         (
