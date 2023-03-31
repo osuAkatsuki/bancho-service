@@ -20,8 +20,8 @@ from common.constants import privileges
 from common.log import logUtils as log
 from common.ripple import passwordUtils
 from common.web.discord import Webhook
-from objects import tokenList
 from objects import glob
+from objects import tokenList
 
 
 def getBeatmapTime(beatmapID: int) -> Any:
@@ -74,13 +74,13 @@ def submitBeatmapRequest(
     embed = Webhook(settings.WEBHOOK_RANK_REQUESTS, color=5516472)
     embed.set_author(
         name=username,
-        icon=f"http://a.akatsuki.pw/{userID}",
-        url=f"http://akatsuki.pw/u/{userID}",
+        icon=f"http://a.akatsuki.gg/{userID}",
+        url=f"http://akatsuki.gg/u/{userID}",
     )
     embed.set_image(
         f"https://assets.ppy.sh/beatmaps/{b['beatmapset_id']}/covers/cover.jpg?1522396856",
     )
-    embed.set_title(title=b["song_name"], url=f"http://akatsuki.pw/b/{beatmapID}")
+    embed.set_title(title=b["song_name"], url=f"http://akatsuki.gg/b/{beatmapID}")
     embed.set_footer(
         text="Akatsuki's beatmap nomination system v1.1",
         icon="https://nanahira.life/f821Qc.png",
@@ -1076,7 +1076,7 @@ def freeze(userID: int, author: int = 999) -> None:
     appendNotes(userID, f"{author_name} ({author}) froze this user.")
     log.rap(author, f"froze {target_name} ({userID}).")
     log.ac(
-        f"{author_name} has frozen [{target_name}](https://akatsuki.pw/u/{userID}).",
+        f"{author_name} has frozen [{target_name}](https://akatsuki.gg/u/{userID}).",
         "ac_general",
     )
 
@@ -1112,7 +1112,7 @@ def unfreeze(userID: int, author: int = 999, _log=True) -> None:
         appendNotes(userID, f"{author_name} ({author}) unfroze this user.")
         log.rap(author, f"unfroze {target_name} ({userID}).")
         log.ac(
-            f"{author_name} has unfrozen [{target_name}](https://akatsuki.pw/u/{userID}).",
+            f"{author_name} has unfrozen [{target_name}](https://akatsuki.gg/u/{userID}).",
             "ac_general",
         )
 
@@ -1304,7 +1304,7 @@ def removeFriend(userID: int, friendID: int) -> None:
 def scoreboardMismatch(userID: int, username: str) -> None:
     if not isRestricted(userID):
         log.warning(
-            f"**[{username}](https://akatsuki.pw/u/{userID}) has signed in using a custom client**.",
+            f"**[{username}](https://akatsuki.gg/u/{userID}) has signed in using a custom client**.",
             "ac_general",
         )
 
@@ -1480,7 +1480,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
     for i in hashes[2:5]:
         if not i:
             log.warning(
-                f"Invalid hash set ({hashes}) for user [{username}](https://akatsuki.pw/u/{userID}) in HWID check",
+                f"Invalid hash set ({hashes}) for user [{username}](https://akatsuki.gg/u/{userID}) in HWID check",
                 "ac_confidential",
             )
             return False
@@ -1549,7 +1549,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
                     f'Logged in from HWID set used more than 10% from user {i["username"],} ({i["userid"]}), who is banned/restricted.',
                 )
                 log.warning(
-                    f'[{username}](https://akatsuki.pw/u/{userID}) has been restricted because he has logged in from HWID set used more than 10% from banned/restricted user [{i["username"]}](https://akatsuki.pw/u/{i["userid"]}), **possible multiaccount**.',
+                    f'[{username}](https://akatsuki.gg/u/{userID}) has been restricted because he has logged in from HWID set used more than 10% from banned/restricted user [{i["username"]}](https://akatsuki.gg/u/{i["userid"]}), **possible multiaccount**.',
                     "ac_general",
                 )
 
@@ -1616,7 +1616,7 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
     for i in hashes[2:5]:
         if i == "":
             log.warning(
-                f"Invalid hash set ({' | '.join(hashes)}) for user [{username}](https://akatsuki.pw/u/{userID}) while verifying the account",
+                f"Invalid hash set ({' | '.join(hashes)}) for user [{username}](https://akatsuki.gg/u/{userID}) while verifying the account",
                 "ac_confidential",
             )
             return False
@@ -1628,7 +1628,7 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
     ):
         # Running under wine, check only by uniqueid
         log.info(
-            f"[{username}](https://akatsuki.pw/u/{userID}) running under wine:\n**Full data:** {hashes}\n**Usual wine mac address hash:** b4ec3c4334a0249dae95c284ec5983df\n**Usual wine disk id:** ffae06fb022871fe9beb58b005c5e21d",
+            f"[{username}](https://akatsuki.gg/u/{userID}) running under wine:\n**Full data:** {hashes}\n**Usual wine mac address hash:** b4ec3c4334a0249dae95c284ec5983df\n**Usual wine disk id:** ffae06fb022871fe9beb58b005c5e21d",
             "ac_confidential",
         )
         log.debug("Veryfing with Linux/Mac hardware")
@@ -1664,7 +1664,7 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
 
         # Discord message
         log.warning(
-            f"[{originalUsername}](https://akatsuki.pw/u/{originalUserID}) has been restricted because they have created the multiaccount [{username}](https://akatsuki.pw/u/{userID}). The multiaccount has been banned.",
+            f"[{originalUsername}](https://akatsuki.gg/u/{originalUserID}) has been restricted because they have created the multiaccount [{username}](https://akatsuki.gg/u/{userID}). The multiaccount has been banned.",
             "ac_general",
         )
 
@@ -1935,7 +1935,7 @@ def updateFirstPlaces(userID: int) -> None:
 
 
 def getProfile(userID: int) -> str:
-    return f"https://akatsuki.pw/u/{userID}"
+    return f"https://akatsuki.gg/u/{userID}"
 
 
 def getProfileEmbed(userID: int, clan: bool = False) -> Optional[str]:
@@ -1951,7 +1951,7 @@ def getProfileEmbed(userID: int, clan: bool = False) -> Optional[str]:
         )
 
         if res:
-            clan_embed = "[[https://akatsuki.pw/c/{id} {tag}]]".format(**res)
+            clan_embed = "[[https://akatsuki.gg/c/{id} {tag}]]".format(**res)
             return f"{clan_embed} {profile_embed}"
 
     return profile_embed

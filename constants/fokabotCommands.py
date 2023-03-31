@@ -326,7 +326,7 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
     log.ac(
         "\n\n".join(
             [
-                f"{fro} has banned [{target}](https://akatsuki.pw/u/{targetID}).",
+                f"{fro} has banned [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
             ],
         ),
@@ -360,7 +360,7 @@ def unban(fro: str, chan: str, message: list[str]) -> str:
 
     log.rap(userID, f"has unbanned {target}")
     log.ac(
-        f"{fro} has unbanned [{target}](https://akatsuki.pw/u/{targetID}).",
+        f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
         "ac_general",
     )
 
@@ -404,7 +404,7 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
     log.ac(
         "\n\n".join(
             [
-                f"{fro} has restricted [{target}](https://akatsuki.pw/u/{targetID}).",
+                f"{fro} has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
             ],
         ),
@@ -440,7 +440,7 @@ def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
     log.rap(userID, f"has unrestricted {target}")
     log.ac(
-        f"{fro} has unrestricted [{target}](https://akatsuki.pw/u/{targetID}).",
+        f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
         "ac_general",
     )
 
@@ -714,7 +714,7 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
             ignoreIRC=True,
         )
         if not spectatorHostToken:
-            return "The spectator host is offline. If this makes no sense, please report it to [https://akatsuki.pw/u/1001 cmyui]."
+            return "The spectator host is offline. If this makes no sense, please report it to [https://akatsuki.gg/u/1001 cmyui]."
 
         beatmap_id = spectatorHostToken["beatmap_id"]
 
@@ -1530,8 +1530,8 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
         title=f"This {message[1]} has recieved a status update.",
         colour=status_to_colour(status),
         author=res["song_name"],
-        author_url=f'https://akatsuki.pw/d/{res["beatmapset_id"]}',
-        author_icon="https://akatsuki.pw/static/logos/logo.png",
+        author_url=f'https://akatsuki.gg/d/{res["beatmapset_id"]}',
+        author_icon="https://akatsuki.gg/static/logos/logo.png",
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         fields=[
             {"name": k, "value": v}
@@ -1539,8 +1539,8 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "New status": status_readable,
                 "Previous status": status_to_readable(res["ranked"]),
                 "Nominator": f"[{fro}]({userUtils.getProfile(token['user_id'])})",
-                "Beatmap Listing": f"[Click here](https://akatsuki.pw/b/{token['last_np']['beatmap_id']})",
-                "Download link": f'[Click here](https://akatsuki.pw/d/{res["beatmapset_id"]})',
+                "Beatmap Listing": f"[Click here](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
+                "Download link": f'[Click here](https://akatsuki.gg/d/{res["beatmapset_id"]})',
                 "Beatmap Length": generalUtils.secondsToReadable(res["hit_length"]),
             }.items()
         ],

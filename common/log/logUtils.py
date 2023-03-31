@@ -3,24 +3,26 @@ from __future__ import annotations
 from os import name
 from sys import stdout as _stdout
 from typing import Optional
-from common.web.discord import Webhook
+
 from requests import RequestException
 
 import settings
 from common import generalUtils
 from common.constants import bcolors
 from common.ripple import userUtils
+from common.web.discord import Webhook
 from objects import glob
 
 ENDL = "\n" if name == "posix" else "\r\n"
 
 MAX_DISCORD_WEBHOOK_RETRIES = 5
 
+
 def send_discord_webhook(message: str, webhook_url: str) -> None:
     embed = Webhook(webhook_url, color=0x542CB8)
     embed.add_field(name="** **", value=message)
     embed.set_footer(text=f"Akatsuki Anticheat")
-    embed.set_thumbnail("https://akatsuki.pw/static/logos/logo.png")
+    embed.set_thumbnail("https://akatsuki.gg/static/logos/logo.png")
 
     for _ in range(MAX_DISCORD_WEBHOOK_RETRIES):
         try:
@@ -28,6 +30,7 @@ def send_discord_webhook(message: str, webhook_url: str) -> None:
             break
         except RequestException:
             continue
+
 
 def logMessage(
     message: str,
