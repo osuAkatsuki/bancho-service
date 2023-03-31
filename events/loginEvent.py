@@ -273,7 +273,7 @@ def handle(
                 )
 
                 logUtils.ac(
-                    f"[{username}](https://akatsuki.pw/u/{userID})'s {rolename} subscription has expired.",
+                    f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
                     "ac_confidential",
                 )
                 logUtils.rap(userID, f"{rolename} subscription expired.")
@@ -507,7 +507,7 @@ def handle(
             v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
         ):
             logUtils.ac(
-                f"**[{username}](https://akatsuki.pw/u/{userID})** has attempted to login with the {v_argstr} client.",
+                f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
                 "ac_general",
             )
     except:
