@@ -1,6 +1,10 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
+import time
+
+print('sleeping')
+time.sleep(1000)
 import os
 import threading
 from multiprocessing.pool import ThreadPool
