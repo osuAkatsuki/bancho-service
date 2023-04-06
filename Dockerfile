@@ -1,12 +1,12 @@
 FROM python:3.9
 
-COPY . /app
+COPY . /srv/root
 
-WORKDIR /app
+WORKDIR /srv/root
 
 RUN pip install -r requirements.txt
 RUN pip install --upgrade pip
 
 EXPOSE 80
 
-CMD ["/scripts/start.sh"]
+CMD ["./scripts/start.sh"]
