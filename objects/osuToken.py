@@ -469,7 +469,7 @@ def enqueue(token_id: str, data: bytes) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     # Never enqueue for IRC clients or Aika
     if token["irc"] or token["user_id"] == 999:
@@ -484,7 +484,7 @@ def enqueue(token_id: str, data: bytes) -> None:
 def dequeue(token_id: str) -> bytes:
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return b""
 
     raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
     raw_packets.reverse()  # redis returns backwards
@@ -505,7 +505,7 @@ def joinChannel(token_id: str, channel_name: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     current_channels = get_joined_channels(token_id)
 
@@ -568,7 +568,7 @@ def setLocation(token_id: str, latitude: float, longitude: float) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     update_token(
         token_id,
@@ -586,11 +586,11 @@ def startSpectating(token_id: str, host_token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     host_token = get_token(host_token_id)
     if host_token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     # Stop spectating old client
     stopSpectating(token_id, get_lock=False)  # (we already have the lock)
@@ -662,7 +662,7 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     # Remove our token id from host's spectators
     if token["spectating_token_id"] is None:
@@ -728,7 +728,7 @@ def updatePingTime(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     update_token(
         token_id,
@@ -745,7 +745,7 @@ def joinMatch(token_id: str, match_id: int) -> bool:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return False
 
     # Make sure the match exists
     multiplayer_match = match.get_match(match_id)
@@ -794,7 +794,7 @@ def leaveMatch(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     # Make sure we are in a match
     if token["match_id"] is None:
@@ -849,7 +849,7 @@ def kick(
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     # Send packet to target
     log.info(f"{token['username']} has been disconnected. ({reason})")
@@ -878,7 +878,7 @@ def silence(
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     if seconds is None:
         # Get silence expire from db if needed
@@ -909,7 +909,7 @@ def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     # Increase the spam rate if needed
     token["spam_rate"] += 1
@@ -934,7 +934,7 @@ def isSilenced(token_id: str) -> bool:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return False
 
     return token["silence_end_time"] - time() > 0
 
@@ -948,7 +948,7 @@ def getSilenceSecondsLeft(token_id: str) -> int:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return 0
 
     return max(0, token["silence_end_time"] - int(time()))
 
@@ -961,7 +961,7 @@ def updateCachedStats(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     if token["relax"]:
         relax_int = 1
@@ -999,7 +999,7 @@ def checkRestricted(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     old_restricted = is_restricted(token["privileges"])
     restricted = userUtils.isRestricted(token["user_id"])
@@ -1017,7 +1017,7 @@ def checkBanned(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     if userUtils.isBanned(token["user_id"]):
         enqueue(token_id, serverPackets.loginBanned)
@@ -1033,7 +1033,7 @@ def setRestricted(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     aika_token = get_token_by_user_id(999)
     assert aika_token is not None
@@ -1053,7 +1053,7 @@ def resetRestricted(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     aika_token = get_token_by_user_id(999)
     assert aika_token is not None
@@ -1073,7 +1073,7 @@ def joinStream(token_id: str, name: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     streamList.join(name, token_id=token_id)
     if name not in get_streams(token_id):
@@ -1089,7 +1089,7 @@ def leaveStream(token_id: str, name: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     streamList.leave(name, token_id)
     if name in get_streams(token_id):
@@ -1104,7 +1104,7 @@ def leaveAllStreams(token_id: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     for stream in get_streams(token_id):
         leaveStream(token_id, stream)
@@ -1120,7 +1120,7 @@ def awayCheck(token_id: str, user_id: int) -> bool:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return False
 
     if not token["away_message"] or user_id in get_sent_away_messages(token_id):
         return False
@@ -1139,7 +1139,7 @@ def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
     """
     token = get_token(token_id)
     if token is None:
-        raise exceptions.tokenNotFoundException()
+        return
 
     message_history = get_message_history(token_id)
     if len(message_history) > 100:
