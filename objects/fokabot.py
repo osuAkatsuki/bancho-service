@@ -21,7 +21,7 @@ from objects.redisLock import redisLock
 reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
 usernameRegex = re.compile(r"^[\w \[\]-]{2,15}$")
 npRegex = re.compile(
-    r"^https?://osu\.(?:akatsuki\.pw|akatest\.space|ppy\.sh)/beatmapsets/"
+    r"^https?://osu\.(?:akatsuki\.pw|akatsuki\.gg|akatest\.space|ppy\.sh)/beatmapsets/"
     r"(?P<set_id>\d{1,10})/?#/?"
     r"(?P<mode>osu|taiko|fruits|mania)?/?"
     r"(?P<id>\d{1,10})/?$",
