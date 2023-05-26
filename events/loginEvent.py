@@ -189,8 +189,8 @@ def handle(
             if freeze_timestamp == 1:  # Begin the timer.
                 freeze_timestamp = userUtils.beginFreezeTimer(userID)
 
-            reason = userUtils.getFreezeReason(userID)
-            freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
+            # reason = userUtils.getFreezeReason(userID)
+            # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
                 aika_token = tokenList.getTokenFromUserID(999)
@@ -199,15 +199,12 @@ def handle(
                 chat.sendMessage(
                     token_id=aika_token["token_id"],
                     to=username,
-                    message="\n".join(
-                        [
-                            f"Your account has been frozen by an administrator{freeze_str}",
+                    message="\n".join(                        [
+                            f"Your account has been frozen", #"Your account has been frozen{freeze_str}"
                             "This is not a restriction, but will lead to one if ignored.",
-                            "You are required to submit a liveplay using the (specified criteria)[https://pastebin.com/BwcXp6Cr]",
-                            "Please remember we are not stupid - we have done plenty of these before and have heard every excuse in the book; if you are breaking rules, your best bet would be to admit to a staff member, lying will only end up digging your grave deeper.",
-                            "-------------",
-                            "If you have any questions or are ready to liveplay, please contact an (Akatsuki Administrator)[https://akatsuki.pw/team] {ingame, (Discord)[https://akatsuki.pw/discord], etc.}",
-                            f"Time until account restriction: {td(seconds = freeze_timestamp - current_time)}.",
+                            "You are required to submit a liveplay using the (specified criteria)[https://bit.ly/Akatsuki-Liveplay]",
+                            "If you have any questions or are ready to liveplay, please open a ticket on our (Discord)[https://akatsuki.gg/discord].}",
+                            f"Time left until account restriction: {td(seconds = freeze_timestamp - current_time)}.",
                         ],
                     ),
                 )
