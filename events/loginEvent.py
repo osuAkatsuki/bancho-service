@@ -122,6 +122,7 @@ def handle(
 
         # Verify this user (if pending activation)
         firstLogin = False
+        shouldBan = False
         if pending_verification or not userUtils.hasVerifiedHardware(userID):
             if userUtils.verifyUser(userID, clientData):
                 # Valid account
@@ -135,7 +136,7 @@ def handle(
                     Ansi.LRED,
                 )
                 verifiedCache.set(userID, False)
-                raise exceptions.loginBannedException()
+                shouldBan = True
 
         # Save HWID in db for multiaccount detection
         hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
@@ -148,6 +149,10 @@ def handle(
 
         # Log user IP
         userUtils.logIP(userID, requestIP)
+
+        if shouldBan:
+            userUtils.ban(userID)
+            raise exceptions.loginBannedException()
 
         # Delete old tokens for that user and generate a new one
         isTournament = rgx["stream"] == "tourney"
