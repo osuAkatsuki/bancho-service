@@ -199,11 +199,12 @@ def handle(
                 chat.sendMessage(
                     token_id=aika_token["token_id"],
                     to=username,
-                    message="\n".join(                        [
-                            f"Your account has been frozen", #"Your account has been frozen{freeze_str}"
+                    message="\n".join(
+                        [
+                            f"Your account has been frozen",  # "Your account has been frozen{freeze_str}"
                             "This is not a restriction, but will lead to one if ignored.",
                             "You are required to submit a liveplay using the (specified criteria)[https://bit.ly/Akatsuki-Liveplay]",
-                            "If you have any questions or are ready to liveplay, please open a ticket on our (Discord)[https://akatsuki.gg/discord].}",
+                            "If you have any questions or are ready to liveplay, please open a ticket on our (Discord)[https://akatsuki.gg/discord].",
                             f"Time left until account restriction: {td(seconds = freeze_timestamp - current_time)}.",
                         ],
                     ),
@@ -231,7 +232,7 @@ def handle(
                     "has been automatically restricted due to a pending freeze.",
                 )
                 logUtils.ac(
-                    f"[{username}](https://akatsuki.pw/u/{userID}) has been automatically restricted due to a pending freeze.",
+                    f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
                     "ac_general",
                 )
 
@@ -496,6 +497,7 @@ def handle(
                     "The osu! client you're trying to use is out of date.",
                     "Custom/out of date osu! clients are not permitted on Akatsuki.",
                     "Please relogin using the current osu! client - no fallback, sorry!",
+                    "You will need to switch to Bancho in order to update your client.",
                 ],
             ),
         )
