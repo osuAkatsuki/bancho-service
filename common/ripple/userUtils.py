@@ -1529,7 +1529,11 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
                 },
             )
 
+        banned_ids = []
         for i in banned:
+            if i["userid"] in banned_ids:
+                continue
+
             # Get the total numbers of logins
             total = glob.db.fetch(
                 "SELECT COUNT(*) AS count FROM hw_user WHERE userid = %s",
@@ -1552,6 +1556,8 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
                     f'[{username}](https://akatsuki.gg/u/{userID}) has been restricted because he has logged in from HWID set used more than 10% from banned/restricted user [{i["username"]}](https://akatsuki.gg/u/{i["userid"]}), **possible multiaccount**.',
                     "ac_general",
                 )
+
+            banned_ids.append(i["userid"])
 
     # Update hash set occurencies
     glob.db.execute(
