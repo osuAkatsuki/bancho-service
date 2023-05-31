@@ -937,7 +937,7 @@ def ban(userID: int) -> None:
         "SET privileges = privileges & %s, "
         "ban_datetime = UNIX_TIMESTAMP() "
         "WHERE id = %s",
-        [~(privileges.USER_NORMAL | privileges.USER_PUBLIC), userID],
+        [~(privileges.USER_NORMAL | privileges.USER_PUBLIC | privileges.USER_PENDING_VERIFICATION), userID],
     )
 
     # Notify bancho about the ban
