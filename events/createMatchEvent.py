@@ -56,7 +56,6 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
             BaseEvent(
                 event_type="create_multiplayer_match",
                 user_id=str(token["user_id"]),
-                device_id=None,
                 event_properties={
                     "match_id": multiplayer_match["match_id"],
                     "match_name": multiplayer_match["match_name"],
