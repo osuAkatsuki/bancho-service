@@ -8,6 +8,7 @@ from datetime import timedelta as td
 from sys import exc_info
 from traceback import format_exc
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from amplitude.event import BaseEvent, Identify, EventOptions
 from cmyui.logging import Ansi
@@ -455,6 +456,7 @@ def handle(
 
         device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
 
+        insert_id = str(uuid4())
         glob.amplitude.track(
             BaseEvent(
                 event_type="osu_login",
@@ -462,10 +464,14 @@ def handle(
                 device_id=device_id,
                 event_properties={
                     "username": userToken["username"],
+                    "privileges": userToken["privileges"],
+                    "login_time": userToken["login_time"],
                 },
                 location_lat=latitude,
                 location_lng=longitude,
                 ip=requestIP,
+                country=countryLetters,
+                insert_id=insert_id,
             )
         )
 
@@ -474,6 +480,7 @@ def handle(
         identify_obj.set("location_lat", latitude)
         identify_obj.set("location_lng", longitude)
         identify_obj.set("ip", requestIP)
+        identify_obj.set("country", countryLetters)
         glob.amplitude.identify(
             identify_obj,
             EventOptions(
