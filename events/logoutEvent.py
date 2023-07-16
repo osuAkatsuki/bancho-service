@@ -80,6 +80,7 @@ def handle(token: Token, _=None, deleteToken: bool = True):
         BaseEvent(
             event_type="osu_logout",
             user_id=str(token['user_id']),
+            device_id=None,
             event_properties={
                 "username": token['username'],
                 "user_id": token['user_id'],
