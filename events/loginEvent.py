@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 import time
 from datetime import datetime as dt
@@ -452,13 +453,15 @@ def handle(
         if not osuToken.is_restricted(userToken["privileges"]):
             streamList.broadcast("main", serverPackets.userPanel(userID))
 
+        device_id = hashlib.sha1(clientData[4])
+
         glob.amplitude.track(
             BaseEvent(
                 event_type="osu_login",
                 user_id=userID,
                 # disk signature (unique id 2)
                 # TODO: should we instead use adapters md5?
-                device_id=clientData[4],
+                device_id=device_id,
                 event_properties={
                     "username": userToken["username"],
                 },
@@ -479,7 +482,7 @@ def handle(
             identify_obj,
             EventOptions(
                 user_id=userID,
-                device_id=clientData[4],
+                device_id=device_id,
             ),
         )
 
