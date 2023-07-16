@@ -458,14 +458,13 @@ def handle(
         glob.amplitude.track(
             BaseEvent(
                 event_type="osu_login",
-                user_id=userID,
+                user_id=str(userID),
                 # disk signature (unique id 2)
                 # TODO: should we instead use adapters md5?
                 device_id=device_id,
                 event_properties={
                     "username": userToken["username"],
                 },
-                country=country,
                 location_lat=latitude,
                 location_lng=longitude,
                 ip=requestIP,
@@ -474,14 +473,13 @@ def handle(
 
         identify_obj = Identify()
         identify_obj.set("username", userToken["username"])
-        identify_obj.set("country", country)
         identify_obj.set("location_lat", latitude)
         identify_obj.set("location_lng", longitude)
         identify_obj.set("ip", requestIP)
         glob.amplitude.identify(
             identify_obj,
             EventOptions(
-                user_id=userID,
+                user_id=str(userID),
                 device_id=device_id,
             ),
         )
