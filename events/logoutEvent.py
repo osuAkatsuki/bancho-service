@@ -5,6 +5,9 @@ import time
 import orjson
 from cmyui.logging import Ansi
 from cmyui.logging import log
+from amplitude import BaseEvent
+from helpers import countryHelper
+from uuid import uuid4
 
 import settings
 from constants import serverPackets
@@ -71,6 +74,28 @@ def handle(token: Token, _=None, deleteToken: bool = True):
         f"akatsuki:sessions:{token['token_id']}",
         60 * 60,
     )  # expire in 1 hour (60 minutes)
+
+
+    insert_id = str(uuid4())
+    glob.amplitude.track(
+        BaseEvent(
+            event_type="osu_logout",
+            user_id=str(token['user_id']),
+            # disk signature (unique id 2)
+            # TODO: should we instead use adapters md5?
+            event_properties={
+                "username": token['username'],
+                "user_id": token['user_id'],
+                "session_duration": time.time() - token['login_time'],
+                "login_time": token['login_time'],
+            },
+            location_lat=token['latitude'],
+            location_lng=token['longitude'],
+            ip=token['ip'],
+            country=countryHelper.getCountryLetters(token['country']),
+            insert_id=insert_id,
+        )
+    )
 
     # Console output
     log(
