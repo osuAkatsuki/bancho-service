@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 import time
 from datetime import datetime as dt
@@ -8,6 +9,7 @@ from sys import exc_info
 from traceback import format_exc
 from typing import TYPE_CHECKING
 
+from amplitude.event import BaseEvent, Identify, EventOptions
 from cmyui.logging import Ansi
 from cmyui.logging import log
 
@@ -450,6 +452,35 @@ def handle(
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
             streamList.broadcast("main", serverPackets.userPanel(userID))
+
+        device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
+
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="osu_login",
+                user_id=str(userID),
+                device_id=device_id,
+                event_properties={
+                    "username": userToken["username"],
+                },
+                location_lat=latitude,
+                location_lng=longitude,
+                ip=requestIP,
+            )
+        )
+
+        identify_obj = Identify()
+        identify_obj.set("username", userToken["username"])
+        identify_obj.set("location_lat", latitude)
+        identify_obj.set("location_lng", longitude)
+        identify_obj.set("ip", requestIP)
+        glob.amplitude.identify(
+            identify_obj,
+            EventOptions(
+                user_id=str(userID),
+                device_id=device_id,
+            ),
+        )
 
         # Set reponse data to right value and reset our queue
         responseData = osuToken.dequeue(userToken["token_id"])
