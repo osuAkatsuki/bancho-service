@@ -453,7 +453,7 @@ def handle(
         if not osuToken.is_restricted(userToken["privileges"]):
             streamList.broadcast("main", serverPackets.userPanel(userID))
 
-        device_id = hashlib.sha1(clientData[4])
+        device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
 
         glob.amplitude.track(
             BaseEvent(
