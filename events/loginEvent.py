@@ -459,8 +459,6 @@ def handle(
             BaseEvent(
                 event_type="osu_login",
                 user_id=str(userID),
-                # disk signature (unique id 2)
-                # TODO: should we instead use adapters md5?
                 device_id=device_id,
                 event_properties={
                     "username": userToken["username"],
