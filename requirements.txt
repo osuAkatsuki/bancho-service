@@ -1,3 +1,4 @@
+amplitude-analytics
 bcrypt
 cmyui
 datadog
