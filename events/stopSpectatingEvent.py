@@ -37,4 +37,4 @@ def handle(userToken: osuToken.Token, _=None):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        log.warning("Spectator stop: token not found.")
+        log.warning("Spectator stop: host token not found.")
