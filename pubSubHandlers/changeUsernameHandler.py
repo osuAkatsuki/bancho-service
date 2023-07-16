@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from common.constants import actions
-from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
 from objects import glob, tokenList, osuToken
+
+from amplitude import BaseEvent, Identify, EventOptions
 
 
 def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
@@ -21,6 +24,30 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 f"Your username has been changed to {newUsername}. Please log in again.",
                 "username_change",
             )
+
+        insert_id = str(uuid4())
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="username_change",
+                user_id=str(userID),
+                event_properties={
+                    "old_username": oldUsername,
+                    "new_username": newUsername,
+                },
+                insert_id=insert_id,
+            )
+        )
+
+        identify_obj = Identify()
+        identify_obj.set("username", newUsername)
+        glob.amplitude.identify(
+            identify_obj,
+            EventOptions(
+                user_id=str(userID),
+                insert_id=insert_id,
+            ),
+        )
+
     except userUtils.usernameAlreadyInUseError:
         # log.rap(999, "Username change: {} is already in use!", through="Bancho")
         if targetToken:

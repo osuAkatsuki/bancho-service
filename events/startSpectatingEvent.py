@@ -6,6 +6,9 @@ from constants import exceptions
 from objects.osuToken import Token
 from objects import osuToken, tokenList
 
+from amplitude import BaseEvent
+from objects import glob
+from uuid import uuid4
 
 def handle(userToken: Token, rawPacketData: bytes):
     try:
@@ -24,6 +27,22 @@ def handle(userToken: Token, rawPacketData: bytes):
 
         # Start spectating new user
         osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
+
+        insert_id = str(uuid4())
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="start_spectating",
+                user_id=str(userToken["user_id"]),
+                event_properties={
+                    "host_user_id": targetToken["user_id"],
+                    "host_username": targetToken["username"],
+                    "host_country": targetToken["country"],
+                    "host_game_mode": targetToken["game_mode"],
+                },
+                insert_id=insert_id,
+            )
+        )
+
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
         log.warning("Spectator start: token not found.")

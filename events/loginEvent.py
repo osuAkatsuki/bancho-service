@@ -441,10 +441,7 @@ def handle(
 
         # Set location and country
         osuToken.setLocation(userToken["token_id"], latitude, longitude)
-        osuToken.update_token(
-            userToken["token_id"],
-            country=country,
-        )
+        osuToken.update_token(userToken["token_id"], country=country)
 
         # Set country in db if user has no country (first bancho login)
         if userUtils.getCountry(userID) == "XX":
