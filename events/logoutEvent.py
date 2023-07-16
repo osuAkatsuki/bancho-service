@@ -80,8 +80,6 @@ def handle(token: Token, _=None, deleteToken: bool = True):
         BaseEvent(
             event_type="osu_logout",
             user_id=str(token['user_id']),
-            # disk signature (unique id 2)
-            # TODO: should we instead use adapters md5?
             event_properties={
                 "username": token['username'],
                 "user_id": token['user_id'],
