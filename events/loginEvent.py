@@ -436,8 +436,8 @@ def handle(
             # Set location to 0,0 and get country from db
             latitude = 0.0
             longitude = 0.0
-            countryLetters = "XX"
-            country = countryHelper.getCountryID(userUtils.getCountry(userID))
+            countryLetters = userUtils.getCountry(userID)
+            country = countryHelper.getCountryID(countryLetters)
 
         # Set location and country
         osuToken.setLocation(userToken["token_id"], latitude, longitude)
