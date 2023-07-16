@@ -1719,7 +1719,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"Added {username} to referees"
 
-    def mpRemoveRefer():
+    def mpRemoveRefer() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1746,7 +1746,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.remove_referee(multiplayer_match["match_id"], userID)
         return f"Removed {username} from referees"
 
-    def mpListRefer() -> str:
+    def mpListRefer() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1768,7 +1768,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         refs = ", ".join(ref_usernames)
         return f"Referees for this match: {refs}"
 
-    def mpMake() -> str:
+    def mpMake() -> Optional[str]:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp make <name>.",
@@ -1810,7 +1810,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     #     osuToken.joinMatch(userToken["token_id"], matchID)
     #     return f"Attempting to join match #{matchID}!"
 
-    def mpClose() -> str:
+    def mpClose() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1821,7 +1821,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         matchList.disposeMatch(matchID)
         return f"Multiplayer match #{matchID} disposed successfully."
 
-    def mpLock() -> str:
+    def mpLock() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1834,7 +1834,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.update_match(multiplayer_match["match_id"], is_locked=True)
         return "This match has been locked."
 
-    def mpUnlock() -> str:
+    def mpUnlock() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1847,7 +1847,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.update_match(multiplayer_match["match_id"], is_locked=False)
         return "This match has been unlocked."
 
-    def mpSize() -> str:
+    def mpSize() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1896,7 +1896,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             return "Failed to join match."
         return "Joined match."
 
-    def mpMove() -> str:
+    def mpMove() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1930,7 +1930,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else "You can't use that slot: it's either already occupied by someone else or locked."
         )
 
-    def mpHost() -> str:
+    def mpHost() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1958,7 +1958,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else f"Couldn't give host to {username}."
         )
 
-    def mpClearHost() -> str:
+    def mpClearHost() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -1980,7 +1980,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             assert multiplayer_match is not None
 
             if userID not in match.get_referees(multiplayer_match["match_id"]):
-                return None
+                return False
 
             aika_token = tokenList.getTokenFromUserID(999)
             assert aika_token is not None
@@ -2099,7 +2099,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "or you might receive a penalty."
             )
 
-    def mpInvite() -> str:
+    def mpInvite() -> Optional[str]:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp invite <username>.",
@@ -2130,7 +2130,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
         return f"An invite to this match has been sent to {username}."
 
-    def mpMap() -> str:
+    def mpMap() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2175,7 +2175,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.sendUpdates(multiplayer_match["match_id"])
         return "Match map has been updated."
 
-    def mpSet() -> str:
+    def mpSet() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2247,7 +2247,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.abort(multiplayer_match["match_id"])
         return "Match aborted!"
 
-    def mpKick() -> str:
+    def mpKick() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2279,7 +2279,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"{username} has been kicked from the match."
 
-    def mpPassword() -> str:
+    def mpPassword() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2293,7 +2293,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.changePassword(multiplayer_match["match_id"], password)
         return "Match password has been changed!"
 
-    def mpRandomPassword() -> str:
+    def mpRandomPassword() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2307,7 +2307,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.changePassword(multiplayer_match["match_id"], password)
         return "Match password has been randomized."
 
-    def mpMods() -> str:
+    def mpMods() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2374,7 +2374,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.changeMods(multiplayer_match["match_id"], _mods)
         return "Match mods have been updated!"
 
-    def mpTeam() -> str:
+    def mpTeam() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2408,7 +2408,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"{username} is now in {colour} team"
 
-    def mpSettings() -> str:
+    def mpSettings() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2468,7 +2468,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "".join(msg).rstrip(" | " if single else "\n")
 
-    def mpScoreV() -> str:
+    def mpScoreV() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
@@ -2497,7 +2497,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.sendUpdates(multiplayer_match["match_id"])
         return f"Match scoring type set to scorev{message[1]}."
 
-    def mpHelp() -> str:
+    def mpHelp() -> Optional[str]:
         return f"Supported multiplayer subcommands: <{' | '.join(subcommands.keys())}>."
 
     try:
