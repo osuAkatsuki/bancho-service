@@ -7,7 +7,6 @@ from time import strftime
 from time import time
 from typing import Optional
 from typing import TypedDict
-from uuid import uuid4
 
 from common import channel_utils
 from common.constants import actions
@@ -15,15 +14,16 @@ from common.constants import gameModes
 from common.constants import privileges
 from common.log import logUtils as log
 from common.ripple import userUtils
+from uuid import uuid4
+from amplitude import BaseEvent
 from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
-from helpers import chatHelper as chat
+from helpers import chatHelper as chat, countryHelper
 from objects import channelList
 from objects import glob
 from objects import match
 from objects import streamList
-from objects.redisLock import redisLock
 
 # (set) bancho:tokens
 # (json obj) bancho:tokens:{token_id}
@@ -240,6 +240,7 @@ class MissingType:
 from typing import Union
 
 MISSING = MissingType()
+
 
 # TODO: the things that can actually be Optional need to have different defaults
 def update_token(
@@ -1005,6 +1006,27 @@ def checkRestricted(token_id: str) -> None:
     restricted = userUtils.isRestricted(token["user_id"])
     if restricted:
         setRestricted(token_id)
+
+        # track in Amplitude
+        insert_id = str(uuid4())
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="user_restricted",
+                user_id=str(token["user_id"]),
+                event_properties={
+                    "username": token["username"],
+                    "privileges": token["privileges"],
+                    "whitelist": token["whitelist"],
+                    "irc": token["irc"],
+                },
+                insert_id=insert_id,
+                ip=token["ip"],
+                location_lat=token["latitude"],
+                location_lng=token["longitude"],
+                country=countryHelper.getCountryLetters(token["country"]),
+            )
+        )
+
     elif not restricted and old_restricted != restricted:
         resetRestricted(token_id)
 
@@ -1023,6 +1045,25 @@ def checkBanned(token_id: str) -> None:
         enqueue(token_id, serverPackets.loginBanned)
         logoutEvent.handle(token, deleteToken=False)
 
+        # track in Amplitude
+        insert_id = str(uuid4())
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="user_banned",
+                user_id=str(token["user_id"]),
+                event_properties={
+                    "username": token["username"],
+                    "privileges": token["privileges"],
+                    "whitelist": token["whitelist"],
+                    "irc": token["irc"],
+                },
+                insert_id=insert_id,
+                ip=token["ip"],
+                location_lat=token["latitude"],
+                location_lng=token["longitude"],
+                country=countryHelper.getCountryLetters(token["country"]),
+            )
+        )
 
 def setRestricted(token_id: str) -> None:
     """
