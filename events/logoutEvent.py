@@ -75,7 +75,6 @@ def handle(token: Token, _=None, deleteToken: bool = True):
         60 * 60,
     )  # expire in 1 hour (60 minutes)
 
-
     insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
