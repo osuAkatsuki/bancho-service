@@ -245,7 +245,6 @@ from typing import Union
 
 MISSING = MissingType()
 
-
 # TODO: the things that can actually be Optional need to have different defaults
 def update_token(
     token_id: str,
@@ -1030,6 +1029,7 @@ def checkBanned(token_id: str) -> None:
     if userUtils.isBanned(token["user_id"]):
         enqueue(token_id, serverPackets.loginBanned)
         logoutEvent.handle(token, deleteToken=False)
+
 
 
 def setRestricted(token_id: str) -> None:

@@ -48,6 +48,4 @@ def handle(userToken: Token, rawPacketData: bytes):
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
         log.warning("Spectator start: token not found.")
-        osuToken.stopSpectating(
-            userToken["token_id"],
-        )
+        osuToken.stopSpectating(userToken["token_id"])
