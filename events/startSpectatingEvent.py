@@ -40,6 +40,7 @@ def handle(userToken: Token, rawPacketData: bytes):
                     "host_username": targetToken["username"],
                     "host_country": targetToken["country"],
                     "host_game_mode": targetToken["game_mode"],
+                    "source": "bancho-service",
                 },
                 insert_id=insert_id,
             )

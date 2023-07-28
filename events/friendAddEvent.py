@@ -21,6 +21,7 @@ def handle(userToken: Token, rawPacketData: bytes):  # Friend add packet
             device_id=userToken["amplitude_device_id"],
             event_properties={
                 "friend_user_id": friend_user_id,
+                "source": "bancho-service",
             },
             insert_id=insert_id,
         )

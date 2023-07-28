@@ -21,6 +21,7 @@ def handle(userToken: Token, rawPacketData: bytes):
             device_id=userToken["amplitude_device_id"],
             event_properties={
                 "channel_name": channel_name,
+                "source": "bancho-service",
             },
             insert_id=insert_id,
         )

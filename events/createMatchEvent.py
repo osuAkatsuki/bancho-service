@@ -78,6 +78,7 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
                         "is_in_progress": multiplayer_match["is_in_progress"],
                         "creation_time": multiplayer_match["creation_time"],
                     },
+                    "source": "bancho-service",
                 },
                 location_lat=token["latitude"],
                 location_lng=token["longitude"],

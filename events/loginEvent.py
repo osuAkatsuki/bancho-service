@@ -458,6 +458,7 @@ def handle(
                     "username": userToken["username"],
                     "privileges": userToken["privileges"],
                     "login_time": userToken["login_time"],
+                    "source": "bancho-service",
                 },
                 location_lat=latitude,
                 location_lng=longitude,
