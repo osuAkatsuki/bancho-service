@@ -426,19 +426,15 @@ def handle(
                     serverPackets.userPanel(token["user_id"]),
                 )
 
-        # Get location and country from ip.zxq.co or database. If the user is a donor, then yee
-        if settings.LOCALIZE_ENABLE and (
-            firstLogin or not userToken["privileges"] & privileges.USER_DONOR
-        ):
+        # Get location and country from ip.zxq.co or database.
+        if settings.LOCALIZE_ENABLE:
             # Get location and country from IP
             countryLetters, (latitude, longitude) = locationHelper.getGeoloc(requestIP)
             country = countryHelper.getCountryID(countryLetters)
         else:
-            # Set location to 0,0 and get country from db
-            latitude = 0.0
-            longitude = 0.0
-            countryLetters = userUtils.getCountry(userID)
-            country = countryHelper.getCountryID(countryLetters)
+            countryLetters = "XX"
+            latitude = longitude = 0.0
+            country = 0
 
         # Set location and country
         osuToken.setLocation(userToken["token_id"], latitude, longitude)
