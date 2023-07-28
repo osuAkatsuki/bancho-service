@@ -85,6 +85,7 @@ def handle(token: Token, _=None, deleteToken: bool = True):
                 "username": token["username"],
                 "session_duration": time.time() - token["login_time"],
                 "login_time": token["login_time"],
+                "source": "bancho-service",
             },
             location_lat=token["latitude"],
             location_lng=token["longitude"],

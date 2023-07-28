@@ -46,6 +46,7 @@ def handle(userToken: Token, _=None):
                     "is_in_progress": multiplayer_match["is_in_progress"],
                     "creation_time": multiplayer_match["creation_time"],
                 },
+                "source": "bancho-service",
             },
             location_lat=userToken["latitude"],
             location_lng=userToken["longitude"],

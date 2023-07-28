@@ -35,6 +35,7 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
         #         event_properties={
         #             "old_username": oldUsername,
         #             "new_username": newUsername,
+        #             "source": "bancho-service",
         #         },
         #         insert_id=insert_id,
         #     )

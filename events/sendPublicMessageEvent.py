@@ -27,6 +27,7 @@ def handle(userToken: Token, rawPacketData: bytes):
             event_properties={
                 "recipient": packetData["to"],
                 "message": packetData["message"],
+                "source": "bancho-service",
             },
             insert_id=insert_id,
         )

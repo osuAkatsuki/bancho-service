@@ -2021,7 +2021,9 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                                 "game_mode": multiplayer_match["game_mode"],
                                 "host_user_id": multiplayer_match["host_user_id"],
                                 "mods": multiplayer_match["mods"],
-                                "match_scoring_type": multiplayer_match["match_scoring_type"],
+                                "match_scoring_type": multiplayer_match[
+                                    "match_scoring_type"
+                                ],
                                 "match_team_type": multiplayer_match["match_team_type"],
                                 "match_mod_mode": multiplayer_match["match_mod_mode"],
                                 "seed": multiplayer_match["seed"],
@@ -2031,6 +2033,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                                 "is_in_progress": multiplayer_match["is_in_progress"],
                                 "creation_time": multiplayer_match["creation_time"],
                             },
+                            "source": "bancho-service",
                         },
                         insert_id=insert_id,
                     )
