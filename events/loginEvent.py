@@ -485,7 +485,7 @@ def handle(
             identify_obj,
             EventOptions(
                 user_id=str(userID),
-                device_id=device_id,
+                device_id=hashlib.sha1(clientData[4].encode()).hexdigest(),
             ),
         )
 
