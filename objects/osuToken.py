@@ -103,6 +103,8 @@ class Token(TypedDict):
     global_rank: int
     pp: int
 
+    amplitude_device_id: Optional[str]
+
     # processing_lock: Lock
 
     # self.updateCachedStats()
@@ -139,7 +141,8 @@ def create_token(
     utc_offset: int,
     irc: bool,
     tournament: bool,
-    block_non_friends_dm: bool = False,
+    block_non_friends_dm: bool,
+    amplitude_device_id: Optional[str],
 ) -> Token:
     token_id = str(uuid4())
     creation_time = time()
@@ -183,6 +186,7 @@ def create_token(
         "total_score": 0,
         "global_rank": 0,
         "pp": 0,
+        "amplitude_device_id": amplitude_device_id,
     }
 
     glob.redis.sadd("bancho:tokens", token_id)
@@ -241,6 +245,7 @@ from typing import Union
 
 MISSING = MissingType()
 
+
 # TODO: the things that can actually be Optional need to have different defaults
 def update_token(
     token_id: str,
@@ -281,6 +286,7 @@ def update_token(
     total_score: Optional[int] = None,
     global_rank: Optional[int] = None,
     pp: Optional[int] = None,
+    amplitude_device_id: Optional[str] = None,
 ) -> Optional[Token]:
     token = get_token(token_id)
     if token is None:
@@ -352,6 +358,8 @@ def update_token(
         token["global_rank"] = global_rank
     if pp is not None:
         token["pp"] = pp
+    if amplitude_device_id is not None:
+        token["amplitude_device_id"] = amplitude_device_id
     glob.redis.set(make_key(token_id), json.dumps(token))
     glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
     return token

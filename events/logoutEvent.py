@@ -15,8 +15,8 @@ from helpers import chatHelper as chat
 from objects import glob, streamList, osuToken, tokenList
 from objects.osuToken import Token
 
-def handle(token: Token, _=None, deleteToken: bool = True):
 
+def handle(token: Token, _=None, deleteToken: bool = True):
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login
@@ -63,7 +63,7 @@ def handle(token: Token, _=None, deleteToken: bool = True):
             "peppy:change_username",
             orjson.dumps(
                 {
-                    "userID": token['user_id'],
+                    "userID": token["user_id"],
                     "newUsername": newUsername.decode("utf-8"),
                 },
             ),
@@ -79,16 +79,17 @@ def handle(token: Token, _=None, deleteToken: bool = True):
     glob.amplitude.track(
         BaseEvent(
             event_type="osu_logout",
-            user_id=str(token['user_id']),
+            user_id=str(token["user_id"]),
+            device_id=token["amplitude_device_id"],
             event_properties={
-                "username": token['username'],
-                "session_duration": time.time() - token['login_time'],
-                "login_time": token['login_time'],
+                "username": token["username"],
+                "session_duration": time.time() - token["login_time"],
+                "login_time": token["login_time"],
             },
-            location_lat=token['latitude'],
-            location_lng=token['longitude'],
-            ip=token['ip'],
-            country=countryHelper.getCountryLetters(token['country']),
+            location_lat=token["latitude"],
+            location_lng=token["longitude"],
+            ip=token["ip"],
+            country=countryHelper.getCountryLetters(token["country"]),
             insert_id=insert_id,
         )
     )

@@ -2001,11 +2001,15 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     message="Have fun!",
                 )
 
+                token = osuToken.get_token_by_user_id(userID)
+                assert token is not None
+
                 insert_id = str(uuid4())
                 glob.amplitude.track(
                     BaseEvent(
                         event_type="start_multiplayer_match",
                         user_id=str(userID),
+                        device_id=token["amplitude_device_id"],
                         event_properties={
                             "match": {
                                 "match_id": multiplayer_match["match_id"],

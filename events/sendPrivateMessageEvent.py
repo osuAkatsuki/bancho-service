@@ -23,6 +23,7 @@ def handle(userToken: Token, rawPacketData):
         BaseEvent(
             event_type="osu_private_message",
             user_id=str(userToken["user_id"]),
+            device_id=userToken["amplitude_device_id"],
             event_properties={
                 "recipient": packetData["to"],
                 # NOTE: intentionally not logging the message here

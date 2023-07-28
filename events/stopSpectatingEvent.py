@@ -7,6 +7,7 @@ from objects import glob
 from common.log import logUtils as log
 from uuid import uuid4
 
+
 def handle(userToken: osuToken.Token, _=None):
     try:
         # User must be spectating someone
@@ -25,6 +26,7 @@ def handle(userToken: osuToken.Token, _=None):
             BaseEvent(
                 event_type="stop_spectating",
                 user_id=str(userToken["user_id"]),
+                device_id=userToken["amplitude_device_id"],
                 event_properties={
                     "host_user_id": targetToken["user_id"],
                     "host_username": targetToken["username"],
