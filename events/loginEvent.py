@@ -171,7 +171,11 @@ def handle(
                 utc_offset=utc_offset,
                 tournament=isTournament,
                 block_non_friends_dm=block_non_friends_dm,
-                amplitude_device_id=hashlib.sha1(clientData[4].encode()).hexdigest(),
+                amplitude_device_id=(
+                    hashlib.sha1(clientData[4].encode()).hexdigest()
+                    if userID == 1001
+                    else None
+                ),
             )
 
         responseTokenString = userToken["token_id"]
@@ -457,7 +461,7 @@ def handle(
             BaseEvent(
                 event_type="osu_login",
                 user_id=str(userID),
-                device_id=userToken["amplitude_device_id"],
+                device_id=hashlib.sha1(clientData[4].encode()).hexdigest(),
                 event_properties={
                     "username": userToken["username"],
                     "privileges": userToken["privileges"],
