@@ -25,28 +25,24 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "username_change",
             )
 
-        insert_id = str(uuid4())
-        glob.amplitude.track(
-            BaseEvent(
-                event_type="username_change",
-                user_id=str(userID),
-                event_properties={
-                    "old_username": oldUsername,
-                    "new_username": newUsername,
-                },
-                insert_id=insert_id,
-            )
-        )
+        # XXX: disabled this 2023-07-28 as it seems strange - this is not necessarily
+        # an action triggered by the user themselves; feels weird to attribute it to them
+        # insert_id = str(uuid4())
+        # glob.amplitude.track(
+        #     BaseEvent(
+        #         event_type="username_change",
+        #         user_id=str(userID),
+        #         event_properties={
+        #             "old_username": oldUsername,
+        #             "new_username": newUsername,
+        #         },
+        #         insert_id=insert_id,
+        #     )
+        # )
 
         identify_obj = Identify()
         identify_obj.set("username", newUsername)
-        glob.amplitude.identify(
-            identify_obj,
-            EventOptions(
-                user_id=str(userID),
-                insert_id=insert_id,
-            ),
-        )
+        glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
 
     except userUtils.usernameAlreadyInUseError:
         # log.rap(999, "Username change: {} is already in use!", through="Bancho")

@@ -24,6 +24,7 @@ def handle(userToken: Token, _=None):
         BaseEvent(
             event_type="leave_multiplayer_match",
             user_id=str(userToken["user_id"]),
+            device_id=userToken["amplitude_device_id"],
             event_properties={
                 "match": {
                     "match_id": multiplayer_match["match_id"],

@@ -30,6 +30,7 @@ def addToken(
     utc_offset: int = 0,
     tournament: bool = False,
     block_non_friends_dm: bool = False,
+    amplitude_device_id: Optional[str] = None,
 ) -> osuToken.Token:
     """
     Add a token object to tokens list
@@ -57,6 +58,7 @@ def addToken(
         irc,
         tournament,
         block_non_friends_dm,
+        amplitude_device_id,
     )
 
     osuToken.updateCachedStats(token["token_id"])

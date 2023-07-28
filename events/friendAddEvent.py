@@ -18,6 +18,7 @@ def handle(userToken: Token, rawPacketData: bytes):  # Friend add packet
         BaseEvent(
             event_type="add_friend",
             user_id=str(userToken["user_id"]),
+            device_id=userToken["amplitude_device_id"],
             event_properties={
                 "friend_user_id": friend_user_id,
             },

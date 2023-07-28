@@ -10,6 +10,7 @@ from amplitude import BaseEvent
 from objects import glob
 from uuid import uuid4
 
+
 def handle(userToken: Token, rawPacketData: bytes):
     try:
         # Start spectating packet
@@ -17,7 +18,7 @@ def handle(userToken: Token, rawPacketData: bytes):
 
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
-            osuToken.stopSpectating(userToken["token_id"], )
+            osuToken.stopSpectating(userToken["token_id"])
             return
 
         # Get host token
@@ -33,6 +34,7 @@ def handle(userToken: Token, rawPacketData: bytes):
             BaseEvent(
                 event_type="start_spectating",
                 user_id=str(userToken["user_id"]),
+                device_id=userToken["amplitude_device_id"],
                 event_properties={
                     "host_user_id": targetToken["user_id"],
                     "host_username": targetToken["username"],
@@ -46,4 +48,4 @@ def handle(userToken: Token, rawPacketData: bytes):
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
         log.warning("Spectator start: token not found.")
-        osuToken.stopSpectating(userToken["token_id"], )
+        osuToken.stopSpectating(userToken["token_id"])
