@@ -18,9 +18,7 @@ def handle(userToken: Token, rawPacketData: bytes):
 
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
-            osuToken.stopSpectating(
-                userToken["token_id"],
-            )
+            osuToken.stopSpectating(userToken["token_id"])
             return
 
         # Get host token
