@@ -160,6 +160,16 @@ def handle(
         # Delete old tokens for that user and generate a new one
         isTournament = rgx["stream"] == "tourney"
 
+        if clientData[4] == "dcfcd07e645d245babe887e5e2daa016":
+            # NOTE: this is the result of `md5(md5("0"))`.
+            # The osu! client will send this sometimes because WMI
+            # may return a "0" as the disk serial number if a hardware
+            # manufacturer has not set one.
+            # (disk signature is optional but serial number is required)
+            amplitude_device_id = None
+        else:
+            amplitude_device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
+
         with redisLock("bancho:locks:tokens"):
             if not isTournament:
                 tokenList.deleteOldTokens(userID)
@@ -171,7 +181,7 @@ def handle(
                 utc_offset=utc_offset,
                 tournament=isTournament,
                 block_non_friends_dm=block_non_friends_dm,
-                amplitude_device_id=hashlib.sha1(clientData[4].encode()).hexdigest(),
+                amplitude_device_id=amplitude_device_id,
             )
             username = userToken["username"]  # trust the one from the db
 
