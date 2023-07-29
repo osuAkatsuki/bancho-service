@@ -173,6 +173,7 @@ def handle(
                 block_non_friends_dm=block_non_friends_dm,
                 amplitude_device_id=hashlib.sha1(clientData[4].encode()).hexdigest(),
             )
+            username = userToken["username"]  # trust the one from the db
 
         responseTokenString = userToken["token_id"]
 
