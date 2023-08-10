@@ -7,6 +7,7 @@ from datetime import datetime as dt
 from multiprocessing.pool import ThreadPool
 
 import ddtrace
+import psutil
 import redis
 import tornado.gen
 import tornado.httpserver
@@ -193,10 +194,18 @@ if __name__ == "__main__":
                 target=lambda: ircserver.main(port=settings.IRC_PORT),
             ).start()
 
-        log("Starting background loops.", Ansi.LMAGENTA)
 
-        tokenList.usersTimeoutCheckLoop()
-        tokenList.spamProtectionResetLoop()
+        # we only want to run these jobs a single time
+        # throughout all of our instances of bancho-service
+        # TODO:FIXME there is an assumption made here that all
+        # instances will be run as processes on the same machine.
+        raw_result = glob.redis.get("bancho:background_jobs_pid")
+        if raw_result is None or not psutil.pid_exists(int(raw_result)):
+            log("Starting background loops.", Ansi.LMAGENTA)
+            glob.redis.set("bancho:background_jobs_pid", os.getpid())
+
+            tokenList.usersTimeoutCheckLoop()
+            tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
         glob.groupPrivileges = {
