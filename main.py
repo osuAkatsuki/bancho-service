@@ -139,6 +139,17 @@ if __name__ == "__main__":
             )
             raise
 
+        # fetch privilege groups into memory
+        # TODO: this is an optimization because ripple previously
+        # fetched this so frequently. this is not robust as privilege
+        # groups may change during runtime.
+        glob.groupPrivileges = {
+            row["name"].lower(): row["privileges"]
+            for row in glob.db.fetchAll(
+                "SELECT name, privileges FROM privileges_groups",
+            )
+        }
+
         channelList.loadChannels()
 
         # Initialize stremas
@@ -206,21 +217,6 @@ if __name__ == "__main__":
 
             tokenList.usersTimeoutCheckLoop()
             tokenList.spamProtectionResetLoop()
-
-        # fetch priv groups (optimization by cmyui)
-        glob.groupPrivileges = {
-            row["name"].lower(): row["privileges"]
-            for row in glob.db.fetchAll(
-                "SELECT name, privileges " "FROM privileges_groups",
-            )
-        }
-
-        # Server start message and console output
-        log(
-            f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
-            Ansi.LMAGENTA,
-        )
-
         # Connect to pubsub channels
         pubSub.listener(
             glob.redis,
@@ -240,6 +236,12 @@ if __name__ == "__main__":
 
         # Start tornado
         glob.application.listen(settings.APP_PORT)
+
+        log(
+            f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
+            Ansi.LMAGENTA,
+        )
+
         tornado.ioloop.IOLoop.instance().start()
     finally:
         system.dispose()
