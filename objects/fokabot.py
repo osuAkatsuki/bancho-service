@@ -9,9 +9,7 @@ from common.constants import actions
 from common.ripple import userUtils
 from constants import fokabotCommands
 from constants import serverPackets
-from objects import glob
-from objects import match
-from objects import matchList
+from objects import channelList
 from objects import osuToken
 from objects import streamList
 from objects import tokenList
@@ -41,6 +39,8 @@ def connect() -> None:
         streamList.broadcast("main", serverPackets.userPanel(999))
         streamList.broadcast("main", serverPackets.userStats(999))
 
+        for channel_name in channelList.getChannelNames():
+            osuToken.joinChannel(token["token_id"], channel_name)
 
 def disconnect() -> None:
     with redisLock(f"bancho:locks:aika"):

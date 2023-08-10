@@ -138,14 +138,14 @@ if __name__ == "__main__":
             )
             raise
 
-        log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
-        fokabot.connect()
-
         channelList.loadChannels()
 
         # Initialize stremas
         streamList.add("main")
         streamList.add("lobby")
+
+        log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
+        fokabot.connect()
 
         if not settings.LOCALIZE_ENABLE:
             log("User localization is disabled.", Ansi.LYELLOW)
