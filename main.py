@@ -7,6 +7,7 @@ from datetime import datetime as dt
 from multiprocessing.pool import ThreadPool
 
 import ddtrace
+import psutil
 import redis
 import tornado.gen
 import tornado.httpserver
@@ -195,7 +196,13 @@ if __name__ == "__main__":
 
         log("Starting background loops.", Ansi.LMAGENTA)
 
-        tokenList.usersTimeoutCheckLoop()
+        # we only want this to be running a single time
+        # throughout all of our instances of bancho-service
+        raw_result = glob.redis.get("bancho:timeout_loop_pid")
+        if raw_result is None or not psutil.pid_exists(int(raw_result)):
+            glob.redis.set("bancho:timeout_loop_pid", os.getpid())
+            tokenList.usersTimeoutCheckLoop()
+
         tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
