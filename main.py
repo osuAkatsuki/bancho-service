@@ -212,10 +212,10 @@ if __name__ == "__main__":
         # the service), but for now we'll just run them all in the same process.
         # TODO:FIXME there is additionally an assumption made here that all
         # bancho-service instances will be run as processes on the same machine.
-        raw_result = glob.redis.get("bancho:background_jobs_pid")
+        raw_result = glob.redis.get("bancho:primary_instance_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
             log("Starting background loops.", Ansi.LMAGENTA)
-            glob.redis.set("bancho:background_jobs_pid", os.getpid())
+            glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
             tokenList.usersTimeoutCheckLoop()
             tokenList.spamProtectionResetLoop()
