@@ -194,7 +194,6 @@ if __name__ == "__main__":
                 target=lambda: ircserver.main(port=settings.IRC_PORT),
             ).start()
 
-        log("Starting background loops.", Ansi.LMAGENTA)
 
         # we only want to run these jobs a single time
         # throughout all of our instances of bancho-service
@@ -202,6 +201,7 @@ if __name__ == "__main__":
         # instances will be run as processes on the same machine.
         raw_result = glob.redis.get("bancho:background_jobs_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
+            log("Starting background loops.", Ansi.LMAGENTA)
             glob.redis.set("bancho:background_jobs_pid", os.getpid())
 
             tokenList.usersTimeoutCheckLoop()
