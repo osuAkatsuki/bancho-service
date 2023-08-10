@@ -196,16 +196,16 @@ if __name__ == "__main__":
 
         log("Starting background loops.", Ansi.LMAGENTA)
 
-        # we only want this to be running a single time
+        # we only want to run these jobs a single time
         # throughout all of our instances of bancho-service
         # TODO:FIXME there is an assumption made here that all
         # instances will be run as processes on the same machine.
-        raw_result = glob.redis.get("bancho:timeout_loop_pid")
+        raw_result = glob.redis.get("bancho:background_jobs_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
-            glob.redis.set("bancho:timeout_loop_pid", os.getpid())
+            glob.redis.set("bancho:background_jobs_pid", os.getpid())
             tokenList.usersTimeoutCheckLoop()
 
-        tokenList.spamProtectionResetLoop()
+            tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
         glob.groupPrivileges = {
