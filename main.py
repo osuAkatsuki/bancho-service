@@ -211,7 +211,7 @@ if __name__ == "__main__":
         # be split into processes of their own (multiple app components within
         # the service), but for now we'll just run them all in the same process.
         # TODO:FIXME there is additionally an assumption made here that all
-        # instances will be run as processes on the same machine.
+        # bancho-service instances will be run as processes on the same machine.
         raw_result = glob.redis.get("bancho:background_jobs_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
             log("Starting background loops.", Ansi.LMAGENTA)
