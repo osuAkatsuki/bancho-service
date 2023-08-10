@@ -203,8 +203,8 @@ if __name__ == "__main__":
         raw_result = glob.redis.get("bancho:background_jobs_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
             glob.redis.set("bancho:background_jobs_pid", os.getpid())
-            tokenList.usersTimeoutCheckLoop()
 
+            tokenList.usersTimeoutCheckLoop()
             tokenList.spamProtectionResetLoop()
 
         # fetch priv groups (optimization by cmyui)
