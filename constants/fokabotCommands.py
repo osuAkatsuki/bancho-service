@@ -1723,9 +1723,6 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
-        if userID not in match.get_referees(multiplayer_match["match_id"]):
-            return None
-
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp addref <user>",
@@ -1749,9 +1746,6 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     def mpListRefer() -> Optional[str]:
         if not (userID := userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
-
-        if userID not in match.get_referees(multiplayer_match["match_id"]):
-            return None
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
