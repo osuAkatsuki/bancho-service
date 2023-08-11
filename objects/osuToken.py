@@ -23,7 +23,6 @@ from objects import channelList
 from objects import glob
 from objects import match
 from objects import streamList
-from objects.redisLock import redisLock
 
 # (set) bancho:tokens
 # (json obj) bancho:tokens:{token_id}

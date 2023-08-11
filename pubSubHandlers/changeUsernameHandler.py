@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from uuid import uuid4
-
-from amplitude import BaseEvent
 from amplitude import EventOptions
 from amplitude import Identify
 

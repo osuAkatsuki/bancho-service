@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import settings
-from common import channel_utils
 from common.constants import mods
 from common.constants import privileges
 from common.log import logUtils as log

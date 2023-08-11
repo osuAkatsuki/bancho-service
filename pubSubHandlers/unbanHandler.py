@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob
 from objects import osuToken
 from objects import tokenList
 

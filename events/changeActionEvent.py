@@ -5,7 +5,6 @@ from common.constants import mods
 from common.ripple import userUtils
 from constants import clientPackets
 from constants import serverPackets
-from objects import glob
 from objects import osuToken
 from objects.osuToken import Token
 
@@ -45,7 +44,6 @@ def handle(userToken: Token, rawPacketData: bytes):
     if autopilot_in_mods != userToken["autopilot"]:
         userToken["autopilot"] = autopilot_in_mods
         should_update_cached_stats = True
-
 
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
     user_pp = userUtils.getPP(

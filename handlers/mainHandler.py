@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import gzip
 import struct
-import time
 
 import tornado.gen
 import tornado.web
 
 import settings
-from common.log import logUtils as log
 from common.web import requestsManager
 from constants import exceptions
 from constants import packetIDs
@@ -57,7 +55,6 @@ from events import tournamentLeaveMatchChannelEvent
 from events import tournamentMatchInfoRequestEvent
 from events import userPanelRequestEvent
 from events import userStatsRequestEvent
-from objects import glob
 from objects import osuToken
 from objects import tokenList
 from objects.redisLock import redisLock

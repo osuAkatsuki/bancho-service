@@ -6,10 +6,8 @@ by Joel Rosdahl, licensed under the GNU GPL 2 License.
 Most of the reference code from miniircd was used for the low-level logic.
 The high-level code has been rewritten to make it compatible with bancho-service.
 """
-
 # NOTE(2023-08-10): this is currently deprecated within akatsuki and is not functional
 # here because we may use it in the future - perhaps for deletion eventually.
-
 from __future__ import annotations
 
 import hashlib
@@ -19,8 +17,6 @@ import socket
 import sys
 import time
 import traceback
-
-import raven
 
 import settings
 from common.log import logUtils as log

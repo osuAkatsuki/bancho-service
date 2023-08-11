@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from objects import glob
 from objects import osuToken
 from objects import stream
-
-if TYPE_CHECKING:
-    from typing import Optional
 
 
 def make_key() -> str:

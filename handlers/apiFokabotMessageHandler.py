@@ -10,7 +10,6 @@ import settings
 from common.web import requestsManager
 from constants import exceptions
 from helpers import chatHelper
-from objects import glob
 from objects import tokenList
 
 

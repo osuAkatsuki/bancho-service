@@ -4,16 +4,12 @@ from time import time
 from typing import Optional
 
 from common.constants import mods
-from common.log import logUtils as log
 from constants import matchModModes
 from constants import matchScoringTypes
 from constants import matchTeamTypes
 from constants import serverPackets
-from helpers import chatHelper as chat
 from objects import channelList
-from objects import glob
 from objects import match
-from objects import osuToken
 from objects import slot
 from objects import streamList
 from objects import tokenList
