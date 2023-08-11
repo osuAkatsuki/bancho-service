@@ -206,33 +206,36 @@ if __name__ == "__main__":
             ).start()
 
 
-        # we only want to run these jobs a single time
-        # throughout all of our instances of bancho-service
-        # TODO:FIXME there is an assumption made here that all
-        # instances will be run as processes on the same machine.
-        raw_result = glob.redis.get("bancho:background_jobs_pid")
+        # We only wish to run the service's background jobs and redis pubsubs
+        # on a single instance of bancho-service. Ideally, these should likely
+        # be split into processes of their own (multiple app components within
+        # the service), but for now we'll just run them all in the same process.
+        # TODO:FIXME there is additionally an assumption made here that all
+        # bancho-service instances will be run as processes on the same machine.
+        raw_result = glob.redis.get("bancho:primary_instance_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
             log("Starting background loops.", Ansi.LMAGENTA)
-            glob.redis.set("bancho:background_jobs_pid", os.getpid())
+            glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
             tokenList.usersTimeoutCheckLoop()
             tokenList.spamProtectionResetLoop()
-        # Connect to pubsub channels
-        pubSub.listener(
-            glob.redis,
-            {
-                "peppy:ban": banHandler.handler(),
-                "peppy:unban": unbanHandler.handler(),
-                "peppy:silence": updateSilenceHandler.handler(),
-                "peppy:disconnect": disconnectHandler.handler(),
-                "peppy:notification": notificationHandler.handler(),
-                "peppy:change_username": changeUsernameHandler.handler(),
-                "peppy:update_cached_stats": updateStatsHandler.handler(),
-                "peppy:wipe": wipeHandler.handler(),
-                "peppy:reload_settings": lambda x: x == b"reload"
-                and glob.banchoConf.reload(),
-            },
-        ).start()
+
+            # Connect to pubsub channels
+            pubSub.listener(
+                glob.redis,
+                {
+                    "peppy:ban": banHandler.handler(),
+                    "peppy:unban": unbanHandler.handler(),
+                    "peppy:silence": updateSilenceHandler.handler(),
+                    "peppy:disconnect": disconnectHandler.handler(),
+                    "peppy:notification": notificationHandler.handler(),
+                    "peppy:change_username": changeUsernameHandler.handler(),
+                    "peppy:update_cached_stats": updateStatsHandler.handler(),
+                    "peppy:wipe": wipeHandler.handler(),
+                    "peppy:reload_settings": lambda x: x == b"reload"
+                    and glob.banchoConf.reload(),
+                },
+            ).start()
 
         # Start tornado
         glob.application.listen(settings.APP_PORT)
