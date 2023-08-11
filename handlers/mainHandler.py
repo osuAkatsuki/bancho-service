@@ -164,7 +164,7 @@ class handler(requestsManager.asyncRequestHandler):
             responseTokenString, responseData = loginEvent.handle(self)
         else:
             userToken = None  # default value
-            redlock = None
+            token_processing_lock = None
             try:
                 # This is not the first packet, send response based on client's request
                 # Packet start position, used to read stacked packets
@@ -176,10 +176,10 @@ class handler(requestsManager.asyncRequestHandler):
                     raise exceptions.tokenNotFoundException()
 
                 # Token exists, get its object and lock it
-                redlock = redisLock(
+                token_processing_lock = redisLock(
                     f"{osuToken.make_key(userToken['token_id'])}:processing_lock",
                 )
-                redlock.acquire()
+                token_processing_lock.acquire()
 
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
@@ -224,8 +224,8 @@ class handler(requestsManager.asyncRequestHandler):
                     osuToken.updatePingTime(userToken["token_id"])
 
                     # Release processing lock
-                    if redlock is not None:
-                        redlock.release()
+                    if token_processing_lock is not None:
+                        token_processing_lock.release()
 
                     # Delete token if kicked
                     if userToken["kicked"]:

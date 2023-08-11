@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import threading
-from datetime import datetime as dt
 from multiprocessing.pool import ThreadPool
 
 import ddtrace
@@ -69,10 +68,10 @@ def make_app():
 ASCII_LOGO = "\n".join(
     [
         "      _/_/    _/                    _/                          _/        _/",
-        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/",
-        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/",
-        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/",
-        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/",
+        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/       ",
+        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/  ",
+        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/   ",
+        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/    ",
     ],
 )
 
@@ -145,8 +144,11 @@ if __name__ == "__main__":
         # groups may change during runtime.
         glob.groupPrivileges = {
             row["name"].lower(): row["privileges"]
-            for row in glob.db.fetchAll(
-                "SELECT name, privileges FROM privileges_groups",
+            for row in (
+                glob.db.fetchAll(
+                    "SELECT name, privileges FROM privileges_groups",
+                )
+                or []
             )
         }
 
@@ -204,7 +206,6 @@ if __name__ == "__main__":
             threading.Thread(
                 target=lambda: ircserver.main(port=settings.IRC_PORT),
             ).start()
-
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
