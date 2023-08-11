@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
+from amplitude import BaseEvent
+
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import exceptions
 from constants import serverPackets
 from helpers import countryHelper
+from objects import glob
 from objects import match
 from objects import matchList
 from objects import osuToken
 from objects.redisLock import redisLock
-
-from amplitude import BaseEvent
-from uuid import uuid4
-from objects import glob
 
 
 def handle(token: osuToken.Token, rawPacketData: bytes):
@@ -85,7 +86,7 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
                 ip=token["ip"],
                 country=countryHelper.getCountryLetters(token["country"]),
                 insert_id=insert_id,
-            )
+            ),
         )
 
     except exceptions.matchCreateError:

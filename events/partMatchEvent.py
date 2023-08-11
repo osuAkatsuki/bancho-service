@@ -1,10 +1,14 @@
 from __future__ import annotations
-from helpers import countryHelper
-from objects.osuToken import Token
-from objects import match, osuToken
-from amplitude import BaseEvent
+
 from uuid import uuid4
+
+from amplitude import BaseEvent
+
+from helpers import countryHelper
 from objects import glob
+from objects import match
+from objects import osuToken
+from objects.osuToken import Token
 
 
 def handle(userToken: Token, _=None):
@@ -53,5 +57,5 @@ def handle(userToken: Token, _=None):
             ip=userToken["ip"],
             country=countryHelper.getCountryLetters(userToken["country"]),
             insert_id=insert_id,
-        )
+        ),
     )

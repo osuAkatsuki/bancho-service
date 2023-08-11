@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime as dt
-from typing import Any
 from json import dumps
 from time import time
+from typing import Any
 
 from requests import post
 

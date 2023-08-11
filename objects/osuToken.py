@@ -1031,7 +1031,6 @@ def checkBanned(token_id: str) -> None:
         logoutEvent.handle(token, deleteToken=False)
 
 
-
 def setRestricted(token_id: str) -> None:
     """
     Set this token as restricted, send Aika message to user

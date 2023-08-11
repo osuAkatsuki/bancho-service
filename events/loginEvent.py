@@ -10,7 +10,9 @@ from traceback import format_exc
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from amplitude.event import BaseEvent, Identify, EventOptions
+from amplitude.event import BaseEvent
+from amplitude.event import EventOptions
+from amplitude.event import Identify
 from cmyui.logging import Ansi
 from cmyui.logging import log
 
@@ -476,7 +478,7 @@ def handle(
                 ip=requestIP,
                 country=countryLetters,
                 insert_id=insert_id,
-            )
+            ),
         )
 
         identify_obj = Identify()

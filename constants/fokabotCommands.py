@@ -8,12 +8,12 @@ import time  # me so lazy
 from typing import Any
 from typing import Callable
 from typing import Optional
+from uuid import uuid4
 
 import orjson
 import requests
-
-from uuid import uuid4
 from amplitude import BaseEvent
+
 import settings
 from common import generalUtils
 from common.constants import gameModes
@@ -2030,7 +2030,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                             "source": "bancho-service",
                         },
                         insert_id=insert_id,
-                    )
+                    ),
                 )
 
                 return False

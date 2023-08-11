@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
+from amplitude import BaseEvent
+
+from objects import glob
 from objects import match
 from objects.osuToken import Token
 from objects.redisLock import redisLock
-
-from objects import glob
-from amplitude import BaseEvent
-from uuid import uuid4
 
 
 def handle(userToken: Token, _):
@@ -56,5 +57,5 @@ def handle(userToken: Token, _):
                 "source": "bancho-service",
             },
             insert_id=insert_id,
-        )
+        ),
     )

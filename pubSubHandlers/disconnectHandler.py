@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from common.redis import generalPubSubHandler
-from objects import tokenList, osuToken
+from objects import osuToken
+from objects import tokenList
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):

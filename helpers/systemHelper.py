@@ -9,7 +9,8 @@ from os import name
 from signal import SIGKILL
 from threading import Timer
 from time import time
-from typing import NoReturn, Any
+from typing import Any
+from typing import NoReturn
 
 import psutil
 
@@ -17,8 +18,10 @@ from common.constants import bcolors
 from common.log import logUtils as log
 from constants import serverPackets
 from helpers import consoleHelper
+from objects import glob
+from objects import match
+from objects import osuToken
 from objects import streamList
-from objects import glob, match, osuToken
 
 
 def dispose() -> None:

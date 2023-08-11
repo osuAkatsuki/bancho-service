@@ -22,7 +22,12 @@ import settings
 from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
-from objects import glob, stream, streamList,channelList, tokenList, osuToken
+from objects import channelList
+from objects import glob
+from objects import osuToken
+from objects import stream
+from objects import streamList
+from objects import tokenList
 
 
 class Client:
@@ -420,7 +425,12 @@ class Client:
                 self.joinedChannels.append(channel_name)
 
                 # Let everyone in this channel know that we've joined
-                self.messageChannel(channel_name, f"{self.IRCUsername} JOIN", channel_name, True)
+                self.messageChannel(
+                    channel_name,
+                    f"{self.IRCUsername} JOIN",
+                    channel_name,
+                    True,
+                )
 
                 # Send channel description (topic)
                 channel = channelList.getChannel(channel_name)

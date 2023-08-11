@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from constants import clientPackets
 from constants import serverPackets
-from objects import glob, osuToken
+from objects import glob
+from objects import osuToken
 from objects.osuToken import Token
 
 

@@ -4,10 +4,11 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from amplitude import Amplitude, Config as AmplitudeConfig
-from common.ddog import datadogClient
+from amplitude import Amplitude
+from amplitude import Config as AmplitudeConfig
 
 import settings
+from common.ddog import datadogClient
 
 if TYPE_CHECKING:
     from redis import Redis

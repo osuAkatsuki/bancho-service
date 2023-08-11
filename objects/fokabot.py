@@ -42,6 +42,7 @@ def connect() -> None:
         for channel_name in channelList.getChannelNames():
             osuToken.joinChannel(token["token_id"], channel_name)
 
+
 def disconnect() -> None:
     with redisLock(f"bancho:locks:aika"):
         token = tokenList.getTokenFromUserID(999)

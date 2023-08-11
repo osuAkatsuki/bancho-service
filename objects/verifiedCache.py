@@ -1,13 +1,19 @@
-from objects import glob
+from __future__ import annotations
+
 from typing import Literal
+
+from objects import glob
+
 
 def make_key(user_id: int) -> str:
     return f"bancho:verifications:{user_id}"
+
 
 class VerificationStatus:
     NON_EXISTENT = -1
     NOT_VERIFIED = 0
     VERIFIED = 1
+
 
 def get(user_id: int) -> Literal[0, 1, -1]:
     raw_response = glob.redis.get(make_key(user_id))

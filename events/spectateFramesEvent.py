@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from common.log import logUtils as log
 from constants import serverPackets
-from objects import stream,streamList
+from objects import stream
+from objects import streamList
 from objects.osuToken import Token
 
 
