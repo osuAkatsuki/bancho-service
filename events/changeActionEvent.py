@@ -46,14 +46,18 @@ def handle(userToken: Token, rawPacketData: bytes):
         userToken["autopilot"] = autopilot_in_mods
         should_update_cached_stats = True
 
+
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-    if userToken["action_id"] in {actions.PLAYING, actions.MULTIPLAYING} or userToken[
-        "pp"
-    ] != userUtils.getPP(
+    user_pp = userUtils.getPP(
         userToken["user_id"],
         userToken["game_mode"],
         userToken["relax"],
         userToken["autopilot"],
+    )
+
+    if (
+        userToken["action_id"] in {actions.PLAYING, actions.MULTIPLAYING}
+        or userToken["pp"] != user_pp
     ):
         should_update_cached_stats = True
 
