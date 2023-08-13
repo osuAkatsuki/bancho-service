@@ -11,7 +11,6 @@ from common.log import logUtils as log
 from common.web import requestsManager
 from constants import exceptions
 from helpers import systemHelper
-from objects import glob
 
 
 class handler(requestsManager.asyncRequestHandler):

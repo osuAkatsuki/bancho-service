@@ -5,7 +5,7 @@ from common.constants import mods
 from common.ripple import userUtils
 from constants import clientPackets
 from constants import serverPackets
-from objects import glob,osuToken
+from objects import osuToken
 from objects.osuToken import Token
 
 
@@ -46,14 +46,16 @@ def handle(userToken: Token, rawPacketData: bytes):
         should_update_cached_stats = True
 
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-    if userToken["action_id"] in {
-        actions.PLAYING,
-        actions.MULTIPLAYING,
-    } or userToken["pp"] != userUtils.getPP(
+    user_pp = userUtils.getPP(
         userToken["user_id"],
         userToken["game_mode"],
         userToken["relax"],
         userToken["autopilot"],
+    )
+
+    if (
+        userToken["action_id"] in {actions.PLAYING, actions.MULTIPLAYING}
+        or userToken["pp"] != user_pp
     ):
         should_update_cached_stats = True
 
@@ -88,5 +90,11 @@ def handle(userToken: Token, rawPacketData: bytes):
         # Force our own packet
         force = spectator == userToken
 
-        osuToken.enqueue(spectator["token_id"], serverPackets.userPanel(userToken["user_id"], force))
-        osuToken.enqueue(spectator["token_id"], serverPackets.userStats(userToken["user_id"], force))
+        osuToken.enqueue(
+            spectator["token_id"],
+            serverPackets.userPanel(userToken["user_id"], force),
+        )
+        osuToken.enqueue(
+            spectator["token_id"],
+            serverPackets.userStats(userToken["user_id"], force),
+        )

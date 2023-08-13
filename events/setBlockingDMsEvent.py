@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from constants import clientPackets
-from objects.osuToken import Token
 from objects import osuToken
+from objects.osuToken import Token
 
 
 def handle(userToken: Token, rawPacketData: bytes):

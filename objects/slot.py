@@ -1,15 +1,21 @@
-from constants import slotStatuses, matchTeams
-from typing import Optional,Union,Literal
-import json
+from __future__ import annotations
 
-from objects import glob
+import json
+from typing import Literal
+from typing import Optional
 from typing import TypedDict
+from typing import Union
+
+from constants import matchTeams
+from constants import slotStatuses
+from objects import glob
+
 
 class Slot(TypedDict):
-    status: int # slotStatuses.FREE
-    team: int # matchTeams.NO_TEAM
-    user_id: int # -1 # TODO: why -1 instead of None
-    user_token: Optional[str] # string of osutoken
+    status: int  # slotStatuses.FREE
+    team: int  # matchTeams.NO_TEAM
+    user_id: int  # -1 # TODO: why -1 instead of None
+    user_token: Optional[str]  # string of osutoken
     mods: int
     loaded: bool
     skip: bool
@@ -19,7 +25,7 @@ class Slot(TypedDict):
     passed: bool
 
 
-def make_key(match_id: int, slot_id: Union[int, Literal['*']]) -> str:
+def make_key(match_id: int, slot_id: Union[int, Literal["*"]]) -> str:
     return f"bancho:matches:{match_id}:slots:{slot_id}"
 
 
@@ -107,6 +113,7 @@ def update_slot(
 def delete_slot(match_id: int, slot_id: int) -> None:
     # TODO: should we throw error when no slot exists?
     glob.redis.delete(make_key(match_id, slot_id))
+
 
 def delete_slots(match_id: int) -> None:
     # TODO: should we throw error when no slots exist?

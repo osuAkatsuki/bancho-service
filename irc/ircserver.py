@@ -6,6 +6,8 @@ by Joel Rosdahl, licensed under the GNU GPL 2 License.
 Most of the reference code from miniircd was used for the low-level logic.
 The high-level code has been rewritten to make it compatible with bancho-service.
 """
+# NOTE(2023-08-10): this is currently deprecated within akatsuki and is not functional
+# here because we may use it in the future - perhaps for deletion eventually.
 from __future__ import annotations
 
 import hashlib
@@ -16,13 +18,16 @@ import sys
 import time
 import traceback
 
-import raven
-
 import settings
 from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
-from objects import glob, stream, streamList,channelList, tokenList, osuToken
+from objects import channelList
+from objects import glob
+from objects import osuToken
+from objects import stream
+from objects import streamList
+from objects import tokenList
 
 
 class Client:
@@ -420,7 +425,12 @@ class Client:
                 self.joinedChannels.append(channel_name)
 
                 # Let everyone in this channel know that we've joined
-                self.messageChannel(channel_name, f"{self.IRCUsername} JOIN", channel_name, True)
+                self.messageChannel(
+                    channel_name,
+                    f"{self.IRCUsername} JOIN",
+                    channel_name,
+                    includeSelf=True,
+                )
 
                 # Send channel description (topic)
                 channel = channelList.getChannel(channel_name)

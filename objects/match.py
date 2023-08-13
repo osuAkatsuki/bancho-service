@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 from typing import Optional
+from typing import TypedDict
 
 from common.log import logUtils as log
 from constants import dataTypes
@@ -12,10 +13,14 @@ from constants import matchTeamTypes
 from constants import serverPackets
 from constants import slotStatuses
 from helpers import chatHelper as chat
+from objects import channelList
 from objects import glob
-from objects import streamList, osuToken
-from objects import channelList, tokenList, slot, match, matchList
-from typing import TypedDict
+from objects import match
+from objects import matchList
+from objects import osuToken
+from objects import slot
+from objects import streamList
+from objects import tokenList
 
 # (set) bancho:matches
 # (json obj) bancho:matches:{match_id}
@@ -777,7 +782,7 @@ def userJoin(match_id: int, token_id: str) -> bool:
             return True
 
     if osuToken.is_staff(
-        token["privileges"]
+        token["privileges"],
     ):  # Allow mods+ to join into locked but empty slots.
         for slot_id, _slot in enumerate(slots):
             if _slot["status"] == slotStatuses.LOCKED and _slot["user_id"] == -1:
@@ -1377,7 +1382,7 @@ def get_referees(match_id: int) -> set[int]:
     assert multiplayer_match is not None
 
     raw_referees: set[bytes] = glob.redis.smembers(
-        f"bancho:matches:{match_id}:referees"
+        f"bancho:matches:{match_id}:referees",
     )
     referees = {int(referee) for referee in raw_referees}
 

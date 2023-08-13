@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
+from amplitude import BaseEvent
+
 from constants import clientPackets
 from helpers import chatHelper as chat
-from objects.osuToken import Token
-
 from objects import glob
-from amplitude import BaseEvent
-from uuid import uuid4
+from objects.osuToken import Token
 
 
 def handle(userToken: Token, rawPacketData: bytes):  # Channel join packet
@@ -24,5 +25,5 @@ def handle(userToken: Token, rawPacketData: bytes):  # Channel join packet
                 "source": "bancho-service",
             },
             insert_id=insert_id,
-        )
+        ),
     )

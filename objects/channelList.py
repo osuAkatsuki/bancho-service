@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-from cmyui.logging import Ansi
-from cmyui.logging import log
-
+import json
+import logging
 from typing import Optional
 from typing import TypedDict
 
-from constants import exceptions, serverPackets
+from cmyui.logging import Ansi
+from cmyui.logging import log
+
+from constants import exceptions
+from constants import serverPackets
 from helpers import chatHelper as chat
-import json
-from objects import glob, match
-from objects import stream, streamList, osuToken, tokenList
-import logging
+from objects import glob
+from objects import match
+from objects import osuToken
+from objects import stream
+from objects import streamList
+from objects import tokenList
 
 # bancho:channels
 # bancho:channels:{channel_name}
@@ -123,7 +128,7 @@ def addChannel(
                 "public_write": public_write,
                 "instance": instance,
                 "moderated": moderated,
-            }
+            },
         ),
     )
     # Make Foka join the channel

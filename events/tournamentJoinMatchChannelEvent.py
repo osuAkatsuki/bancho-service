@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from constants import clientPackets
 from helpers import chatHelper as chat
-from objects import match, osuToken
+from objects import match
+from objects import osuToken
 from objects.osuToken import Token
 
 
 def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentJoinMatchChannel(rawPacketData)
-    if packetData["matchID"] not in match.get_match_ids() or not userToken["tournament"]:
+    if (
+        packetData["matchID"] not in match.get_match_ids()
+        or not userToken["tournament"]
+    ):
         return
 
     osuToken.update_token(

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from uuid import uuid4
+from amplitude import EventOptions
+from amplitude import Identify
 
 from common.constants import actions
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob, tokenList, osuToken
-
-from amplitude import BaseEvent, Identify, EventOptions
+from objects import glob
+from objects import osuToken
+from objects import tokenList
 
 
 def handleUsernameChange(userID: int, newUsername: str, targetToken=None):

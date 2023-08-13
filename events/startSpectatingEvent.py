@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
+from amplitude import BaseEvent
+
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import exceptions
-from objects.osuToken import Token
-from objects import osuToken, tokenList
-
-from amplitude import BaseEvent
 from objects import glob
-from uuid import uuid4
+from objects import osuToken
+from objects import tokenList
+from objects.osuToken import Token
 
 
 def handle(userToken: Token, rawPacketData: bytes):
@@ -43,7 +45,7 @@ def handle(userToken: Token, rawPacketData: bytes):
                     "source": "bancho-service",
                 },
                 insert_id=insert_id,
-            )
+            ),
         )
 
     except exceptions.tokenNotFoundException:

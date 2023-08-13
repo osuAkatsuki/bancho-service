@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
-from objects import glob
-from objects import tokenList
 from objects import osuToken
+from objects import tokenList
+
 
 class handler(generalPubSubHandler.generalPubSubHandler):
     def __init__(self):

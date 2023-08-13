@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from common import generalUtils
 from constants import serverPackets
+from objects import channelList
 from objects import glob
-from objects import streamList, channelList, stream
+from objects import stream
+from objects import streamList
 
 
 class banchoConfig:
@@ -51,7 +53,7 @@ class banchoConfig:
         if mainMenuIcon is None:
             self.config["menuIcon"] = ""
         else:
-            imageURL = mainMenuIcon['file_id']
+            imageURL = mainMenuIcon["file_id"]
             self.config["menuIcon"] = f"{imageURL}|{mainMenuIcon['url']}"
         self.config["loginNotification"] = glob.db.fetch(
             "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
@@ -85,5 +87,9 @@ class banchoConfig:
         for channel in channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
                 client_count = stream.getClientCount(f"chat/{channel['name']}")
-                packet_data = serverPackets.channelInfo(channel["name"], channel["description"], client_count)
+                packet_data = serverPackets.channelInfo(
+                    channel["name"],
+                    channel["description"],
+                    client_count,
+                )
                 streamList.broadcast("main", packet_data)

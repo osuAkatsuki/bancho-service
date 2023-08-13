@@ -5,7 +5,6 @@ from urllib.request import urlopen
 
 import settings
 from common.log import logUtils as log
-from objects import glob
 
 
 def getCountry(ip: str) -> str:

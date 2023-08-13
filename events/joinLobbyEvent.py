@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from constants import serverPackets
-from objects import match,osuToken
+from objects import match
+from objects import osuToken
 from objects.osuToken import Token
 
 

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
+from amplitude import BaseEvent
+
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
 from helpers import countryHelper
+from objects import glob
 from objects import match
 from objects import osuToken
 from objects.osuToken import Token
 from objects.redisLock import redisLock
-
-from amplitude import BaseEvent
-from uuid import uuid4
-from objects import glob
 
 
 def handle(userToken: Token, rawPacketData: bytes):
@@ -72,5 +73,5 @@ def handle(userToken: Token, rawPacketData: bytes):
             ip=userToken["ip"],
             country=countryHelper.getCountryLetters(userToken["country"]),
             insert_id=insert_id,
-        )
+        ),
     )

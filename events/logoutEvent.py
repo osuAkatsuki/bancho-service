@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import time
+from uuid import uuid4
 
 import orjson
+from amplitude import BaseEvent
 from cmyui.logging import Ansi
 from cmyui.logging import log
-from amplitude import BaseEvent
-from helpers import countryHelper
-from uuid import uuid4
 
 import settings
 from constants import serverPackets
 from helpers import chatHelper as chat
-from objects import glob, streamList, osuToken, tokenList
+from helpers import countryHelper
+from objects import glob
+from objects import osuToken
+from objects import streamList
+from objects import tokenList
 from objects.osuToken import Token
 
 
@@ -92,7 +95,7 @@ def handle(token: Token, _=None, deleteToken: bool = True):
             ip=token["ip"],
             country=countryHelper.getCountryLetters(token["country"]),
             insert_id=insert_id,
-        )
+        ),
     )
 
     # Console output

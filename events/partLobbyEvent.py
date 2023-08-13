@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from helpers import chatHelper as chat
-from objects.osuToken import Token
 from objects import osuToken
+from objects.osuToken import Token
 
 
 def handle(userToken: Token, _):

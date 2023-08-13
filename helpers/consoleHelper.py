@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from common.constants import bcolors
-from objects import glob
 
 
 def printNoNl(string: str) -> None:

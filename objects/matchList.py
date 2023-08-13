@@ -3,14 +3,16 @@ from __future__ import annotations
 from time import time
 from typing import Optional
 
-from common.log import logUtils as log
 from common.constants import mods
-from constants import serverPackets, matchScoringTypes, matchModModes, matchTeamTypes
-from objects import slot
-from objects import glob
+from constants import matchModModes
+from constants import matchScoringTypes
+from constants import matchTeamTypes
+from constants import serverPackets
+from objects import channelList
 from objects import match
-from objects import streamList, channelList, tokenList, osuToken
-from helpers import chatHelper as chat
+from objects import slot
+from objects import streamList
+from objects import tokenList
 
 
 def make_key() -> str:

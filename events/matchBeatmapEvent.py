@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from objects import match
-from objects import osuToken
 from objects.osuToken import Token
 from objects.redisLock import redisLock
 

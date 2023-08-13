@@ -9,7 +9,6 @@ import tornado.web
 from common.ripple import userUtils
 from common.web import requestsManager
 from constants import exceptions
-from objects import glob
 from objects import tokenList
 
 
