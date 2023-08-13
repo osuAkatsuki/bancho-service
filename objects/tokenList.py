@@ -275,7 +275,7 @@ def usersTimeoutCheckLoop() -> None:
                 and not token["irc"]
                 and not token["tournament"]
             ):
-                log.warning(f"{token['username']} timed out!!")
+                log.warning(f"{token['username']} timed out after a silence of {time.time() - token['ping_time']} seconds.")
 
                 try:
                     logoutEvent.handle(token, _=None)
