@@ -352,12 +352,12 @@ def sendMessage(
                 fokaMessage = None
 
                 # check for /np (rly bad lol)
-                npmsg = message.split(" ")[1:]
+                npmsg = " ".join(message.split(" ")[1:])
 
                 match = fokabot.NOW_PLAYING_RGX.match(npmsg)
 
                 if match is None:  # should always match?
-                    log.error(f"Error while parsing /np message: '{message[1:]}'")
+                    log.error(f"Error while parsing /np message: '{npmsg}'")
                     return "An error occurred while parsing /np message :/ - reported to devs"
 
                 mods_int = 0
