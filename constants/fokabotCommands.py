@@ -760,54 +760,37 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if chan.startswith("#"):
         return
 
-    if message[1] in ("playing", "watching", "editing"):
-        has_mods = True
-        index = 2
-    elif message[1] == "listening":
-        has_mods = False
-        index = 3
-    else:
-        return
+    match = fokabot.NOW_PLAYING_RGX.fullmatch(" ".join(message[1:]))
+    if match is None:
+        log.error(f"Error while parsing /np message: '{message[1:]}'")
+        return "An error occurred while parsing /np message :/ - reported to devs"
 
-    if not (beatmapURL := message[index][1:]).startswith("https://"):
-        return
+    mapping = {
+        "-Easy": mods.EASY,
+        "-NoFail": mods.NOFAIL,
+        "+Hidden": mods.HIDDEN,
+        "+HardRock": mods.HARDROCK,
+        "+Nightcore": mods.NIGHTCORE,
+        "+DoubleTime": mods.DOUBLETIME,
+        "-HalfTime": mods.HALFTIME,
+        "+Flashlight": mods.FLASHLIGHT,
+        "-SpunOut": mods.SPUNOUT,
+        "~Relax~": mods.RELAX,
+    }
 
-    _mods = 0
-
-    if has_mods:
-        mapping = {
-            "-Easy": mods.EASY,
-            "-NoFail": mods.NOFAIL,
-            "+Hidden": mods.HIDDEN,
-            "+HardRock": mods.HARDROCK,
-            "+Nightcore": mods.NIGHTCORE,
-            "+DoubleTime": mods.DOUBLETIME,
-            "-HalfTime": mods.HALFTIME,
-            "+Flashlight": mods.FLASHLIGHT,
-            "-SpunOut": mods.SPUNOUT,
-            "~Relax~": mods.RELAX,
-        }
-
-        message[-1] = message[-1].replace("\x01", "")
-
-        for i in message[index + 1 :]:
-            if i in mapping.keys():
-                _mods |= mapping[i]
-
-    match = fokabot.npRegex.match(beatmapURL)
-
-    if not match:
-        return "Failed to parse beatmap url - please report this to cmyui(#0425)!"
+    mods_int = 0
+    for _mods in match["mods"].split(" "):
+        mods_int |= mapping[_mods]
 
     # Get beatmap id from URL
-    beatmapID = int(match["id"])
+    beatmap_id = int(match["bid"])
 
     # Return tillerino message
     osuToken.update_token(
         token["token_id"],
         last_np={
-            "beatmap_id": beatmapID,
-            "mods": _mods,
+            "beatmap_id": beatmap_id,
+            "mods": mods_int,
             "accuracy": -1.0,
         },
     )
