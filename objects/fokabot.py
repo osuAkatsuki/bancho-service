@@ -24,6 +24,7 @@ NOW_PLAYING_RGX = re.compile(
     rf"\[https://osu\.(?:akatsuki\.pw|akatsuki\.gg|akatest\.space|ppy\.sh)/beatmapsets/"
     rf"(?P<sid>\d{{1,10}})#/?(?:osu|taiko|fruits|mania)?/(?P<bid>\d{{1,10}})/? .+\]"
     r"(?: <(?P<mode_vn>Taiko|CatchTheBeat|osu!mania)>)?"
+    # TODO: don't include the space at the start of mods
     r"(?P<mods>(?: (?:-|\+|~|\|)\w+(?:~|\|)?)+)?\x01$",
 )
 

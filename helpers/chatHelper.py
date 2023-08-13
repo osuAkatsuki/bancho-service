@@ -374,7 +374,7 @@ def sendMessage(
                         "-SpunOut": mods.SPUNOUT,
                         "~Relax~": mods.RELAX,
                     }
-                    for _mods in match["mods"].split(" "):
+                    for _mods in match["mods"][1:].split(" "):
                         mods_int |= mapping[_mods]
 
                 # Get beatmap id from URL
