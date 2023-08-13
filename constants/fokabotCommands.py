@@ -760,9 +760,11 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if chan.startswith("#"):
         return
 
-    match = fokabot.NOW_PLAYING_RGX.fullmatch(" ".join(message[1:]))
+    npmsg = " ".join(message[1:])
+
+    match = fokabot.NOW_PLAYING_RGX.fullmatch(npmsg)
     if match is None:
-        log.error(f"Error while parsing /np message: '{message[1:]}'")
+        log.error(f"Error while parsing /np message: '{npmsg}'")
         return "An error occurred while parsing /np message :/ - reported to devs"
 
 
