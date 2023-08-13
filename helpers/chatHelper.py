@@ -352,60 +352,32 @@ def sendMessage(
                 fokaMessage = None
 
                 # check for /np (rly bad lol)
-                npmsg = message.split(" ")[1:]
-                if npmsg[1] in ("playing", "watching", "editing"):
-                    has_mods = True
-                    index = 2
-                elif npmsg[1] == "listening":
-                    has_mods = False
-                    index = 3
-                else:
-                    index = None
+                npmsg = " ".join(message.split(" ")[2:])
 
-                if index is not None:
-                    if not (beatmap_url := npmsg[index][1:]).startswith("https://"):
-                        return
+                match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
 
-                    _mods = 0
+                if match is None:  # should always match?
+                    log.error(f"Error while parsing /np message (sendMessage): '{npmsg}'")
+                    return "An error occurred while parsing /np message :/ - reported to devs"
 
-                    if has_mods:
-                        mapping = {
-                            "-Easy": mods.EASY,
-                            "-NoFail": mods.NOFAIL,
-                            "+Hidden": mods.HIDDEN,
-                            "+HardRock": mods.HARDROCK,
-                            "+Nightcore": mods.NIGHTCORE,
-                            "+DoubleTime": mods.DOUBLETIME,
-                            "-HalfTime": mods.HALFTIME,
-                            "+Flashlight": mods.FLASHLIGHT,
-                            "-SpunOut": mods.SPUNOUT,
-                            "~Relax~": mods.RELAX,
-                        }
+                mods_int = 0
+                if match["mods"] is not None:
+                    for _mods in match["mods"][1:].split(" "):
+                        mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
 
-                        npmsg[-1] = npmsg[-1].replace("\x01", "")
+                # Get beatmap id from URL
+                beatmap_id = int(match["bid"])
 
-                        for i in npmsg[index + 1 :]:
-                            if i in mapping.keys():
-                                _mods |= mapping[i]
-
-                    match = fokabot.npRegex.match(beatmap_url)
-
-                    if match:  # should always match?
-                        # Get beatmap id from URL
-                        beatmap_id = int(match["id"])
-
-                        # Return tillerino message
-                        userToken["last_np"] = {
-                            "beatmap_id": beatmap_id,
-                            "mods": _mods,
-                            "accuracy": -1.0,
-                        }
-                        osuToken.update_token(
-                            token_id,
-                            last_np=userToken["last_np"],
-                        )
-                    else:
-                        log.error("failed to parse beatmap url? (chatHelper)")
+                # Return tillerino message
+                userToken = osuToken.update_token(
+                    token_id,
+                    last_np={
+                        "beatmap_id": beatmap_id,
+                        "mods": mods_int,
+                        "accuracy": -1.0,
+                    },
+                )
+                assert userToken is not None
 
             msg_packet = serverPackets.sendMessage(
                 fro=userToken["username"],
