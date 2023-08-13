@@ -357,7 +357,7 @@ def sendMessage(
                 match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
-                    log.error(f"Error while parsing /np message: '{npmsg}'")
+                    log.error(f"Error while parsing /np message (sendMessage): '{npmsg}'")
                     return "An error occurred while parsing /np message :/ - reported to devs"
 
                 mods_int = 0
