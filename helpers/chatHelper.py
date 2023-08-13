@@ -352,7 +352,7 @@ def sendMessage(
                 fokaMessage = None
 
                 # check for /np (rly bad lol)
-                npmsg = " ".join(message.split(" ")[1:])
+                npmsg = " ".join(message.split(" ")[2:])
 
                 match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
 
