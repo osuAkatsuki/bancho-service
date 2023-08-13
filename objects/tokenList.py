@@ -82,6 +82,7 @@ def deleteToken(token_id: str) -> None:
 
     token = osuToken.get_token(token_id)
     if token is None:
+        log.warning("Token not found while attempting to delete it")
         return
 
     if token["ip"]:
