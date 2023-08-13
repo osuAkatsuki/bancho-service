@@ -360,22 +360,22 @@ def sendMessage(
                     log.error(f"Error while parsing /np message: '{message[1:]}'")
                     return "An error occurred while parsing /np message :/ - reported to devs"
 
-                mapping = {
-                    "-Easy": mods.EASY,
-                    "-NoFail": mods.NOFAIL,
-                    "+Hidden": mods.HIDDEN,
-                    "+HardRock": mods.HARDROCK,
-                    "+Nightcore": mods.NIGHTCORE,
-                    "+DoubleTime": mods.DOUBLETIME,
-                    "-HalfTime": mods.HALFTIME,
-                    "+Flashlight": mods.FLASHLIGHT,
-                    "-SpunOut": mods.SPUNOUT,
-                    "~Relax~": mods.RELAX,
-                }
-
                 mods_int = 0
-                for _mods in match["mods"].split(" "):
-                    mods_int |= mapping[_mods]
+                if match["mods"] is not None:
+                    mapping = {
+                        "-Easy": mods.EASY,
+                        "-NoFail": mods.NOFAIL,
+                        "+Hidden": mods.HIDDEN,
+                        "+HardRock": mods.HARDROCK,
+                        "+Nightcore": mods.NIGHTCORE,
+                        "+DoubleTime": mods.DOUBLETIME,
+                        "-HalfTime": mods.HALFTIME,
+                        "+Flashlight": mods.FLASHLIGHT,
+                        "-SpunOut": mods.SPUNOUT,
+                        "~Relax~": mods.RELAX,
+                    }
+                    for _mods in match["mods"].split(" "):
+                        mods_int |= mapping[_mods]
 
                 # Get beatmap id from URL
                 beatmap_id = int(match["bid"])
