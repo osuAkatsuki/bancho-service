@@ -354,7 +354,7 @@ def sendMessage(
                 # check for /np (rly bad lol)
                 npmsg = " ".join(message.split(" ")[1:])
 
-                match = fokabot.NOW_PLAYING_RGX.match(npmsg)
+                match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
                     log.error(f"Error while parsing /np message: '{npmsg}'")

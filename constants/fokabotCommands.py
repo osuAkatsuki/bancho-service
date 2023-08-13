@@ -762,7 +762,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     npmsg = " ".join(message[1:])
 
-    match = fokabot.NOW_PLAYING_RGX.fullmatch(npmsg)
+    match = fokabot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
         log.error(f"Error while parsing /np message: '{npmsg}'")
         return "An error occurred while parsing /np message :/ - reported to devs"
@@ -1202,7 +1202,7 @@ def report(fro: str, chan: str, message: list[str]) -> None:
     msg = ""
     try:  # TODO: Rate limit
         # Make sure the message matches the regex
-        if not (result := fokabot.reportRegex.search(" ".join(message))):
+        if not (result := fokabot.REPORT_REGEX.search(" ".join(message))):
             raise exceptions.invalidArgumentsException()
 
         # Get username, report reason and report info
@@ -1390,7 +1390,7 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     newUsername = " ".join(message)
     userID = userUtils.getID(fro)
 
-    if not fokabot.usernameRegex.match(newUsername) or (
+    if not fokabot.USERNAME_REGEX.match(newUsername) or (
         " " in newUsername and "_" in newUsername
     ):
         return "Invalid username."

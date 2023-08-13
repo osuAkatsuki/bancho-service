@@ -15,11 +15,11 @@ from objects import streamList
 from objects import tokenList
 from objects.redisLock import redisLock
 
-# Some common regexes, compiled to increase performance.
-reportRegex = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
-usernameRegex = re.compile(r"^[\w \[\]-]{2,15}$")
+REPORT_REGEX = re.compile(r"^(.+) \((.+)\)\:(?: )?(.+)?$")
 
-NOW_PLAYING_RGX = re.compile(
+USERNAME_REGEX = re.compile(r"^[\w \[\]-]{2,15}$")
+
+NOW_PLAYING_REGEX = re.compile(
     r"^(?P<action_type>playing|editing|watching|listening to) "
     rf"\[https://osu\.(?:akatsuki\.pw|akatsuki\.gg|akatest\.space|ppy\.sh)/beatmapsets/"
     rf"(?P<sid>\d{{1,10}})#/?(?:osu|taiko|fruits|mania)?/(?P<bid>\d{{1,10}})/? .+\]"
