@@ -362,20 +362,8 @@ def sendMessage(
 
                 mods_int = 0
                 if match["mods"] is not None:
-                    mapping = {
-                        "-Easy": mods.EASY,
-                        "-NoFail": mods.NOFAIL,
-                        "+Hidden": mods.HIDDEN,
-                        "+HardRock": mods.HARDROCK,
-                        "+Nightcore": mods.NIGHTCORE,
-                        "+DoubleTime": mods.DOUBLETIME,
-                        "-HalfTime": mods.HALFTIME,
-                        "+Flashlight": mods.FLASHLIGHT,
-                        "-SpunOut": mods.SPUNOUT,
-                        "~Relax~": mods.RELAX,
-                    }
                     for _mods in match["mods"][1:].split(" "):
-                        mods_int |= mapping[_mods]
+                        mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
 
                 # Get beatmap id from URL
                 beatmap_id = int(match["bid"])
