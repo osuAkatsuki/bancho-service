@@ -379,6 +379,8 @@ def delete_token(token_id: str) -> None:
     glob.redis.delete(f"{make_key(token_id)}:message_history")
     glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
 
+    glob.redis.delete(f"{make_key(token_id)}:packet_queue")
+    glob.redis.delete(f"{make_key(token_id)}:processing_lock")
 
 # joined channels
 
