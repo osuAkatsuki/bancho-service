@@ -1970,7 +1970,6 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 token = osuToken.get_token_by_user_id(userID)
                 assert token is not None
 
-                insert_id = str(uuid4())
                 glob.amplitude.track(
                     BaseEvent(
                         event_type="start_multiplayer_match",
@@ -2001,7 +2000,6 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                             },
                             "source": "bancho-service",
                         },
-                        insert_id=insert_id,
                     ),
                 )
 

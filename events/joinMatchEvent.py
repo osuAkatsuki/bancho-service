@@ -39,7 +39,6 @@ def handle(userToken: Token, rawPacketData: bytes):
         # Password is correct, join match
         osuToken.joinMatch(userToken["token_id"], matchID)
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="join_multiplayer_match",
@@ -72,6 +71,5 @@ def handle(userToken: Token, rawPacketData: bytes):
             location_lng=userToken["longitude"],
             ip=userToken["ip"],
             country=countryHelper.getCountryLetters(userToken["country"]),
-            insert_id=insert_id,
         ),
     )

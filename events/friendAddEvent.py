@@ -14,7 +14,6 @@ def handle(userToken: Token, rawPacketData: bytes):  # Friend add packet
     friend_user_id = clientPackets.addRemoveFriend(rawPacketData)["friendID"]
     userUtils.addFriend(userToken["user_id"], friend_user_id)
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="add_friend",
@@ -24,6 +23,5 @@ def handle(userToken: Token, rawPacketData: bytes):  # Friend add packet
                 "friend_user_id": friend_user_id,
                 "source": "bancho-service",
             },
-            insert_id=insert_id,
         ),
     )

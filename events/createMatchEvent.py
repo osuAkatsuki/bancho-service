@@ -52,7 +52,6 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
             match.sendUpdates(match_id)
             match.changePassword(match_id, packetData["matchPassword"])
 
-        insert_id = str(uuid4())
         glob.amplitude.track(
             BaseEvent(
                 event_type="create_multiplayer_match",
@@ -85,7 +84,6 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
                 location_lng=token["longitude"],
                 ip=token["ip"],
                 country=countryHelper.getCountryLetters(token["country"]),
-                insert_id=insert_id,
             ),
         )
 
