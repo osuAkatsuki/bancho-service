@@ -481,6 +481,26 @@ def handle(
             ),
         )
 
+        if firstLogin:
+            glob.amplitude.track(
+                BaseEvent(
+                    event_type="osu_verification",
+                    user_id=str(userID),
+                    device_id=userToken["amplitude_device_id"],
+                    event_properties={
+                        "username": userToken["username"],
+                        "privileges": userToken["privileges"],
+                        "login_time": userToken["login_time"],
+                        "source": "bancho-service",
+                    },
+                    location_lat=latitude,
+                    location_lng=longitude,
+                    ip=requestIP,
+                    country=countryLetters,
+                    insert_id=insert_id,
+                ),
+            )
+
         identify_obj = Identify()
         identify_obj.set("username", userToken["username"])
         identify_obj.set("location_lat", latitude)
