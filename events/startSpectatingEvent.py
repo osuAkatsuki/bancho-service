@@ -31,7 +31,6 @@ def handle(userToken: Token, rawPacketData: bytes):
         # Start spectating new user
         osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
 
-        insert_id = str(uuid4())
         glob.amplitude.track(
             BaseEvent(
                 event_type="start_spectating",
@@ -44,7 +43,6 @@ def handle(userToken: Token, rawPacketData: bytes):
                     "host_game_mode": targetToken["game_mode"],
                     "source": "bancho-service",
                 },
-                insert_id=insert_id,
             ),
         )
 

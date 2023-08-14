@@ -19,7 +19,6 @@ def handle(userToken: Token, rawPacketData: bytes):
         message=packetData["message"],
     )
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="osu_public_message",
@@ -30,6 +29,5 @@ def handle(userToken: Token, rawPacketData: bytes):
                 "message": packetData["message"],
                 "source": "bancho-service",
             },
-            insert_id=insert_id,
         ),
     )

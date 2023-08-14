@@ -78,7 +78,6 @@ def handle(token: Token, _=None, deleteToken: bool = True):
         60 * 60,
     )  # expire in 1 hour (60 minutes)
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="osu_logout",
@@ -94,7 +93,6 @@ def handle(token: Token, _=None, deleteToken: bool = True):
             location_lng=token["longitude"],
             ip=token["ip"],
             country=countryHelper.getCountryLetters(token["country"]),
-            insert_id=insert_id,
         ),
     )
 

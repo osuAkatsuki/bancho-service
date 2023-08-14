@@ -461,7 +461,6 @@ def handle(
         if not osuToken.is_restricted(userToken["privileges"]):
             streamList.broadcast("main", serverPackets.userPanel(userID))
 
-        insert_id = str(uuid4())
         glob.amplitude.track(
             BaseEvent(
                 event_type="osu_login",
@@ -477,7 +476,6 @@ def handle(
                 location_lng=longitude,
                 ip=requestIP,
                 country=countryLetters,
-                insert_id=insert_id,
             ),
         )
 
@@ -497,7 +495,6 @@ def handle(
                     location_lng=longitude,
                     ip=requestIP,
                     country=countryLetters,
-                    insert_id=insert_id,
                 ),
             )
 

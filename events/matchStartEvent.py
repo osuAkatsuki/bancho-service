@@ -27,7 +27,6 @@ def handle(userToken: Token, _):
 
         match.start(multiplayer_match["match_id"])
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="start_multiplayer_match",
@@ -56,6 +55,5 @@ def handle(userToken: Token, _):
                 },
                 "source": "bancho-service",
             },
-            insert_id=insert_id,
         ),
     )

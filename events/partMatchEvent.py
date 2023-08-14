@@ -23,7 +23,6 @@ def handle(userToken: Token, _=None):
 
     osuToken.leaveMatch(userToken["token_id"])
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="leave_multiplayer_match",
@@ -56,6 +55,5 @@ def handle(userToken: Token, _=None):
             location_lng=userToken["longitude"],
             ip=userToken["ip"],
             country=countryHelper.getCountryLetters(userToken["country"]),
-            insert_id=insert_id,
         ),
     )

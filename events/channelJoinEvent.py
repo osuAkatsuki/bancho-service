@@ -14,7 +14,6 @@ def handle(userToken: Token, rawPacketData: bytes):  # Channel join packet
     channel_name = clientPackets.channelJoin(rawPacketData)["channel"]
     chat.joinChannel(token_id=userToken["token_id"], channel_name=channel_name)
 
-    insert_id = str(uuid4())
     glob.amplitude.track(
         BaseEvent(
             event_type="osu_channel_join",
@@ -24,6 +23,5 @@ def handle(userToken: Token, rawPacketData: bytes):  # Channel join packet
                 "channel_name": channel_name,
                 "source": "bancho-service",
             },
-            insert_id=insert_id,
         ),
     )

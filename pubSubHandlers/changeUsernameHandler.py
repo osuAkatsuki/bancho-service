@@ -28,7 +28,6 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
 
         # XXX: disabled this 2023-07-28 as it seems strange - this is not necessarily
         # an action triggered by the user themselves; feels weird to attribute it to them
-        # insert_id = str(uuid4())
         # glob.amplitude.track(
         #     BaseEvent(
         #         event_type="username_change",
@@ -38,7 +37,6 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
         #             "new_username": newUsername,
         #             "source": "bancho-service",
         #         },
-        #         insert_id=insert_id,
         #     )
         # )
 

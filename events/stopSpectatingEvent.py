@@ -23,7 +23,6 @@ def handle(userToken: osuToken.Token, _=None):
 
         osuToken.stopSpectating(userToken["token_id"])
 
-        insert_id = str(uuid4())
         glob.amplitude.track(
             BaseEvent(
                 event_type="stop_spectating",
@@ -36,7 +35,6 @@ def handle(userToken: osuToken.Token, _=None):
                     "host_game_mode": targetToken["game_mode"],
                     "source": "bancho-service",
                 },
-                insert_id=insert_id,
             ),
         )
 
