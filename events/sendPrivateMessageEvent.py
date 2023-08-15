@@ -17,9 +17,6 @@ def handle(userToken: Token, rawPacketData):
         message=packetData["message"],
     )
 
-
-
-
     glob.amplitude.track(
         BaseEvent(
             event_type="osu_private_message",
