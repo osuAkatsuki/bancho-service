@@ -8,7 +8,6 @@ import time  # me so lazy
 from typing import Any
 from typing import Callable
 from typing import Optional
-from uuid import uuid4
 
 import orjson
 import requests
