@@ -8,7 +8,6 @@ from datetime import timedelta as td
 from sys import exc_info
 from traceback import format_exc
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
