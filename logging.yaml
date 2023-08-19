@@ -1,0 +1,23 @@
+version: 1
+disable_existing_loggers: false
+loggers:
+  app_logger:
+    level: DEBUG
+    handlers: [logzio]
+    propagate: true
+handlers:
+  logzio:
+    class: logzio.handlers.LogzioHandler
+    level: INFO
+    formatter: logzioFormat
+    token: <token>
+    logzio_type: python
+    logs_drain_timeout: 5
+    url: https://listener.logz.io:8071
+    retries_no: 4
+    retry_timeout: 2
+    add_context: true
+formatters:
+  logzioFormat:
+    format: \'{"additional_field": "value"}\'
+    validate: false

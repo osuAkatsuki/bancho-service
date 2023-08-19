@@ -12,12 +12,9 @@ import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-from cmyui.logging import Ansi
-from cmyui.logging import log
-from cmyui.logging import printc
 
+from common.log import logger
 import settings
-from common.constants import bcolors
 from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
@@ -65,35 +62,17 @@ def make_app():
     )
 
 
-ASCII_LOGO = "\n".join(
-    [
-        "      _/_/    _/                    _/                          _/        _/",
-        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/       ",
-        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/  ",
-        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/   ",
-        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/    ",
-    ],
-)
-
 if __name__ == "__main__":
     try:
-        # Server start
-        printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to Akatsuki's bancho-service", Ansi.LGREEN)
-        log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
-        log(
-            f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/bancho-service",
-            Ansi.LGREEN,
-        )
-        log("Press CTRL+C to exit\n", Ansi.LGREEN)
-
         # TODO: do we need this anymore now with stateless design?
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
+        logger.configure_logging()
+
         # Connect to db
         try:
-            log("Connecting to SQL.", Ansi.LMAGENTA)
+            logger.info("Connecting to sql database")
             glob.db = dbConnector.db(
                 host=settings.DB_HOST,
                 username=settings.DB_USER,
@@ -101,13 +80,21 @@ if __name__ == "__main__":
                 database=settings.DB_NAME,
                 initialSize=settings.DB_WORKERS,
             )
-        except:
-            log(f"Error connecting to sql.", Ansi.LRED)
+        except Exception as exc:
+            logger.error(
+                "Failed to connect to sql database",
+                exc_info=exc,
+                extra={
+                    "host": settings.DB_HOST,
+                    "username": settings.DB_USER,
+                    "database": settings.DB_NAME,
+                },
+            )
             raise
 
         # Connect to redis
         try:
-            log("Connecting to redis.", Ansi.LMAGENTA)
+            logger.info("Connecting to redis")
             glob.redis = redis.Redis(
                 settings.REDIS_HOST,
                 settings.REDIS_PORT,
@@ -115,26 +102,38 @@ if __name__ == "__main__":
                 settings.REDIS_PASS,
             )
             glob.redis.ping()
-        except:
-            log(f"Error connecting to redis.", Ansi.LRED)
+        except Exception as exc:
+            logger.error(
+                "Failed to connect to redis",
+                exc_info=exc,
+                extra={
+                    "host": settings.REDIS_HOST,
+                    "port": settings.REDIS_PORT,
+                    "db": settings.REDIS_DB,
+                },
+            )
             raise
 
         # Load bancho_settings
         try:
+            logger.info("Loading bancho settings")
             glob.banchoConf = banchoConfig.banchoConfig()
-        except:
-            log(f"Error loading bancho settings.", Ansi.LMAGENTA)
+        except Exception as exc:
+            logger.error("Error loading bancho settings", exc_info=exc)
             raise
 
         # Create threads pool
         try:
+            logger.info(
+                "Creating threads pool",
+                extra={"num_threads": settings.APP_THREADS},
+            )
             glob.pool = ThreadPool(processes=settings.APP_THREADS)
-        except ValueError:
-            log(f"Error creating threads pool.", Ansi.LRED)
-            consoleHelper.printError()
-            consoleHelper.printColored(
-                "[!] Error while creating threads pool. Please check your config.ini and run the server again",
-                bcolors.RED,
+        except Exception as exc:
+            logger.error(
+                "Error creating threads pool",
+                exc_info=exc,
+                extra={"threads": settings.APP_THREADS},
             )
             raise
 
@@ -142,38 +141,57 @@ if __name__ == "__main__":
         # TODO: this is an optimization because ripple previously
         # fetched this so frequently. this is not robust as privilege
         # groups may change during runtime.
-        glob.groupPrivileges = {
-            row["name"].lower(): row["privileges"]
-            for row in (
-                glob.db.fetchAll(
-                    "SELECT name, privileges FROM privileges_groups",
+        try:
+            logger.info("Caching privilege groups to memory")
+            glob.groupPrivileges = {
+                row["name"].lower(): row["privileges"]
+                for row in (
+                    glob.db.fetchAll(
+                        "SELECT name, privileges FROM privileges_groups",
+                    )
+                    or []
                 )
-                or []
-            )
-        }
+            }
+        except Exception as exc:
+            logger.error("Error caching privilege groups to memory", exc_info=exc)
+            raise
 
-        channelList.loadChannels()
+        try:
+            logger.info("Loading channels into redis")
+            channelList.loadChannels()
+        except Exception as exc:
+            logger.error("Error loading channels into redis", exc_info=exc)
+            raise
 
-        # Initialize stremas
-        streamList.add("main")
-        streamList.add("lobby")
+        try:
+            logger.info("Loading streams into redis")
+            streamList.add("main")
+            streamList.add("lobby")
+        except Exception as exc:
+            logger.error("Error loading streams into redis", exc_info=exc)
+            raise
 
-        log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
-        fokabot.connect()
+        try:
+            logger.info("Connecting the in-game bot - Aika")
+            fokabot.connect()
+        except Exception as exc:
+            logger.error("Error connecting the in-game bot - Aika", exc_info=exc)
+            raise
 
         if not settings.LOCALIZE_ENABLE:
-            log("User localization is disabled.", Ansi.LYELLOW)
+            logger.warning("User localization is disabled")
 
         if not settings.APP_GZIP:
-            log("Gzip compression is disabled.", Ansi.LYELLOW)
+            logger.warning("Gzip compression is disabled")
 
         if settings.DEBUG:
-            log("Server running in debug mode.", Ansi.LYELLOW)
+            logger.warning("Running in debug mode")
 
         glob.application = make_app()
 
         # set up datadog
         try:
+            logger.info("Initializing datadog client")
             if settings.DATADOG_ENABLE:
                 glob.dog = datadogClient.datadogClient(
                     apiKey=settings.DATADOG_API_KEY,
@@ -193,19 +211,30 @@ if __name__ == "__main__":
                         ),
                     ],
                 )
-        except:
-            log("Error creating datadog client.", Ansi.LRED)
+        except Exception as exc:
+            logger.error(
+                "Error initializing datadog client",
+                exc_info=exc,
+            )
             raise
 
         # start irc server if configured
         if settings.IRC_ENABLE:
-            log(
-                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
-                Ansi.LMAGENTA,
-            )
-            threading.Thread(
-                target=lambda: ircserver.main(port=settings.IRC_PORT),
-            ).start()
+            try:
+                logger.info(
+                    "Starting IRC server in a background thread",
+                    extra={"port": settings.IRC_PORT},
+                )
+                threading.Thread(
+                    target=lambda: ircserver.main(port=settings.IRC_PORT),
+                ).start()
+            except Exception as exc:
+                logger.error(
+                    "Error starting IRC server",
+                    exc_info=exc,
+                    extra={"port": settings.IRC_PORT},
+                )
+                raise
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
@@ -213,37 +242,44 @@ if __name__ == "__main__":
         # the service), but for now we'll just run them all in the same process.
         # TODO:FIXME there is additionally an assumption made here that all
         # bancho-service instances will be run as processes on the same machine.
-        raw_result = glob.redis.get("bancho:primary_instance_pid")
-        if raw_result is None or not psutil.pid_exists(int(raw_result)):
-            log("Starting background loops.", Ansi.LMAGENTA)
-            glob.redis.set("bancho:primary_instance_pid", os.getpid())
+        try:
+            raw_result = glob.redis.get("bancho:primary_instance_pid")
+            if raw_result is None or not psutil.pid_exists(int(raw_result)):
+                logger.info("Starting background loops")
+                glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
-            tokenList.usersTimeoutCheckLoop()
-            tokenList.spamProtectionResetLoop()
+                tokenList.usersTimeoutCheckLoop()
+                tokenList.spamProtectionResetLoop()
 
-            # Connect to pubsub channels
-            pubSub.listener(
-                glob.redis,
-                {
-                    "peppy:ban": banHandler.handler(),
-                    "peppy:unban": unbanHandler.handler(),
-                    "peppy:silence": updateSilenceHandler.handler(),
-                    "peppy:disconnect": disconnectHandler.handler(),
-                    "peppy:notification": notificationHandler.handler(),
-                    "peppy:change_username": changeUsernameHandler.handler(),
-                    "peppy:update_cached_stats": updateStatsHandler.handler(),
-                    "peppy:wipe": wipeHandler.handler(),
-                    "peppy:reload_settings": lambda x: x == b"reload"
-                    and glob.banchoConf.reload(),
-                },
-            ).start()
+                # Connect to pubsub channels
+                pubSub.listener(
+                    glob.redis,
+                    {
+                        "peppy:ban": banHandler.handler(),
+                        "peppy:unban": unbanHandler.handler(),
+                        "peppy:silence": updateSilenceHandler.handler(),
+                        "peppy:disconnect": disconnectHandler.handler(),
+                        "peppy:notification": notificationHandler.handler(),
+                        "peppy:change_username": changeUsernameHandler.handler(),
+                        "peppy:update_cached_stats": updateStatsHandler.handler(),
+                        "peppy:wipe": wipeHandler.handler(),
+                        "peppy:reload_settings": lambda x: x == b"reload"
+                        and glob.banchoConf.reload(),
+                    },
+                ).start()
+        except Exception as exc:
+            logger.error(
+                "Error starting background loops",
+                exc_info=exc,
+            )
+            raise
 
         # Start tornado
         glob.application.listen(settings.APP_PORT)
 
-        log(
-            f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
-            Ansi.LMAGENTA,
+        logger.info(
+            "Server listening for HTTP clients",
+            extra={"port": settings.APP_PORT},
         )
 
         tornado.ioloop.IOLoop.instance().start()
