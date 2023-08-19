@@ -13,10 +13,10 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 
-from common.log import logger
 import settings
 from common.db import dbConnector
 from common.ddog import datadogClient
+from common.log import logger
 from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
 from handlers import apiIsOnlineHandler
