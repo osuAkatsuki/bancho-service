@@ -354,7 +354,7 @@ class Client:
             # Make sure we are not connected to Bancho
             token = tokenList.getTokenFromUsername(
                 chat.fixUsernameForBancho(nick),
-                True,
+                ignoreIRC=True,
             )
             if token:
                 self.reply(f"433 * {nick} :Nickname is already in use")
