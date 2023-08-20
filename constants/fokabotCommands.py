@@ -773,7 +773,10 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     match = fokabot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
-        logger.error("Error parsing /np message", extra={"message": npmsg})
+        logger.error(
+            "Error parsing /np message",
+            extra={"chat_message": npmsg},
+        )
         return "An error occurred while parsing /np message :/ - reported to devs"
 
     mods_int = 0

@@ -390,7 +390,10 @@ def sendMessage(
                 match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
-                    logger.error("Error parsing /np message", extra={"message": npmsg})
+                    logger.error(
+                        "Error parsing /np message",
+                        extra={"chat_message": npmsg},
+                    )
                     return "An error occurred while parsing /np message :/ - reported to devs"
 
                 mods_int = 0
@@ -566,7 +569,7 @@ def sendMessage(
                     extra={
                         "sender": userToken["username"],
                         "recipeint": to,
-                        "message": message,
+                        "chat_message": message,
                     },
                 )
         else:
