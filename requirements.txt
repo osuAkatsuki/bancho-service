@@ -1,6 +1,5 @@
 amplitude-analytics
 bcrypt
-cmyui
 datadog
 dill
 logzio-python-handler[opentelemetry-logging]
