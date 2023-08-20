@@ -19,7 +19,8 @@ import time
 import traceback
 
 import settings
-from common.log import logUtils as log
+from common.log import logger
+from common.log import rap_logs
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import channelList
@@ -140,8 +141,14 @@ class Client:
         # Send error to client and close socket
         self.message(f"ERROR :{quitmsg}")
         self.socket.close()
-        log.info(
-            f"[IRC] Disconnected connection from {self.ip}:{self.port} ({quitmsg})",
+
+        logger.info(
+            "IRC client disconnected",
+            extra={
+                "ip": self.ip,
+                "port": self.port,
+                "quit_msg": quitmsg,
+            },
         )
 
         # Remove socket from server
@@ -160,7 +167,14 @@ class Client:
         try:
             # Try to read incoming data from socket
             data = self.socket.recv(2**10)
-            log.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
+            logger.debug(
+                "IRC client data received",
+                extra={
+                    "ip": self.ip,
+                    "port": self.port,
+                    "quit_msg": data,
+                },
+            )
             quitmsg = "EOT"
         except OSError as x:
             # Error while reading data, this client will be disconnected
@@ -225,7 +239,14 @@ class Client:
         """
         try:
             sent = self.socket.send(self.__writebuffer.encode())
-            log.debug(f"[IRC] [{self.ip}:{self.port}] <- {self.__writebuffer[:sent]}")
+            logger.debug(
+                "IRC client data transmitted",
+                extra={
+                    "ip": self.ip,
+                    "port": self.port,
+                    "quit_msg": self.__writebuffer[:sent],
+                },
+            )
             self.__writebuffer = self.__writebuffer[sent:]
         except OSError as x:
             self.disconnect(str(x))
@@ -702,8 +723,12 @@ class Server:
         serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             serversocket.bind(("0.0.0.0", self.port))
-        except OSError as e:
-            log.error(f"[IRC] Could not bind port {self.port}:{e}")
+        except OSError as exc:
+            logger.debug(
+                "IRC server could not bind port",
+                exc_info=exc,
+                extra={"port": self.port},
+            )
             sys.exit(1)
         serversocket.listen(5)
         lastAliveCheck = time.time()
@@ -730,8 +755,9 @@ class Server:
                         conn, addr = x.accept()
                         try:
                             self.clients[conn] = Client(self, conn)
-                            log.info(
-                                f"[IRC] Accepted connection from {addr[0]}:{addr[1]}",
+                            logger.info(
+                                "IRC connection accepted",
+                                extra={"host": addr[0], "port": addr[1]},
                             )
                         except OSError:
                             try:
@@ -750,12 +776,10 @@ class Server:
                     for client in list(self.clients.values()):
                         client.checkAlive()
                     lastAliveCheck = now
-            except:
-                log.error(
-                    "[IRC] Unknown error!\n```\n{}\n{}```".format(
-                        sys.exc_info(),
-                        traceback.format_exc(),
-                    ),
+            except Exception as exc:
+                logger.error(
+                    "Unknown error in IRC handling",
+                    exc_info=exc,
                 )
 
 

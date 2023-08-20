@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common.log import logUtils as log
+from common.log import logger
 from constants import exceptions
 from constants import serverPackets
 from objects import osuToken
@@ -23,5 +23,5 @@ def handle(token: Token, _):
         )
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        log.warning("Spectator can't spectate: token not found.")
+        logger.warning("Spectator can't spectate: token not found.")
         osuToken.stopSpectating(token["token_id"])

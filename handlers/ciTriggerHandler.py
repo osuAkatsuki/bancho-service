@@ -7,7 +7,7 @@ import tornado.gen
 import tornado.web
 
 import settings
-from common.log import logUtils as log
+from common.log import logger
 from common.web import requestsManager
 from constants import exceptions
 from helpers import systemHelper
@@ -29,7 +29,7 @@ class handler(requestsManager.asyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
-            log.info("Ci event triggered!!")
+            logger.info("Ci event triggered!!")
             systemHelper.scheduleShutdown(
                 5,
                 False,

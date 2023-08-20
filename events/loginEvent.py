@@ -12,13 +12,12 @@ from typing import TYPE_CHECKING
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
-from cmyui.logging import Ansi
-from cmyui.logging import log
 
 import settings
 from common import generalUtils
 from common.constants import privileges
-from common.log import logUtils
+from common.log import logger
+from common.log import rap_logs
 from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
@@ -119,7 +118,10 @@ def handle(
 
         # disallow clients older than 1 year
         if osuVersion < (dt.now() - td(365)):
-            log(f"Denied login from {osuVersionStr}.", Ansi.LYELLOW)
+            logger.warning(
+                "Denied osu! login",
+                extra={"osu_version": osuVersionStr},
+            )
             raise exceptions.haxException()
 
         """ No login errors! """
@@ -130,14 +132,17 @@ def handle(
         if pending_verification or not userUtils.hasVerifiedHardware(userID):
             if userUtils.verifyUser(userID, clientData):
                 # Valid account
-                log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
+                logger.info(
+                    "User verified their new account verified successfully",
+                    extra={"username": username, "user_id": userID},
+                )
                 verifiedCache.set(userID, True)
                 firstLogin = True
             else:
                 # Multiaccount detected
-                log(
-                    f"{username} ({userID}) tried to create another account.",
-                    Ansi.LRED,
+                logger.warning(
+                    f"User tried to create another account",
+                    extra={"username": username, "user_id": userID},
                 )
                 verifiedCache.set(userID, False)
                 shouldBan = True
@@ -189,10 +194,14 @@ def handle(
         responseTokenString = userToken["token_id"]
 
         # Console output
-        log(
-            f"{username} ({userID}) logged in. "
-            f"({len(osuToken.get_token_ids()) - 1} online)",
-            Ansi.CYAN,
+        logger.info(
+            f"User signed into the osu! server",
+            extra={
+                "username": username,
+                "user_id": userID,
+                "ip": requestIP,
+                "utc_offset": utc_offset,
+            },
         )
 
         # Check restricted mode (and eventually send message)
@@ -248,13 +257,13 @@ def handle(
                         ),
                     ),
                 )
-                logUtils.rap(
+                rap_logs.send_rap_log(
                     userID,
                     "has been automatically restricted due to a pending freeze.",
                 )
-                logUtils.ac(
-                    f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
-                    "ac_general",
+                rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
+                    discord_channel="ac_general",
                 )
 
         # Send message if premium / donor expires soon
@@ -291,11 +300,11 @@ def handle(
                     [userID],
                 )
 
-                logUtils.ac(
-                    f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
-                    "ac_confidential",
+                rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
+                    discord_channel="ac_confidential",
                 )
-                logUtils.rap(userID, f"{rolename} subscription expired.")
+                rap_logs.send_rap_log(userID, f"{rolename} subscription expired.")
 
                 osuToken.enqueue(
                     userToken["token_id"],
@@ -570,18 +579,29 @@ def handle(
         if not restricted and (
             v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
         ):
-            logUtils.ac(
-                f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
-                "ac_general",
+            rap_logs.send_rap_log_as_discord_webhook(
+                message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
+                discord_channel="ac_general",
             )
-    except:
-        log(f"Unknown error\n```\n{exc_info()}\n{format_exc()}```", Ansi.LRED)
+    except Exception as exc:
+        logger.error(
+            "An unhandled exception occurred while logging in",
+            exc_info=exc,
+        )
     finally:
         # Console and discord log
         if len(loginData) < 3:
-            logUtils.ac(
+            logger.warning(
+                "Invalid bancho login request",
+                extra={
+                    "reason": "insufficient_post_data",
+                    "ip": requestIP,
+                },
+            )
+            # TODO: re-add discord webhook
+            rap_logs.send_rap_log_as_discord_webhook(
                 f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
-                "ac_confidential",
+                discord_channel="ac_confidential",
             )
 
         # Return token string and data

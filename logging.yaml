@@ -7,7 +7,7 @@ loggers:
     propagate: true
 handlers:
   logzio:
-    class: logzio.handlers.LogzioHandler
+    class: logzio.handler.LogzioHandler
     level: INFO
     formatter: logzioFormat
     token: <token>
@@ -19,5 +19,5 @@ handlers:
     add_context: true
 formatters:
   logzioFormat:
-    format: \'{"additional_field": "value"}\'
+    format: '{"additional_field": "value"}'
     validate: false

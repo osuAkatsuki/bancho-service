@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Optional
 from typing import TypedDict
 
-from common.log import logUtils as log
+from common.log import logger
 from constants import dataTypes
 from constants import matchModModes
 from constants import matchTeams
@@ -1155,8 +1155,9 @@ def sendUpdates(match_id: int) -> None:
     if censored_data is not None:
         streamList.broadcast("lobby", censored_data)
     else:
-        log.error(
-            f"MPROOM{match_id}: Can't send match update packet, match data is None!!!",
+        logger.error(
+            f"Failed to send updates to a multiplayer match",
+            extra={"match_id": match_id},
         )
 
 
@@ -1190,7 +1191,10 @@ def checkTeams(match_id: int) -> bool:
             elif firstTeam != _slot["team"]:
                 return True
 
-    log.warning(f"MPROOM{match_id}: Invalid teams!")
+    logger.warning(
+        "Invalid teams detected for multiplayer match",
+        extra={"match_id": match_id},
+    )
     return False
 
 
@@ -1269,7 +1273,6 @@ def abort(match_id: int) -> None:
     assert multiplayer_match is not None
 
     if not multiplayer_match["is_in_progress"]:
-        log.warning(f"MPROOM{match_id}: Match is not in progress!")
         return
 
     multiplayer_match = update_match(match_id, is_in_progress=False, is_starting=False)

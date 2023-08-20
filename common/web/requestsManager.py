@@ -5,8 +5,9 @@ from typing import List
 import tornado.gen
 import tornado.web
 from tornado.ioloop import IOLoop
+from tornado.web import RequestHandler
 
-from common.log import logUtils as log
+from common.log import logger
 from objects import glob
 
 
@@ -97,6 +98,7 @@ def runBackground(data, callback):
     def _callback(result):
         IOLoop.instance().add_callback(lambda: callback(result))
 
+    assert glob.pool is not None, "Pool is not initialized"
     glob.pool.apply_async(func, args, kwargs, _callback)
     glob.dog.increment(glob.DATADOG_PREFIX + ".incoming_requests")
 
@@ -115,13 +117,7 @@ def checkArguments(arguments, requiredArguments):
     return True
 
 
-def printArguments(t):
-    """
-    Print passed arguments, for debug purposes
-
-    :param t: tornado object (self)
-    """
-    msg = "ARGS::"
-    for i in t.request.arguments:
-        msg += f"{i}={t.get_argument(i)}\r\n"
-    log.debug(msg)
+def printArguments(request: RequestHandler) -> None:
+    """Print passed arguments, for debug purposes"""
+    request_args = {k: request.get_argument(k) for k in request.request.arguments}
+    logger.debug("Parsed request arguments", extra={"arguments": request_args})

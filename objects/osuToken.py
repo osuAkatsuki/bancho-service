@@ -13,7 +13,7 @@ from common import channel_utils
 from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
-from common.log import logUtils as log
+from common.log import logger
 from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
@@ -243,6 +243,7 @@ class MissingType:
 from typing import Union
 
 MISSING = MissingType()
+
 
 # TODO: the things that can actually be Optional need to have different defaults
 def update_token(
@@ -861,7 +862,6 @@ def kick(
         return
 
     # Send packet to target
-    log.info(f"{token['username']} has been disconnected. ({reason})")
     if message:
         enqueue(token_id, serverPackets.notification(message))
 
@@ -869,6 +869,15 @@ def kick(
 
     # Logout event
     logoutEvent.handle(token, deleteToken=token["irc"])
+
+    logger.info(
+        "Invalidated a user's bancho session",
+        extra={
+            "username": token["username"],
+            "user_id": token["user_id"],
+            "reason": reason,
+        },
+    )
 
 
 def silence(
@@ -986,7 +995,7 @@ def updateCachedStats(token_id: str) -> None:
     )
 
     if not stats:
-        log.warning("Stats query returned None")
+        logger.warning("Stats query returned None")
         return
 
     update_token(

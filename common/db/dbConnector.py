@@ -7,7 +7,7 @@ from queue import Queue
 import MySQLdb.cursors
 
 import settings
-from common.log import logUtils as log
+from common.log import logger
 from objects import glob
 
 
@@ -27,7 +27,10 @@ class worker:
         """
         self.connection = connection
         self.temporary = temporary
-        log.debug(f"Created MySQL worker. Temporary: {self.temporary}")
+        logger.debug(
+            "Created MySQL worker",
+            extra={"temporary": self.temporary},
+        )
 
     def ping(self):
         """
@@ -121,7 +124,7 @@ class connectionsPool:
         glob.dog.increment(f"{glob.DATADOG_PREFIX}.mysql_pool.queries")
         glob.dog.gauge(f"{glob.DATADOG_PREFIX}.mysql_pool.size", self.pool.qsize())
         if level >= 50:
-            log.warning(
+            logger.warning(
                 "Too many failed connection attempts. No MySQL connection available.",
             )
             return None
@@ -129,7 +132,9 @@ class connectionsPool:
         try:
             if self.pool.empty():
                 # The pool is empty. Spawn a new temporary worker
-                log.warning("MySQL connections pool is empty. Using temporary worker.")
+                logger.warning(
+                    "MySQL connections pool is empty. Using temporary worker.",
+                )
                 worker = self.newWorker(True)
 
                 # Increment saturation
@@ -137,7 +142,7 @@ class connectionsPool:
 
                 # If the pool is usually empty, expand it
                 if self.consecutiveEmptyPool >= 10:
-                    log.warning(
+                    logger.warning(
                         "MySQL connections pool is empty. Filling connections pool.",
                     )
                     self.fillPool()
@@ -149,7 +154,7 @@ class connectionsPool:
         except MySQLdb.OperationalError:
             # Connection to server lost
             # Wait 1 second and try again
-            log.warning("Can't connect to MySQL database. Retrying in 1 second...")
+            logger.warning("Can't connect to MySQL database. Retrying in 1 second...")
             glob.dog.increment(f"{glob.DATADOG_PREFIX}.mysql_pool.failed_connections")
             time.sleep(1)
             return self.getWorker(level=level + 1)
@@ -222,7 +227,7 @@ class db:
             # Create cursor, execute query and commit
             cursor = worker.connection.cursor(MySQLdb.cursors.DictCursor)
             cursor.execute(query, params)
-            log.debug(query)
+            logger.debug("Executed mysql query", extra={"query": query})
             return cursor.lastrowid
         finally:
             # Close the cursor and release worker's lock
@@ -259,7 +264,7 @@ class db:
             # Create cursor, execute the query and fetch one/all result(s)
             cursor = worker.connection.cursor(MySQLdb.cursors.DictCursor)
             cursor.execute(query, params)
-            log.debug(query)
+            logger.debug("Executed mysql query", extra={"query": query})
             if _all:
                 return cursor.fetchall()
             else:

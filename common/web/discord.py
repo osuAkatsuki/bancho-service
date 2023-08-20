@@ -8,7 +8,7 @@ from typing import Any
 
 from requests import post
 
-from common.log import logUtils as log
+from common.log import logger
 
 
 class Webhook:
@@ -141,7 +141,13 @@ class Webhook:
             headers={"Content-Type": "application/json"},
         )
 
-        if not r or r.status_code == 400:
-            log.error(f"Failed to post discord webhook.")
+        if r.status_code not in range(200, 300):
+            logger.error(
+                "Failed to post discord webhook.",
+                extra={
+                    "status_code": r.status_code,
+                    "response": r.text,
+                },
+            )
         else:
-            log.info("Posted webhook to Discord.")
+            logger.info("Posted webhook to Discord.")

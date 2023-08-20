@@ -15,7 +15,7 @@ from typing import NoReturn
 import psutil
 
 from common.constants import bcolors
-from common.log import logUtils as log
+from common.log import logger
 from constants import serverPackets
 from helpers import consoleHelper
 from objects import glob
@@ -59,10 +59,13 @@ def scheduleShutdown(
     :return:
     """
     # Console output
-    log.info(
-        f"bancho-service will {'restart' if restart else 'shutdown'} in {sendRestartTime + delay} seconds!",
+    logger.info(
+        "Service shutdown scheduled",
+        extra={
+            "type": "restart" if restart else "shutdown",
+            "wait_time": sendRestartTime,
+        },
     )
-    log.info(f"Sending server restart packets in {sendRestartTime} seconds...")
 
     # Send notification if set
     if message:
@@ -87,7 +90,7 @@ def restartServer() -> NoReturn:
 
     :return:
     """
-    log.info("Restarting bancho-service...")
+    logger.info("Restarting service")
     dispose()
 
     # TODO: publish to redis to restart and update lets
@@ -100,7 +103,7 @@ def shutdownServer() -> NoReturn:  # type: ignore
 
     :return:
     """
-    log.info("Shutting down bancho-service...")
+    logger.info("Shutting down service")
     dispose()
     sig = SIGKILL  # if runningUnderUnix() else CTRL_C_EVENT
     kill(getpid(), sig)

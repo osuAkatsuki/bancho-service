@@ -18,7 +18,8 @@ from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-from common.log import logUtils as log
+from common.log import logger
+from common.log import rap_logs
 from common.ripple import scoreUtils
 from common.ripple import userUtils
 from common.web import discord
@@ -322,15 +323,15 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
     if targetToken := osuToken.get_token_by_user_id(targetID):
         osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
-    log.rap(userID, f"has banned {target} ({targetID}) for {reason}")
-    log.ac(
-        "\n\n".join(
+    rap_logs.send_rap_log(userID, f"has banned {target} ({targetID}) for {reason}")
+    rap_logs.send_rap_log_as_discord_webhook(
+        message="\n\n".join(
             [
                 f"{fro} has banned [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
             ],
         ),
-        "ac_general",
+        discord_channel="ac_general",
     )
 
     userUtils.appendNotes(targetID, f"{username} banned for: {reason}")
@@ -358,10 +359,10 @@ def unban(fro: str, chan: str, message: list[str]) -> str:
     # Set allowed to 1
     userUtils.unban(targetID)
 
-    log.rap(userID, f"has unbanned {target}")
-    log.ac(
-        f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
-        "ac_general",
+    rap_logs.send_rap_log(userID, f"has unbanned {target}")
+    rap_logs.send_rap_log_as_discord_webhook(
+        message=f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
+        discord_channel="ac_general",
     )
 
     userUtils.appendNotes(targetID, f"{fro} ({userID}) unbanned for: {reason}")
@@ -400,15 +401,15 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
     if targetToken := osuToken.get_token_by_user_id(targetID):
         osuToken.setRestricted(targetToken["token_id"])
 
-    log.rap(userID, f"has restricted {target} ({targetID}) for: {reason}")
-    log.ac(
-        "\n\n".join(
+    rap_logs.send_rap_log(userID, f"has restricted {target} ({targetID}) for: {reason}")
+    rap_logs.send_rap_log_as_discord_webhook(
+        message="\n\n".join(
             [
                 f"{fro} has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
             ],
         ),
-        "ac_general",
+        discord_channel="ac_general",
     )
 
     userUtils.appendNotes(targetID, f"{fro} ({userID}) restricted for: {reason}")
@@ -438,10 +439,10 @@ def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
     userUtils.unrestrict(targetID)
 
-    log.rap(userID, f"has unrestricted {target}")
-    log.ac(
-        f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
-        "ac_general",
+    rap_logs.send_rap_log(userID, f"has unrestricted {target}")
+    rap_logs.send_rap_log_as_discord_webhook(
+        message=f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
+        discord_channel="ac_general",
     )
 
     userUtils.appendNotes(targetID, f"{fro} ({userID}) unrestricted for: {reason}")
@@ -763,7 +764,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     match = fokabot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
-        log.error(f"Error while parsing /np message (tillerinoNp): '{npmsg}'")
+        logger.error("Error parsing /np message", extra={"message": npmsg})
         return "An error occurred while parsing /np message :/ - reported to devs"
 
     mods_int = 0
@@ -1243,7 +1244,10 @@ def report(fro: str, chan: str, message: list[str]) -> None:
         adminMsg = f"{fro} has reported {target} for {reason} ({additionalInfo})"
 
         # Log report to discord
-        log.warning(adminMsg, "ac_general")
+        rap_logs.send_rap_log_as_discord_webhook(
+            message=adminMsg,
+            discord_channel="ac_general",
+        )
     except exceptions.invalidUserException:
         msg = "This user is immune to reports. They are either an Akatsuki developer, or the bot."
     except exceptions.invalidArgumentsException:
@@ -1418,7 +1422,10 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         )
 
     userUtils.appendNotes(userID, f"Changed username: '{fro}' -> '{newUsername}'.")
-    log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
+    rap_logs.send_rap_log(
+        userID,
+        f"changed their name from '{fro}' to '{newUsername}'.",
+    )
     return f"Changed username to ({fro} -> {newUsername})."
 
 

@@ -8,7 +8,7 @@ from typing import overload
 
 import redis
 
-from common.log import logUtils as log
+from common.log import logger
 from common.ripple import userUtils
 from constants.exceptions import periodicLoopException
 from constants.exceptions import tokenNotFoundException
@@ -82,7 +82,10 @@ def deleteToken(token_id: str) -> None:
 
     token = osuToken.get_token(token_id)
     if token is None:
-        log.warning("Token not found while attempting to delete it")
+        logger.warning(
+            "Token not found while attempting to delete it",
+            extra={"token_id": token_id},
+        )
         return
 
     if token["ip"]:
@@ -264,7 +267,7 @@ def usersTimeoutCheckLoop() -> None:
     :return:
     """
     try:
-        log.debug("Checking timed out clients")
+        logger.debug("Checking timed out clients")
         exceptions: list[Exception] = []
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
@@ -276,18 +279,23 @@ def usersTimeoutCheckLoop() -> None:
                 and not token["irc"]
                 and not token["tournament"]
             ):
-                log.warning(
-                    f"{token['username']} timed out after a silence of {time.time() - token['ping_time']:.2f} seconds.",
+                logger.warning(
+                    f"Timing out inactive bancho session",
+                    extra={
+                        "username": token["username"],
+                        "seconds_inactive": time.time() - token["ping_time"],
+                    },
                 )
 
                 try:
                     logoutEvent.handle(token, _=None)
                 except tokenNotFoundException as e:
                     pass  # lol
-                except Exception as e:
-                    exceptions.append(e)
-                    log.error(
-                        "Something wrong happened while disconnecting a timed out client.",
+                except Exception as exc:
+                    exceptions.append(exc)
+                    logger.error(
+                        "An error occurred while disconnecting a timed out client",
+                        exc_info=exc,
                     )
 
         # Re-raise exceptions if needed
