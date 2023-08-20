@@ -610,9 +610,9 @@ def getPPMessage(userID: int, just_data: bool = False) -> Any:
             "Failed to retrieve PP from LESS API",
             exc_info=exc,
             extra={
-                "userID": userID,
-                "currentMap": currentMap,
-                "currentMods": currentMods,
+                "user_id": userID,
+                "beatmap_id": currentMap,
+                "mods": currentMods,
             },
         )
         return "Score server currently down, could not retrieve PP."
