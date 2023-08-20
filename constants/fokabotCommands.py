@@ -1658,9 +1658,7 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
 
     # Only allow the user to run it once / 10s.
     _time = int(time.time())
-    print(_time)
-    print(_time - 10)
-    print(ratelimit)
+
     if ratelimit > _time - 10:
         return f"This command can only be run every 10 seconds (Cooldown: {10 - (_time - ratelimit)}s)."
 
