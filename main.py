@@ -24,7 +24,6 @@ from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
 from handlers import ciTriggerHandler
 from handlers import mainHandler
-from helpers import consoleHelper
 from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig
