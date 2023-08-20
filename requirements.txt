@@ -2,7 +2,6 @@ amplitude-analytics
 bcrypt
 cmyui
 datadog
-ddtrace
 dill
 mysqlclient
 orjson
@@ -12,3 +11,4 @@ raven
 redis
 requests
 tornado<5.0.0
+logzio-python-handler[opentelemetry-logging]

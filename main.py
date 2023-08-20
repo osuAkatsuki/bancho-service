@@ -5,7 +5,6 @@ import os
 import threading
 from multiprocessing.pool import ThreadPool
 
-import ddtrace
 import psutil
 import redis
 import tornado.gen
@@ -44,8 +43,6 @@ from pubSubHandlers import unbanHandler
 from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
-
-ddtrace.patch_all()
 
 
 def make_app():
