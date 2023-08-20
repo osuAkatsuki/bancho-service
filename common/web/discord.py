@@ -123,7 +123,10 @@ class Webhook:
         empty = all(not d for d in data["embeds"])
 
         if empty and "content" not in data:
-            print("You cant post an empty payload.")
+            logger.error(
+                "Attempted to post an empty payload in a discord webhook",
+            )
+
         if empty:
             data["embeds"] = []
 

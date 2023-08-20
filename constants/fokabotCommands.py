@@ -601,11 +601,20 @@ def getPPMessage(userID: int, just_data: bool = False) -> Any:
     # Send request to LESS api
     try:
         resp = requests.get(
-            f"http://127.0.0.1:7000/api/v1/pp?b={currentMap}&m={currentMods}",
+            f"http://127.0.0.1:7000/api/v1/pp",
+            params={"b": currentMap, "m": currentMods},
             timeout=2,
         )
-    except Exception as e:
-        print(e)
+    except Exception as exc:
+        logger.error(
+            "Failed to retrieve PP from LESS API",
+            exc_info=exc,
+            extra={
+                "userID": userID,
+                "currentMap": currentMap,
+                "currentMods": currentMods,
+            },
+        )
         return "Score server currently down, could not retrieve PP."
 
     if not resp or resp.status_code != 200:
