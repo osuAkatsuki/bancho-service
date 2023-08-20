@@ -157,6 +157,13 @@ if __name__ == "__main__":
             raise
 
         try:
+            logger.info("Connecting the in-game bot - Aika")
+            fokabot.connect()
+        except Exception as exc:
+            logger.error("Error connecting the in-game bot - Aika", exc_info=exc)
+            raise
+
+        try:
             logger.info("Loading channels into redis")
             channelList.loadChannels()
         except Exception as exc:
@@ -169,13 +176,6 @@ if __name__ == "__main__":
             streamList.add("lobby")
         except Exception as exc:
             logger.error("Error loading streams into redis", exc_info=exc)
-            raise
-
-        try:
-            logger.info("Connecting the in-game bot - Aika")
-            fokabot.connect()
-        except Exception as exc:
-            logger.error("Error connecting the in-game bot - Aika", exc_info=exc)
             raise
 
         if not settings.LOCALIZE_ENABLE:
