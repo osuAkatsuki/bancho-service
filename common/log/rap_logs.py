@@ -17,8 +17,8 @@ THREAD_POOL = ThreadPoolExecutor(max_workers=4)
 
 ENDL = "\n" if name == "posix" else "\r\n"
 
-RETRY_INTERVAL = 1
-MAX_RETRIES = 3
+RETRY_INTERVAL = 8
+MAX_RETRIES = 10
 
 DISCORD_CHANNELS = {
     "ac_general": settings.WEBHOOK_AC_GENERAL,
