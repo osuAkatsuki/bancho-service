@@ -3,6 +3,7 @@ bcrypt
 cmyui
 datadog
 dill
+logzio-python-handler[opentelemetry-logging]
 mysqlclient
 orjson
 psutil
@@ -11,4 +12,3 @@ raven
 redis
 requests
 tornado<5.0.0
-logzio-python-handler[opentelemetry-logging]
