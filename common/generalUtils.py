@@ -16,7 +16,6 @@ from dill import dumps
 from common.constants import mods
 from common.constants import osuFlags as osu_flags
 from common.log import logger
-from common.log import rap_logs
 
 possible_chars = ascii_uppercase + digits
 

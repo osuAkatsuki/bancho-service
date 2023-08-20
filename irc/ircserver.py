@@ -16,11 +16,9 @@ import select
 import socket
 import sys
 import time
-import traceback
 
 import settings
 from common.log import logger
-from common.log import rap_logs
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import channelList
