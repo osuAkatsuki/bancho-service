@@ -76,9 +76,16 @@ def joinChannel(
             glob.ircServer.banchoJoinChannel(token["username"], channel_name)
 
         # Console output
-        # log.info(f"{token['username']} joined channel {channel}")
+        # logger.info(
+        #     "User joined public chat channel",
+        #     extra={
+        #         "username": token["username"],
+        #         "user_id": token["user_id"],
+        #         "channel_name": channel,
+        #     },
+        # )
 
-        # IRC code return
+        # Return IRC code
         return 0
     except exceptions.channelNoPermissionsException:
         assert token is not None
@@ -206,7 +213,14 @@ def partChannel(
             glob.ircServer.banchoPartChannel(token["username"], channel_name)
 
         # Console output
-        # log.info(f"{token.username} parted channel {channel_name} ({channelClient}).")
+        # logger.info(
+        #     "User left public chat channel",
+        #     extra={
+        #         "username": token["username"],
+        #         "user_id": token["user_id"],
+        #         "channel_name": channel,
+        #     },
+        # )
 
         # Return IRC code
         return 0
@@ -721,7 +735,7 @@ def IRCConnect(username: str) -> None:
         tokenList.addToken(user_id, irc=True)
 
     streamList.broadcast("main", serverPackets.userPanel(user_id))
-    logger.info(f"{username} logged in from IRC.")
+    logger.info("User logged into IRC", extra={"username": username})
 
 
 def IRCDisconnect(username: str) -> None:
@@ -741,7 +755,7 @@ def IRCDisconnect(username: str) -> None:
         return
 
     logoutEvent.handle(token)  # TODO
-    logger.info(f"{username} disconnected from IRC.")
+    logger.info("User logged out of IRC", extra={"username": username})
 
 
 def IRCJoinChannel(username: str, channel: str) -> Optional[int]:

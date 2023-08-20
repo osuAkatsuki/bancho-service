@@ -14,10 +14,8 @@ from typing import NoReturn
 
 import psutil
 
-from common.constants import bcolors
 from common.log import logger
 from constants import serverPackets
-from helpers import consoleHelper
 from objects import glob
 from objects import match
 from objects import osuToken
@@ -30,8 +28,7 @@ def dispose() -> None:
 
     :return:
     """
-    print("> Disposing server...")
-    consoleHelper.printColored("Goodbye!", bcolors.GREEN)
+    logger.info("Disposing server")
 
 
 def runningUnderUnix() -> bool:

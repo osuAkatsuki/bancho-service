@@ -8,7 +8,7 @@ import requests
 from requests import RequestException
 
 import settings
-from constants import exceptions
+from common.log import logger
 from objects import glob
 
 
@@ -52,8 +52,14 @@ def cheesegullRequest(
     mirror_url: str = settings.MIRROR_URL  # type: ignore
 
     request_url = f"{mirror_url}/{handler}"
-    print(f"making request to mirror {request_url}, {getParams}, {postData}")
-
+    logger.info(
+        "Making request to 3rd party mirror",
+        extra={
+            "url": request_url,
+            "params": getParams,
+            "data": postData,
+        },
+    )
     # make a network call to the mirror
     response = requests.request(
         requestType,
@@ -63,17 +69,24 @@ def cheesegullRequest(
         # headers={"Authorization": key},
     )
 
-    if response.status_code == 503:
-        print("mirror returned 503 service unavailable")
+    if response.status_code in range(500, 600):  # 5xx
+        logger.error(
+            "3rd party mirror returned mirror returned 5xx service code",
+            extra={
+                "url": request_url,
+                "params": getParams,
+                "data": postData,
+                "status_code": response.status_code,
+            },
+        )
 
         if handler == "search":
             return "-1\nBeatmap mirror service currently unavailable."
 
         return None
 
-    if (
-        "catboy.best" in mirror_url and getParams is not None and "raw" in getParams
-    ):  # ew?
+    # support mino's "raw" parameter
+    if "catboy.best" in mirror_url and getParams is not None and "raw" in getParams:
         return response.text
 
     if not response:
@@ -84,17 +97,29 @@ def cheesegullRequest(
     except (
         JSONDecodeError,
         KeyError,
-    ):
-        print("json decode err in cheesegull.py")
-        return response.text
-    except (
-        ValueError,
-        RequestException,
-        exceptions.noAPIDataError,
     ) as exc:
-        print(f"{exc} in cheesegull.py")
-        # import traceback
-        # traceback.print_exc()
+        logger.error(
+            "An exception occurred while decoding the response from the mirror",
+            exc_info=exc,
+            extra={
+                "url": request_url,
+                "params": getParams,
+                "data": postData,
+                "status_code": response.status_code,
+            },
+        )
+        return response.text
+    except (ValueError, RequestException) as exc:
+        logger.error(
+            "An exception occurred while making a request to the mirror",
+            exc_info=exc,
+            extra={
+                "url": request_url,
+                "params": getParams,
+                "data": postData,
+                "status_code": response.status_code,
+            },
+        )
         return None
 
     if not data:
