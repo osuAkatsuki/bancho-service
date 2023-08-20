@@ -4,12 +4,18 @@ import logging.config
 
 import yaml
 
+import settings
+
 LOGGER = logging.getLogger("app_logger")
 
 
 def configure_logging() -> None:
     with open("logging.yaml") as f:
         config = yaml.safe_load(f.read())
+
+        # inject the logz.io token from our configuration
+        config["handlers"]["logzio"]["token"] = settings.LOGZIO_TOKEN
+
         logging.config.dictConfig(config)
 
 
