@@ -2,7 +2,6 @@ amplitude-analytics
 bcrypt
 cmyui
 datadog
-ddtrace
 dill
 mysqlclient
 orjson
