@@ -227,7 +227,7 @@ if __name__ == "__main__":
                     "peppy:silence": updateSilenceHandler.handler(),
                     "peppy:disconnect": disconnectHandler.handler(),
                     "peppy:notification": notificationHandler.handler(),
-                    "peppy:username_changed": changeUsernameHandler.handler(),
+                    "peppy:change_username": changeUsernameHandler.handler(),
                     "peppy:update_cached_stats": updateStatsHandler.handler(),
                     "peppy:wipe": wipeHandler.handler(),
                     "peppy:reload_settings": lambda x: x == b"reload"
