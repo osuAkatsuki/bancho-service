@@ -5,7 +5,6 @@ import os
 import threading
 from multiprocessing.pool import ThreadPool
 
-import ddtrace
 import psutil
 import redis
 import tornado.gen
@@ -47,8 +46,6 @@ from pubSubHandlers import unbanHandler
 from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
-
-ddtrace.patch_all()
 
 
 def make_app():
@@ -230,7 +227,7 @@ if __name__ == "__main__":
                     "peppy:silence": updateSilenceHandler.handler(),
                     "peppy:disconnect": disconnectHandler.handler(),
                     "peppy:notification": notificationHandler.handler(),
-                    "peppy:change_username": changeUsernameHandler.handler(),
+                    "peppy:username_changed": changeUsernameHandler.handler(),
                     "peppy:update_cached_stats": updateStatsHandler.handler(),
                     "peppy:wipe": wipeHandler.handler(),
                     "peppy:reload_settings": lambda x: x == b"reload"
