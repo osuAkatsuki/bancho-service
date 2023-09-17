@@ -226,8 +226,9 @@ class handler(requestsManager.asyncRequestHandler):
                 ) + serverPackets.banchoRestart(0)
             finally:
                 if userToken is not None:
-                    # Packet handlers may have updated session information
-                    # Re-fetch it to ensure we have the latest state in-memory
+                    # Packet handlers may have updated session information, or may have
+                    # deleted the session (e.g. logout packet). Re-fetch it to ensure
+                    # we have the latest state in-memory
                     userToken = osuToken.get_token(requestTokenString)
                     if userToken is not None:
                         # Update ping time for timeout
