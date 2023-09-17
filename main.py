@@ -72,6 +72,25 @@ ASCII_LOGO = "\n".join(
     ],
 )
 
+# XXX: temporary for debugging purposes
+import sys
+import signal
+import traceback
+
+
+def signal_handler(signum, frame):
+    with open("stacktrace.txt", "w") as f:
+        for thread_id, stack in sys._current_frames().items():
+            print(f"Thread ID: {thread_id}", file=f)
+            traceback.print_stack(stack, file=f)
+            print("\n", file=f)
+
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.default_int_handler(signum, frame)
+
+
+signal.signal(signal.SIGINT, signal_handler)
+
 if __name__ == "__main__":
     try:
         # Server start
