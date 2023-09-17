@@ -14,6 +14,7 @@ from constants.exceptions import periodicLoopException
 from constants.exceptions import tokenNotFoundException
 from events import logoutEvent
 from objects import glob
+from objects.redisLock import redisLock
 from objects import osuToken
 
 # def __init__(self) -> None:
@@ -268,27 +269,34 @@ def usersTimeoutCheckLoop() -> None:
         exceptions: list[Exception] = []
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
-        for token in osuToken.get_tokens():
-            # Check timeout (fokabot is ignored)
-            if (
-                token["ping_time"] < timeoutLimit
-                and token["user_id"] != 999
-                and not token["irc"]
-                and not token["tournament"]
+        for token_id in osuToken.get_token_ids():
+            with redisLock(
+                f"{osuToken.make_key(token_id)}:processing_lock",
             ):
-                log.warning(
-                    f"{token['username']} timed out after a silence of {time.time() - token['ping_time']:.2f} seconds.",
-                )
+                token = osuToken.get_token(token_id)
+                if token is None:
+                    continue
 
-                try:
-                    logoutEvent.handle(token, _=None)
-                except tokenNotFoundException as e:
-                    pass  # lol
-                except Exception as e:
-                    exceptions.append(e)
-                    log.error(
-                        "Something wrong happened while disconnecting a timed out client.",
+                # Check timeout (fokabot is ignored)
+                if (
+                    token["ping_time"] < timeoutLimit
+                    and token["user_id"] != 999
+                    and not token["irc"]
+                    and not token["tournament"]
+                ):
+                    log.warning(
+                        f"{token['username']} timed out after a silence of {time.time() - token['ping_time']:.2f} seconds.",
                     )
+
+                    try:
+                        logoutEvent.handle(token, _=None)
+                    except tokenNotFoundException as e:
+                        pass  # lol
+                    except Exception as e:
+                        exceptions.append(e)
+                        log.error(
+                            "Something wrong happened while disconnecting a timed out client.",
+                        )
 
         # Re-raise exceptions if needed
         if exceptions:
@@ -309,10 +317,10 @@ def spamProtectionResetLoop() -> None:
     try:
         # Reset spamRate for every token
         for token_id in osuToken.get_token_ids():
-            osuToken.update_token(
-                token_id,
-                spam_rate=0,
-            )
+            with redisLock(
+                f"{osuToken.make_key(token_id)}:processing_lock",
+            ):
+                osuToken.update_token(token_id, spam_rate=0)
     finally:
         # Schedule a new check (endless loop)
         threading.Timer(10, spamProtectionResetLoop).start()
