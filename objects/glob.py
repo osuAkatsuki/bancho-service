@@ -11,6 +11,8 @@ import settings
 from common.ddog import datadogClient
 
 if TYPE_CHECKING:
+    from concurrent.futures import ThreadPoolExecutor
+
     from redis import Redis
     from common.db import dbConnector
     from objects.banchoConfig import banchoConfig
@@ -23,7 +25,7 @@ db: dbConnector.db
 redis: Redis
 banchoConf: banchoConfig
 dog = datadogClient.datadogClient()
-pool = None
+pool: ThreadPoolExecutor
 ircServer: IRCServer
 
 restarting = False

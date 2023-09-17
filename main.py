@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import threading
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor
 
 import psutil
 import redis
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
         # Create threads pool
         try:
-            glob.pool = ThreadPool(processes=settings.APP_THREADS)
+            glob.pool = ThreadPoolExecutor(max_workers=settings.APP_THREADS)
         except ValueError:
             log(f"Error creating threads pool.", Ansi.LRED)
             consoleHelper.printError()
