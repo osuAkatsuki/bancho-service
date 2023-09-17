@@ -167,8 +167,7 @@ class handler(requestsManager.asyncRequestHandler):
             except ValueError:
                 # Invalid token, ignore request
                 self.set_status(400)
-                self.add_header("Content-Type", "text/html; charset=UTF-8")
-                self.write(HTML_PAGE)
+                self.write(b"Invalid token")
                 return
 
             userToken = None  # default value
