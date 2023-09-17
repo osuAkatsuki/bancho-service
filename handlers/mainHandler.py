@@ -229,14 +229,13 @@ class handler(requestsManager.asyncRequestHandler):
                     # Packet handlers may have updated session information
                     # Re-fetch it to ensure we have the latest state in-memory
                     userToken = osuToken.get_token(requestTokenString)
-                    assert userToken is not None
+                    if userToken is not None:
+                        # Update ping time for timeout
+                        osuToken.updatePingTime(userToken["token_id"])
 
-                    # Update ping time for timeout
-                    osuToken.updatePingTime(userToken["token_id"])
-
-                    # Delete token if kicked
-                    if userToken["kicked"]:
-                        tokenList.deleteToken(userToken["token_id"])
+                        # Delete token if kicked
+                        if userToken["kicked"]:
+                            tokenList.deleteToken(userToken["token_id"])
 
                 # Release processing lock
                 if token_processing_lock is not None:
