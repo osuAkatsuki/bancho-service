@@ -76,10 +76,16 @@ ASCII_LOGO = "\n".join(
 import sys
 import signal
 import traceback
+from datetime import datetime
 
 
 def signal_handler(signum, frame):
-    with open(f"stacktrace-{settings.APP_PORT}.txt", "w") as f:
+    try:
+        os.mkdir("stacktraces")
+    except FileExistsError:
+        pass
+    filename = f"{settings.APP_PORT}-{datetime.now().isoformat()}.txt"
+    with open(f"stacktraces/{filename}", "w") as f:
         for thread_id, stack in sys._current_frames().items():
             print(f"Thread ID: {thread_id}", file=f)
             traceback.print_stack(stack, file=f)
