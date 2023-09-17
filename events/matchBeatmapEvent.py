@@ -10,12 +10,13 @@ def handle(userToken: Token, _, has_beatmap: bool):
     if userToken["match_id"] is None:
         return
 
-    # Make sure the match exists
-    multiplayer_match = match.get_match(userToken["match_id"])
-    if multiplayer_match is None:
-        return
 
     with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+        # Make sure the match exists
+        multiplayer_match = match.get_match(userToken["match_id"])
+        if multiplayer_match is None:
+            return
+
         # Set has beatmap/no beatmap
         match.userHasBeatmap(
             multiplayer_match["match_id"],

@@ -12,11 +12,12 @@ def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentMatchInfoRequest(rawPacketData)
 
     match_id = packetData["matchID"]
-    multiplayer_match = match.get_match(match_id)
-    if multiplayer_match is None or not userToken["tournament"]:
-        return
 
     with redisLock(f"{match.make_key(match_id)}:lock"):
+        multiplayer_match = match.get_match(match_id)
+        if multiplayer_match is None or not userToken["tournament"]:
+            return
+
         packet_data = serverPackets.updateMatch(match_id)
         if packet_data is None:
             # TODO: is this correct behaviour?

@@ -14,12 +14,12 @@ def handle(userToken: Token, rawPacketData: bytes):
     if match_id is None:
         return
 
-    # Make sure the match exists
-    multiplayer_match = match.get_match(match_id)
-    if multiplayer_match is None:
-        return
-
     with redisLock(f"{match.make_key(match_id)}:lock"):
+        # Make sure the match exists
+        multiplayer_match = match.get_match(match_id)
+        if multiplayer_match is None:
+            return
+
         # Host check
         if match_id != multiplayer_match["host_user_id"]:
             return

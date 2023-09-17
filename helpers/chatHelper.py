@@ -639,7 +639,7 @@ def IRCConnect(username: str) -> None:
         log.warning(f"{username} doesn't exist.")
         return
 
-    with redisLock(f"bancho:locks:tokens"):
+    with redisLock("bancho:locks:tokens"):
         tokenList.deleteOldTokens(user_id)
         tokenList.addToken(user_id, irc=True)
 
