@@ -97,7 +97,7 @@ def runBackground(
     :return:
     """
     func, args, kwargs = data
-    future = glob.pool.submit(func, args, kwargs)
+    future = glob.pool.submit(func, *args, **kwargs)
     IOLoop.instance().add_future(future, callback)
 
     glob.dog.increment(f"{glob.DATADOG_PREFIX}.incoming_requests")
