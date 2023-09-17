@@ -14,8 +14,8 @@ from constants.exceptions import periodicLoopException
 from constants.exceptions import tokenNotFoundException
 from events import logoutEvent
 from objects import glob
-from objects.redisLock import redisLock
 from objects import osuToken
+from objects.redisLock import redisLock
 
 # def __init__(self) -> None:
 #     self.tokens: MutableMapping[str, osuToken.token] = {}
