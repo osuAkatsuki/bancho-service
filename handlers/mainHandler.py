@@ -174,6 +174,10 @@ class handler(requestsManager.asyncRequestHandler):
             userToken = None  # default value
             token_processing_lock = None
             try:
+                # This is not the first packet, send response based on client's request
+                # Packet start position, used to read stacked packets
+                pos = 0
+
                 # Lock token to prevent multiple requests from being processed at once
                 token_processing_lock = redisLock(
                     f"{osuToken.make_key(requestTokenString)}:processing_lock",
@@ -184,10 +188,6 @@ class handler(requestsManager.asyncRequestHandler):
                 userToken = osuToken.get_token(requestTokenString)
                 if userToken is None:
                     raise exceptions.tokenNotFoundException()
-
-                # This is not the first packet, send response based on client's request
-                # Packet start position, used to read stacked packets
-                pos = 0
 
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
