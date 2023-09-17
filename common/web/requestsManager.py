@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Any, Callable
 
 import tornado.gen
 import tornado.web
@@ -63,7 +63,7 @@ class asyncRequestHandler(tornado.web.RequestHandler):
         else:
             return self.request.remote_ip
 
-    def checkArguments(self, required: List[str]) -> bool:
+    def checkArguments(self, required: list[str]) -> bool:
         ...
 
 
@@ -83,7 +83,10 @@ def getRequestIP(request):
         return request.remote_ip
 
 
-def runBackground(data, callback):
+def runBackground(
+    data: tuple[Callable[..., Any], list[Any], dict[str, Any]],
+    callback: Callable[..., Any],
+) -> None:
     """
     Run a function in the background.
     Used to handle multiple requests at the same time
@@ -93,12 +96,10 @@ def runBackground(data, callback):
     :return:
     """
     func, args, kwargs = data
+    future = glob.pool.submit(func, args, kwargs)
+    IOLoop.instance().add_future(future, callback)
 
-    def _callback(result):
-        IOLoop.instance().add_callback(lambda: callback(result))
-
-    glob.pool.apply_async(func, args, kwargs, _callback)
-    glob.dog.increment(glob.DATADOG_PREFIX + ".incoming_requests")
+    glob.dog.increment(f"{glob.DATADOG_PREFIX}.incoming_requests")
 
 
 def checkArguments(arguments, requiredArguments):
