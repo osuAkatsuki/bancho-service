@@ -8,6 +8,7 @@ from objects import glob
 LOCK_EXPIRY = 10  # in seconds
 RETRY_DELAY = 0.05  # in seconds
 
+
 class redisLock:
     def __init__(self, key: str) -> None:
         self.key = key
