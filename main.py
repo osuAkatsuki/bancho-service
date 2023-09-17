@@ -79,7 +79,7 @@ import traceback
 
 
 def signal_handler(signum, frame):
-    with open("stacktrace.txt", "w") as f:
+    with open(f"stacktrace-{settings.APP_PORT}.txt", "w") as f:
         for thread_id, stack in sys._current_frames().items():
             print(f"Thread ID: {thread_id}", file=f)
             traceback.print_stack(stack, file=f)
