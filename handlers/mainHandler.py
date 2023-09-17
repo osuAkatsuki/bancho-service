@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import struct
+from uuid import UUID
 
 import tornado.gen
 import tornado.web
@@ -160,23 +161,33 @@ class handler(requestsManager.asyncRequestHandler):
             # No token, first request. Handle login.
             responseTokenString, responseData = loginEvent.handle(self)
         else:
+            # Make sure token is valid syntax
+            try:
+                UUID(requestTokenString)
+            except ValueError:
+                # Invalid token, ignore request
+                self.set_status(400)
+                self.add_header("Content-Type", "text/html; charset=UTF-8")
+                self.write(HTML_PAGE)
+                return
+
             userToken = None  # default value
             token_processing_lock = None
             try:
-                # This is not the first packet, send response based on client's request
-                # Packet start position, used to read stacked packets
-                pos = 0
+                # Lock token to prevent multiple requests from being processed at once
+                token_processing_lock = redisLock(
+                    f"{osuToken.make_key(requestTokenString)}:processing_lock",
+                )
+                token_processing_lock.acquire()
 
                 # Make sure the token exists
                 userToken = osuToken.get_token(requestTokenString)
                 if userToken is None:
                     raise exceptions.tokenNotFoundException()
 
-                # Token exists, get its object and lock it
-                token_processing_lock = redisLock(
-                    f"{osuToken.make_key(userToken['token_id'])}:processing_lock",
-                )
-                token_processing_lock.acquire()
+                # This is not the first packet, send response based on client's request
+                # Packet start position, used to read stacked packets
+                pos = 0
 
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
@@ -214,19 +225,17 @@ class handler(requestsManager.asyncRequestHandler):
                     "Server has restarted.",
                 ) + serverPackets.banchoRestart(0)
             finally:
-                userToken = osuToken.get_token(requestTokenString)
-                # Unlock token
-                if userToken:
+                if userToken is not None:
                     # Update ping time for timeout
                     osuToken.updatePingTime(userToken["token_id"])
-
-                    # Release processing lock
-                    if token_processing_lock is not None:
-                        token_processing_lock.release()
 
                     # Delete token if kicked
                     if userToken["kicked"]:
                         tokenList.deleteToken(userToken["token_id"])
+
+                # Release processing lock
+                if token_processing_lock is not None:
+                    token_processing_lock.release()
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)
