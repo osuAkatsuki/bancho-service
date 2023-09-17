@@ -19,7 +19,6 @@ def handle(userToken: Token, rawPacketData: bytes):
     matchID = packetData["matchID"]
     password = packetData["password"]
 
-
     with redisLock(f"{match.make_key(matchID)}:lock"):
         # Make sure the match exists
         multiplayer_match = match.get_match(matchID)
