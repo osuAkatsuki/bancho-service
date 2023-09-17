@@ -16,13 +16,13 @@ def handle(userToken: Token, rawPacketData: bytes):
     if match_id is None:
         return None
 
-    # Make sure the match exists
-    multiplayer_match = match.get_match(match_id)
-    if multiplayer_match is None:
-        return None
-
     # Set slot or match mods according to modType
     with redisLock(f"{match.make_key(match_id)}:lock"):
+        # Make sure the match exists
+        multiplayer_match = match.get_match(match_id)
+        if multiplayer_match is None:
+            return None
+
         if multiplayer_match["match_mod_mode"] == matchModModes.FREE_MOD:
             if userToken["user_id"] == multiplayer_match["host_user_id"]:
                 # Allow host to apply speed changing mods.

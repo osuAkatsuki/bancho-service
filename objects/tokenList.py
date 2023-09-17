@@ -326,24 +326,6 @@ def spamProtectionResetLoop() -> None:
         threading.Timer(10, spamProtectionResetLoop).start()
 
 
-def deleteBanchoSessions() -> None:
-    """
-    Remove all `peppy:sessions:*` redis keys.
-    Call at bancho startup to delete old cached sessions
-
-    :return:
-    """
-    try:
-        # TODO: Make function or some redis meme
-        glob.redis.eval(
-            "return redis.call('del', unpack(redis.call('keys', ARGV[1])))",
-            0,
-            "peppy:sessions:*",
-        )
-    except redis.RedisError:
-        pass
-
-
 def tokenExists(
     username: Optional[str] = None,
     userID: Optional[int] = None,

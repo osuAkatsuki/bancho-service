@@ -19,13 +19,13 @@ def handle(userToken: Token, rawPacketData: bytes):
     matchID = packetData["matchID"]
     password = packetData["password"]
 
-    # Make sure the match exists
-    multiplayer_match = match.get_match(matchID)
-    if multiplayer_match is None:
-        osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
-        return
-
     with redisLock(f"{match.make_key(matchID)}:lock"):
+        # Make sure the match exists
+        multiplayer_match = match.get_match(matchID)
+        if multiplayer_match is None:
+            osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
+            return
+
         # Check password
         if multiplayer_match["match_password"] not in ("", password):
             osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)

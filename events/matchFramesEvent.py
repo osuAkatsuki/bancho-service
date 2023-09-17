@@ -13,15 +13,15 @@ def handle(userToken: Token, rawPacketData: bytes):
     if userToken["match_id"] is None:
         return
 
-    # Make sure the match exists
-    multiplayer_match = match.get_match(userToken["match_id"])
-    if multiplayer_match is None:
-        return
-
     # Parse the data
     packetData = clientPackets.matchFrames(rawPacketData)
 
     with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+        # Make sure the match exists
+        multiplayer_match = match.get_match(userToken["match_id"])
+        if multiplayer_match is None:
+            return
+
         # Change slot id in packetData
         slot_id = match.getUserSlotID(
             multiplayer_match["match_id"],

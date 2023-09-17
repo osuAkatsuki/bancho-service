@@ -36,12 +36,12 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
             token["user_id"],
         )
 
-        # Make sure the match has been created
-        multiplayer_match = match.get_match(match_id)
-        if multiplayer_match is None:
-            raise exceptions.matchCreateError()
-
         with redisLock(f"{match.make_key(match_id)}:lock"):
+            # Make sure the match has been created
+            multiplayer_match = match.get_match(match_id)
+            if multiplayer_match is None:
+                raise exceptions.matchCreateError()
+
             # Join that match
             osuToken.joinMatch(token["token_id"], match_id)
 
