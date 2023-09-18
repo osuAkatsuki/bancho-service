@@ -66,7 +66,9 @@ class CommandResponse(TypedDict):
 
 
 async def fokabotResponse(
-    fro: str, chan: str, message: str,
+    fro: str,
+    chan: str,
+    message: str,
 ) -> Optional[CommandResponse]:
     """
     Check if a message has triggered FokaBot
