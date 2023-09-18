@@ -199,7 +199,7 @@ def create_playing_stream_name(match_id: int) -> str:
 
 
 async def getMatchData(
-    match_id: int, censored: bool = False
+    match_id: int, censored: bool = False,
 ) -> tuple[tuple[object, int], ...]:
     """
     Return binary match data structure for packetHelper
@@ -737,7 +737,7 @@ async def userJoin(match_id: int, token_id: str) -> bool:
     slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
-    token =await osuToken.get_token(token_id)
+    token = await osuToken.get_token(token_id)
     assert token is not None
 
     # Make sure we're not in this match
@@ -824,7 +824,7 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    token =await osuToken.get_token(token_id)
+    token = await osuToken.get_token(token_id)
     assert token is not None
 
     # Make sure the user is in room
@@ -850,7 +850,7 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
         and not multiplayer_match["is_tourney"]
     ):
         # Dispose match
-        await  matchList.disposeMatch(multiplayer_match["match_id"])  # TODO
+        await matchList.disposeMatch(multiplayer_match["match_id"])  # TODO
         # log.info("MPROOM{}: Room disposed because all users left.".format(self.matchID))
         return
 
@@ -864,7 +864,7 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
             if _slot["user_token"] is None:
                 continue
 
-            token =await osuToken.get_token(_slot["user_token"])
+            token = await osuToken.get_token(_slot["user_token"])
             if token is None:
                 continue
 
@@ -1018,7 +1018,10 @@ async def transferHost(match_id: int, slot_id: int) -> None:
     assert _slot is not None
 
     # Make sure there is someone in that slot
-    if not _slot["user_token"] or _slot["user_token"] not in await osuToken.get_token_ids():
+    if (
+        not _slot["user_token"]
+        or _slot["user_token"] not in await osuToken.get_token_ids()
+    ):
         return
 
     # Transfer host
@@ -1101,7 +1104,9 @@ async def countUsers(match_id: int) -> int:
     return sum(1 for slot in slots if slot["user_token"] is not None)
 
 
-async def changeTeam(match_id: int, user_id: int, new_team: Optional[int] = None) -> None:
+async def changeTeam(
+    match_id: int, user_id: int, new_team: Optional[int] = None,
+) -> None:
     """
     Change userID's team
 
@@ -1274,7 +1279,9 @@ async def abort(match_id: int) -> None:
         log.warning(f"MPROOM{match_id}: Match is not in progress!")
         return
 
-    multiplayer_match = await update_match(match_id, is_in_progress=False, is_starting=False)
+    multiplayer_match = await update_match(
+        match_id, is_in_progress=False, is_starting=False,
+    )
     assert multiplayer_match is not None
 
     await resetSlots(match_id)

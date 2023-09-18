@@ -191,7 +191,9 @@ async def create_token(
     await glob.redis.sadd("bancho:tokens", token_id)
     await glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
     await glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
-    await glob.redis.set(f"bancho:tokens:names:{safeUsername(token['username'])}", token_id)
+    await glob.redis.set(
+        f"bancho:tokens:names:{safeUsername(token['username'])}", token_id,
+    )
     await glob.redis.set(make_key(token_id), json.dumps(token))
     return token
 
@@ -210,7 +212,8 @@ async def get_token(token_id: str) -> Optional[Token]:
 
 async def get_tokens() -> list[Token]:
     return [
-        json.loads(token) for token in (await glob.redis.hgetall("bancho:tokens:json")).values()
+        json.loads(token)
+        for token in (await glob.redis.hgetall("bancho:tokens:json")).values()
     ]
 
 
@@ -389,7 +392,9 @@ async def delete_token(token_id: str) -> None:
 
 async def get_joined_channels(token_id: str) -> set[str]:
     """Returns a set of channel names"""
-    raw_channels: set[bytes] = await glob.redis.smembers(f"{make_key(token_id)}:channels")
+    raw_channels: set[bytes] = await glob.redis.smembers(
+        f"{make_key(token_id)}:channels",
+    )
     return {x.decode() for x in raw_channels}
 
 
@@ -397,7 +402,9 @@ async def get_joined_channels(token_id: str) -> set[str]:
 
 
 async def get_spectators(token_id: str) -> set[int]:
-    raw_spectators: set[bytes] = await glob.redis.smembers(f"{make_key(token_id)}:spectators")
+    raw_spectators: set[bytes] = await glob.redis.smembers(
+        f"{make_key(token_id)}:spectators",
+    )
     return {int(raw_spectator) for raw_spectator in raw_spectators}
 
 
@@ -492,7 +499,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
 
 
 async def dequeue(token_id: str) -> bytes:
-    token =await get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return b""
 
@@ -688,7 +695,9 @@ async def stopSpectating(token_id: str, get_lock: bool = True) -> None:
 
     if host_token:
         await remove_spectator(host_token["token_id"], token["user_id"])
-        await enqueue(host_token["token_id"], serverPackets.removeSpectator(token["user_id"]))
+        await enqueue(
+            host_token["token_id"], serverPackets.removeSpectator(token["user_id"]),
+        )
 
         fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
         # and to all other spectators
@@ -780,7 +789,9 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         match_id=match_id,
     )
     await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
-    await chat.joinChannel(token_id=token_id, channel_name=f"#multi_{match_id}", force=True)
+    await chat.joinChannel(
+        token_id=token_id, channel_name=f"#multi_{match_id}", force=True,
+    )
     await enqueue(token_id, await serverPackets.matchJoinSuccess(match_id))
 
     if multiplayer_match["is_tourney"]:
@@ -1147,11 +1158,11 @@ async def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
     :param message: message content
     :return:
     """
-    token =await get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    message_history =await get_message_history(token_id)
+    message_history = await get_message_history(token_id)
     if len(message_history) > 100:
         await glob.redis.lpop(f"{make_key(token_id)}:message_history")
     await add_message_to_history(

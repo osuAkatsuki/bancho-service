@@ -1,7 +1,8 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
 
 import json
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
 
 
@@ -19,7 +20,6 @@ def shape(d: dict) -> dict:
 
 class wrongStructureError(Exception):
     pass
-
 
 
 class generalPubSubHandler(ABC):

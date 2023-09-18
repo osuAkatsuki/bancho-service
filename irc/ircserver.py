@@ -129,7 +129,9 @@ class Client:
         """
         self.replyCode(403, f"{command} :Not enough parameters")
 
-    async def disconnect(self, quitmsg: str = "Client quit", callLogout: bool = True) -> None:
+    async def disconnect(
+        self, quitmsg: str = "Client quit", callLogout: bool = True,
+    ) -> None:
         """
         Disconnects this client from the IRC server
 
@@ -383,7 +385,7 @@ class Client:
             await self.sendMotd()
             self.__handleCommand = self.mainHandler
 
-    async  def quitHandler(self, _, arguments: list[str]) -> None:
+    async def quitHandler(self, _, arguments: list[str]) -> None:
         """QUIT command handler"""
         await self.disconnect(self.IRCUsername if len(arguments) < 1 else arguments[0])
 
@@ -484,7 +486,9 @@ class Client:
             # Make sure we in that channel
             # (we already check this bancho-side, but we need to do it
             # also here k maron)
-            if channel.lower() not in await osuToken.get_joined_channels(token["token_id"]):
+            if channel.lower() not in await osuToken.get_joined_channels(
+                token["token_id"],
+            ):
                 continue
 
             # Attempt to part the channel
@@ -533,7 +537,7 @@ class Client:
         # Send the message to IRC and bancho
         if recipientIRC.startswith("#"):
             # Public message (IRC)
-            if recipientIRC not in  await channelList.getChannelNames():
+            if recipientIRC not in await channelList.getChannelNames():
                 self.replyCode(401, "No such nick/channel", channel=recipientIRC)
                 return
             for value in self.server.clients.values():

@@ -142,7 +142,10 @@ async def incrementPlaytime(userID: int, gameMode: int = 0, length: int = 0) -> 
 
 
 async def updateBeatmapPlaycount(
-    userID: int, beatmapHash: str, gameMode: int, relax: bool,
+    userID: int,
+    beatmapHash: str,
+    gameMode: int,
+    relax: bool,
 ):
     """
     Inserts a playcount into the beatmap specific playcount per user table
@@ -204,7 +207,8 @@ async def getWhitelist(userID: int) -> int:
 
 
 async def checkWhitelist(
-    userID: int, requirement: int,
+    userID: int,
+    requirement: int,
 ) -> int:  # TODO: redo this? it's bad
     """
     Return whether the user has whitelist access to the corresponding bit.
@@ -231,7 +235,8 @@ async def editWhitelist(userID: int, bit: int) -> None:
     """
 
     await glob.db.execute(
-        "UPDATE users SET whitelist = %s " "WHERE id = %s", [bit, userID],
+        "UPDATE users SET whitelist = %s " "WHERE id = %s",
+        [bit, userID],
     )
 
     # User is online, update their token's whitelist.
@@ -345,7 +350,8 @@ async def getUsername(userID: int) -> Optional[str]:
     """
 
     result = await glob.db.fetch(
-        "SELECT username " "FROM users " "WHERE id = %s", [userID],
+        "SELECT username " "FROM users " "WHERE id = %s",
+        [userID],
     )
 
     return result["username"] if result else None
@@ -1054,7 +1060,8 @@ async def getPrivileges(userID: int) -> int:
     """
 
     result = await glob.db.fetch(
-        "SELECT privileges " "FROM users " "WHERE id = %s", [userID],
+        "SELECT privileges " "FROM users " "WHERE id = %s",
+        [userID],
     )
 
     return result["privileges"] if result else 0
@@ -1069,7 +1076,8 @@ async def getFreezeTime(userID: int) -> int:
     """
 
     result = await glob.db.fetch(
-        "SELECT frozen " "FROM users " "WHERE id = %s", [userID],
+        "SELECT frozen " "FROM users " "WHERE id = %s",
+        [userID],
     )
 
     return result["frozen"] if result else 0
@@ -1077,7 +1085,8 @@ async def getFreezeTime(userID: int) -> int:
 
 async def getFreezeReason(userID: int) -> Optional[str]:
     result = await glob.db.fetch(
-        "SELECT freeze_reason FROM users WHERE id = %s", [userID],
+        "SELECT freeze_reason FROM users WHERE id = %s",
+        [userID],
     )
     return result["freeze_reason"] if result["freeze_reason"] else None
 
@@ -1150,13 +1159,17 @@ async def getSilenceEnd(userID: int) -> int:
     """
 
     rec = await glob.db.fetch(
-        "SELECT silence_end " "FROM users " "WHERE id = %s", [userID],
+        "SELECT silence_end " "FROM users " "WHERE id = %s",
+        [userID],
     )
     return rec["silence_end"]
 
 
 async def silence(
-    userID: int, seconds: int, silenceReason: str, author: int = 999,
+    userID: int,
+    seconds: int,
+    silenceReason: str,
+    author: int = 999,
 ) -> None:
     """
     Silence `userID` for `seconds` for `silenceReason`.
@@ -1444,7 +1457,8 @@ async def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
 
 
 async def isInAnyPrivilegeGroup(
-    userID: int, groups: Union[List[str], Tuple[str]],
+    userID: int,
+    groups: Union[List[str], Tuple[str]],
 ) -> bool:
     """
     Checks if a user is in at least one of the specified groups
@@ -1471,7 +1485,8 @@ async def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
     """
 
     allowed = await glob.db.fetch(
-        "SELECT * FROM hw_comparison " "WHERE id = %s", [userID],
+        "SELECT * FROM hw_comparison " "WHERE id = %s",
+        [userID],
     )
 
     return not (
@@ -1691,7 +1706,8 @@ async def verifyUser(userID: int, hashes: list[str]) -> bool:
             f"{originalUsername}'s multiaccount ({originalUserID}), found HWID match while verifying account.",
         )
         await appendNotes(
-            originalUserID, f"Has created multiaccount {username} ({userID}).",
+            originalUserID,
+            f"Has created multiaccount {username} ({userID}).",
         )
 
         # Restrict the original
@@ -1737,7 +1753,8 @@ async def getDonorExpire(userID: int) -> int:
     """
 
     data = await glob.db.fetch(
-        "SELECT donor_expire FROM users " "WHERE id = %s", [userID],
+        "SELECT donor_expire FROM users " "WHERE id = %s",
+        [userID],
     )
 
     return data["donor_expire"] if data else 0

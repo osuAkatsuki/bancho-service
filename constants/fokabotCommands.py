@@ -1271,7 +1271,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
                     )
                 else:
                     await osuToken.enqueue(
-                        token["token_id"], serverPackets.notification(msg)
+                        token["token_id"], serverPackets.notification(msg),
                     )
 
 
