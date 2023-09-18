@@ -38,7 +38,7 @@ class handler(AsyncRequestHandler):
                     )
                 else:
                     data["result"] = (
-                        True if tokenList.getTokenFromUserID(userID) else False
+                        True if await tokenList.getTokenFromUserID(userID) else False
                     )
 
             # Status code and message
