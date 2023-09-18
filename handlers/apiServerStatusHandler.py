@@ -3,11 +3,11 @@ from __future__ import annotations
 from json import dumps
 from typing import Union
 
-from common.web import requestsManager
+from common.web.requestsManager import AsyncRequestHandler
 from objects import glob
 
 
-class handler(requestsManager.asyncRequestHandler):
+class handler(AsyncRequestHandler):
     async def get(self) -> None:
         statusCode = 400
         data: dict[str, Union[int, str]] = {"message": "unknown error"}

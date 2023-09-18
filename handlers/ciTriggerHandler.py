@@ -5,18 +5,18 @@ from typing import Union
 
 import settings
 from common.log import logUtils as log
-from common.web import requestsManager
+from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from helpers import systemHelper
 
 
-class handler(requestsManager.asyncRequestHandler):
+class handler(AsyncRequestHandler):
     async def get(self) -> None:
         statusCode = 400
         data: dict[str, Union[int, str]] = {"message": "unknown error"}
         try:
             # Check arguments
-            if not requestsManager.checkArguments(self.request.arguments, ["k"]):
+            if not self.checkArguments(required=["k"]):
                 raise exceptions.invalidArgumentsException()
 
             # Check ci key
@@ -25,10 +25,10 @@ class handler(requestsManager.asyncRequestHandler):
                 raise exceptions.invalidArgumentsException()
 
             log.info("Ci event triggered!!")
-            systemHelper.scheduleShutdown(
-                5,
-                False,
-                "A new Akatsuki update is available and the server will be restarted in 5 seconds. Thank you for your patience.",
+            await systemHelper.scheduleShutdown(
+                sendRestartTime=5,
+                restart=False,
+                message="A new Akatsuki update is available and the server will be restarted in 5 seconds. Thank you for your patience.",
             )
 
             # Status code and message

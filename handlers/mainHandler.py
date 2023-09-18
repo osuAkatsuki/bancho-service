@@ -5,7 +5,7 @@ import struct
 from uuid import UUID
 
 import settings
-from common.web import requestsManager
+from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from constants import packetIDs
 from constants import serverPackets
@@ -142,7 +142,7 @@ HTML_PAGE = (
 )
 
 
-class handler(requestsManager.asyncRequestHandler):
+class handler(AsyncRequestHandler):
     async def post(self) -> None:
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")

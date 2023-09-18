@@ -4,12 +4,12 @@ from json import dumps
 from typing import Union
 
 from common.ripple import userUtils
-from common.web import requestsManager
+from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from objects import tokenList
 
 
-class handler(requestsManager.asyncRequestHandler):
+class handler(AsyncRequestHandler):
     async def get(self) -> None:
         statusCode = 400
         data: dict[str, Union[bool, str]] = {"message": "unknown error"}
