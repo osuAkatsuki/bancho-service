@@ -5,6 +5,7 @@ import time
 from queue import Queue
 
 import MySQLdb.cursors
+from MySQLdb.connections import Connection
 
 import settings
 from common.log import logUtils as log
@@ -18,7 +19,7 @@ class worker:
 
     __slots__ = ("connection", "temporary")
 
-    def __init__(self, connection, temporary=False):
+    def __init__(self, connection: Connection, temporary: bool = False):
         """
         Initialize a MySQL worker
 
@@ -50,7 +51,8 @@ class worker:
 
         :return:
         """
-        self.connection.close()
+        if self.connection.open:
+            self.connection.close()
 
 
 class connectionsPool:
@@ -72,7 +74,7 @@ class connectionsPool:
         """
         self.config = (host, username, password, database)
         self.maxSize = size
-        self.pool = Queue(self.maxSize)
+        self.pool: Queue[worker] = Queue(self.maxSize)
         self.consecutiveEmptyPool = 0
         self.fillPool()
 

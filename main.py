@@ -31,7 +31,6 @@ from handlers import apiVerifiedStatusHandler
 from handlers import ciTriggerHandler
 from handlers import mainHandler
 from helpers import consoleHelper
-from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig
 from objects import channelList
@@ -276,23 +275,64 @@ if __name__ == "__main__":
         )
         assert io_loop is not None
         io_loop.start()
+    except KeyboardInterrupt:
+        # Remove the "^C" from the terminal window
+        print("\x1b[2K", end="\r")
+        log("Received keyboard interrupt, shutting down.", Ansi.LYELLOW)
     finally:
         # Stop listening for new connections
+        log("Closing HTTP listener", Ansi.LMAGENTA)
         if http_server is not None:
             http_server.stop()
 
         # Allow grace period for ongoing connections to finish
         GRACE_PERIOD_SECONDS = 10
         if io_loop is not None:
+            log(
+                f"Allowing {GRACE_PERIOD_SECONDS} second for ongoing connections to close",
+                Ansi.LMAGENTA,
+            )
             deadline = time.time() + GRACE_PERIOD_SECONDS
 
-            while time.time() < deadline:
+            while expired := time.time() < deadline:
                 if io_loop._callbacks or io_loop._timeouts:
+                    log("Connections ongoing, waiting...", Ansi.LYELLOW)
                     time.sleep(1)
                 else:
+                    log("Connections gracefully closed", Ansi.LGREEN)
                     break
+            else:
+                log("Grace period expired, forcing shutdown", Ansi.LYELLOW)
 
-            print("Closing IO loop.")
+        log("Closing connection to redis", Ansi.LMAGENTA)
+        glob.redis.close()
+        log("Closed connection to redis", Ansi.LGREEN)
+
+        log("Closing connections to MySQL", Ansi.LMAGENTA)
+        while not glob.db.pool.pool.empty():
+            worker = glob.db.pool.pool.get(block=True, timeout=5.0)
+            worker.connection.close()
+            glob.db.pool.pool.task_done()
+        log("Closed connections to MySQL", Ansi.LGREEN)
+
+        log("Stopping event loop", Ansi.LMAGENTA)
+        if io_loop is not None:
             io_loop.stop()
+        log("Stopped event loop", Ansi.LGREEN)
 
-        system.dispose()
+        log("Shutting down thread pool", Ansi.LMAGENTA)
+        if glob.pool is not None:
+            glob.pool.shutdown(wait=True)
+        log("Shut down thread pool", Ansi.LGREEN)
+
+        log("Flushing data to datadog", Ansi.LMAGENTA)
+        if glob.dog is not None:
+            glob.dog.gauge()
+        log("Flushed data to datadog", Ansi.LGREEN)
+
+        log("Disconnecting from IRC", Ansi.LMAGENTA)
+        fokabot.disconnect()
+        log("Disconnected from IRC", Ansi.LGREEN)
+
+        log("Shutting down", Ansi.LMAGENTA)
+        log("Goodbye!", Ansi.LGREEN)

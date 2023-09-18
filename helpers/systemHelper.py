@@ -24,16 +24,6 @@ from objects import osuToken
 from objects import streamList
 
 
-def dispose() -> None:
-    """
-    Perform some clean up. Called on shutdown.
-
-    :return:
-    """
-    print("> Disposing server...")
-    consoleHelper.printColored("Goodbye!", bcolors.GREEN)
-
-
 def runningUnderUnix() -> bool:
     """
     Get if the server is running under UNIX or NT
