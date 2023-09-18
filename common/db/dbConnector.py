@@ -3,7 +3,8 @@ from __future__ import annotations
 import inspect
 import time
 from queue import Queue
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 
 import MySQLdb.cursors
 from MySQLdb.connections import Connection
