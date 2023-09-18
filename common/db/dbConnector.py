@@ -153,7 +153,7 @@ class connectionsPool:
             log.warning("Can't connect to MySQL database. Retrying in 1 second...")
             if glob.dog is not None:
                 glob.dog.increment(
-                    f"{glob.DATADOG_PREFIX}.mysql_pool.failed_connections"
+                    f"{glob.DATADOG_PREFIX}.mysql_pool.failed_connections",
                 )
             time.sleep(1)
             return self.getWorker(level=level + 1)
