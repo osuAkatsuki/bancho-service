@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import time
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from amplitude import Amplitude
 from amplitude import Config as AmplitudeConfig
