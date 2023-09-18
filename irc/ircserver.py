@@ -629,7 +629,9 @@ class Server:
         ]
 
     async def forceDisconnection(
-        self, username: str, isBanchoUsername: bool = True,
+        self,
+        username: str,
+        isBanchoUsername: bool = True,
     ) -> None:
         """
         Disconnect someone from IRC if connected
