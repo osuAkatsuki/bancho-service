@@ -79,7 +79,7 @@ import traceback
 from datetime import datetime
 
 
-def signal_handler(signum, frame):
+def dump_thread_stacks():
     try:
         os.mkdir("stacktraces")
     except FileExistsError:
@@ -91,6 +91,9 @@ def signal_handler(signum, frame):
             traceback.print_stack(stack, file=f)
             print("\n", file=f)
 
+
+def signal_handler(signum, frame):
+    dump_thread_stacks()
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     signal.default_int_handler(signum, frame)
 
