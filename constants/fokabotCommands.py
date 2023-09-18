@@ -2036,7 +2036,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
                 loop = asyncio.get_running_loop()
                 loop.call_later(
-                    1.00, lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                    1.00,
+                    lambda: asyncio.create_task(_decreaseTimer(t - 1)),
                 )
 
         if len(message) < 2 or not message[1].isnumeric():
@@ -2083,7 +2084,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 return None
 
             loop = asyncio.get_running_loop()
-            loop.call_later(1.00, lambda: asyncio.create_task(_decreaseTimer(startTime - 1)))
+            loop.call_later(
+                1.00, lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
+            )
 
             return (
                 f"Match starts in {startTime} seconds. The match has been locked. "
