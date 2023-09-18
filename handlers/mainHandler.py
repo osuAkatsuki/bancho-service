@@ -154,7 +154,7 @@ class handler(AsyncRequestHandler):
 
         if requestTokenString is None:
             # No token, first request. Handle login.
-            responseTokenString, responseData = loginEvent.handle(self)
+            responseTokenString, responseData = await loginEvent.handle(self)
         else:
             # Make sure token is valid syntax
             try:
@@ -200,7 +200,7 @@ class handler(AsyncRequestHandler):
                                 not osuToken.is_restricted(userToken["privileges"])
                                 or packetID in restricted_packets
                             ):
-                                bancho_packets[packetID](userToken, packetData)
+                                await bancho_packets[packetID](userToken, packetData)
                         # else:
                         # 	#log.warning(f"Unhandled: {packetID}")
 

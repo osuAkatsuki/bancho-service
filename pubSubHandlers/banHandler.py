@@ -11,17 +11,17 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.type = "int"
 
-    def handle(self, userID):
+    async def handle(self, userID):
         if (userID := super().parseData(userID)) is None:
             return
 
         userID = int(userID)
 
-        userUtils.removeFirstPlaces(userID)
+        await userUtils.removeFirstPlaces(userID)
 
         if not (targetToken := tokenList.getTokenFromUserID(userID)):
             return
 
-        targetToken["privileges"] = userUtils.getPrivileges(userID)
-        osuToken.checkBanned(targetToken["token_id"])
-        osuToken.checkRestricted(targetToken["token_id"])
+        targetToken["privileges"] = await userUtils.getPrivileges(userID)
+        await osuToken.checkBanned(targetToken["token_id"])
+        await osuToken.checkRestricted(targetToken["token_id"])

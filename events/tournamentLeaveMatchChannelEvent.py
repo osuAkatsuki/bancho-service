@@ -7,7 +7,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentLeaveMatchChannel(rawPacketData)
     if (
         packetData["matchID"] not in match.get_match_ids()

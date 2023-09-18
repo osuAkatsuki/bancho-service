@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from typing import Literal
@@ -22,7 +23,7 @@ from objects.redisLock import redisLock
 #     self._lock = threading.Lock()
 
 
-def addToken(
+async def addToken(
     user_id: int,
     ip: str = "",
     irc: bool = False,
@@ -41,7 +42,7 @@ def addToken(
     :param tournament: if True, flag this client as a tournement client. Default: True.
     :return: token object
     """
-    res = glob.db.fetch(
+    res = await glob.db.fetch(
         "SELECT username, privileges, whitelist FROM users WHERE id = %s",
         [user_id],
     )
@@ -60,7 +61,7 @@ def addToken(
         amplitude_device_id,
     )
 
-    osuToken.updateCachedStats(token["token_id"])
+    await osuToken.updateCachedStats(token["token_id"])
     if ip != "":
         userUtils.saveBanchoSessionIpLookup(token["user_id"], ip)
 
@@ -205,7 +206,7 @@ def getTokenFromUsername(
         return ret
 
 
-def deleteOldTokens(userID: int) -> None:
+async def deleteOldTokens(userID: int) -> None:
     """
     Delete old userID's tokens if found
 
@@ -219,7 +220,7 @@ def deleteOldTokens(userID: int) -> None:
             delete.append(token)
 
     for i in delete:
-        logoutEvent.handle(i)
+        await logoutEvent.handle(i)
 
 
 def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
@@ -257,7 +258,7 @@ def enqueueAll(packet: bytes) -> None:
 OSU_MAX_PING_DELTA = 300  # seconds
 
 
-def usersTimeoutCheckLoop() -> None:
+async def usersTimeoutCheckLoop() -> None:
     """
     Start timed out users disconnect loop.
     This function will be called every `checkTime` seconds and so on, forever.
@@ -289,7 +290,7 @@ def usersTimeoutCheckLoop() -> None:
                     )
 
                     try:
-                        logoutEvent.handle(token, _=None)
+                        await logoutEvent.handle(token, _=None)
                     except tokenNotFoundException as e:
                         pass  # lol
                     except Exception as e:
@@ -303,10 +304,14 @@ def usersTimeoutCheckLoop() -> None:
             raise periodicLoopException(exceptions)
     finally:
         # Schedule a new check (endless loop)
-        threading.Timer(OSU_MAX_PING_DELTA // 2, usersTimeoutCheckLoop).start()
+        loop = asyncio.get_running_loop()
+        loop.call_later(
+            OSU_MAX_PING_DELTA // 2,
+            lambda: asyncio.create_task(usersTimeoutCheckLoop()),
+        )
 
 
-def spamProtectionResetLoop() -> None:
+async def spamProtectionResetLoop() -> None:
     """
     Start spam protection reset loop.
     Called every 10 seconds.
@@ -323,7 +328,11 @@ def spamProtectionResetLoop() -> None:
                 osuToken.update_token(token_id, spam_rate=0)
     finally:
         # Schedule a new check (endless loop)
-        threading.Timer(10, spamProtectionResetLoop).start()
+        loop = asyncio.get_running_loop()
+        loop.call_later(
+            10,
+            lambda: asyncio.create_task(spamProtectionResetLoop()),
+        )
 
 
 def tokenExists(

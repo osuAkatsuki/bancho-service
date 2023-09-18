@@ -244,6 +244,7 @@ from typing import Union
 
 MISSING = MissingType()
 
+
 # TODO: the things that can actually be Optional need to have different defaults
 def update_token(
     token_id: str,
@@ -745,7 +746,7 @@ def updatePingTime(token_id: str) -> None:
     )
 
 
-def joinMatch(token_id: str, match_id: int) -> bool:
+async  def joinMatch(token_id: str, match_id: int) -> bool:
     """
     Set match to match_id, join match stream and channel
 
@@ -766,7 +767,7 @@ def joinMatch(token_id: str, match_id: int) -> bool:
 
     # Leave other matches
     if token["match_id"] is not None and token["match_id"] != match_id:
-        leaveMatch(token_id)
+        await leaveMatch(token_id)
 
     # Try to join match
     if not match.userJoin(multiplayer_match["match_id"], token_id):
@@ -790,12 +791,12 @@ def joinMatch(token_id: str, match_id: int) -> bool:
         )
         # If an user joins, then the ready status of the match changes and
         # maybe not all users are ready.
-        match.sendReadyStatus(multiplayer_match["match_id"])
+        await match.sendReadyStatus(multiplayer_match["match_id"])
 
     return True
 
 
-def leaveMatch(token_id: str) -> None:
+async def leaveMatch(token_id: str) -> None:
     """
     Leave joined match, match stream and match channel
 
@@ -840,7 +841,7 @@ def leaveMatch(token_id: str) -> None:
     if multiplayer_match["is_tourney"]:
         # If an user leaves, then the ready status of the match changes and
         # maybe all users are ready. Or maybe nobody is in the match anymore
-        match.sendReadyStatus(multiplayer_match["match_id"])
+        await match.sendReadyStatus(multiplayer_match["match_id"])
 
 
 def kick(
@@ -962,7 +963,7 @@ def getSilenceSecondsLeft(token_id: str) -> int:
     return max(0, token["silence_end_time"] - int(time()))
 
 
-def updateCachedStats(token_id: str) -> None:
+async def updateCachedStats(token_id: str) -> None:
     """
     Update all cached stats for this token
 
@@ -979,7 +980,7 @@ def updateCachedStats(token_id: str) -> None:
     else:
         relax_int = 0
 
-    stats = userUtils.getUserStats(
+    stats = await userUtils.getUserStats(
         token["user_id"],
         token["game_mode"],
         relax_int,
@@ -1000,7 +1001,7 @@ def updateCachedStats(token_id: str) -> None:
     )
 
 
-def checkRestricted(token_id: str) -> None:
+async def checkRestricted(token_id: str) -> None:
     """
     Check if this token is restricted. If so, send Aika message
 
@@ -1011,14 +1012,14 @@ def checkRestricted(token_id: str) -> None:
         return
 
     old_restricted = is_restricted(token["privileges"])
-    restricted = userUtils.isRestricted(token["user_id"])
+    restricted = await userUtils.isRestricted(token["user_id"])
     if restricted:
-        setRestricted(token_id)
+        await setRestricted(token_id)
     elif not restricted and old_restricted != restricted:
-        resetRestricted(token_id)
+        await resetRestricted(token_id)
 
 
-def checkBanned(token_id: str) -> None:
+async def checkBanned(token_id: str) -> None:
     """
     Check if this user is banned. If so, disconnect it.
 
@@ -1028,12 +1029,12 @@ def checkBanned(token_id: str) -> None:
     if token is None:
         return
 
-    if userUtils.isBanned(token["user_id"]):
+    if await userUtils.isBanned(token["user_id"]):
         enqueue(token_id, serverPackets.loginBanned)
-        logoutEvent.handle(token, deleteToken=False)
+        await logoutEvent.handle(token, deleteToken=False)
 
 
-def setRestricted(token_id: str) -> None:
+async def setRestricted(token_id: str) -> None:
     """
     Set this token as restricted, send Aika message to user
     and send offline packet to everyone
@@ -1046,14 +1047,14 @@ def setRestricted(token_id: str) -> None:
 
     aika_token = get_token_by_user_id(999)
     assert aika_token is not None
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=aika_token["token_id"],
         to=token["username"],
         message="Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
     )
 
 
-def resetRestricted(token_id: str) -> None:
+async def resetRestricted(token_id: str) -> None:
     """
     Send Aika message to alert the user that he has been unrestricted
     and he has to log in again.
@@ -1066,7 +1067,7 @@ def resetRestricted(token_id: str) -> None:
 
     aika_token = get_token_by_user_id(999)
     assert aika_token is not None
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=aika_token["token_id"],
         to=token["username"],
         message="Your account has been unrestricted! Please log in again.",

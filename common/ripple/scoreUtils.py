@@ -7,7 +7,7 @@ from common.constants import mods
 from objects import glob
 
 
-def newFirst(
+async def newFirst(
     scoreID: int,
     userID: int,
     md5: str,
@@ -24,13 +24,13 @@ def newFirst(
     :param rx: relax / vanilla bool
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "REPLACE INTO scores_first VALUES (%s, %s, %s, %s, %s)",
         [md5, mode, 1 if relax else 0, scoreID, userID],
     )
 
 
-def overwritePreviousScore(
+async def overwritePreviousScore(
     userID: int,
 ) -> Optional[str]:  # written pretty horribly, redo one day
     """
@@ -40,13 +40,13 @@ def overwritePreviousScore(
 
     # Figure out whether they would like
     # to overwrite a relax or vanilla score
-    relax = glob.db.fetch(
+    relax = await glob.db.fetch(
         "SELECT time, play_mode FROM scores_relax "
         "WHERE userid = %s AND completed = 2 "
         "ORDER BY id DESC LIMIT 1",
         [userID],
     )
-    vanilla = glob.db.fetch(
+    vanilla = await glob.db.fetch(
         "SELECT time, play_mode FROM scores "
         "WHERE userid = %s AND completed = 2 "
         "ORDER BY id DESC LIMIT 1",
@@ -65,7 +65,7 @@ def overwritePreviousScore(
     mode = relax["play_mode"] if table == "scores_relax" else vanilla["play_mode"]
 
     # Select the users newest completed=2 score
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT {0}.id, {0}.beatmap_md5, beatmaps.song_name FROM {0} "
         "LEFT JOIN beatmaps USING(beatmap_md5) "
         "WHERE {0}.userid = %s AND {0}.completed = 2 AND {0}.play_mode = %s "
@@ -74,7 +74,7 @@ def overwritePreviousScore(
     )
 
     # Set their previous completed scores on the map to completed = 2.
-    glob.db.execute(
+    await glob.db.execute(
         f"UPDATE {table} SET completed = 2 "
         "WHERE beatmap_md5 = %s AND (completed & 3) = 3 "
         "AND userid = %s AND play_mode = %s",
@@ -82,10 +82,10 @@ def overwritePreviousScore(
     )
 
     # Set their new score to completed = 3.
-    glob.db.execute(f"UPDATE {table} SET completed = 3 WHERE id = %s", [result["id"]])
+    await glob.db.execute(f"UPDATE {table} SET completed = 3 WHERE id = %s", [result["id"]])
 
     # Update the last time they overwrote a score to the current time.
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users SET previous_overwrite = UNIX_TIMESTAMP() " "WHERE id = %s",
         [userID],
     )
@@ -94,7 +94,7 @@ def overwritePreviousScore(
     return result["song_name"]
 
 
-def getPPLimit(gameMode: int, mods_used: int) -> str:
+async def getPPLimit(gameMode: int, mods_used: int) -> str:
     """
     Get PP Limit from DB based on gameMode
 
@@ -109,9 +109,8 @@ def getPPLimit(gameMode: int, mods_used: int) -> str:
         s.insert(0, "relax")
     s = "_".join(s)
 
-    return glob.db.fetch(f"SELECT {s} FROM pp_limits WHERE gamemode = %s", [gameMode])[
-        s
-    ]
+    pp_limit = await glob.db.fetch(f"SELECT {s} FROM pp_limits WHERE gamemode = %s", [gameMode])
+    return pp_limit[s]
 
 
 def isRankable(m: int, maxCombo: int) -> bool:
@@ -122,7 +121,7 @@ def isRankable(m: int, maxCombo: int) -> bool:
     :param maxCombo: the map's max combo
     :return: True if there are no unranked mods in `m`, else False
     """  # Allow scorev2 for long maps
-    if (m & (mods.AUTOPILOT | mods.AUTOPLAY)) != 0:
+    if (m & mods.AUTOPLAY) != 0:
         # has unranked mods
         return False
 

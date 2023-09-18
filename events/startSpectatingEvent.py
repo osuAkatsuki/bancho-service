@@ -11,7 +11,7 @@ from objects import tokenList
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     try:
         # Start spectating packet
         packetData = clientPackets.startSpectating(rawPacketData)

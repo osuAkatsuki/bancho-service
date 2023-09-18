@@ -7,7 +7,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(token: Token, _):
+async def handle(token: Token, _):
     try:
         # We don't have the beatmap, we can't spectate
         if (

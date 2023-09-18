@@ -9,7 +9,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, _=None):
+async def handle(userToken: Token, _=None):
     matchID = userToken["match_id"]
     if matchID is None:
         return
@@ -19,7 +19,7 @@ def handle(userToken: Token, _=None):
     if multiplayer_match is None:
         return
 
-    osuToken.leaveMatch(userToken["token_id"])
+    await osuToken.leaveMatch(userToken["token_id"])
 
     glob.amplitude.track(
         BaseEvent(

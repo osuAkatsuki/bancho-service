@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import random
 import re
 import secrets
@@ -81,12 +82,12 @@ def command(
 
 
 @command(trigger="!help", hidden=True)
-def _help(fro: str, chan: str, message: list[str]) -> str:
+async def _help(fro: str, chan: str, message: list[str]) -> str:
     """Show all documented commands the player can access."""
     l = ["Individual commands", "-----------"]
 
-    userID = userUtils.getID(fro)  # TODO: rewrite this command as well..
-    user_privs = userUtils.getPrivileges(userID)
+    userID = await userUtils.getID(fro)  # TODO: rewrite this command as well..
+    user_privs = await userUtils.getPrivileges(userID)
 
     for cmd in commands:
         cmd_trigger = cmd["trigger"]
@@ -101,15 +102,15 @@ def _help(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!faq", syntax="<name>")
-def faq(fro: str, chan: str, message: list[str]) -> str:
+async def faq(fro: str, chan: str, message: list[str]) -> str:
     """Fetch a given FAQ response."""
     key = message[0].lower()
-    res = glob.db.fetch("SELECT callback FROM faq WHERE name = %s", [key])
+    res = await glob.db.fetch("SELECT callback FROM faq WHERE name = %s", [key])
     return res["callback"] if res else "No FAQ topics could be found by that name."
 
 
 @command(trigger="!roll")
-def roll(fro: str, chan: str, message: list[str]) -> str:
+async def roll(fro: str, chan: str, message: list[str]) -> str:
     maxPoints = (  # Cap !roll to 32767
         len(message) and message[0].isnumeric() and min(int(message[0]), 32767)
     ) or 100
@@ -119,7 +120,7 @@ def roll(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!alert", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
-def alert(fro: str, chan: str, message: list[str]) -> None:
+async def alert(fro: str, chan: str, message: list[str]) -> None:
     """Send a notification message to all users."""
     if not (msg := " ".join(message).strip()):
         return
@@ -133,13 +134,13 @@ def alert(fro: str, chan: str, message: list[str]) -> None:
     syntax="<username> <message>",
     hidden=True,
 )
-def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Send a notification message to a specific user."""
     if not (msg := " ".join(message[1:]).strip()):
         return
 
     target = message[0].lower()
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return "Could not find user."
 
     if not (targetToken := osuToken.get_token_by_user_id(targetID)):
@@ -150,7 +151,7 @@ def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(trigger="!moderated", privs=privileges.ADMIN_CHAT_MOD, hidden=True)
-def moderated(fro: str, channel_name: str, message: list[str]) -> str:
+async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
     """Set moderated mode for the current channel."""
     try:
         # Make sure we are in a channel and not PM
@@ -180,13 +181,13 @@ def moderated(fro: str, channel_name: str, message: list[str]) -> str:
     syntax="<target_name>",
     hidden=True,
 )
-def kick(fro: str, chan: str, message: list[str]) -> str:
+async def kick(fro: str, chan: str, message: list[str]) -> str:
     """Kick a specified player from the server."""
     target = message[0].lower()
     if target == glob.BOT_NAME.lower():
         return "Nope."
 
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return "Could not find user"
 
     if not (tokens := tokenList.getTokenFromUserID(targetID, _all=True)):
@@ -204,7 +205,7 @@ def kick(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <amount> <unit(s/m/h/d/w)> <reason>",
     hidden=True,
 )
-def silence(fro: str, chan: str, message: list[str]) -> str:
+async def silence(fro: str, chan: str, message: list[str]) -> str:
     """Silence a specified player a specified amount of time."""
     message = [m.lower() for m in message]
     target = message[0]
@@ -220,10 +221,10 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
         amount = int(amount)
 
     # Make sure the user exists
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return f"{target}: user not found."
 
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
     # Make sure target is not the bot / super admin
     if targetID <= 1001 and userID > 1001:
@@ -254,7 +255,7 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
         osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
     else:
         # User offline, silence user only in db
-        userUtils.silence(targetID, silenceTime, reason, userID)
+        await userUtils.silence(targetID, silenceTime, reason, userID)
 
     # Log message
     msg = f"{target} has been silenced for: {reason}."
@@ -267,15 +268,15 @@ def silence(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name>",
     hidden=True,
 )
-def removeSilence(fro: str, chan: str, message: list[str]) -> str:
+async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     """Unsilence a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
 
     # Make sure the user exists
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
-    if not (targetID := userUtils.getIDSafe(target)):
+    if not (targetID := await userUtils.getIDSafe(target)):
         return f"{target}: user not found."
 
     # Send new silence end packet to user if he's online
@@ -284,7 +285,7 @@ def removeSilence(fro: str, chan: str, message: list[str]) -> str:
         osuToken.silence(targetToken["token_id"], 0, "", userID)
     else:
         # Target offline, remove silence in db
-        userUtils.silence(targetID, 0, "", userID)
+        await userUtils.silence(targetID, 0, "", userID)
 
     return f"{target}'s silence reset."
 
@@ -295,18 +296,18 @@ def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <reason>",
     hidden=True,
 )
-def ban(fro: str, chan: str, message: list[str]) -> str:
+async def ban(fro: str, chan: str, message: list[str]) -> str:
     """Ban a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return f"{target}: user not found."
 
-    username = chat.fixUsernameForBancho(fro)
-    userID = userUtils.getID(fro)
+    username = await chat.fixUsernameForBancho(fro)
+    userID = await userUtils.getID(fro)
 
     # Make sure target is not the bot / super admin.
     if targetID <= 1001 and userID > 1001:
@@ -316,13 +317,13 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
         return "Please specify a reason for the ban!"
 
     # Set allowed to 0
-    userUtils.ban(targetID)
+    await userUtils.ban(targetID)
 
     # Send ban packet to the user if he's online
     if targetToken := osuToken.get_token_by_user_id(targetID):
         osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
-    log.rap(userID, f"has banned {target} ({targetID}) for {reason}")
+    await log.rap(userID, f"has banned {target} ({targetID}) for {reason}")
     log.ac(
         "\n\n".join(
             [
@@ -333,7 +334,7 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
         "ac_general",
     )
 
-    userUtils.appendNotes(targetID, f"{username} banned for: {reason}")
+    await userUtils.appendNotes(targetID, f"{username} banned for: {reason}")
     return f"{target} has been banned."
 
 
@@ -343,28 +344,28 @@ def ban(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <reason>",
     hidden=True,
 )
-def unban(fro: str, chan: str, message: list[str]) -> str:
+async def unban(fro: str, chan: str, message: list[str]) -> str:
     """Unban a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return f"{target}: user not found."
 
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
     # Set allowed to 1
-    userUtils.unban(targetID)
+    await userUtils.unban(targetID)
 
-    log.rap(userID, f"has unbanned {target}")
+    await log.rap(userID, f"has unbanned {target}")
     log.ac(
         f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
         "ac_general",
     )
 
-    userUtils.appendNotes(targetID, f"{fro} ({userID}) unbanned for: {reason}")
+    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unbanned for: {reason}")
     return f"{target} has been unbanned."
 
 
@@ -374,17 +375,17 @@ def unban(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <reason>",
     hidden=True,
 )
-def restrict(fro: str, chan: str, message: list[str]) -> str:
+async def restrict(fro: str, chan: str, message: list[str]) -> str:
     """Restrict a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return f"{target}: user not found."
 
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
     # Make sure target is not the bot / super admin.
     if targetID <= 1001 and userID > 1001:
@@ -394,13 +395,13 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
         return "Please specify a reason for the restriction!"
 
     # Put this user in restricted mode
-    userUtils.restrict(targetID)
+    await userUtils.restrict(targetID)
 
     # Send restricted mode packet to this user if he's online
     if targetToken := osuToken.get_token_by_user_id(targetID):
         osuToken.setRestricted(targetToken["token_id"])
 
-    log.rap(userID, f"has restricted {target} ({targetID}) for: {reason}")
+    await log.rap(userID, f"has restricted {target} ({targetID}) for: {reason}")
     log.ac(
         "\n\n".join(
             [
@@ -411,7 +412,7 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
         "ac_general",
     )
 
-    userUtils.appendNotes(targetID, f"{fro} ({userID}) restricted for: {reason}")
+    await userUtils.appendNotes(targetID, f"{fro} ({userID}) restricted for: {reason}")
     return f"{target} has been restricted."
 
 
@@ -421,30 +422,32 @@ def restrict(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <reason>",
     hidden=True,
 )
-def unrestrict(fro: str, chan: str, message: list[str]) -> str:
+async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
     """Unrestrict a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return f"{target}: user not found."
 
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
     if not reason:
         return "Please specify a reason for the restriction!"
 
-    userUtils.unrestrict(targetID)
+    await userUtils.unrestrict(targetID)
 
-    log.rap(userID, f"has unrestricted {target}")
+    await log.rap(userID, f"has unrestricted {target}")
     log.ac(
         f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
         "ac_general",
     )
 
-    userUtils.appendNotes(targetID, f"{fro} ({userID}) unrestricted for: {reason}")
+    await userUtils.appendNotes(
+        targetID, f"{fro} ({userID}) unrestricted for: {reason}"
+    )
     return f"{target} has been unrestricted."
 
 
@@ -468,7 +471,7 @@ def _restartShutdown(restart: bool) -> str:
     privs=privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
-def systemRestart(fro: str, chan: str, message: list[str]) -> str:
+async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
     """Restart the server."""
     return _restartShutdown(True)
 
@@ -478,7 +481,7 @@ def systemRestart(fro: str, chan: str, message: list[str]) -> str:
     privs=privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
-def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
+async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
     """Shutdown the server."""
     return _restartShutdown(False)
 
@@ -488,7 +491,7 @@ def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
     privs=privileges.ADMIN_MANAGE_SETTINGS,
     hidden=True,
 )
-def systemReload(fro: str, chan: str, message: list[str]) -> str:
+async def systemReload(fro: str, chan: str, message: list[str]) -> str:
     """Reload the server's config."""
     glob.banchoConf.reload()
     return "Bancho settings reloaded!"
@@ -499,7 +502,7 @@ def systemReload(fro: str, chan: str, message: list[str]) -> str:
     privs=privileges.ADMIN_MANAGE_SETTINGS,
     hidden=True,
 )
-def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
+async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
     """Set maintenance mode for the server."""
     # Turn on/off bancho maintenance
     maintenance = True
@@ -550,7 +553,7 @@ def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
     privs=privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
-def systemStatus(fro: str, chan: str, message: list[str]) -> str:
+async def systemStatus(fro: str, chan: str, message: list[str]) -> str:
     """Print debugging info related to the server's state."""
     # Print some server info
     data = systemHelper.getSystemInfo()
@@ -665,9 +668,9 @@ def getPPMessage(userID: int, just_data: bool = False) -> Any:
     return " ".join(msg)
 
 
-def chimuMessage(beatmapID: int) -> str:
+async def chimuMessage(beatmapID: int) -> str:
     if not (
-        beatmap := glob.db.fetch(
+        beatmap := await glob.db.fetch(
             "SELECT song_name sn, beatmapset_id bsid "
             "FROM beatmaps WHERE beatmap_id = %s LIMIT 1",
             [beatmapID],
@@ -691,7 +694,7 @@ def chimuMessage(beatmapID: int) -> str:
     trigger="!chimu",
     hidden=False,
 )
-def chimu(fro: str, chan: str, message: list[str]) -> str:
+async def chimu(fro: str, chan: str, message: list[str]) -> str:
     """Get a download link for the beatmap in the current context (multi, spectator)."""
     try:
         match_id = channelList.getMatchIDFromChannel(chan)
@@ -718,7 +721,7 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
 
         beatmap_id = spectatorHostToken["beatmap_id"]
 
-    return chimuMessage(beatmap_id)
+    return await chimuMessage(beatmap_id)
 
 
 @command(
@@ -737,7 +740,7 @@ def chimu(fro: str, chan: str, message: list[str]) -> str:
     trigger="\x01ACTION is listening to",
     hidden=True,
 )
-def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # don't document this, don't want it showing up in !help
     if not (token := tokenList.getTokenFromUsername(fro)):
         return
@@ -750,7 +753,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
             ignoreIRC=True,
         )
         return (
-            chimuMessage(spectatorHostToken["beatmap_id"])
+            await chimuMessage(spectatorHostToken["beatmap_id"])
             if spectatorHostToken
             else None
         )
@@ -788,7 +791,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 # @command(
-#     trigger="!r",
+# async     trigger="!r",
 # )
 # def tillerinoRecommend(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #     """Get recommended farm maps to play. Similar to Tillerino's !r."""
@@ -843,7 +846,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #     relax = token.relax or _mods & mods.RELAX
 #     table = "scores_relax" if relax else "scores"
 
-#     _tops = glob.db.fetchAll(
+#     _tops = await glob.db.fetchAll(
 #         f"SELECT * FROM {table} WHERE userid = %s AND completed = 3 AND play_mode = 0 ORDER BY pp DESC LIMIT 20",
 #         [token.userID],
 #     )
@@ -897,7 +900,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #         ).json()
 
 #         for _map in maps:
-#             map_status: int = glob.db.fetch(
+#             map_status: int = await glob.db.fetch(
 #                 "SELECT ranked FROM beatmaps WHERE beatmap_md5 = %s", [_map["file_md5"]]
 #             ) or status_mapping.get(_map["approved"])
 
@@ -987,7 +990,7 @@ def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(trigger="!with", syntax="<mods>", hidden=True)
-def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Get the pp values for the last /np'ed map, with specified mods."""
     # Run the command in PM only
     if chan.startswith("#"):
@@ -1042,7 +1045,7 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 # @command(
-#    trigger='!acc',
+# async    trigger='!acc',
 #    syntax='<acc>',
 #    hidden=True
 # )
@@ -1081,7 +1084,7 @@ def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(trigger="!last", hidden=False)
-def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Show information about your most recently submitted score."""
     if not (token := tokenList.getTokenFromUsername(fro)):
         return
@@ -1094,7 +1097,7 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
         table = "scores"
 
     if not (
-        data := glob.db.fetch(
+        data := await glob.db.fetch(
             "SELECT {t}.*, b.song_name AS sn, "
             "b.beatmap_id AS bid, b.beatmapset_id as bsid, "
             "b.difficulty_std, b.difficulty_taiko, "
@@ -1196,7 +1199,7 @@ def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(trigger="!report", hidden=True)
-def report(fro: str, chan: str, message: list[str]) -> None:
+async def report(fro: str, chan: str, message: list[str]) -> None:
     """Report a player with a given message - your message will be hidden."""
     msg = ""
     try:  # TODO: Rate limit
@@ -1206,8 +1209,8 @@ def report(fro: str, chan: str, message: list[str]) -> None:
 
         # Get username, report reason and report info
         target, reason, additionalInfo = result.groups()
-        target = chat.fixUsernameForBancho(target)
-        targetID = userUtils.getID(target)
+        target = await chat.fixUsernameForBancho(target)
+        targetID = await userUtils.getID(target)
 
         # Make sure the user exists
         if not targetID:
@@ -1227,10 +1230,10 @@ def report(fro: str, chan: str, message: list[str]) -> None:
             chatlog = osuToken.getMessagesBufferString(token["token_id"])
 
         # Everything is fine, submit report
-        glob.db.execute(
+        await glob.db.execute(
             "INSERT INTO reports (id, from_uid, to_uid, reason, chatlog, time) VALUES (NULL, %s, %s, %s, %s, %s)",
             [
-                userUtils.getID(fro),
+                await userUtils.getID(fro),
                 targetID,
                 f"{reason} - ingame {f'({additionalInfo})' if additionalInfo else ''}",
                 chatlog,
@@ -1260,7 +1263,7 @@ def report(fro: str, chan: str, message: list[str]) -> None:
                 if token["irc"]:
                     aika_token = tokenList.getTokenFromUserID(999)
                     assert aika_token is not None
-                    chat.sendMessage(
+                    await chat.sendMessage(
                         token_id=aika_token["token_id"],
                         to=fro,
                         message=msg,
@@ -1270,7 +1273,7 @@ def report(fro: str, chan: str, message: list[str]) -> None:
 
 
 @command(trigger="!vdiscord", syntax="<discord_user_id>", hidden=True)
-def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
+async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     discordID = message[0]
 
@@ -1278,13 +1281,13 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
         return "Invalid syntax, please use !linkosu in Akatsuki's Discord server first."
 
     discordID = int(discordID) >> (0o14 - 1)  # get rid of the mess lol
-    userID = userUtils.getID(fro)  # aika side for a tad of secrecy
+    userID = await userUtils.getID(fro)  # aika side for a tad of secrecy
 
     # Check if their osu! account already has a discord link.
-    if glob.db.fetch("SELECT 1 FROM aika_akatsuki WHERE osu_id = %s", [userID]):
+    if await glob.db.fetch("SELECT 1 FROM aika_akatsuki WHERE osu_id = %s", [userID]):
         return "Your osu! account has already been linked to a Discord account."
 
-    res = glob.db.fetch(
+    res = await glob.db.fetch(
         "SELECT osu_id FROM aika_akatsuki WHERE discordid = %s",
         [discordID],
     )
@@ -1297,7 +1300,7 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
         )
 
     # Checks passed, they're ready to be linked.
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE aika_akatsuki SET osu_id = %s WHERE discordid = %s",
         [userID, discordID],
     )
@@ -1307,7 +1310,7 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 
 # XXX: disabled for now - was being overused
 # @command(
-#     trigger="!freeze",
+# async     trigger="!freeze",
 #     privs=privileges.ADMIN_MANAGE_PRIVILEGES,
 #     syntax="<target_name>",
 #     hidden=True,
@@ -1316,13 +1319,13 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 #     """Freeze a specified player."""
 #     target = message[0].lower()
 
-#     if not (target_id := userUtils.getID(target)):
+#     if not (target_id := await userUtils.getID(target)):
 #         return "That user does not exist"
 
-#     if userUtils.getFreezeTime(target_id):
+#     if await await userUtils.getFreezeTime(target_id):
 #         return "That user is already frozen."
 
-#     userUtils.freeze(target_id, userUtils.getID(fro))
+#     await userUtils.freeze(target_id, await userUtils.getID(fro))
 #     return f"Froze {target}."
 
 
@@ -1332,22 +1335,22 @@ def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name>",
     hidden=True,
 )
-def unfreeze(fro: str, chan: str, message: list[str]) -> str:
+async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     """Unfreeze a specified player."""
     target = message[0].lower()
 
-    if not (target_id := userUtils.getID(target)):
+    if not (target_id := await userUtils.getID(target)):
         return "That user does not exist"
 
-    if not userUtils.getFreezeTime(target_id):
+    if not await userUtils.getFreezeTime(target_id):
         return "That user is not frozen."
 
-    userUtils.unfreeze(target_id, userUtils.getID(fro))
+    await userUtils.unfreeze(target_id, await userUtils.getID(fro))
     return f"Unfroze {target}."
 
 
 @command(trigger="!update", privs=privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
-def updateServer(fro: str, chan: str, message: list[str]) -> None:
+async def updateServer(fro: str, chan: str, message: list[str]) -> None:
     """Broadcast a notification to all online players, and reboot the server after a short delay."""
     streamList.broadcast(
         "main",
@@ -1366,13 +1369,15 @@ def updateServer(fro: str, chan: str, message: list[str]) -> None:
 
 
 @command(trigger="!ss", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
-def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
+async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
     """Silently shutdown the server."""
     systemHelper.scheduleShutdown(0, False)
 
 
 @command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
-def silentRestart(fro: str, chan: str, message: list[str]) -> None:  # for beta moments
+async def silentRestart(
+    fro: str, chan: str, message: list[str]
+) -> None:  # for beta moments
     """Silently restart the server."""
     systemHelper.scheduleShutdown(0, True)
 
@@ -1383,11 +1388,11 @@ def silentRestart(fro: str, chan: str, message: list[str]) -> None:  # for beta 
     syntax="<new_username>",
     hidden=True,
 )
-def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
+async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     """Change your own username."""
     # For premium members to change their own usernames
     newUsername = " ".join(message)
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
     if not fokabot.USERNAME_REGEX.match(newUsername) or (
         " " in newUsername and "_" in newUsername
@@ -1399,7 +1404,7 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     if userUtils.getIDSafe(newUsernameSafe):
         return "That username is already in use."
 
-    userUtils.changeUsername(userID, fro, newUsername)
+    await userUtils.changeUsername(userID, fro, newUsername)
 
     notif_pkt = serverPackets.notification(
         "\n".join(
@@ -1417,8 +1422,10 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
             token["token_id"],
         )
 
-    userUtils.appendNotes(userID, f"Changed username: '{fro}' -> '{newUsername}'.")
-    log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
+    await userUtils.appendNotes(
+        userID, f"Changed username: '{fro}' -> '{newUsername}'."
+    )
+    await log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
     return f"Changed username to ({fro} -> {newUsername})."
 
 
@@ -1428,7 +1435,7 @@ def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     syntax="<rank/love/unrank> <set/map>",
     hidden=True,
 )
-def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Edit the ranked status of the last /np'ed map."""
     # Rank, unrank, and love maps with a single command.
     # Syntax: /np
@@ -1457,7 +1464,7 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     scope = "beatmapset_id" if is_set else "beatmap_id"
 
     if not (
-        res := glob.db.fetch(  # bsid is needed for dl link so we need it either way
+        res := await glob.db.fetch(  # bsid is needed for dl link so we need it either way
             "SELECT ranked, beatmapset_id, song_name, hit_length "
             "FROM beatmaps WHERE beatmap_id = %s",
             [token["last_np"]["beatmap_id"]],
@@ -1474,20 +1481,20 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # Due to the way we handle loved on relax, this is nescessary.
     if status == 5 or res["ranked"] == 5:
         # Get all md5's from maps we need to change.
-        beatmap_md5s = glob.db.fetchAll(
+        beatmap_md5s = await glob.db.fetchAll(
             "SELECT beatmap_md5, beatmap_id FROM beatmaps "
             f"WHERE {scope} = %s AND ranked = %s",
             [rank_id, res["ranked"]],
         )
 
     # Update map's ranked status.
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE beatmaps SET ranked = %s, ranked_status_freezed = 1, "
         f"rankedby = {token['user_id']} WHERE {scope} = %s",
         [status, rank_id],
     )
 
-    beatmap_md5s = glob.db.fetchAll(
+    beatmap_md5s = await glob.db.fetchAll(
         f"SELECT beatmap_md5 FROM beatmaps WHERE {scope} = %s",
         [rank_id],
     )
@@ -1530,7 +1537,7 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     aika_token = tokenList.getTokenFromUserID(999)
     assert aika_token is not None
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=aika_token["token_id"],
         to="#announce",
         message=f"{fro} has {status_readable} {beatmap_url}",
@@ -1544,11 +1551,11 @@ def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     syntax="<announcement>",
     hidden=True,
 )
-def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
+async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
     aika_token = tokenList.getTokenFromUserID(999)
     assert aika_token is not None
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=aika_token["token_id"],
         to="#announce",
         message=" ".join(message),
@@ -1557,10 +1564,13 @@ def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!playtime", hidden=False)
-def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
-    t = generalUtils.secondsToReadable(userUtils.getPlaytimeTotal(userUtils.getID(fro)))
-
-    return f"{fro}: Your total osu!Akatsuki playtime (all gamemodes) is: {t}."
+async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await userUtils.getID(fro)
+    total_playtime = await userUtils.getPlaytimeTotal(user_id)
+    readable_time = generalUtils.secondsToReadable(total_playtime)
+    return (
+        f"{fro}: Your total osu!Akatsuki playtime (all gamemodes) is: {readable_time}."
+    )
 
 
 @command(
@@ -1569,7 +1579,7 @@ def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <bit>",
     hidden=True,
 )
-def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
+async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     """Edit the whitelisted status of a specified user."""
     message = [m.lower() for m in message]
     target = message[0]
@@ -1578,15 +1588,15 @@ def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     if bit not in range(4):
         return "Invalid bit."
 
-    if not (userID := userUtils.getID(target)):
+    if not (userID := await userUtils.getID(target)):
         return "That user does not exist."
 
-    userUtils.editWhitelist(userID, bit)
+    await userUtils.editWhitelist(userID, bit)
     return f"{target}'s whitelist status has been set to {bit}."
 
 
 @command(trigger="!whoranked", hidden=True)
-def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Get the nominator for the last /np'ed map."""
     if not (token := tokenList.getTokenFromUsername(fro)):
         return
@@ -1594,7 +1604,7 @@ def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
 
-    if not (res := userUtils.getMapNominator(token["last_np"]["beatmap_id"])):
+    if not (res := await userUtils.getMapNominator(token["last_np"]["beatmap_id"])):
         return "That map isn't stored in our database."
     elif not res["rankedby"]:
         return "Our logs sadly do not go back far enough to find this data."
@@ -1609,13 +1619,13 @@ def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #       at a later date, but is currently 'out of order'.
 """
 def competitionMap(fro: str, chan: str, message: list[str]) -> str:
-    if not (result := glob.db.fetch( # TODO: this command and entire idea sucks
+    if not (result := await glob.db.fetch( # TODO: this command and entire idea sucks
         'SELECT competitions.*, beatmaps.song_name FROM competitions '
         'LEFT JOIN beatmaps ON competitions.map = beatmaps.beatmap_id '
         'WHERE end_time > UNIX_TIMESTAMP()')):
         return 'There are currently no active contests.'
 
-    return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(userUtils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
+    return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(await userUtils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
 
 def announceContest(fro: str, chan: str, message: list[str]) -> None:
     streamList.broadcast("main", serverPackets.notification('\n'.join([
@@ -1627,16 +1637,16 @@ def announceContest(fro: str, chan: str, message: list[str]) -> None:
 
 
 @command(trigger="!overwrite", hidden=True)
-def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
+async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     """Force your latest score to overwrite. (NOTE: this is possibly destructive)"""
-    userID = userUtils.getID(fro)  # TODO: rewrite this command as well..
-    user_privs = userUtils.getPrivileges(userID)
+    userID = await userUtils.getID(fro)  # TODO: rewrite this command as well..
+    user_privs = await userUtils.getPrivileges(userID)
 
     if not user_privs & privileges.USER_DONOR:
         return "The overwrite command is only available to Akatsuki supporters."
 
-    if not (ratelimit := userUtils.getOverwriteWaitRemainder(userID)):
-        glob.db.execute(
+    if not (ratelimit := await userUtils.getOverwriteWaitRemainder(userID)):
+        await glob.db.execute(
             "UPDATE users SET previous_overwrite = 1 WHERE id = %s",
             [userID],
         )
@@ -1664,11 +1674,11 @@ def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!mp", syntax="<subcommand>", hidden=False)
-def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Contains many multiplayer subcommands (TODO: document them as well)."""
 
-    def mpAddRefer():
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpAddRefer():
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) < 2:
@@ -1684,14 +1694,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username")
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user")
         match.add_referee(multiplayer_match["match_id"], userID)
 
         return f"Added {username} to referees"
 
-    def mpRemoveRefer() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpRemoveRefer() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) < 2:
@@ -1708,14 +1718,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username")
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user")
 
         match.remove_referee(multiplayer_match["match_id"], userID)
         return f"Removed {username} from referees"
 
-    def mpListRefer() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpListRefer() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -1726,14 +1736,14 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         ref_usernames: list[str] = []
         for id in match.get_referees(multiplayer_match["match_id"]):
-            username = userUtils.getUsername(id)
+            username = await userUtils.getUsername(id)
             assert username is not None
             ref_usernames.append(username)
 
         refs = ", ".join(ref_usernames)
         return f"Referees for this match: {refs}"
 
-    def mpMake() -> Optional[str]:
+    async def mpMake() -> Optional[str]:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp make <name>.",
@@ -1772,11 +1782,11 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     #             f"channel from IRC, use /join #multi_{matchID} instead.",
     #         )
 
-    #     osuToken.joinMatch(userToken["token_id"], matchID)
+    #     await osuToken.joinMatch(userToken["token_id"], matchID)
     #     return f"Attempting to join match #{matchID}!"
 
-    def mpClose() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpClose() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         matchID = channelList.getMatchIDFromChannel(chan)
@@ -1786,8 +1796,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         matchList.disposeMatch(matchID)
         return f"Multiplayer match #{matchID} disposed successfully."
 
-    def mpLock() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpLock() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -1799,8 +1809,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.update_match(multiplayer_match["match_id"], is_locked=True)
         return "This match has been locked."
 
-    def mpUnlock() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpUnlock() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -1812,8 +1822,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.update_match(multiplayer_match["match_id"], is_locked=False)
         return "This match has been unlocked."
 
-    def mpSize() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpSize() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if (
@@ -1835,8 +1845,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.forceSize(multiplayer_match["match_id"], matchSize)
         return f"Match size changed to {matchSize}."
 
-    def mpForce() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpForce() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         froToken = tokenList.getTokenFromUsername(fro, ignoreIRC=True)
@@ -1857,12 +1867,12 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not userToken:
             return
 
-        if not osuToken.joinMatch(userToken["token_id"], matchID):
+        if not await osuToken.joinMatch(userToken["token_id"], matchID):
             return "Failed to join match."
         return "Joined match."
 
-    def mpMove() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpMove() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if (
@@ -1878,7 +1888,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         newSlotID = int(message[2])
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -1895,8 +1905,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else "You can't use that slot: it's either already occupied by someone else or locked."
         )
 
-    def mpHost() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpHost() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) < 2:
@@ -1907,7 +1917,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -1923,8 +1933,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else f"Couldn't give host to {username}."
         )
 
-    def mpClearHost() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpClearHost() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -1936,11 +1946,11 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.removeHost(multiplayer_match["match_id"])
         return "Host has been removed from this match."
 
-    def mpStart() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpStart() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
-        def _start() -> bool:
+        async def _start() -> bool:
             multiplayer_match = matchList.getMatchFromChannel(chan)
             assert multiplayer_match is not None
 
@@ -1950,7 +1960,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             aika_token = tokenList.getTokenFromUserID(999)
             assert aika_token is not None
             if not match.start(multiplayer_match["match_id"]):
-                chat.sendMessage(
+                await chat.sendMessage(
                     token_id=aika_token["token_id"],
                     to=chan,
                     message=(
@@ -1960,7 +1970,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 )
                 return True  # Failed to start
             else:
-                chat.sendMessage(
+                await chat.sendMessage(
                     token_id=aika_token["token_id"],
                     to=chan,
                     message="Have fun!",
@@ -2004,20 +2014,21 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
                 return False
 
-        def _decreaseTimer(t: int) -> None:
+        async def _decreaseTimer(t: int) -> None:
             if t <= 0:
-                _start()
+                await _start()
             else:
                 if not t % 10 or t <= 5:
                     aika_token = tokenList.getTokenFromUserID(999)
                     assert aika_token is not None
-                    chat.sendMessage(
+                    await chat.sendMessage(
                         token_id=aika_token["token_id"],
                         to=chan,
                         message=f"Match starts in {t} seconds.",
                     )
 
-                threading.Timer(1.00, _decreaseTimer, [t - 1]).start()
+                loop = asyncio.get_running_loop()
+                loop.call_later(1.00, _decreaseTimer, [t - 1])
 
         if len(message) < 2 or not message[1].isnumeric():
             startTime = 0
@@ -2069,7 +2080,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "or you might receive a penalty."
             )
 
-    def mpInvite() -> Optional[str]:
+    async def mpInvite() -> Optional[str]:
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp invite <username>.",
@@ -2078,7 +2089,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
         if not (token := tokenList.getTokenFromUserID(userID, ignoreIRC=True)):
@@ -2089,7 +2100,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
-        match.invite(multiplayer_match["match_id"], fro=999, to=userID)
+        await  match.invite(multiplayer_match["match_id"], fro=999, to=userID)
 
         osuToken.enqueue(
             token["token_id"],
@@ -2100,8 +2111,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
         return f"An invite to this match has been sent to {username}."
 
-    def mpMap() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpMap() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if (
@@ -2116,7 +2127,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         gameMode = int(message[2]) if len(message) == 3 else 0
         if gameMode < 0 or gameMode > 3:
             raise exceptions.invalidArgumentsException("Gamemode must be 0, 1, 2 or 3.")
-        beatmapData = glob.db.fetch(
+        beatmapData = await glob.db.fetch(
             "SELECT song_name, beatmap_md5 FROM beatmaps WHERE beatmap_id = %s LIMIT 1",
             [beatmapID],
         )
@@ -2145,8 +2156,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.sendUpdates(multiplayer_match["match_id"])
         return "Match map has been updated."
 
-    def mpSet() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpSet() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if (
@@ -2204,8 +2215,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.sendUpdates(multiplayer_match["match_id"])
         return "Match settings have been updated!"
 
-    def mpAbort():
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpAbort():
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -2217,8 +2228,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.abort(multiplayer_match["match_id"])
         return "Match aborted!"
 
-    def mpKick() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpKick() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) < 2:
@@ -2229,7 +2240,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (username := message[1].strip()):
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -2249,8 +2260,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"{username} has been kicked from the match."
 
-    def mpPassword() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpPassword() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         password = "" if len(message) < 2 or not message[1].strip() else message[1]
@@ -2263,8 +2274,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.changePassword(multiplayer_match["match_id"], password)
         return "Match password has been changed!"
 
-    def mpRandomPassword() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpRandomPassword() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         password = secrets.token_hex(16)
@@ -2277,8 +2288,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.changePassword(multiplayer_match["match_id"], password)
         return "Match password has been randomized."
 
-    def mpMods() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpMods() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) != 2 or len(message[1]) % 2:
@@ -2344,8 +2355,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.changeMods(multiplayer_match["match_id"], _mods)
         return "Match mods have been updated!"
 
-    def mpTeam() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpTeam() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) < 3:
@@ -2361,7 +2372,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "Team colour must be red or blue.",
             )
 
-        if not (userID := userUtils.getIDSafe(username)):
+        if not (userID := await userUtils.getIDSafe(username)):
             raise exceptions.userNotFoundException("No such user.")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -2378,8 +2389,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"{username} is now in {colour} team"
 
-    def mpSettings() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpSettings() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         multiplayer_match = matchList.getMatchFromChannel(chan)
@@ -2438,8 +2449,8 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "".join(msg).rstrip(" | " if single else "\n")
 
-    def mpScoreV() -> Optional[str]:
-        if not (userID := userUtils.getIDSafe(fro)):
+    async def mpScoreV() -> Optional[str]:
+        if not (userID := await userUtils.getIDSafe(fro)):
             raise exceptions.userNotFoundException("No such user")
 
         if len(message) < 2 or message[1] not in {"1", "2"}:
@@ -2467,7 +2478,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         match.sendUpdates(multiplayer_match["match_id"])
         return f"Match scoring type set to scorev{message[1]}."
 
-    def mpHelp() -> Optional[str]:
+    async def mpHelp() -> Optional[str]:
         return f"Supported multiplayer subcommands: <{' | '.join(subcommands.keys())}>."
 
     try:
@@ -2503,7 +2514,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         requestedSubcommand = message[0].lower().strip()
         if requestedSubcommand not in subcommands:
             raise exceptions.invalidArgumentsException("Invalid subcommand.")
-        return subcommands[requestedSubcommand]()
+        return await subcommands[requestedSubcommand]()
     except (
         exceptions.invalidArgumentsException,
         exceptions.userNotFoundException,
@@ -2525,7 +2536,7 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #    if not (message := ' '.join(message[1:]).strip()):
 #        return 'Invalid message.'
 #
-#    if not (targetID := userUtils.getIDSafe(target)):
+#    if not (targetID := await userUtils.getIDSafe(target)):
 #        return f'{target}: user not found.'
 #
 #    userToken = osuToken.get_token_by_user_id(targetID, ignoreIRC=True, _all=False)
@@ -2539,13 +2550,13 @@ def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     syntax="<target_name>",
     hidden=True,
 )
-def crashClient(fro: str, chan: str, message: list[str]) -> str:
+async def crashClient(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     if not message:
         return "I'll need a user to perform the command on.."
 
     target = message[0]
-    if not (targetID := userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return f"{target} not found."
 
     userToken = tokenList.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)
@@ -2560,7 +2571,7 @@ def crashClient(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
-def runPython(fro: str, chan: str, message: list[str]) -> str:
+async def runPython(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
     definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
@@ -2577,7 +2588,7 @@ def runPython(fro: str, chan: str, message: list[str]) -> str:
 # NOTE: this is dangerous, namely because ids of singletons (and other object)
 # will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
 @command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
-def reload(fro: str, chan: str, message: list[str]) -> str:
+async def reload(fro: str, chan: str, message: list[str]) -> str:
     """Reload a python module, by name (relative to pep.py)."""
     if fro != "cmyui":
         return "no :)"

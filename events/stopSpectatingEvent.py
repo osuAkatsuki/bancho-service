@@ -8,7 +8,7 @@ from objects import glob
 from objects import osuToken
 
 
-def handle(userToken: osuToken.Token, _=None):
+async def handle(userToken: osuToken.Token, _=None):
     try:
         # User must be spectating someone
         if userToken["spectating_user_id"] is None:
