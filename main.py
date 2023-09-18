@@ -118,6 +118,31 @@ async def main() -> int:
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
+        # set up datadog
+        try:
+            if settings.DATADOG_ENABLE:
+                glob.dog = datadogClient.datadogClient(
+                    apiKey=settings.DATADOG_API_KEY,
+                    appKey=settings.DATADOG_APP_KEY,
+                    periodicChecks=[
+                        datadogClient.periodicCheck(
+                            "online_users",
+                            lambda: len(osuToken.get_token_ids()),
+                        ),
+                        datadogClient.periodicCheck(
+                            "multiplayer_matches",
+                            lambda: len(match.get_match_ids()),
+                        ),
+                        datadogClient.periodicCheck(
+                            "chat_channels",
+                            lambda: len(channelList.getChannelNames()),
+                        ),
+                    ],
+                )
+        except:
+            log("Error creating datadog client.", Ansi.LRED)
+            raise
+
         # Connect to db
         try:
             log("Connecting to SQL.", Ansi.LMAGENTA)
@@ -198,31 +223,6 @@ async def main() -> int:
             log("Server running in debug mode.", Ansi.LYELLOW)
 
         glob.application = make_app()
-
-        # set up datadog
-        try:
-            if settings.DATADOG_ENABLE:
-                glob.dog = datadogClient.datadogClient(
-                    apiKey=settings.DATADOG_API_KEY,
-                    appKey=settings.DATADOG_APP_KEY,
-                    periodicChecks=[
-                        datadogClient.periodicCheck(
-                            "online_users",
-                            lambda: len(osuToken.get_token_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "multiplayer_matches",
-                            lambda: len(match.get_match_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "chat_channels",
-                            lambda: len(channelList.getChannelNames()),
-                        ),
-                    ],
-                )
-        except:
-            log("Error creating datadog client.", Ansi.LRED)
-            raise
 
         # start irc server if configured
         if settings.IRC_ENABLE:
