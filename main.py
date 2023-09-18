@@ -270,6 +270,8 @@ async def main() -> int:
             f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
             Ansi.LMAGENTA,
         )
+        shutdown_event = asyncio.Event()
+        await shutdown_event.wait()
     finally:
         system.dispose()
 
