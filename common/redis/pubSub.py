@@ -5,6 +5,7 @@ import redis.asyncio as redis
 from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 
+import redis.asyncio as redis
 
 class listener:
     def __init__(
