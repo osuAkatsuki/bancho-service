@@ -192,7 +192,8 @@ async def create_token(
     await glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
     await glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
     await glob.redis.set(
-        f"bancho:tokens:names:{safeUsername(token['username'])}", token_id,
+        f"bancho:tokens:names:{safeUsername(token['username'])}",
+        token_id,
     )
     await glob.redis.set(make_key(token_id), json.dumps(token))
     return token
@@ -696,7 +697,8 @@ async def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     if host_token:
         await remove_spectator(host_token["token_id"], token["user_id"])
         await enqueue(
-            host_token["token_id"], serverPackets.removeSpectator(token["user_id"]),
+            host_token["token_id"],
+            serverPackets.removeSpectator(token["user_id"]),
         )
 
         fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
@@ -790,7 +792,9 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     )
     await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
     await chat.joinChannel(
-        token_id=token_id, channel_name=f"#multi_{match_id}", force=True,
+        token_id=token_id,
+        channel_name=f"#multi_{match_id}",
+        force=True,
     )
     await enqueue(token_id, await serverPackets.matchJoinSuccess(match_id))
 

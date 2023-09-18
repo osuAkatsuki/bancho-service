@@ -14,7 +14,7 @@ class handler(AsyncRequestHandler):
         try:
             # Get online users count
             data["result"] = int(
-                await glob.redis.get("ripple:online_users").decode("utf-8"),
+                (await glob.redis.get("ripple:online_users")).decode("utf-8"),
             )
 
             # Status code and message

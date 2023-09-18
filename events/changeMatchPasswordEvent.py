@@ -25,6 +25,4 @@ async def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Update match password
-        await match.changePassword(
-            multiplayer_match["match_id"], packetData["matchPassword"],
-        )
+        await match.changePassword(multiplayer_match["match_id"], packetData["matchPassword"])
