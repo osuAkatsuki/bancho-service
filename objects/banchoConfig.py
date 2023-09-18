@@ -26,14 +26,18 @@ class banchoConfig:
         (re)load bancho_settings from DB and set values in config array
         """
         self.config["banchoMaintenance"] = generalUtils.stringToBool(
-            (await glob.db.fetch(
-                "SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'",
-            ))["value_int"],
+            (
+                await glob.db.fetch(
+                    "SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'",
+                )
+            )["value_int"],
         )
         self.config["freeDirect"] = generalUtils.stringToBool(
-            (await glob.db.fetch(
-                "SELECT value_int FROM bancho_settings WHERE name = 'free_direct'",
-            ))["value_int"],
+            (
+                await glob.db.fetch(
+                    "SELECT value_int FROM bancho_settings WHERE name = 'free_direct'",
+                )
+            )["value_int"],
         )
         mainMenuIcon = await glob.db.fetch(
             "SELECT file_id, url FROM main_menu_icons WHERE is_current = 1 LIMIT 1",
@@ -43,9 +47,11 @@ class banchoConfig:
         else:
             imageURL = mainMenuIcon["file_id"]
             self.config["menuIcon"] = f"{imageURL}|{mainMenuIcon['url']}"
-        self.config["loginNotification"] = (await glob.db.fetch(
-            "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
-        ))["value_string"]
+        self.config["loginNotification"] = (
+            await glob.db.fetch(
+                "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
+            )
+        )["value_string"]
 
     async def setMaintenance(self, maintenance: bool) -> None:
         """

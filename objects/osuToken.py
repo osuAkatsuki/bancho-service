@@ -746,7 +746,7 @@ def updatePingTime(token_id: str) -> None:
     )
 
 
-async  def joinMatch(token_id: str, match_id: int) -> bool:
+async def joinMatch(token_id: str, match_id: int) -> bool:
     """
     Set match to match_id, join match stream and channel
 

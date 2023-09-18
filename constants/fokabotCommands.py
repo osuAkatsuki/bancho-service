@@ -446,7 +446,7 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
     )
 
     await userUtils.appendNotes(
-        targetID, f"{fro} ({userID}) unrestricted for: {reason}"
+        targetID, f"{fro} ({userID}) unrestricted for: {reason}",
     )
     return f"{target} has been unrestricted."
 
@@ -1376,7 +1376,7 @@ async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
 
 @command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentRestart(
-    fro: str, chan: str, message: list[str]
+    fro: str, chan: str, message: list[str],
 ) -> None:  # for beta moments
     """Silently restart the server."""
     systemHelper.scheduleShutdown(0, True)
@@ -1423,7 +1423,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         )
 
     await userUtils.appendNotes(
-        userID, f"Changed username: '{fro}' -> '{newUsername}'."
+        userID, f"Changed username: '{fro}' -> '{newUsername}'.",
     )
     await log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
     return f"Changed username to ({fro} -> {newUsername})."
@@ -2100,7 +2100,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         multiplayer_match = matchList.getMatchFromChannel(chan)
         assert multiplayer_match is not None
 
-        await  match.invite(multiplayer_match["match_id"], fro=999, to=userID)
+        await match.invite(multiplayer_match["match_id"], fro=999, to=userID)
 
         osuToken.enqueue(
             token["token_id"],
