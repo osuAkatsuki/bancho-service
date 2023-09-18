@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import time
 from queue import Queue
+from typing import Any, Optional
 
 import MySQLdb.cursors
 from MySQLdb.connections import Connection
@@ -30,7 +31,7 @@ class worker:
         self.temporary = temporary
         log.debug(f"Created MySQL worker. Temporary: {self.temporary}")
 
-    def ping(self):
+    def ping(self) -> bool:
         """
         Ping MySQL server using this worker.
 
@@ -45,7 +46,7 @@ class worker:
         finally:
             c.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Close connection to the server
 
@@ -62,7 +63,14 @@ class connectionsPool:
 
     __slots__ = ("config", "maxSize", "pool", "consecutiveEmptyPool")
 
-    def __init__(self, host, username, password, database, size=128):
+    def __init__(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        database: str,
+        size: int = 128,
+    ):
         """
         Initialize a MySQL connections pool
 
@@ -78,7 +86,7 @@ class connectionsPool:
         self.consecutiveEmptyPool = 0
         self.fillPool()
 
-    def newWorker(self, temporary=False):
+    def newWorker(self, temporary: bool = False):
         """
         Create a new worker.
 
@@ -94,7 +102,7 @@ class connectionsPool:
         conn = worker(db, temporary)
         return conn
 
-    def fillPool(self, newConnections=0):
+    def fillPool(self, newConnections: int = 0):
         """
         Fill the queue with workers
 
@@ -110,7 +118,7 @@ class connectionsPool:
             if not self.pool.full():
                 self.pool.put_nowait(self.newWorker())
 
-    def getWorker(self, level=0):
+    def getWorker(self, level: int = 0):
         """
         Get a MySQL connection worker from the pool.
         If the pool is empty, a new temporary worker is created.
@@ -159,7 +167,7 @@ class connectionsPool:
         # Return the connection
         return worker
 
-    def putWorker(self, worker):
+    def putWorker(self, worker: worker):
         """
         Put the worker back in the pool.
         If the worker is temporary, close the connection
@@ -184,7 +192,14 @@ class db:
 
     __slots__ = ("pool",)
 
-    def __init__(self, host, username, password, database, initialSize):
+    def __init__(
+        self,
+        host: str,
+        username: str,
+        password: str,
+        database: str,
+        initialSize: int,
+    ):
         """
         Initialize a new MySQL database helper with multiple workers.
         This class is thread safe.
@@ -197,7 +212,7 @@ class db:
         """
         self.pool = connectionsPool(host, username, password, database, initialSize)
 
-    def execute(self, query, params=None):
+    def execute(self, query: str, params: Optional[list[Any]] = None):
         """
         Executes a query
 
@@ -215,7 +230,7 @@ class db:
             print(f"execute ({delim.join(reversed(stack))})")
 
         if params is None:
-            params = ()
+            params = []
         cursor = None
         worker = self.pool.getWorker()
         if worker is None:
@@ -233,7 +248,12 @@ class db:
             if worker:
                 self.pool.putWorker(worker)
 
-    def fetch(self, query, params=None, _all=False):
+    def fetch(
+        self,
+        query: str,
+        params: Optional[list[Any]] = None,
+        _all: bool = False,
+    ):
         """
         Fetch a single value from db that matches given query
 
@@ -252,7 +272,7 @@ class db:
             print(f"fetch ({delim.join(reversed(stack))})")
 
         if params is None:
-            params = ()
+            params = []
         cursor = None
         worker = self.pool.getWorker()
         if worker is None:
@@ -273,7 +293,7 @@ class db:
             if worker:
                 self.pool.putWorker(worker)
 
-    def fetchAll(self, query, params=None):
+    def fetchAll(self, query: str, params: Optional[list[Any]] = None):
         """
         Fetch all values from db that match given query.
         Calls self.fetch with all = True.
