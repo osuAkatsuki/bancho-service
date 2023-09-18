@@ -450,7 +450,7 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
 
 # used immediately below
-def _restartShutdown(restart: bool) -> str:
+async def _restartShutdown(restart: bool) -> str:
     """Restart (if restart = True) or shutdown (if restart = False) the service safely"""
     action = "restart" if restart else "shutdown"
     msg = " ".join(
@@ -460,7 +460,11 @@ def _restartShutdown(restart: bool) -> str:
             "Thank you for your patience.",
         ],
     )
-    systemHelper.scheduleShutdown(5, restart, msg)
+    await systemHelper.scheduleShutdown(
+        sendRestartTime=5,
+        restart=restart,
+        message=msg,
+    )
     return msg
 
 
@@ -471,7 +475,7 @@ def _restartShutdown(restart: bool) -> str:
 )
 async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
     """Restart the server."""
-    return _restartShutdown(True)
+    return await _restartShutdown(True)
 
 
 @command(
@@ -481,7 +485,7 @@ async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
 )
 async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
     """Shutdown the server."""
-    return _restartShutdown(False)
+    return await _restartShutdown(False)
 
 
 @command(
@@ -1367,13 +1371,13 @@ async def updateServer(fro: str, chan: str, message: list[str]) -> None:
         ),
     )
 
-    systemHelper.scheduleShutdown(0, True)
+    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
 
 
 @command(trigger="!ss", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
     """Silently shutdown the server."""
-    systemHelper.scheduleShutdown(0, False)
+    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=False)
 
 
 @command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
@@ -1383,7 +1387,7 @@ async def silentRestart(
     message: list[str],
 ) -> None:  # for beta moments
     """Silently restart the server."""
-    systemHelper.scheduleShutdown(0, True)
+    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
 
 
 @command(
