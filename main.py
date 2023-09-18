@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import os
+import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from typing import cast
+from typing import Optional
 
 import psutil
 import redis
@@ -48,20 +51,6 @@ from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
 
-def make_app():
-    return tornado.web.Application(
-        [
-            (r"/", mainHandler.handler),
-            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
-            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
-            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
-            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
-            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
-            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
-        ],
-    )
-
-
 ASCII_LOGO = "\n".join(
     [
         "      _/_/    _/                    _/                          _/        _/",
@@ -98,6 +87,9 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
+    http_server: Optional[tornado.httpserver.HTTPServer] = None
+    io_loop: Optional[tornado.ioloop.PollIOLoop] = None
+
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
@@ -192,8 +184,6 @@ if __name__ == "__main__":
         if settings.DEBUG:
             log("Server running in debug mode.", Ansi.LYELLOW)
 
-        glob.application = make_app()
-
         # set up datadog
         try:
             if settings.DATADOG_ENABLE:
@@ -260,14 +250,49 @@ if __name__ == "__main__":
                 },
             ).start()
 
-        # Start tornado
-        glob.application.listen(settings.APP_PORT)
+        # Start the HTTP server
+        glob.application = tornado.web.Application(
+            [
+                (r"/", mainHandler.handler),
+                (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
+                (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
+                (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
+                (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
+                (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+                (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
+            ],
+        )
+        http_server = tornado.httpserver.HTTPServer(glob.application)
+        http_server.listen(settings.APP_PORT)
 
         log(
             f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
             Ansi.LMAGENTA,
         )
 
-        tornado.ioloop.IOLoop.instance().start()
+        io_loop = cast(
+            tornado.ioloop.PollIOLoop,
+            tornado.ioloop.IOLoop.current(),
+        )
+        assert io_loop is not None
+        io_loop.start()
     finally:
+        # Stop listening for new connections
+        if http_server is not None:
+            http_server.stop()
+
+        # Allow grace period for ongoing connections to finish
+        GRACE_PERIOD_SECONDS = 10
+        if io_loop is not None:
+            deadline = time.time() + GRACE_PERIOD_SECONDS
+
+            while time.time() < deadline:
+                if io_loop._callbacks or io_loop._timeouts:
+                    time.sleep(1)
+                else:
+                    break
+
+            print("Closing IO loop.")
+            io_loop.stop()
+
         system.dispose()
