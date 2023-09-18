@@ -519,7 +519,7 @@ async def sendMessage(
 
         # Spam protection (ignore staff)
         if not osuToken.is_staff(userToken["privileges"]):
-            osuToken.spamProtection(token_id)
+            await osuToken.spamProtection(token_id)
 
         if (
             any([bytes(gid).decode() in message for gid in gamer_ids])
