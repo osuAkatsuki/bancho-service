@@ -628,7 +628,9 @@ class Server:
             "Expect things to crash and not work as expected :(",
         ]
 
-    async def forceDisconnection(self, username: str, isBanchoUsername: bool = True) -> None:
+    async def forceDisconnection(
+        self, username: str, isBanchoUsername: bool = True,
+    ) -> None:
         """
         Disconnect someone from IRC if connected
 
