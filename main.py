@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import os
-import time
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import cast
 from typing import Optional
