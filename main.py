@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -100,7 +101,8 @@ def signal_handler(signum, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-if __name__ == "__main__":
+
+async def main() -> int:
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
@@ -268,7 +270,11 @@ if __name__ == "__main__":
             f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
             Ansi.LMAGENTA,
         )
-
-        tornado.ioloop.IOLoop.instance().start()
     finally:
         system.dispose()
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(asyncio.run(main()))
