@@ -168,8 +168,10 @@ class Client:
             quitmsg = "EOT"
         except OSError as x:
             # Error while reading data, this client will be disconnected
+            log.error(f"[IRC] An error occurred while reading data from socket: {x!r}")
+
             data = b""
-            quitmsg = x
+            quitmsg = "An error occurred"
 
         if data:
             # Parse received data if needed
@@ -557,11 +559,11 @@ class Client:
 
     async def motdHandler(self, command: str, arguments: list[str]) -> None:
         """MOTD command handler"""
-        self.sendMotd()
+        await self.sendMotd()
 
     async def lusersHandler(self, command: str, arguments: list[str]) -> None:
         """LUSERS command handler"""
-        self.sendLusers()
+        await self.sendLusers()
 
     async def pingHandler(self, _, arguments: list[str]) -> None:
         """PING command handler"""
@@ -576,6 +578,7 @@ class Client:
     async def awayHandler(self, _, arguments: list[str]) -> None:
         """AWAY command handler"""
         response = await chat.IRCAway(self.banchoUsername, " ".join(arguments))
+        assert response is not None
         self.replyCode(
             response,
             "You are no longer marked as being away"
@@ -625,7 +628,7 @@ class Server:
             "Expect things to crash and not work as expected :(",
         ]
 
-    def forceDisconnection(self, username: str, isBanchoUsername: bool = True) -> None:
+    async def forceDisconnection(self, username: str, isBanchoUsername: bool = True) -> None:
         """
         Disconnect someone from IRC if connected
 
@@ -637,7 +640,7 @@ class Server:
             if (value.IRCUsername == username and not isBanchoUsername) or (
                 value.banchoUsername == username and isBanchoUsername
             ):
-                value.disconnect(callLogout=False)
+                await value.disconnect(callLogout=False)
                 break  # or dictionary changes size during iteration
 
     def banchoJoinChannel(self, username: str, channel: str) -> None:
@@ -748,13 +751,13 @@ class Server:
                 # Handle outgoing connections
                 for x in owtd:
                     if x in self.clients:  # client may have been disconnected
-                        self.clients[x].writeSocket()
+                        await self.clients[x].writeSocket()
 
                 # Make sure all IRC clients are still connected
                 now = time.time()
                 if lastAliveCheck + 10 < now:
                     for client in list(self.clients.values()):
-                        client.checkAlive()
+                        await client.checkAlive()
                     lastAliveCheck = now
             except:
                 log.error(
