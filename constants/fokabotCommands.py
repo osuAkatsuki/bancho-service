@@ -2082,7 +2082,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             if userID not in await match.get_referees(multiplayer_match["match_id"]):
                 return None
 
-            threading.Timer(1.00, _decreaseTimer, [startTime - 1]).start()
+            loop = asyncio.get_running_loop()
+            loop.call_later(1.00, lambda: asyncio.create_task(_decreaseTimer(startTime - 1)))
+
             return (
                 f"Match starts in {startTime} seconds. The match has been locked. "
                 "Please don't leave the match during the countdown "
