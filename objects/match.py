@@ -581,7 +581,6 @@ async def updateHP(match_id: int, slot_id: int, hp: int) -> None:
     _slot = await slot.update_slot(match_id, slot_id, failed=failed)
     assert _slot is not None
 
-
 async def playerCompleted(match_id: int, user_id: int) -> None:
     """
     Set userID's slot completed to True
