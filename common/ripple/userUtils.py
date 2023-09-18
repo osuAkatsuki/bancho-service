@@ -1,6 +1,7 @@
 # TODO: seriously nuke this
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 from typing import List
@@ -10,7 +11,6 @@ from typing import Union
 
 import bcrypt
 from orjson import loads
-from requests import get
 
 import settings
 from common import generalUtils
@@ -39,9 +39,13 @@ async def getBeatmapTime(beatmapID: int) -> Any:
         return res["hit_length"]
 
     # Failed to find in db, use mirror.
-    r = get(f"{settings.MIRROR_URL}/b/{beatmapID}", timeout=2).text
-    if r and r != "null\n":
-        return loads(r)["TotalLength"]
+    response = await glob.http_client.get(
+        f"{settings.MIRROR_URL}/b/{beatmapID}",
+        timeout=2,
+    )
+    response_data = await response.aread()
+    if response_data and response_data != "null\n":
+        return loads(response_data)["TotalLength"]
 
     log.warning(f"Failed to retrieve beatmap time for bid {beatmapID}.")
     return 0
@@ -90,7 +94,7 @@ async def submitBeatmapRequest(
         name=f'This **beatmap{" set" if mapType == "s" else ""}** has been nominated by {username} for gamemode **{gameMode}**.',
         value="** **",
     )
-    embed.post()
+    asyncio.create_task(embed.post())
 
     return True
 

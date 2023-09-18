@@ -11,7 +11,6 @@ from typing import Callable
 from typing import Optional
 
 import orjson
-import requests
 from amplitude import BaseEvent
 
 import settings
@@ -603,7 +602,7 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
 
     # Send request to LESS api
     try:
-        resp = requests.get(
+        resp = await glob.http_client.get(
             f"http://127.0.0.1:7000/api/v1/pp?b={currentMap}&m={currentMods}",
             timeout=2,
         )
@@ -1271,7 +1270,8 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
                     )
                 else:
                     await osuToken.enqueue(
-                        token["token_id"], serverPackets.notification(msg),
+                        token["token_id"],
+                        serverPackets.notification(msg),
                     )
 
 
@@ -1511,7 +1511,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
 
-    discord.Webhook(
+    webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
         title=f"This {message[1]} has recieved a status update.",
         colour=status_to_colour(status),
@@ -1530,7 +1530,8 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "Beatmap Length": generalUtils.secondsToReadable(res["hit_length"]),
             }.items()
         ],
-    ).post()
+    )
+    asyncio.create_task(webhook.post())
 
     if is_set:
         beatmap_url = (
@@ -2582,11 +2583,11 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
-    definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
+    definition = "\n ".join(["async def __py(fro, chan, message):"] + lines)
 
     try:
         exec(definition)  # define function
-        ret = str(locals()["__py"](fro, chan, message))  # run it
+        ret = str(await locals()["__py"](fro, chan, message))  # run it
     except Exception as e:
         ret = f"{e.__class__}: {e}"
 
