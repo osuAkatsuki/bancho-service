@@ -12,9 +12,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
         return
 
     # Send invite
-    with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+    async with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
         # Make sure the match exists
-        multiplayer_match = match.get_match(userToken["match_id"])
+        multiplayer_match = await match.get_match(userToken["match_id"])
         if multiplayer_match is None:
             return
 

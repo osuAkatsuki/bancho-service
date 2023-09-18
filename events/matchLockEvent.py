@@ -13,9 +13,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
     if userToken["match_id"] is None:
         return
 
-    with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+    async with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
         # Make sure the match exists
-        multiplayer_match = match.get_match(userToken["match_id"])
+        multiplayer_match = await match.get_match(userToken["match_id"])
         if multiplayer_match is None:
             return
 
@@ -24,7 +24,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Make sure we aren't locking our slot
-        ourSlot = match.getUserSlotID(
+        ourSlot = await match.getUserSlotID(
             multiplayer_match["match_id"],
             userToken["user_id"],
         )
@@ -32,4 +32,4 @@ async def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Lock/Unlock slot
-        match.toggleSlotLocked(multiplayer_match["match_id"], packetData["slotID"])
+        await match.toggleSlotLocked(multiplayer_match["match_id"], packetData["slotID"])

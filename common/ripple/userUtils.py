@@ -240,7 +240,7 @@ async def editWhitelist(userID: int, bit: int) -> None:
     )
 
     # User is online, update their token's whitelist.
-    userToken = tokenList.getTokenFromUserID(userID)
+    userToken = await tokenList.getTokenFromUserID(userID)
     if userToken:
         userToken["whitelist"] = bit
 
@@ -274,7 +274,7 @@ async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
     )
 
     # Get game rank
-    stats["gameRank"] = getGameRank(userID, gameMode, relax_ap)
+    stats["gameRank"] = await getGameRank(userID, gameMode, relax_ap)
 
     # Return stats + game rank
     return stats
@@ -319,7 +319,7 @@ async def getID(username: str) -> int:
 
     # Get userID from redis
     usernameSafe: str = safeUsername(username)
-    userID = glob.redis.get(f"ripple:userid_cache:{usernameSafe}")
+    userID = await glob.redis.get(f"ripple:userid_cache:{usernameSafe}")
 
     if not userID:
         # If it's not in redis, get it from mysql
@@ -330,7 +330,7 @@ async def getID(username: str) -> int:
             return 0
 
         # Otherwise, save it in redis and return it
-        glob.redis.set(
+        await glob.redis.set(
             f"ripple:userid_cache:{usernameSafe}",
             userID,
             3600,
@@ -400,7 +400,7 @@ async def checkLogin(userID: int, password: str, ip: str = "") -> bool:
     # Check cached bancho session
     banchoSession = False
     if ip:
-        banchoSession = checkBanchoSessionIpLookup(userID, ip)
+        banchoSession = await checkBanchoSessionIpLookup(userID, ip)
 
     # Return True if there's a bancho session for this user from that ip
     if banchoSession:
@@ -814,7 +814,7 @@ async def IPLog(userID: int, ip: int) -> None:
     )
 
 
-def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
+async def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
     """
     Return True if there is a bancho session for `userID` from `ip`
     If `ip` is an empty string, check if there's a bancho session for that user, from any IP.
@@ -824,9 +824,9 @@ def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
     :return: True if there's an active bancho session, else False
     """
     if ip:
-        return glob.redis.sismember(f"bancho:sessions_by_ip:{userID}", ip)
+        return await glob.redis.sismember(f"bancho:sessions_by_ip:{userID}", ip)
     else:
-        return glob.redis.exists(f"bancho:sessions_by_ip:{userID}")
+        return await glob.redis.exists(f"bancho:sessions_by_ip:{userID}")
 
 
 async def is2FAEnabled(userID: int):
@@ -964,7 +964,7 @@ async def ban(userID: int) -> None:
     )
 
     # Notify bancho about the ban
-    glob.redis.publish("peppy:ban", userID)
+    await glob.redis.publish("peppy:ban", userID)
 
     # Remove the user from global and country leaderboards
     await removeFromLeaderboard(userID)
@@ -986,7 +986,7 @@ async def unban(userID: int) -> None:
         [privileges.USER_NORMAL | privileges.USER_PUBLIC, userID],
     )
 
-    glob.redis.publish("peppy:unban", userID)
+    await glob.redis.publish("peppy:unban", userID)
 
 
 async def restrict(userID: int) -> None:
@@ -1005,7 +1005,7 @@ async def restrict(userID: int) -> None:
         )
 
         # Notify bancho about this ban
-        glob.redis.publish("peppy:ban", userID)
+        await glob.redis.publish("peppy:ban", userID)
 
         # Remove the user from global and country leaderboards
         await removeFromLeaderboard(userID)
@@ -1232,7 +1232,7 @@ async def getAccuracy(userID: int, gameMode: int) -> float:
     return rec[f"avg_accuracy_{modeForDB}"]
 
 
-def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
+async def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
     """
     Get `userID`'s **in-game rank** (eg: #1337) relative to gameMode
 
@@ -1247,7 +1247,7 @@ def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
     elif relax_ap == 2:
         board = "autoboard"
 
-    position = glob.redis.zrevrank(
+    position = await glob.redis.zrevrank(
         f"ripple:{board}:{gameModes.getGameModeForDB(gameMode)}",
         userID,
     )
@@ -1390,12 +1390,12 @@ async def logIP(userID: int, ip: str) -> None:
     )
 
 
-def saveBanchoSessionIpLookup(userID: int, ip: str) -> None:
-    glob.redis.sadd(f"bancho:sessions_by_ip:{userID}", ip)
+async def saveBanchoSessionIpLookup(userID: int, ip: str) -> None:
+    await glob.redis.sadd(f"bancho:sessions_by_ip:{userID}", ip)
 
 
-def deleteBanchoSessionIpLookup(userID: int, ip: str) -> None:
-    glob.redis.srem(f"bancho:sessions_by_ip:{userID}", ip)
+async def deleteBanchoSessionIpLookup(userID: int, ip: str) -> None:
+    await glob.redis.srem(f"bancho:sessions_by_ip:{userID}", ip)
 
 
 async def setPrivileges(userID: int, priv: int) -> None:
@@ -1448,7 +1448,7 @@ async def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
         return False
 
     groupPrivileges = groupPrivileges["privileges"]
-    userToken = tokenList.getTokenFromUserID(userID)
+    userToken = await tokenList.getTokenFromUserID(userID)
     if userToken:
         userPrivileges = userToken["privileges"]
     else:
@@ -1834,8 +1834,8 @@ async def changeUsername(
 
     # Empty redis username cache
     # TODO: Le pipe woo woo
-    glob.redis.delete(f"ripple:userid_cache:{safeUsername(oldUsername)}")
-    glob.redis.delete(f"ripple:change_username_pending:{userID}")
+    await glob.redis.delete(f"ripple:userid_cache:{safeUsername(oldUsername)}")
+    await glob.redis.delete(f"ripple:change_username_pending:{userID}")
 
 
 async def removeFromLeaderboard(userID: int) -> None:
@@ -1850,9 +1850,9 @@ async def removeFromLeaderboard(userID: int) -> None:
     country: str = (await getCountry(userID)).lower()
     for board in ("leaderboard", "relaxboard"):
         for mode in ("std", "taiko", "ctb", "mania"):
-            glob.redis.zrem(f"ripple:{board}:{mode}", str(userID))
+            await glob.redis.zrem(f"ripple:{board}:{mode}", str(userID))
             if country and country != "xx":
-                glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(userID))
+                await glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(userID))
 
 
 async def getClan(userID: int) -> str:

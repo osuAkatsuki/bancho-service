@@ -30,28 +30,28 @@ NOW_PLAYING_REGEX = re.compile(
 
 
 async def connect() -> None:
-    with redisLock(f"bancho:locks:aika"):
-        token = tokenList.getTokenFromUserID(999)
+    async with redisLock(f"bancho:locks:aika"):
+        token = await tokenList.getTokenFromUserID(999)
         if token is not None:
             return
 
         token = await tokenList.addToken(999)
         assert token is not None
 
-        osuToken.update_token(token["token_id"], action_id=actions.IDLE)
-        streamList.broadcast("main", serverPackets.userPanel(999))
-        streamList.broadcast("main", serverPackets.userStats(999))
+        await osuToken.update_token(token["token_id"], action_id=actions.IDLE)
+        await streamList.broadcast("main", await serverPackets.userPanel(999))
+        await streamList.broadcast("main", await serverPackets.userStats(999))
 
-        for channel_name in channelList.getChannelNames():
-            osuToken.joinChannel(token["token_id"], channel_name)
+        for channel_name in await channelList.getChannelNames():
+            await osuToken.joinChannel(token["token_id"], channel_name)
 
 
-def disconnect() -> None:
-    with redisLock(f"bancho:locks:aika"):
-        token = tokenList.getTokenFromUserID(999)
+async def disconnect() -> None:
+    async with redisLock(f"bancho:locks:aika"):
+        token = await tokenList.getTokenFromUserID(999)
         assert token is not None
 
-        tokenList.deleteToken(token["token_id"])
+        await tokenList.deleteToken(token["token_id"])
 
 
 # def reload_commands():

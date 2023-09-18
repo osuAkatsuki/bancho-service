@@ -13,7 +13,7 @@ import settings
 if TYPE_CHECKING:
     from concurrent.futures import ThreadPoolExecutor
 
-    from redis import Redis
+    from redis.asyncio import Redis
 
     from objects.dbPool import DBPool
     from common.ddog.datadogClient import datadogClient

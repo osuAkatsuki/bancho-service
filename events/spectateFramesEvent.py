@@ -10,7 +10,9 @@ from objects.osuToken import Token
 async def handle(userToken: Token, rawPacketData: bytes):
     # Send spectator frames to every spectator
     streamName = f"spect/{userToken['user_id']}"
-    streamList.broadcast(streamName, serverPackets.spectatorFrames(rawPacketData[7:]))
+    await streamList.broadcast(
+        streamName, serverPackets.spectatorFrames(rawPacketData[7:])
+    )
     log.debug(
-        f"Broadcasting {userToken['user_id']}'s frames to {stream.getClientCount(streamName)} clients.",
+        f"Broadcasting {userToken['user_id']}'s frames to {await stream.getClientCount(streamName)} clients.",
     )

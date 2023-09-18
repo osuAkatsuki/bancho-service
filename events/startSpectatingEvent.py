@@ -18,16 +18,16 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
-            osuToken.stopSpectating(userToken["token_id"])
+            await osuToken.stopSpectating(userToken["token_id"])
             return
 
         # Get host token
-        targetToken = tokenList.getTokenFromUserID(packetData["userID"])
+        targetToken = await tokenList.getTokenFromUserID(packetData["userID"])
         if targetToken is None:
             raise exceptions.tokenNotFoundException
 
         # Start spectating new user
-        osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
+        await osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
 
         glob.amplitude.track(
             BaseEvent(
@@ -47,4 +47,4 @@ async def handle(userToken: Token, rawPacketData: bytes):
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
         log.warning("Spectator start: token not found.")
-        osuToken.stopSpectating(userToken["token_id"])
+        await osuToken.stopSpectating(userToken["token_id"])

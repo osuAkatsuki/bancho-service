@@ -15,11 +15,11 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
-        if not (targetToken := tokenList.getTokenFromUserID(userID)):
+        if not (targetToken := await tokenList.getTokenFromUserID(userID)):
             return
 
         await osuToken.updateCachedStats(targetToken["token_id"])
-        osuToken.enqueue(
+        await osuToken.enqueue(
             targetToken["token_id"],
             serverPackets.userStats(userID, force=True),
         )
