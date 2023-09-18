@@ -4,13 +4,11 @@ import asyncio
 import random
 import re
 import secrets
-import threading
-import time  # me so lazy
+import time
 from typing import Any
 from typing import Callable
 from typing import Optional
 
-import orjson
 from amplitude import BaseEvent
 
 import settings
@@ -602,18 +600,19 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
 
     # Send request to LESS api
     try:
-        resp = await glob.http_client.get(
-            f"http://127.0.0.1:7000/api/v1/pp?b={currentMap}&m={currentMods}",
+        response = await glob.http_client.get(
+            "http://127.0.0.1:7000/api/v1/pp",
+            params={"b": currentMap, "m": currentMods},
             timeout=2,
         )
     except Exception as e:
         print(e)
         return "Score server currently down, could not retrieve PP."
 
-    if not resp or resp.status_code != 200:
+    if not response or response.status_code != 200:
         return "API Timeout. Please try again in a few seconds."
 
-    data = orjson.loads(resp.text)
+    data = response.json()
 
     # Make sure status is in response data
     if "status" not in data:
@@ -2085,7 +2084,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
             loop = asyncio.get_running_loop()
             loop.call_later(
-                1.00, lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
+                1.00,
+                lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
             )
 
             return (
