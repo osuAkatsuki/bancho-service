@@ -25,5 +25,5 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
         # Enqueue stats packets relative to this user
         await osuToken.enqueue(
-            userToken["token_id"], await serverPackets.userStats(userID)
+            userToken["token_id"], await serverPackets.userStats(userID),
         )

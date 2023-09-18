@@ -62,7 +62,9 @@ async def createMatch(
         creation_time=time(),
     )
     await streamList.add(match.create_stream_name(multiplayer_match["match_id"]))
-    await streamList.add(match.create_playing_stream_name(multiplayer_match["match_id"]))
+    await streamList.add(
+        match.create_playing_stream_name(multiplayer_match["match_id"]),
+    )
     await channelList.addChannel(
         f"#multi_{multiplayer_match['match_id']}",
         description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",

@@ -32,4 +32,6 @@ async def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Lock/Unlock slot
-        await match.toggleSlotLocked(multiplayer_match["match_id"], packetData["slotID"])
+        await match.toggleSlotLocked(
+            multiplayer_match["match_id"], packetData["slotID"],
+        )
