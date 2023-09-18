@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from redis import Redis
 
-    from common.db import dbConnector
+    from objects.dbPool import DBPool
     from common.ddog.datadogClient import datadogClient
     from irc.ircserver import Server as IRCServer
     from objects.banchoConfig import banchoConfig
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
 application = None
-db: dbConnector.db
+db: DBPool
 redis: Redis
 banchoConf: banchoConfig
 dog: Optional[datadogClient] = None

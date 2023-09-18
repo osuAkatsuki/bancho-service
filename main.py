@@ -15,10 +15,10 @@ import tornado.web
 from cmyui.logging import Ansi
 from cmyui.logging import log
 from cmyui.logging import printc
+from objects.dbPool import DBPool
 
 import settings
 from common.constants import bcolors
-from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
@@ -146,13 +146,8 @@ async def main() -> int:
         # Connect to db
         try:
             log("Connecting to SQL.", Ansi.LMAGENTA)
-            glob.db = dbConnector.db(
-                host=settings.DB_HOST,
-                username=settings.DB_USER,
-                password=settings.DB_PASS,
-                database=settings.DB_NAME,
-                initialSize=settings.DB_WORKERS,
-            )
+            glob.db = DBPool()
+            await glob.db.start()
         except:
             log(f"Error connecting to sql.", Ansi.LRED)
             raise
@@ -197,7 +192,7 @@ async def main() -> int:
         glob.groupPrivileges = {
             row["name"].lower(): row["privileges"]
             for row in (
-                glob.db.fetchAll(
+                await glob.db.fetch_all(
                     "SELECT name, privileges FROM privileges_groups",
                 )
                 or []

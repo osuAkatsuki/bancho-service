@@ -1,9 +1,9 @@
 amplitude-analytics
 bcrypt
 cmyui
+aiomysql
 datadog
 dill
-mysqlclient
 orjson
 psutil
 python-dotenv
