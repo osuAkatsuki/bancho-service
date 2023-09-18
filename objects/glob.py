@@ -5,6 +5,7 @@ import time
 from typing import Optional
 from typing import TYPE_CHECKING
 
+import httpx
 from amplitude import Amplitude
 from amplitude import Config as AmplitudeConfig
 
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 
 DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
+http_client = httpx.AsyncClient()
 application = None
 db: DBPool
 redis: Redis

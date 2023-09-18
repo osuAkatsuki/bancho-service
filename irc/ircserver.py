@@ -130,7 +130,9 @@ class Client:
         self.replyCode(403, f"{command} :Not enough parameters")
 
     async def disconnect(
-        self, quitmsg: str = "Client quit", callLogout: bool = True,
+        self,
+        quitmsg: str = "Client quit",
+        callLogout: bool = True,
     ) -> None:
         """
         Disconnects this client from the IRC server

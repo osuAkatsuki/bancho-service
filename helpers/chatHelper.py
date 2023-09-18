@@ -400,7 +400,9 @@ async def sendMessage(
 
                     # Send their command
                     await streamList.broadcast_limited(
-                        f"chat/{to}", msg_packet, send_to,
+                        f"chat/{to}",
+                        msg_packet,
+                        send_to,
                     )
 
                     # Send Aika's response
@@ -481,7 +483,8 @@ async def sendMessage(
 
             # Away check
             if await osuToken.awayCheck(
-                recipient_token["token_id"], userToken["user_id"],
+                recipient_token["token_id"],
+                userToken["user_id"],
             ):
                 await sendMessage(
                     fro=to,

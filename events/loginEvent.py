@@ -392,19 +392,23 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Join role-related channels.
         if userToken["privileges"] & privileges.ADMIN_CAKER:
             await chat.joinChannel(
-                token_id=userToken["token_id"], channel_name="#devlog",
+                token_id=userToken["token_id"],
+                channel_name="#devlog",
             )
         if osuToken.is_staff(userToken["privileges"]):
             await chat.joinChannel(
-                token_id=userToken["token_id"], channel_name="#staff",
+                token_id=userToken["token_id"],
+                channel_name="#staff",
             )
         if userToken["privileges"] & privileges.USER_PREMIUM:
             await chat.joinChannel(
-                token_id=userToken["token_id"], channel_name="#premium",
+                token_id=userToken["token_id"],
+                channel_name="#premium",
             )
         if userToken["privileges"] & privileges.USER_DONOR:
             await chat.joinChannel(
-                token_id=userToken["token_id"], channel_name="#supporter",
+                token_id=userToken["token_id"],
+                channel_name="#supporter",
             )
 
         # Output channels info

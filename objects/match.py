@@ -199,7 +199,8 @@ def create_playing_stream_name(match_id: int) -> str:
 
 
 async def getMatchData(
-    match_id: int, censored: bool = False,
+    match_id: int,
+    censored: bool = False,
 ) -> tuple[tuple[object, int], ...]:
     """
     Return binary match data structure for packetHelper
@@ -1104,7 +1105,9 @@ async def countUsers(match_id: int) -> int:
 
 
 async def changeTeam(
-    match_id: int, user_id: int, new_team: Optional[int] = None,
+    match_id: int,
+    user_id: int,
+    new_team: Optional[int] = None,
 ) -> None:
     """
     Change userID's team
@@ -1279,7 +1282,9 @@ async def abort(match_id: int) -> None:
         return
 
     multiplayer_match = await update_match(
-        match_id, is_in_progress=False, is_starting=False,
+        match_id,
+        is_in_progress=False,
+        is_starting=False,
     )
     assert multiplayer_match is not None
 
