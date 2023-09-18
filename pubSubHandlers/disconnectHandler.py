@@ -14,5 +14,5 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (data := super().parseData(data)) is None:
             return
 
-        if targetToken := tokenList.getTokenFromUserID(data["userID"]):
-            osuToken.kick(targetToken["token_id"], data["reason"], "pubsub_kick")
+        if targetToken := await tokenList.getTokenFromUserID(data["userID"]):
+            await osuToken.kick(targetToken["token_id"], data["reason"], "pubsub_kick")

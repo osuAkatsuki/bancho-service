@@ -10,17 +10,17 @@ from objects.osuToken import Token
 async def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentJoinMatchChannel(rawPacketData)
     if (
-        packetData["matchID"] not in match.get_match_ids()
+        packetData["matchID"] not in await match.get_match_ids()
         or not userToken["tournament"]
     ):
         return
 
-    osuToken.update_token(
+    await osuToken.update_token(
         userToken["token_id"],
         match_id=packetData["matchID"],
     )
 
-    chat.joinChannel(
+    await chat.joinChannel(
         token_id=userToken["token_id"],
         channel_name=f'#multi_{packetData["matchID"]}',
         force=True,

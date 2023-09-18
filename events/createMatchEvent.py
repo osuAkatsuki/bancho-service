@@ -26,7 +26,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
 
         # Create a match object
         # TODO: Player number check
-        match_id = matchList.createMatch(
+        match_id = await matchList.createMatch(
             match_name,
             packetData["matchPassword"].strip(),
             packetData["beatmapID"],
@@ -36,9 +36,9 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
             token["user_id"],
         )
 
-        with redisLock(f"{match.make_key(match_id)}:lock"):
+        async with redisLock(f"{match.make_key(match_id)}:lock"):
             # Make sure the match has been created
-            multiplayer_match = match.get_match(match_id)
+            multiplayer_match = await match.get_match(match_id)
             if multiplayer_match is None:
                 raise exceptions.matchCreateError()
 
@@ -46,9 +46,9 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
             await osuToken.joinMatch(token["token_id"], match_id)
 
             # Give host to match creator
-            match.setHost(match_id, token["user_id"])
-            match.sendUpdates(match_id)
-            match.changePassword(match_id, packetData["matchPassword"])
+            await match.setHost(match_id, token["user_id"])
+            await match.sendUpdates(match_id)
+            await match.changePassword(match_id, packetData["matchPassword"])
 
         glob.amplitude.track(
             BaseEvent(
@@ -87,4 +87,4 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
 
     except exceptions.matchCreateError:
         log.error("Error while creating match!")
-        osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)
+        await osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)

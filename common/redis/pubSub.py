@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from threading import Thread
-
 from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 
+import redis.asyncio as redis
 
-class listener(Thread):
-    def __init__(self, r, handlers):
+
+class listener:
+    def __init__(
+        self,
+        redis_connection: redis.Redis,
+        handlers: dict[str, generalPubSubHandler.generalPubSubHandler],
+    ):
         """
         Initialize a set of redis pubSub listeners
 
@@ -27,17 +31,10 @@ class listener(Thread):
         - 	A function *object (not call)* that accepts one argument, that'll be the data received through the channel.
             This is useful if you want to make some simple handlers through a lambda, without having to create a class.
         """
-        Thread.__init__(self)
-        self.redis = r
-        self.pubSub = self.redis.pubsub()
+        self.redis_connection = redis_connection
         self.handlers = handlers
-        channels = []
-        for k, _ in self.handlers.items():
-            channels.append(k)
-        self.pubSub.subscribe(channels)
-        log.info(f"Subscribed to redis pubsub channels: {channels}")
 
-    def processItem(self, item):
+    async def processItem(self, item):
         """
         Processes a pubSub item by calling channel's handler
 
@@ -61,17 +58,23 @@ class listener(Thread):
                     generalPubSubHandler.generalPubSubHandler,
                 ):
                     # Handler class
-                    self.handlers[item["channel"]].handle(item["data"])
-                else:
-                    # Function
-                    self.handlers[item["channel"]](item["data"])
+                    await self.handlers[item["channel"]].handle(item["data"])
+                # else:
+                #     # Function
+                #     await self.handlers[item["channel"]](item["data"])
 
-    def run(self):
+    async def run(self):
         """
         Listen for data on incoming channels and process it.
         Runs forever.
 
         :return:
         """
-        for item in self.pubSub.listen():
-            self.processItem(item)
+        pubsub = self.redis_connection.pubsub()
+
+        channels = list(self.handlers.keys())
+        await pubsub.subscribe(*channels)
+        log.info(f"Subscribed to redis pubsub channels: {channels}")
+
+        async for item in pubsub.listen():
+            await self.processItem(item)

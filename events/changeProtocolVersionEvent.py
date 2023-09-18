@@ -10,7 +10,7 @@ async def handle(userToken: osuToken.Token, packetData):
 
     packetData = clientPackets.changeProtocolVersion(packetData)
     userToken["protocol_version"] = packetData["version"]
-    osuToken.update_token(
+    await osuToken.update_token(
         userToken["token_id"],
         protocol_version=userToken["protocol_version"],
     )

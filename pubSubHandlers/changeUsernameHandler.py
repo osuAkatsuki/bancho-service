@@ -13,14 +13,14 @@ from objects import tokenList
 
 async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
     try:
-        oldUsername = userUtils.getUsername(userID)
+        oldUsername = await userUtils.getUsername(userID)
         await userUtils.changeUsername(userID, newUsername=newUsername)
         await userUtils.appendNotes(
             userID,
             f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
         if targetToken:
-            osuToken.kick(
+            await osuToken.kick(
                 targetToken["token_id"],
                 f"Your username has been changed to {newUsername}. Please log in again.",
                 "username_change",
@@ -47,7 +47,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
     except userUtils.usernameAlreadyInUseError:
         # log.rap(999, "Username change: {} is already in use!", through="Bancho")
         if targetToken:
-            osuToken.kick(
+            await osuToken.kick(
                 targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
@@ -55,7 +55,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
     except userUtils.invalidUsernameError:
         # log.rap(999, "Username change: {} is not a valid username!", through="Bancho")
         if targetToken:
-            osuToken.kick(
+            await osuToken.kick(
                 targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
@@ -72,7 +72,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             return
 
         # Get the user's token
-        if (targetToken := tokenList.getTokenFromUserID(data["userID"])) is None:
+        if (targetToken := await tokenList.getTokenFromUserID(data["userID"])) is None:
             # If the user is offline change username immediately
             await handleUsernameChange(data["userID"], data["newUsername"])
         else:
@@ -93,7 +93,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
                 # through redis once the score has been submitted
                 # The check is performed on bancho logout too, so if the user disconnects
                 # without submitting a score, the username gets changed on bancho logout
-                glob.redis.set(
+                await glob.redis.set(
                     f'ripple:change_username_pending:{data["userID"]}',
                     data["newUsername"],
                 )

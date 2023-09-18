@@ -24,7 +24,7 @@ class handler(AsyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
-            aika_token = tokenList.getTokenFromUserID(999)
+            aika_token = await tokenList.getTokenFromUserID(999)
             assert aika_token is not None
 
             await chatHelper.sendMessage(

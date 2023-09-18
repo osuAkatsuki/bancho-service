@@ -176,10 +176,10 @@ class handler(AsyncRequestHandler):
                 token_processing_lock = redisLock(
                     f"{osuToken.make_key(requestTokenString)}:processing_lock",
                 )
-                token_processing_lock.acquire()
+                await token_processing_lock.acquire()
 
                 # Make sure the token exists
-                userToken = osuToken.get_token(requestTokenString)
+                userToken = await osuToken.get_token(requestTokenString)
                 if userToken is None:
                     raise exceptions.tokenNotFoundException()
 
@@ -210,7 +210,7 @@ class handler(AsyncRequestHandler):
 
                 # Token queue built, send it
                 responseTokenString = userToken["token_id"]
-                responseData = osuToken.dequeue(userToken["token_id"])
+                responseData = await osuToken.dequeue(userToken["token_id"])
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
@@ -223,18 +223,18 @@ class handler(AsyncRequestHandler):
                     # Packet handlers may have updated session information, or may have
                     # deleted the session (e.g. logout packet). Re-fetch it to ensure
                     # we have the latest state in-memory
-                    userToken = osuToken.get_token(requestTokenString)
+                    userToken = await osuToken.get_token(requestTokenString)
                     if userToken is not None:
                         # Update ping time for timeout
-                        osuToken.updatePingTime(userToken["token_id"])
+                        await osuToken.updatePingTime(userToken["token_id"])
 
                         # Delete token if kicked
                         if userToken["kicked"]:
-                            tokenList.deleteToken(userToken["token_id"])
+                            await tokenList.deleteToken(userToken["token_id"])
 
                 # Release processing lock
                 if token_processing_lock is not None:
-                    token_processing_lock.release()
+                    await token_processing_lock.release()
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)

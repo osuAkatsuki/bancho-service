@@ -131,7 +131,7 @@ def make_key(token_id: str) -> str:
     return f"bancho:tokens:{token_id}"
 
 
-def create_token(
+async def create_token(
     user_id: int,
     username: str,
     privileges: int,
@@ -188,50 +188,50 @@ def create_token(
         "amplitude_device_id": amplitude_device_id,
     }
 
-    glob.redis.sadd("bancho:tokens", token_id)
-    glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
-    glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
-    glob.redis.set(f"bancho:tokens:names:{safeUsername(token['username'])}", token_id)
-    glob.redis.set(make_key(token_id), json.dumps(token))
+    await glob.redis.sadd("bancho:tokens", token_id)
+    await glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
+    await glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
+    await glob.redis.set(f"bancho:tokens:names:{safeUsername(token['username'])}", token_id)
+    await glob.redis.set(make_key(token_id), json.dumps(token))
     return token
 
 
-def get_token_ids() -> set[str]:
-    raw_token_ids: set[bytes] = glob.redis.smembers("bancho:tokens")
+async def get_token_ids() -> set[str]:
+    raw_token_ids: set[bytes] = await glob.redis.smembers("bancho:tokens")
     return {token_id.decode() for token_id in raw_token_ids}
 
 
-def get_token(token_id: str) -> Optional[Token]:
-    token = glob.redis.get(make_key(token_id))
+async def get_token(token_id: str) -> Optional[Token]:
+    token = await glob.redis.get(make_key(token_id))
     if token is None:
         return None
     return json.loads(token)
 
 
-def get_tokens() -> list[Token]:
+async def get_tokens() -> list[Token]:
     return [
-        json.loads(token) for token in glob.redis.hgetall("bancho:tokens:json").values()
+        json.loads(token) for token in (await glob.redis.hgetall("bancho:tokens:json")).values()
     ]
 
 
-def get_token_by_user_id(user_id: int) -> Optional[Token]:
-    token_id: Optional[bytes] = glob.redis.get(f"bancho:tokens:ids:{user_id}")
+async def get_token_by_user_id(user_id: int) -> Optional[Token]:
+    token_id: Optional[bytes] = await glob.redis.get(f"bancho:tokens:ids:{user_id}")
     if token_id is None:
         return None
 
-    token = get_token(token_id.decode())
+    token = await get_token(token_id.decode())
     if token is not None:
         return token
 
 
-def get_token_by_username(username: str) -> Optional[Token]:
-    token_id: Optional[bytes] = glob.redis.get(
+async def get_token_by_username(username: str) -> Optional[Token]:
+    token_id: Optional[bytes] = await glob.redis.get(
         f"bancho:tokens:names:{safeUsername(username)}",
     )
     if token_id is None:
         return None
 
-    token = get_token(token_id.decode())
+    token = await get_token(token_id.decode())
     if token is not None:
         return token
 
@@ -246,7 +246,7 @@ MISSING = MissingType()
 
 
 # TODO: the things that can actually be Optional need to have different defaults
-def update_token(
+async def update_token(
     token_id: str,
     # user_id: Optional[int] = None,
     username: Optional[str] = None,
@@ -287,7 +287,7 @@ def update_token(
     pp: Optional[int] = None,
     amplitude_device_id: Optional[str] = None,
 ) -> Optional[Token]:
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return None
 
@@ -359,78 +359,78 @@ def update_token(
         token["pp"] = pp
     if amplitude_device_id is not None:
         token["amplitude_device_id"] = amplitude_device_id
-    glob.redis.set(make_key(token_id), json.dumps(token))
-    glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
+    await glob.redis.set(make_key(token_id), json.dumps(token))
+    await glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
     return token
 
 
-def delete_token(token_id: str) -> None:
-    token = get_token(token_id)
+async def delete_token(token_id: str) -> None:
+    token = await get_token(token_id)
     if token is None:
         return
 
-    glob.redis.srem("bancho:tokens", token_id)
-    glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
-    glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
-    glob.redis.hdel("bancho:tokens:json", token_id)
-    glob.redis.delete(make_key(token_id))
-    glob.redis.delete(f"{make_key(token_id)}:channels")
-    glob.redis.delete(f"{make_key(token_id)}:spectators")
-    glob.redis.delete(f"{make_key(token_id)}:streams")
-    glob.redis.delete(f"{make_key(token_id)}:message_history")
-    glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
+    await glob.redis.srem("bancho:tokens", token_id)
+    await glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
+    await glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
+    await glob.redis.hdel("bancho:tokens:json", token_id)
+    await glob.redis.delete(make_key(token_id))
+    await glob.redis.delete(f"{make_key(token_id)}:channels")
+    await glob.redis.delete(f"{make_key(token_id)}:spectators")
+    await glob.redis.delete(f"{make_key(token_id)}:streams")
+    await glob.redis.delete(f"{make_key(token_id)}:message_history")
+    await glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
 
-    glob.redis.delete(f"{make_key(token_id)}:packet_queue")
-    glob.redis.delete(f"{make_key(token_id)}:processing_lock")
+    await glob.redis.delete(f"{make_key(token_id)}:packet_queue")
+    await glob.redis.delete(f"{make_key(token_id)}:processing_lock")
 
 
 # joined channels
 
 
-def get_joined_channels(token_id: str) -> set[str]:
+async def get_joined_channels(token_id: str) -> set[str]:
     """Returns a set of channel names"""
-    raw_channels: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:channels")
+    raw_channels: set[bytes] = await glob.redis.smembers(f"{make_key(token_id)}:channels")
     return {x.decode() for x in raw_channels}
 
 
 # spectators
 
 
-def get_spectators(token_id: str) -> set[int]:
-    raw_spectators: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:spectators")
+async def get_spectators(token_id: str) -> set[int]:
+    raw_spectators: set[bytes] = await glob.redis.smembers(f"{make_key(token_id)}:spectators")
     return {int(raw_spectator) for raw_spectator in raw_spectators}
 
 
-def remove_spectator(token_id: str, spectator_user_id: int) -> None:
-    glob.redis.srem(f"{make_key(token_id)}:spectators", spectator_user_id)
+async def remove_spectator(token_id: str, spectator_user_id: int) -> None:
+    await glob.redis.srem(f"{make_key(token_id)}:spectators", spectator_user_id)
 
 
-def add_spectator(token_id: str, spectator_user_id: int) -> None:
-    glob.redis.sadd(f"{make_key(token_id)}:spectators", spectator_user_id)
+async def add_spectator(token_id: str, spectator_user_id: int) -> None:
+    await glob.redis.sadd(f"{make_key(token_id)}:spectators", spectator_user_id)
 
 
 # streams
 
 
-def get_streams(token_id: str) -> set[str]:
-    raw_streams: set[bytes] = glob.redis.smembers(f"{make_key(token_id)}:streams")
+async def get_streams(token_id: str) -> set[str]:
+    raw_streams: set[bytes] = await glob.redis.smembers(f"{make_key(token_id)}:streams")
     return {raw_stream.decode() for raw_stream in raw_streams}
 
 
-def add_stream(token_id: str, stream_name: str) -> None:
-    glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
+async def add_stream(token_id: str, stream_name: str) -> None:
+    await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
 
 
-def remove_stream(token_id: str, stream_name: str) -> None:
-    glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
+async def remove_stream(token_id: str, stream_name: str) -> None:
+    await glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
 
 
 # messages
 # (list) bancho:tokens:{token_id}:message_history
 
 
-def get_message_history(token_id: str) -> list[str]:
-    raw_history: list[bytes] = glob.redis.lrange(
+async def get_message_history(token_id: str) -> list[str]:
+    raw_history: list[bytes] = await glob.redis.lrange(
         f"{make_key(token_id)}:message_history",
         0,
         -1,
@@ -438,23 +438,23 @@ def get_message_history(token_id: str) -> list[str]:
     return [raw_message.decode() for raw_message in raw_history]
 
 
-def add_message_to_history(token_id: str, message: str) -> None:
-    glob.redis.rpush(f"{make_key(token_id)}:message_history", message)
+async def add_message_to_history(token_id: str, message: str) -> None:
+    await glob.redis.rpush(f"{make_key(token_id)}:message_history", message)
 
 
 # away messages
 # (set[userid]) bancho:tokens:{token_id}:sent_away_messages
 
 
-def get_sent_away_messages(token_id: str) -> set[str]:
-    raw_messages: set[bytes] = glob.redis.smembers(
+async def get_sent_away_messages(token_id: str) -> set[str]:
+    raw_messages: set[bytes] = await glob.redis.smembers(
         f"{make_key(token_id)}:sent_away_messages",
     )
     return {raw_message.decode() for raw_message in raw_messages}
 
 
-def add_sent_away_message(token_id: str, user_id: int) -> None:
-    glob.redis.sadd(f"{make_key(token_id)}:sent_away_messages", user_id)
+async def add_sent_away_message(token_id: str, user_id: int) -> None:
+    await glob.redis.sadd(f"{make_key(token_id)}:sent_away_messages", user_id)
 
 
 # properties
@@ -471,13 +471,13 @@ def is_restricted(token_privileges: int) -> bool:
 #####
 
 
-def enqueue(token_id: str, data: bytes) -> None:
+async def enqueue(token_id: str, data: bytes) -> None:
     """
     Add bytes (packets) to queue
 
     :param data: (packet) bytes to enqueue
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
@@ -488,24 +488,24 @@ def enqueue(token_id: str, data: bytes) -> None:
     if len(data) >= 10 * 10**6:
         logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
-    glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
+    await glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
 
 
-def dequeue(token_id: str) -> bytes:
-    token = get_token(token_id)
+async def dequeue(token_id: str) -> bytes:
+    token =await get_token(token_id)
     if token is None:
         return b""
 
-    raw_packets = glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
+    raw_packets = await glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
     raw_packets.reverse()  # redis returns backwards
 
     # clear the packets we read
-    glob.redis.delete(f"{make_key(token_id)}:packet_queue")
+    await glob.redis.delete(f"{make_key(token_id)}:packet_queue")
 
     return b"".join([bytes(json.loads(raw_packet)) for raw_packet in raw_packets])
 
 
-def joinChannel(token_id: str, channel_name: str) -> None:
+async def joinChannel(token_id: str, channel_name: str) -> None:
     """
     Join a channel
 
@@ -513,16 +513,16 @@ def joinChannel(token_id: str, channel_name: str) -> None:
     :raises: exceptions.userAlreadyInChannelException()
                 exceptions.channelNoPermissionsException()
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    current_channels = get_joined_channels(token_id)
+    current_channels = await get_joined_channels(token_id)
 
     if channel_name in current_channels:
         raise exceptions.userAlreadyInChannelException()
 
-    channel = channelList.getChannel(channel_name)
+    channel = await channelList.getChannel(channel_name)
     if channel is None:
         raise exceptions.channelUnknownException()
 
@@ -548,129 +548,129 @@ def joinChannel(token_id: str, channel_name: str) -> None:
     ):
         raise exceptions.channelNoPermissionsException()
 
-    glob.redis.sadd(f"{make_key(token_id)}:channels", channel_name)
-    joinStream(token_id, f"chat/{channel_name}")
+    await glob.redis.sadd(f"{make_key(token_id)}:channels", channel_name)
+    await joinStream(token_id, f"chat/{channel_name}")
 
     client_name = channel_utils.get_client_name(channel_name)
-    enqueue(token_id, serverPackets.channelJoinSuccess(client_name))
+    await enqueue(token_id, serverPackets.channelJoinSuccess(client_name))
 
 
-def partChannel(token_id: str, channel_name: str) -> None:
+async def partChannel(token_id: str, channel_name: str) -> None:
     """
     Remove channel from joined channels list
 
     :param channel_name: channel name
     """
-    joined_channels = get_joined_channels(token_id)
+    joined_channels = await get_joined_channels(token_id)
     if channel_name not in joined_channels:
         raise exceptions.userNotInChannelException()
 
-    glob.redis.srem(f"{make_key(token_id)}:channels", channel_name)
-    leaveStream(token_id, f"chat/{channel_name}")
+    await glob.redis.srem(f"{make_key(token_id)}:channels", channel_name)
+    await leaveStream(token_id, f"chat/{channel_name}")
 
 
-def setLocation(token_id: str, latitude: float, longitude: float) -> None:
+async def setLocation(token_id: str, latitude: float, longitude: float) -> None:
     """
     Set client location
 
     :param latitude: latitude
     :param longitude: longitude
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    update_token(
+    await update_token(
         token_id,
         latitude=latitude,
         longitude=longitude,
     )
 
 
-def startSpectating(token_id: str, host_token_id: str) -> None:
+async def startSpectating(token_id: str, host_token_id: str) -> None:
     """
     Set the spectating user to userID, join spectator stream and chat channel
     and send required packets to host
 
     :param host: host osuToken object
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    host_token = get_token(host_token_id)
+    host_token = await get_token(host_token_id)
     if host_token is None:
         return
 
     # Stop spectating old client
-    stopSpectating(token_id, get_lock=False)  # (we already have the lock)
+    await stopSpectating(token_id, get_lock=False)  # (we already have the lock)
 
     # Set new spectator host
-    update_token(
+    await update_token(
         token_id,
         spectating_token_id=host_token_id,
         spectating_user_id=host_token["user_id"],
     )
 
     # Add us to host's spectator list
-    add_spectator(host_token_id, token["user_id"])
+    await add_spectator(host_token_id, token["user_id"])
 
     # Create and join spectator stream
     streamName = f"spect/{host_token['user_id']}"
-    streamList.add(streamName)
-    joinStream(token_id, streamName)
-    joinStream(host_token_id, streamName)
+    await streamList.add(streamName)
+    await joinStream(token_id, streamName)
+    await joinStream(host_token_id, streamName)
 
     # Send spectator join packet to host
-    enqueue(host_token_id, serverPackets.addSpectator(token["user_id"]))
+    await enqueue(host_token_id, serverPackets.addSpectator(token["user_id"]))
 
     # Create and join #spectator (#spect_userid) channel
-    channelList.addChannel(
+    await channelList.addChannel(
         name=f"#spect_{host_token['user_id']}",
         description=f"Spectator lobby for host {host_token['username']}",
         public_read=True,
         public_write=False,
         instance=True,
     )
-    chat.joinChannel(
+    await chat.joinChannel(
         token_id=token_id,
         channel_name=f"#spect_{host_token['user_id']}",
         force=True,
     )
 
-    spectators = get_spectators(host_token["token_id"])
+    spectators = await get_spectators(host_token["token_id"])
     if len(spectators) == 1:
         # First spectator, send #spectator join to host too
-        chat.joinChannel(
+        await chat.joinChannel(
             token_id=host_token_id,
             channel_name=f"#spect_{host_token['user_id']}",
             force=True,
         )
 
     # Send fellow spectator join to all clients
-    streamList.broadcast(
+    await streamList.broadcast(
         streamName,
         serverPackets.fellowSpectatorJoined(token["user_id"]),
     )
 
     # Get current spectators list
-    spectators = get_spectators(host_token["token_id"])
+    spectators = await get_spectators(host_token["token_id"])
     for spectator_user_id in spectators:
         if spectator_user_id != token["user_id"]:
-            enqueue(
+            await enqueue(
                 token_id,
                 serverPackets.fellowSpectatorJoined(token["user_id"]),
             )
 
 
-def stopSpectating(token_id: str, get_lock: bool = True) -> None:
+async def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     """
     Stop spectating, leave spectator stream and channel
     and send required packets to host
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
@@ -678,44 +678,44 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     if token["spectating_token_id"] is None:
         return
 
-    host_token = get_token(token["spectating_token_id"])
+    host_token = await get_token(token["spectating_token_id"])
     stream_name = f"spect/{token['spectating_user_id']}"
 
     # Remove us from host's spectators list,
     # leave spectator stream
     # and end the spectator left packet to host
-    leaveStream(token_id, stream_name)
+    await leaveStream(token_id, stream_name)
 
     if host_token:
-        remove_spectator(host_token["token_id"], token["user_id"])
-        enqueue(host_token["token_id"], serverPackets.removeSpectator(token["user_id"]))
+        await remove_spectator(host_token["token_id"], token["user_id"])
+        await enqueue(host_token["token_id"], serverPackets.removeSpectator(token["user_id"]))
 
         fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
         # and to all other spectators
-        spectators = get_spectators(host_token["token_id"])
+        spectators = await get_spectators(host_token["token_id"])
         for spectator in spectators:
-            spectator_token = get_token_by_user_id(spectator)
+            spectator_token = await get_token_by_user_id(spectator)
             if spectator_token is None:
                 continue
 
-            enqueue(spectator_token["token_id"], fellow_left_packet)
+            await enqueue(spectator_token["token_id"], fellow_left_packet)
 
         # If nobody is spectating the host anymore, close #spectator channel
         # and remove host from spect stream too
         if not spectators:
-            chat.partChannel(
+            await chat.partChannel(
                 token_id=host_token["token_id"],
                 channel_name=f"#spect_{host_token['user_id']}",
                 kick=True,
                 force=True,
             )
-            leaveStream(host_token["token_id"], stream_name)
+            await leaveStream(host_token["token_id"], stream_name)
 
         # Console output
         # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
 
     # Part #spectator channel
-    chat.partChannel(
+    await chat.partChannel(
         token_id=token_id,
         channel_name=f"#spect_{token['spectating_user_id']}",
         kick=True,
@@ -723,24 +723,24 @@ def stopSpectating(token_id: str, get_lock: bool = True) -> None:
     )
 
     # Set our spectating user to None
-    update_token(
+    await update_token(
         token_id,
         spectating_token_id=None,
         spectating_user_id=None,
     )
 
 
-def updatePingTime(token_id: str) -> None:
+async def updatePingTime(token_id: str) -> None:
     """
     Update latest ping time to current time
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    update_token(
+    await update_token(
         token_id,
         ping_time=time(),
     )
@@ -753,39 +753,39 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     :param match_id: new match ID
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return False
 
     # Make sure the match exists
-    multiplayer_match = match.get_match(match_id)
+    multiplayer_match = await match.get_match(match_id)
     if multiplayer_match is None:
         return False
 
     # Stop spectating
-    stopSpectating(token_id)
+    await stopSpectating(token_id)
 
     # Leave other matches
     if token["match_id"] is not None and token["match_id"] != match_id:
         await leaveMatch(token_id)
 
     # Try to join match
-    if not match.userJoin(multiplayer_match["match_id"], token_id):
-        enqueue(token_id, serverPackets.matchJoinFail)
+    if not await match.userJoin(multiplayer_match["match_id"], token_id):
+        await enqueue(token_id, serverPackets.matchJoinFail)
         return False
 
     # Set matchID, join stream, channel and send packet
-    update_token(
+    await update_token(
         token_id,
         match_id=match_id,
     )
-    joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
-    chat.joinChannel(token_id=token_id, channel_name=f"#multi_{match_id}", force=True)
-    enqueue(token_id, serverPackets.matchJoinSuccess(match_id))
+    await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
+    await chat.joinChannel(token_id=token_id, channel_name=f"#multi_{match_id}", force=True)
+    await enqueue(token_id, await serverPackets.matchJoinSuccess(match_id))
 
     if multiplayer_match["is_tourney"]:
         # Alert the user if we have just joined a tourney match
-        enqueue(
+        await enqueue(
             token_id,
             serverPackets.notification("You are now in a tournament match."),
         )
@@ -802,7 +802,7 @@ async def leaveMatch(token_id: str) -> None:
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
@@ -811,32 +811,32 @@ async def leaveMatch(token_id: str) -> None:
         return
 
     # Part #multiplayer channel and streams (/ and /playing)
-    chat.partChannel(
+    await chat.partChannel(
         token_id=token_id,
         channel_name=f"#multi_{token['match_id']}",
         kick=True,
         force=True,
     )
-    leaveStream(token_id, match.create_stream_name(token["match_id"]))
-    leaveStream(
+    await leaveStream(token_id, match.create_stream_name(token["match_id"]))
+    await leaveStream(
         token_id,
         match.create_playing_stream_name(token["match_id"]),
     )  # optional
 
     # Set usertoken match to -1
     leaving_match_id = token["match_id"]
-    update_token(
+    await update_token(
         token_id,
         match_id=None,
     )
 
     # Make sure the match exists
-    multiplayer_match = match.get_match(leaving_match_id)
+    multiplayer_match = await match.get_match(leaving_match_id)
     if multiplayer_match is None:
         return
 
     # Set slot to free
-    match.userLeft(multiplayer_match["match_id"], token_id)
+    await match.userLeft(multiplayer_match["match_id"], token_id)
 
     if multiplayer_match["is_tourney"]:
         # If an user leaves, then the ready status of the match changes and
@@ -844,7 +844,7 @@ async def leaveMatch(token_id: str) -> None:
         await match.sendReadyStatus(multiplayer_match["match_id"])
 
 
-def kick(
+async def kick(
     token_id: str,
     message: str = "You were kicked from the server.",
     reason: str = "kick",
@@ -857,22 +857,22 @@ def kick(
     :param reason: Kick reason, used in logs. Default: "kick"
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
     # Send packet to target
     log.info(f"{token['username']} has been disconnected. ({reason})")
     if message:
-        enqueue(token_id, serverPackets.notification(message))
+        await enqueue(token_id, serverPackets.notification(message))
 
-    enqueue(token_id, serverPackets.loginFailed)
+    await enqueue(token_id, serverPackets.loginFailed)
 
     # Logout event
-    logoutEvent.handle(token, deleteToken=token["irc"])
+    await logoutEvent.handle(token, deleteToken=token["irc"])
 
 
-def silence(
+async def silence(
     token_id: str,
     seconds: Optional[int] = None,
     reason: str = "",
@@ -886,45 +886,45 @@ def silence(
     :param author: userID of who has silenced the user. Default: 999 (Aika)
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
     if seconds is None:
         # Get silence expire from db if needed
-        seconds = max(0, userUtils.getSilenceEnd(token["user_id"]) - int(time()))
+        seconds = max(0, await userUtils.getSilenceEnd(token["user_id"]) - int(time()))
     else:
         # Silence in db and token
-        userUtils.silence(token["user_id"], seconds, reason, author)
+        await userUtils.silence(token["user_id"], seconds, reason, author)
 
     # Silence token
-    update_token(
+    await update_token(
         token_id,
         silence_end_time=int(time()) + seconds,
     )
 
     # Send silence packet to user
-    enqueue(token_id, serverPackets.silenceEndTime(seconds))
+    await enqueue(token_id, serverPackets.silenceEndTime(seconds))
 
     # Send silenced packet to everyone else
-    streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
+    await streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
 
 
-def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
+async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     """
     Silences the user if is spamming.
 
     :param increaseSpamRate: set to True if the user has sent a new message. Default: True
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
     # Increase the spam rate if needed
     token["spam_rate"] += 1
     if increaseSpamRate:
-        update_token(
+        await update_token(
             token_id,
             spam_rate=token["spam_rate"],
         )
@@ -933,30 +933,30 @@ def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     acceptable_rate = 10
 
     if token["spam_rate"] > acceptable_rate:
-        silence(token_id, 600, "Spamming (auto spam protection)")
+        await silence(token_id, 600, "Spamming (auto spam protection)")
 
 
-def isSilenced(token_id: str) -> bool:
+async def isSilenced(token_id: str) -> bool:
     """
     Returns True if this user is silenced, otherwise False
 
     :return: True if this user is silenced, otherwise False
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return False
 
     return token["silence_end_time"] - time() > 0
 
 
-def getSilenceSecondsLeft(token_id: str) -> int:
+async def getSilenceSecondsLeft(token_id: str) -> int:
     """
     Returns the seconds left for this user's silence
     (0 if user is not silenced)
 
     :return: silence seconds left (or 0)
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return 0
 
@@ -969,7 +969,7 @@ async def updateCachedStats(token_id: str) -> None:
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
@@ -990,7 +990,7 @@ async def updateCachedStats(token_id: str) -> None:
         log.warning("Stats query returned None")
         return
 
-    update_token(
+    await update_token(
         token_id,
         ranked_score=stats["rankedScore"],
         accuracy=stats["accuracy"] / 100,
@@ -1007,7 +1007,7 @@ async def checkRestricted(token_id: str) -> None:
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
@@ -1025,12 +1025,12 @@ async def checkBanned(token_id: str) -> None:
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
     if await userUtils.isBanned(token["user_id"]):
-        enqueue(token_id, serverPackets.loginBanned)
+        await enqueue(token_id, serverPackets.loginBanned)
         await logoutEvent.handle(token, deleteToken=False)
 
 
@@ -1041,11 +1041,11 @@ async def setRestricted(token_id: str) -> None:
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    aika_token = get_token_by_user_id(999)
+    aika_token = await get_token_by_user_id(999)
     assert aika_token is not None
     await chat.sendMessage(
         token_id=aika_token["token_id"],
@@ -1061,11 +1061,11 @@ async def resetRestricted(token_id: str) -> None:
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    aika_token = get_token_by_user_id(999)
+    aika_token = await get_token_by_user_id(999)
     assert aika_token is not None
     await chat.sendMessage(
         token_id=aika_token["token_id"],
@@ -1074,53 +1074,53 @@ async def resetRestricted(token_id: str) -> None:
     )
 
 
-def joinStream(token_id: str, name: str) -> None:
+async def joinStream(token_id: str, name: str) -> None:
     """
     Join a packet stream, or create it if the stream doesn't exist.
 
     :param name: stream name
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    streamList.join(name, token_id=token_id)
-    if name not in get_streams(token_id):
-        add_stream(token_id, name)
+    await streamList.join(name, token_id=token_id)
+    if name not in await get_streams(token_id):
+        await add_stream(token_id, name)
 
 
-def leaveStream(token_id: str, name: str) -> None:
+async def leaveStream(token_id: str, name: str) -> None:
     """
     Leave a packets stream
 
     :param name: stream name
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    streamList.leave(name, token_id)
-    if name in get_streams(token_id):
-        remove_stream(token_id, name)
+    await streamList.leave(name, token_id)
+    if name in await get_streams(token_id):
+        await remove_stream(token_id, name)
 
 
-def leaveAllStreams(token_id: str) -> None:
+async def leaveAllStreams(token_id: str) -> None:
     """
     Leave all joined packet streams
 
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return
 
-    for stream in get_streams(token_id):
-        leaveStream(token_id, stream)
+    for stream in await get_streams(token_id):
+        await leaveStream(token_id, stream)
 
 
-def awayCheck(token_id: str, user_id: int) -> bool:
+async def awayCheck(token_id: str, user_id: int) -> bool:
     """
     Returns True if user_id doesn't know that we are away
     Returns False if we are not away or if user_id already knows we are away
@@ -1128,17 +1128,17 @@ def awayCheck(token_id: str, user_id: int) -> bool:
     :param user_id: original sender user_id
     :return:
     """
-    token = get_token(token_id)
+    token = await get_token(token_id)
     if token is None:
         return False
 
-    if not token["away_message"] or user_id in get_sent_away_messages(token_id):
+    if not token["away_message"] or user_id in await get_sent_away_messages(token_id):
         return False
-    add_sent_away_message(token_id, user_id)
+    await add_sent_away_message(token_id, user_id)
     return True
 
 
-def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
+async def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
     """
     Add a message in messages buffer (100 messages, truncated at 1000 chars).
     Used as proof when the user gets reported.
@@ -1147,23 +1147,23 @@ def addMessageInBuffer(token_id: str, channel: str, message: str) -> None:
     :param message: message content
     :return:
     """
-    token = get_token(token_id)
+    token =await get_token(token_id)
     if token is None:
         return
 
-    message_history = get_message_history(token_id)
+    message_history =await get_message_history(token_id)
     if len(message_history) > 100:
-        glob.redis.lpop(f"{make_key(token_id)}:message_history")
-    add_message_to_history(
+        await glob.redis.lpop(f"{make_key(token_id)}:message_history")
+    await add_message_to_history(
         token_id,
         f"{strftime('%H:%M', localtime())} - {token['username']}@{channel}: {message[:1000]}",
     )
 
 
-def getMessagesBufferString(token_id: str) -> str:
+async def getMessagesBufferString(token_id: str) -> str:
     """
     Get the content of the messages buffer as a string
 
     :return: messages buffer content as a string
     """
-    return "\n".join(x for x in get_message_history(token_id))
+    return "\n".join(x for x in await get_message_history(token_id))

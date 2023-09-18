@@ -127,7 +127,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             if await userUtils.verifyUser(userID, clientData):
                 # Valid account
                 log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
-                verifiedCache.set(userID, True)
+                await verifiedCache.set(userID, True)
                 firstLogin = True
             else:
                 # Multiaccount detected
@@ -135,7 +135,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     f"{username} ({userID}) tried to create another account.",
                     Ansi.LRED,
                 )
-                verifiedCache.set(userID, False)
+                await verifiedCache.set(userID, False)
                 shouldBan = True
 
         # Save HWID in db for multiaccount detection
@@ -167,7 +167,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         else:
             amplitude_device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
 
-        with redisLock("bancho:locks:tokens"):
+        async with redisLock("bancho:locks:tokens"):
             if not isTournament:
                 await tokenList.deleteOldTokens(userID)
 
@@ -187,7 +187,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Console output
         log(
             f"{username} ({userID}) logged in. "
-            f"({len(osuToken.get_token_ids()) - 1} online)",
+            f"({len(await osuToken.get_token_ids()) - 1} online)",
             Ansi.CYAN,
         )
 
@@ -210,7 +210,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
-                aika_token = tokenList.getTokenFromUserID(999)
+                aika_token = await tokenList.getTokenFromUserID(999)
                 assert aika_token is not None
 
                 await chat.sendMessage(
@@ -233,7 +233,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 await userUtils.restrict(userID)
                 await userUtils.unfreeze(userID, _log=False)
 
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         "\n\n".join(
@@ -293,7 +293,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 )
                 await logUtils.rap(userID, f"{rolename} subscription expired.")
 
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         "\n\n".join(
@@ -311,7 +311,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 expireDate - current_time <= 86400 * 7
             ):  # Notify within 7 days of expiry
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         f"Your {rolename} tag expires in {expireIn}.",
@@ -319,13 +319,13 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 )
 
         # Set silence end UNIX time in token
-        osuToken.update_token(
+        await osuToken.update_token(
             userToken["token_id"],
             silence_end_time=await userUtils.getSilenceEnd(userID),
         )
 
         # Get only silence remaining seconds
-        silenceSeconds = osuToken.getSilenceSecondsLeft(userToken["token_id"])
+        silenceSeconds = await osuToken.getSilenceSecondsLeft(userToken["token_id"])
 
         # Get supporter/GMT
         userGMT = osuToken.is_staff(userToken["privileges"])
@@ -340,7 +340,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send login notification before maintenance message
         if glob.banchoConf.config["loginNotification"]:
-            osuToken.enqueue(
+            await osuToken.enqueue(
                 userToken["token_id"],
                 serverPackets.notification(
                     glob.banchoConf.config["loginNotification"].format(
@@ -353,11 +353,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if glob.banchoConf.config["banchoMaintenance"]:
             if not userGMT:
                 # We are not mod/admin, delete token, send notification and logout
-                tokenList.deleteToken(responseTokenString)
+                await tokenList.deleteToken(responseTokenString)
                 raise exceptions.banchoMaintenanceException()
             else:
                 # We are mod/admin, send warning notification and continue
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         "Akatsuki is currently in maintenance mode. Only admins have full access to the server.\n"
@@ -366,75 +366,75 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 )
 
         # Send all needed login packets
-        osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
-        osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
-        osuToken.enqueue(
+        await osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
+        await osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
+        await osuToken.enqueue(
             userToken["token_id"],
             serverPackets.silenceEndTime(silenceSeconds),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"],
             serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"],
-            serverPackets.userPanel(userID, force=True),
+            await serverPackets.userPanel(userID, force=True),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"],
-            serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(userID, force=True),
         )
 
         # Default opened channels.
-        chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
-        chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
+        await chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
+        await chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
 
         # Join role-related channels.
         if userToken["privileges"] & privileges.ADMIN_CAKER:
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#devlog")
+            await chat.joinChannel(token_id=userToken["token_id"], channel_name="#devlog")
         if osuToken.is_staff(userToken["privileges"]):
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#staff")
+            await chat.joinChannel(token_id=userToken["token_id"], channel_name="#staff")
         if userToken["privileges"] & privileges.USER_PREMIUM:
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#premium")
+            await chat.joinChannel(token_id=userToken["token_id"], channel_name="#premium")
         if userToken["privileges"] & privileges.USER_DONOR:
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#supporter")
+            await chat.joinChannel(token_id=userToken["token_id"], channel_name="#supporter")
 
         # Output channels info
-        for channel in channelList.getChannels():
+        for channel in await channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
-                client_count = stream.getClientCount(f"chat/{channel['name']}")
+                client_count = await stream.getClientCount(f"chat/{channel['name']}")
                 packet_data = serverPackets.channelInfo(
                     channel["name"],
                     channel["description"],
                     client_count,
                 )
-                osuToken.enqueue(userToken["token_id"], packet_data)
+                await osuToken.enqueue(userToken["token_id"], packet_data)
 
         # Channel info end.
-        osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
+        await osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
 
         # Send friends list
         friends_list = await userUtils.getFriendList(userID)
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"], serverPackets.friendList(userID, friends_list),
         )
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
-            osuToken.enqueue(
+            await osuToken.enqueue(
                 userToken["token_id"],
                 serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
             )
 
         # Save token in redis
-        glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
+        await glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
 
         # Send online users' panels
-        for token in osuToken.get_tokens():
+        for token in await osuToken.get_tokens():
             if not osuToken.is_restricted(token["privileges"]):
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
-                    serverPackets.userPanel(token["user_id"]),
+                    await serverPackets.userPanel(token["user_id"]),
                 )
 
         # Get location and country from ip.zxq.co or database.
@@ -448,8 +448,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             country = 0
 
         # Set location and country
-        osuToken.setLocation(userToken["token_id"], latitude, longitude)
-        osuToken.update_token(userToken["token_id"], country=country)
+        await osuToken.setLocation(userToken["token_id"], latitude, longitude)
+        await osuToken.update_token(userToken["token_id"], country=country)
 
         # Set country in db if user has no country (first bancho login)
         if await userUtils.getCountry(userID) == "XX":
@@ -457,7 +457,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
-            streamList.broadcast("main", serverPackets.userPanel(userID))
+            await streamList.broadcast("main", await serverPackets.userPanel(userID))
 
         glob.amplitude.track(
             BaseEvent(
@@ -511,7 +511,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         )
 
         # Set reponse data to right value and reset our queue
-        responseData = osuToken.dequeue(userToken["token_id"])
+        responseData = await osuToken.dequeue(userToken["token_id"])
     except exceptions.loginFailedException:
         # Login failed error packet
         # (we don't use enqueue because we don't have a token since login has failed)
@@ -535,7 +535,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
     except exceptions.banchoMaintenanceException:
         # Bancho is in maintenance mode
         if userToken:
-            responseData = osuToken.dequeue(userToken["token_id"])
+            responseData = await osuToken.dequeue(userToken["token_id"])
         else:
             responseData.clear()
         responseData += serverPackets.notification(
