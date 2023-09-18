@@ -2035,7 +2035,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     )
 
                 loop = asyncio.get_running_loop()
-                loop.call_later(1.00, _decreaseTimer, [t - 1])
+                loop.call_later(1.00, lambda: asyncio.create_task(_decreaseTimer(t - 1)))
 
         if len(message) < 2 or not message[1].isnumeric():
             startTime = 0
