@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from amplitude import Amplitude
 from amplitude import Config as AmplitudeConfig
@@ -26,7 +26,7 @@ application = None
 db: dbConnector.db
 redis: Redis
 banchoConf: banchoConfig
-dog: datadogClient
+dog: Optional[datadogClient] = None
 pool: ThreadPoolExecutor
 ircServer: IRCServer
 
