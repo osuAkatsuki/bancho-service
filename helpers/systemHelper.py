@@ -76,7 +76,7 @@ async def scheduleShutdown(
             streamList.broadcast(
                 "main",
                 serverPackets.banchoRestart(delay * 2 * 1000),
-            )
+            ),
         ),
     )
     glob.restarting = True
