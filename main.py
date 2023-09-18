@@ -221,13 +221,12 @@ async def main() -> int:
         glob.application = make_app()
 
         # # start irc server if configured
-        # TODO: support w/ asyncio
-        # if settings.IRC_ENABLE:
-        #     log(
-        #         f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
-        #         Ansi.LMAGENTA,
-        #     )
-        #     glob.pool.submit(ircserver.main, port=settings.IRC_PORT)
+        if settings.IRC_ENABLE:
+            log(
+                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
+                Ansi.LMAGENTA,
+            )
+            asyncio.create_task(ircserver.main(port=settings.IRC_PORT))
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
