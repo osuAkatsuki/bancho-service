@@ -13,7 +13,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     # read packet data
     packetData = clientPackets.joinMatch(rawPacketData)
     matchID = packetData["matchID"]
@@ -35,7 +35,7 @@ def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Password is correct, join match
-        osuToken.joinMatch(userToken["token_id"], matchID)
+        await osuToken.joinMatch(userToken["token_id"], matchID)
 
     glob.amplitude.track(
         BaseEvent(

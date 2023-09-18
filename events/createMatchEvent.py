@@ -14,7 +14,7 @@ from objects import osuToken
 from objects.redisLock import redisLock
 
 
-def handle(token: osuToken.Token, rawPacketData: bytes):
+async def handle(token: osuToken.Token, rawPacketData: bytes):
     try:
         # Read packet data
         packetData = clientPackets.createMatch(rawPacketData)
@@ -43,7 +43,7 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
                 raise exceptions.matchCreateError()
 
             # Join that match
-            osuToken.joinMatch(token["token_id"], match_id)
+            await osuToken.joinMatch(token["token_id"], match_id)
 
             # Give host to match creator
             match.setHost(match_id, token["user_id"])

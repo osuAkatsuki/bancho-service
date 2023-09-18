@@ -282,7 +282,7 @@ class Client:
     def dummyHandler(self, command: str, arguments: list[str]) -> None:
         pass
 
-    def passHandler(self, command: str, arguments: list[str]) -> None:
+    async def passHandler(self, command: str, arguments: list[str]) -> None:
         """PASS command handler"""
         if command == "PASS":
             if len(arguments) == 0:
@@ -292,7 +292,7 @@ class Client:
                 m = hashlib.md5()
                 m.update(arguments[0].encode("utf-8"))
                 tokenHash = m.hexdigest()
-                supposedUser = glob.db.fetch(
+                supposedUser = await glob.db.fetch(
                     "SELECT users.username, users.id FROM users LEFT JOIN irc_tokens ON users.id = irc_tokens.userid WHERE irc_tokens.token = %s LIMIT 1",
                     [tokenHash],
                 )
@@ -308,7 +308,7 @@ class Client:
         elif command == "QUIT":
             self.disconnect()
 
-    def registerHandler(self, command: str, arguments: list[str]) -> None:
+    async def registerHandler(self, command: str, arguments: list[str]) -> None:
         """NICK and USER commands handler"""
         if command == "NICK":
             if len(arguments) < 1:
@@ -334,7 +334,7 @@ class Client:
 
             # Make sure we are not connected to Bancho
             token = tokenList.getTokenFromUsername(
-                chat.fixUsernameForBancho(nick),
+                await chat.fixUsernameForBancho(nick),
                 True,
             )
             if token:
@@ -343,7 +343,7 @@ class Client:
 
             # Everything seems fine, set username (nickname)
             self.IRCUsername = nick  # username for IRC
-            self.banchoUsername = chat.fixUsernameForBancho(
+            self.banchoUsername = await chat.fixUsernameForBancho(
                 self.IRCUsername,
             )  # username for bancho
 
@@ -369,7 +369,7 @@ class Client:
         # If we now have a valid username, connect to bancho and send IRC welcome stuff
         if self.IRCUsername != "":
             # Bancho connection
-            chat.IRCConnect(self.banchoUsername)
+            await chat.IRCConnect(self.banchoUsername)
 
             # IRC reply
             self.replyCode(1, "Welcome to the Internet Relay Network")
@@ -497,7 +497,7 @@ class Client:
             elif response == 442:
                 self.replyCode(442, "You're not on that channel", channel=channel)
 
-    def noticePrivmsgHandler(self, command: str, arguments: list[str]) -> None:
+    async def noticePrivmsgHandler(self, command: str, arguments: list[str]) -> None:
         """NOTICE and PRIVMSG commands handler (same syntax)"""
         # Syntax check
         if len(arguments) == 0:
@@ -511,10 +511,10 @@ class Client:
 
         # Send the message to bancho and reply
         if not recipientIRC.startswith("#"):
-            recipientBancho = chat.fixUsernameForBancho(recipientIRC)
+            recipientBancho = await chat.fixUsernameForBancho(recipientIRC)
         else:
             recipientBancho = recipientIRC
-        response = chat.sendMessage(
+        response = await chat.sendMessage(
             self.banchoUsername,
             recipientBancho,
             message,
@@ -577,7 +577,7 @@ class Client:
             else "You have been marked as being away",
         )
 
-    def mainHandler(self, command: str, arguments: list[str]) -> None:
+    async def mainHandler(self, command: str, arguments: list[str]) -> None:
         """
         Handler for post-login commands
         """
@@ -603,7 +603,7 @@ class Client:
             "USER": self.dummyHandler,
         }
         try:
-            handlers[command](command, arguments)
+            await handlers[command](command, arguments)
         except KeyError:
             self.replyCode(421, f"Unknown command ({command})")
 

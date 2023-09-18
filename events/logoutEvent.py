@@ -18,7 +18,7 @@ from objects import tokenList
 from objects.osuToken import Token
 
 
-def handle(token: Token, _=None, deleteToken: bool = True):
+async def handle(token: Token, _=None, deleteToken: bool = True):
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login
@@ -30,7 +30,7 @@ def handle(token: Token, _=None, deleteToken: bool = True):
     osuToken.stopSpectating(token["token_id"])
 
     # Part matches
-    osuToken.leaveMatch(token["token_id"])
+    await osuToken.leaveMatch(token["token_id"])
 
     # Part all joined channels
     for channel_name in osuToken.get_joined_channels(token["token_id"]):

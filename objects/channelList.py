@@ -36,13 +36,13 @@ def make_key(channel_name: str) -> str:
     return f"bancho:channels:{channel_name}"
 
 
-def loadChannels() -> None:
+async def loadChannels() -> None:
     """
     Load chat channels from db and add them to channels list
     :return:
     """
     # Get channels from DB
-    channels = glob.db.fetchAll("SELECT * FROM bancho_channels")
+    channels = await glob.db.fetchAll("SELECT * FROM bancho_channels")
     assert channels is not None
 
     # Add each channel if needed

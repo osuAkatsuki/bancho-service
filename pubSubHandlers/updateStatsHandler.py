@@ -11,14 +11,14 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.type = "int"
 
-    def handle(self, userID):
+    async def handle(self, userID):
         if (userID := super().parseData(userID)) is None:
             return
 
         if not (targetToken := tokenList.getTokenFromUserID(userID)):
             return
 
-        osuToken.updateCachedStats(targetToken["token_id"])
+        await osuToken.updateCachedStats(targetToken["token_id"])
         osuToken.enqueue(
             targetToken["token_id"],
             serverPackets.userStats(userID, force=True),

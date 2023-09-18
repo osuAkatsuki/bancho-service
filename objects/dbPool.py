@@ -30,7 +30,7 @@ class DBPool:
             self._pool.close()
             await self._pool.wait_closed()
 
-    async def fetch_all(self, *args, **kwargs):
+    async def fetchAll(self, *args, **kwargs):
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:

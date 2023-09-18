@@ -223,7 +223,7 @@ gamer_ids = [
 ]
 
 
-def sendMessage(
+async def sendMessage(
     fro: Optional[str] = "",
     to: str = "",
     message: str = "",
@@ -343,7 +343,7 @@ def sendMessage(
 
             # Check message for commands
             if not action_msg:
-                fokaMessage = fokabot.fokabotResponse(
+                fokaMessage = await fokabot.fokabotResponse(
                     userToken["username"],
                     to,
                     message,
@@ -424,7 +424,7 @@ def sendMessage(
 
                     aika_token = tokenList.getTokenFromUserID(999)
                     assert aika_token is not None
-                    sendMessage(
+                    await sendMessage(
                         token_id=aika_token["token_id"],
                         to=to,
                         message=fokaMessage["response"],
@@ -466,7 +466,7 @@ def sendMessage(
                 # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
                 if recipient_token["block_non_friends_dm"] and userToken[
                     "user_id"
-                ] not in userUtils.getFriendList(recipient_token["user_id"]):
+                ] not in await userUtils.getFriendList(recipient_token["user_id"]):
                     osuToken.enqueue(
                         token_id,
                         serverPackets.targetBlockingDMs(
@@ -479,7 +479,7 @@ def sendMessage(
 
             # Away check
             if osuToken.awayCheck(recipient_token["token_id"], userToken["user_id"]):
-                sendMessage(
+                await sendMessage(
                     fro=to,
                     to=fro,
                     message=f"\x01ACTION is away: {recipient_token['away_message']}\x01",
@@ -487,7 +487,7 @@ def sendMessage(
 
             if to == glob.BOT_NAME:
                 # Check message for commands
-                fokaMessage = fokabot.fokabotResponse(
+                fokaMessage = await fokabot.fokabotResponse(
                     userToken["username"],
                     to,
                     message,
@@ -496,7 +496,7 @@ def sendMessage(
                 if fokaMessage:
                     aika_token = tokenList.getTokenFromUserID(999)
                     assert aika_token is not None
-                    sendMessage(
+                    await sendMessage(
                         token_id=aika_token["token_id"],
                         to=fro,
                         message=fokaMessage["response"],
@@ -592,7 +592,7 @@ def sendMessage(
 """ IRC-Bancho Connect/Disconnect/Join/Part interfaces"""
 
 
-def fixUsernameForBancho(username: str) -> str:
+async def fixUsernameForBancho(username: str) -> str:
     """
     Convert username from IRC format (without spaces) to Bancho format (with spaces)
 
@@ -605,7 +605,7 @@ def fixUsernameForBancho(username: str) -> str:
         return username
 
     # Exact match first
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT id " "FROM users " "WHERE username = %s LIMIT 1",
         [username],
     )
@@ -626,7 +626,7 @@ def fixUsernameForIRC(username: str) -> str:
     return username.replace(" ", "_")
 
 
-def IRCConnect(username: str) -> None:
+async def IRCConnect(username: str) -> None:
     """
     Handle IRC login bancho-side.
     Add token and broadcast login packet.
@@ -634,14 +634,14 @@ def IRCConnect(username: str) -> None:
     :param username: username
     :return:
     """
-    user_id = userUtils.getID(username)
+    user_id = await userUtils.getID(username)
     if not user_id:
         log.warning(f"{username} doesn't exist.")
         return
 
     with redisLock("bancho:locks:tokens"):
-        tokenList.deleteOldTokens(user_id)
-        tokenList.addToken(user_id, irc=True)
+        await tokenList.deleteOldTokens(user_id)
+        await tokenList.addToken(user_id, irc=True)
 
     streamList.broadcast("main", serverPackets.userPanel(user_id))
     log.info(f"{username} logged in from IRC.")

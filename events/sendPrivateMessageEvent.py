@@ -8,10 +8,10 @@ from objects import glob
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData):
+async def handle(userToken: Token, rawPacketData):
     # Send private message packet
     packetData = clientPackets.sendPrivateMessage(rawPacketData)
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=userToken["token_id"],
         to=packetData["to"],
         message=packetData["message"],

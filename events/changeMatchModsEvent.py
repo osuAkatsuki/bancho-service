@@ -8,7 +8,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     # Get packet data
     packetData = clientPackets.changeMods(rawPacketData)
 
