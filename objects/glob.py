@@ -12,8 +12,6 @@ from amplitude import Config as AmplitudeConfig
 import settings
 
 if TYPE_CHECKING:
-    from concurrent.futures import ThreadPoolExecutor
-
     from redis.asyncio import Redis
 
     from objects.dbPool import DBPool
@@ -30,7 +28,6 @@ db: DBPool
 redis: Redis
 banchoConf: banchoConfig
 dog: Optional[datadogClient] = None
-pool: ThreadPoolExecutor
 ircServer: IRCServer
 
 restarting = False

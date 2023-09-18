@@ -15,10 +15,6 @@ from objects import glob
 from objects import osuToken
 from objects.redisLock import redisLock
 
-# def __init__(self) -> None:
-#     self.tokens: MutableMapping[str, osuToken.token] = {}
-#     self._lock = threading.Lock()
-
 
 async def addToken(
     user_id: int,
