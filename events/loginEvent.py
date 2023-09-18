@@ -416,7 +416,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Send friends list
         friends_list = await userUtils.getFriendList(userID)
         osuToken.enqueue(
-            userToken["token_id"], serverPackets.friendList(userID, friends_list),
+            userToken["token_id"],
+            serverPackets.friendList(userID, friends_list),
         )
 
         # Send main menu icon

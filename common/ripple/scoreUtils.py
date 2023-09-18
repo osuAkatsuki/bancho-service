@@ -83,7 +83,8 @@ async def overwritePreviousScore(
 
     # Set their new score to completed = 3.
     await glob.db.execute(
-        f"UPDATE {table} SET completed = 3 WHERE id = %s", [result["id"]],
+        f"UPDATE {table} SET completed = 3 WHERE id = %s",
+        [result["id"]],
     )
 
     # Update the last time they overwrote a score to the current time.
@@ -112,7 +113,8 @@ async def getPPLimit(gameMode: int, mods_used: int) -> str:
     s = "_".join(s)
 
     pp_limit = await glob.db.fetch(
-        f"SELECT {s} FROM pp_limits WHERE gamemode = %s", [gameMode],
+        f"SELECT {s} FROM pp_limits WHERE gamemode = %s",
+        [gameMode],
     )
     return pp_limit[s]
 
