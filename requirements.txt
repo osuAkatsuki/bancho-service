@@ -1,7 +1,7 @@
+aiomysql
 amplitude-analytics
 bcrypt
 cmyui
-aiomysql
 datadog
 dill
 orjson

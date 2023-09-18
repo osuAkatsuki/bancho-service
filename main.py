@@ -15,7 +15,6 @@ import tornado.web
 from cmyui.logging import Ansi
 from cmyui.logging import log
 from cmyui.logging import printc
-from objects.dbPool import DBPool
 
 import settings
 from common.constants import bcolors
@@ -39,6 +38,7 @@ from objects import match
 from objects import osuToken
 from objects import streamList
 from objects import tokenList
+from objects.dbPool import DBPool
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
 from pubSubHandlers import disconnectHandler
