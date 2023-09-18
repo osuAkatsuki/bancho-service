@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from concurrent.futures import ThreadPoolExecutor
 
 import psutil
 import redis.asyncio as redis
@@ -172,18 +171,6 @@ async def main() -> int:
             await glob.banchoConf.loadSettings()
         except:
             log(f"Error loading bancho settings.", Ansi.LMAGENTA)
-            raise
-
-        # Create threads pool
-        try:
-            glob.pool = ThreadPoolExecutor(max_workers=settings.APP_THREADS)
-        except ValueError:
-            log(f"Error creating threads pool.", Ansi.LRED)
-            consoleHelper.printError()
-            consoleHelper.printColored(
-                "[!] Error while creating threads pool. Please check your config.ini and run the server again",
-                bcolors.RED,
-            )
             raise
 
         # fetch privilege groups into memory

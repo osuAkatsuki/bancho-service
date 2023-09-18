@@ -7,7 +7,6 @@ from os import getpid
 from os import kill
 from os import name
 from signal import SIGKILL
-from threading import Timer
 from time import time
 from typing import Any
 from typing import NoReturn
