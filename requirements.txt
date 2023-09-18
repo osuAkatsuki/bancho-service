@@ -7,7 +7,6 @@ mysqlclient
 orjson
 psutil
 python-dotenv
-raven
 redis
 requests
 tornado<5.0.0
