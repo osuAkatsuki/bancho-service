@@ -3,18 +3,13 @@ from __future__ import annotations
 from json import dumps
 from typing import Union
 
-import tornado.gen
-import tornado.web
-
 from common.web import requestsManager
 from constants import exceptions
 from objects import verifiedCache
 
 
 class handler(requestsManager.asyncRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncGet(self) -> None:
+    async def get(self) -> None:
         statusCode = 400
         data: dict[str, Union[int, str]] = {"message": "unknown error"}
         try:
