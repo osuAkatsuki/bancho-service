@@ -4,9 +4,6 @@ import gzip
 import struct
 from uuid import UUID
 
-import tornado.gen
-import tornado.web
-
 import settings
 from common.web import requestsManager
 from constants import exceptions
@@ -146,9 +143,7 @@ HTML_PAGE = (
 
 
 class handler(requestsManager.asyncRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncPost(self) -> None:
+    async def post(self) -> None:
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")
         requestData = self.request.body
@@ -262,7 +257,5 @@ class handler(requestsManager.asyncRequestHandler):
         # self.add_header("Keep-Alive", "timeout=5, max=100")
         self.add_header("Content-Type", "text/html; charset=UTF-8")
 
-    @tornado.web.asynchronous
-    @tornado.gen.engine
-    def asyncGet(self) -> None:
+    async def get(self) -> None:
         self.write(HTML_PAGE)

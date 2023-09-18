@@ -228,9 +228,7 @@ if __name__ == "__main__":
                 f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
                 Ansi.LMAGENTA,
             )
-            threading.Thread(
-                target=lambda: ircserver.main(port=settings.IRC_PORT),
-            ).start()
+            glob.pool.submit(ircserver.main, port=settings.IRC_PORT)
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
