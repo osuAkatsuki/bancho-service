@@ -1,5 +1,10 @@
+from __future__ import annotations
+
+from typing import cast
+from typing import Optional
+
 import aiomysql
-from typing import cast, Optional
+
 import settings
 
 
