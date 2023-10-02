@@ -263,9 +263,7 @@ class handler(AsyncRequestHandler):
         try:
             await self._post()
         except Exception:
-            logging.exception(
-                "An unhandled exception occurred while handling a bancho request",
-            )
+            logging.exception("An unhandled error occurred")
 
     async def get(self) -> None:
         self.write(HTML_PAGE)
