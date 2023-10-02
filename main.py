@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import threading
-from concurrent.futures import ThreadPoolExecutor
 
 import psutil
 import redis.asyncio as redis
@@ -175,18 +173,6 @@ async def main() -> int:
             log(f"Error loading bancho settings.", Ansi.LMAGENTA)
             raise
 
-        # Create threads pool
-        try:
-            glob.pool = ThreadPoolExecutor(max_workers=settings.APP_THREADS)
-        except ValueError:
-            log(f"Error creating threads pool.", Ansi.LRED)
-            consoleHelper.printError()
-            consoleHelper.printColored(
-                "[!] Error while creating threads pool. Please check your config.ini and run the server again",
-                bcolors.RED,
-            )
-            raise
-
         # fetch privilege groups into memory
         # TODO: this is an optimization because ripple previously
         # fetched this so frequently. this is not robust as privilege
@@ -222,13 +208,12 @@ async def main() -> int:
         glob.application = make_app()
 
         # # start irc server if configured
-        # TODO: support w/ asyncio
-        # if settings.IRC_ENABLE:
-        #     log(
-        #         f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
-        #         Ansi.LMAGENTA,
-        #     )
-        #     glob.pool.submit(ircserver.main, port=settings.IRC_PORT)
+        if settings.IRC_ENABLE:
+            log(
+                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
+                Ansi.LMAGENTA,
+            )
+            asyncio.create_task(ircserver.main(port=settings.IRC_PORT))
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from math import floor
 from os import _exit
 from os import getloadavg
@@ -7,7 +8,6 @@ from os import getpid
 from os import kill
 from os import name
 from signal import SIGKILL
-from threading import Timer
 from time import time
 from typing import Any
 from typing import NoReturn
@@ -43,7 +43,7 @@ def runningUnderUnix() -> bool:
     return name == "posix"
 
 
-def scheduleShutdown(
+async def scheduleShutdown(
     sendRestartTime: int,
     restart: bool,
     message: str = "",
@@ -66,19 +66,26 @@ def scheduleShutdown(
 
     # Send notification if set
     if message:
-        streamList.broadcast("main", serverPackets.notification(message))
+        await streamList.broadcast("main", serverPackets.notification(message))
 
     # Schedule server restart packet
-    Timer(
-        sendRestartTime,
-        streamList.broadcast,
-        ["main", serverPackets.banchoRestart(delay * 2 * 1000)],
-    ).start()
+    loop = asyncio.get_running_loop()
+    loop.call_later(
+        delay=sendRestartTime,
+        callback=lambda: asyncio.create_task(
+            streamList.broadcast(
+                "main",
+                serverPackets.banchoRestart(delay * 2 * 1000),
+            ),
+        ),
+    )
     glob.restarting = True
 
     # Schedule actual server shutdown/restart some seconds after server restart packet, so everyone gets it
-    action = restartServer if restart else shutdownServer
-    Timer(sendRestartTime + delay, action).start()
+    loop.call_later(
+        delay=sendRestartTime + delay,
+        callback=restartServer if restart else shutdownServer,
+    )
 
 
 def restartServer() -> NoReturn:

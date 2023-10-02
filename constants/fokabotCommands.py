@@ -4,14 +4,11 @@ import asyncio
 import random
 import re
 import secrets
-import threading
-import time  # me so lazy
+import time
 from typing import Any
 from typing import Callable
 from typing import Optional
 
-import orjson
-import requests
 from amplitude import BaseEvent
 
 import settings
@@ -453,7 +450,7 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
 
 # used immediately below
-def _restartShutdown(restart: bool) -> str:
+async def _restartShutdown(restart: bool) -> str:
     """Restart (if restart = True) or shutdown (if restart = False) the service safely"""
     action = "restart" if restart else "shutdown"
     msg = " ".join(
@@ -463,7 +460,11 @@ def _restartShutdown(restart: bool) -> str:
             "Thank you for your patience.",
         ],
     )
-    systemHelper.scheduleShutdown(5, restart, msg)
+    await systemHelper.scheduleShutdown(
+        sendRestartTime=5,
+        restart=restart,
+        message=msg,
+    )
     return msg
 
 
@@ -474,7 +475,7 @@ def _restartShutdown(restart: bool) -> str:
 )
 async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
     """Restart the server."""
-    return _restartShutdown(True)
+    return await _restartShutdown(True)
 
 
 @command(
@@ -484,7 +485,7 @@ async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
 )
 async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
     """Shutdown the server."""
-    return _restartShutdown(False)
+    return await _restartShutdown(False)
 
 
 @command(
@@ -603,18 +604,19 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
 
     # Send request to LESS api
     try:
-        resp = requests.get(
-            f"http://127.0.0.1:7000/api/v1/pp?b={currentMap}&m={currentMods}",
+        response = await glob.http_client.get(
+            "http://127.0.0.1:7000/api/v1/pp",
+            params={"b": currentMap, "m": currentMods},
             timeout=2,
         )
     except Exception as e:
         print(e)
         return "Score server currently down, could not retrieve PP."
 
-    if not resp or resp.status_code != 200:
+    if not response or response.status_code != 200:
         return "API Timeout. Please try again in a few seconds."
 
-    data = orjson.loads(resp.text)
+    data = response.json()
 
     # Make sure status is in response data
     if "status" not in data:
@@ -1271,7 +1273,8 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
                     )
                 else:
                     await osuToken.enqueue(
-                        token["token_id"], serverPackets.notification(msg),
+                        token["token_id"],
+                        serverPackets.notification(msg),
                     )
 
 
@@ -1368,13 +1371,13 @@ async def updateServer(fro: str, chan: str, message: list[str]) -> None:
         ),
     )
 
-    systemHelper.scheduleShutdown(0, True)
+    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
 
 
 @command(trigger="!ss", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
     """Silently shutdown the server."""
-    systemHelper.scheduleShutdown(0, False)
+    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=False)
 
 
 @command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
@@ -1384,7 +1387,7 @@ async def silentRestart(
     message: list[str],
 ) -> None:  # for beta moments
     """Silently restart the server."""
-    systemHelper.scheduleShutdown(0, True)
+    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
 
 
 @command(
@@ -1511,7 +1514,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
 
-    discord.Webhook(
+    webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
         title=f"This {message[1]} has recieved a status update.",
         colour=status_to_colour(status),
@@ -1530,7 +1533,8 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "Beatmap Length": generalUtils.secondsToReadable(res["hit_length"]),
             }.items()
         ],
-    ).post()
+    )
+    asyncio.create_task(webhook.post())
 
     if is_set:
         beatmap_url = (
@@ -2034,7 +2038,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     )
 
                 loop = asyncio.get_running_loop()
-                loop.call_later(1.00, _decreaseTimer, [t - 1])
+                loop.call_later(
+                    1.00,
+                    lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                )
 
         if len(message) < 2 or not message[1].isnumeric():
             startTime = 0
@@ -2079,7 +2086,12 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             if userID not in await match.get_referees(multiplayer_match["match_id"]):
                 return None
 
-            threading.Timer(1.00, _decreaseTimer, [startTime - 1]).start()
+            loop = asyncio.get_running_loop()
+            loop.call_later(
+                1.00,
+                lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
+            )
+
             return (
                 f"Match starts in {startTime} seconds. The match has been locked. "
                 "Please don't leave the match during the countdown "
@@ -2582,11 +2594,11 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
-    definition = "\n ".join(["def __py(fro, chan, message):"] + lines)
+    definition = "\n ".join(["async def __py(fro, chan, message):"] + lines)
 
     try:
         exec(definition)  # define function
-        ret = str(locals()["__py"](fro, chan, message))  # run it
+        ret = str(await locals()["__py"](fro, chan, message))  # run it
     except Exception as e:
         ret = f"{e.__class__}: {e}"
 
