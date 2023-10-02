@@ -13,12 +13,12 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     packetData = clientPackets.changeSlot(rawPacketData)
 
-    with redisLock(f"{match.make_key(match_id)}:lock"):
-        multiplayer_match = match.get_match(match_id)
+    async with redisLock(f"{match.make_key(match_id)}:lock"):
+        multiplayer_match = await match.get_match(match_id)
         if multiplayer_match is None:
             return
 
-        match.userChangeSlot(
+        await match.userChangeSlot(
             multiplayer_match["match_id"],
             userToken["user_id"],
             packetData["slotID"],

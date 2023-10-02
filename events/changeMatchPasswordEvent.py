@@ -14,9 +14,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
     if match_id is None:
         return
 
-    with redisLock(f"{match.make_key(match_id)}:lock"):
+    async with redisLock(f"{match.make_key(match_id)}:lock"):
         # Make sure the match exists
-        multiplayer_match = match.get_match(match_id)
+        multiplayer_match = await match.get_match(match_id)
         if multiplayer_match is None:
             return
 
@@ -25,4 +25,6 @@ async def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Update match password
-        match.changePassword(multiplayer_match["match_id"], packetData["matchPassword"])
+        await match.changePassword(
+            multiplayer_match["match_id"], packetData["matchPassword"],
+        )

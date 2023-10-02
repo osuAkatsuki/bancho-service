@@ -12,16 +12,16 @@ async def handle(token: Token, _):
         # We don't have the beatmap, we can't spectate
         if (
             token["spectating_token_id"] is None
-            or token["spectating_token_id"] not in osuToken.get_token_ids()
+            or token["spectating_token_id"] not in await osuToken.get_token_ids()
         ):
             raise exceptions.tokenNotFoundException()
 
         # Send the packet to host
-        osuToken.enqueue(
+        await osuToken.enqueue(
             token["spectating_token_id"],
             serverPackets.noSongSpectator(token["user_id"]),
         )
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
         log.warning("Spectator can't spectate: token not found.")
-        osuToken.stopSpectating(token["token_id"])
+        await osuToken.stopSpectating(token["token_id"])

@@ -9,19 +9,19 @@ async def handle(userToken: Token, _):
     if userToken["match_id"] is None:
         return
 
-    with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
+    async with redisLock(f"{match.make_key(userToken['match_id'])}:lock"):
         # Make sure the match exists
-        multiplayer_match = match.get_match(userToken["match_id"])
+        multiplayer_match = await match.get_match(userToken["match_id"])
         if multiplayer_match is None:
             return
 
         # Get our slotID and change ready status
-        slot_id = match.getUserSlotID(
+        slot_id = await match.getUserSlotID(
             multiplayer_match["match_id"],
             userToken["user_id"],
         )
         if slot_id is not None:
-            match.toggleSlotReady(multiplayer_match["match_id"], slot_id)
+            await match.toggleSlotReady(multiplayer_match["match_id"], slot_id)
 
         # If this is a tournament match, we should send the current status of ready
         # players.

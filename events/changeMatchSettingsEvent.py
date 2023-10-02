@@ -19,9 +19,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
     if match_id is None:
         return
 
-    with redisLock(f"{match.make_key(match_id)}:lock"):
+    async with redisLock(f"{match.make_key(match_id)}:lock"):
         # Make sure the match exists
-        multiplayer_match = match.get_match(match_id)
+        multiplayer_match = await match.get_match(match_id)
         if multiplayer_match is None:
             return
 
@@ -37,7 +37,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         old_match_mod_mode = multiplayer_match["match_mod_mode"]
 
         # Update match settings
-        multiplayer_match = match.update_match(
+        multiplayer_match = await match.update_match(
             multiplayer_match["match_id"],
             match_name=packetData["matchName"],
             is_in_progress=packetData["inProgress"] == 1,
@@ -61,16 +61,16 @@ async def handle(userToken: Token, rawPacketData: bytes):
             or old_match_team_type != multiplayer_match["match_team_type"]
             or old_match_mod_mode != multiplayer_match["match_mod_mode"]
         ):
-            match.resetReady(multiplayer_match["match_id"])
+            await match.resetReady(multiplayer_match["match_id"])
 
         if old_match_name != multiplayer_match["match_name"]:
-            channelList.updateChannel(
+            await channelList.updateChannel(
                 f"#multi_{multiplayer_match['match_id']}",
                 description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
             )
 
         if old_match_mod_mode != multiplayer_match["match_mod_mode"]:
-            slots = slot.get_slots(multiplayer_match["match_id"])
+            slots = await slot.get_slots(multiplayer_match["match_id"])
 
             # Match mode was changed.
             if multiplayer_match["match_mod_mode"] == matchModModes.NORMAL:
@@ -78,7 +78,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
                 # Move mods from host -> match.
                 for slot_id, _slot in enumerate(slots):
                     if _slot["user_id"] == multiplayer_match["host_user_id"]:
-                        match.update_match(
+                        await match.update_match(
                             multiplayer_match["match_id"],
                             mods=_slot["mods"],
                         )
@@ -88,7 +88,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
                 # Move mods from match -> players.
                 for slot_id, _slot in enumerate(slots):
                     if _slot["user_token"]:
-                        slot.update_slot(
+                        await slot.update_slot(
                             multiplayer_match["match_id"],
                             slot_id,
                             # removing speed changing mods would seem more correct,
@@ -98,7 +98,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
                         )
 
                 # Only keep speed-changing mods centralized.
-                match.update_match(
+                await match.update_match(
                     multiplayer_match["match_id"],
                     mods=multiplayer_match["mods"] & mods.SPEED_CHANGING,
                 )
@@ -114,7 +114,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
         # Initialize teams if team type changed
         if multiplayer_match["match_team_type"] != old_match_team_type:
-            match.initializeTeams(multiplayer_match["match_id"])
+            await match.initializeTeams(multiplayer_match["match_id"])
 
         # Force no freemods if tag coop
         if multiplayer_match["match_team_type"] in (
@@ -124,4 +124,4 @@ async def handle(userToken: Token, rawPacketData: bytes):
             multiplayer_match["match_mod_mode"] = matchModModes.NORMAL
 
         # Send updated settings
-        match.sendUpdates(multiplayer_match["match_id"])
+        await match.sendUpdates(multiplayer_match["match_id"])

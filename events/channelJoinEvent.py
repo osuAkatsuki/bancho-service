@@ -10,7 +10,7 @@ from objects.osuToken import Token
 
 async def handle(userToken: Token, rawPacketData: bytes):  # Channel join packet
     channel_name = clientPackets.channelJoin(rawPacketData)["channel"]
-    chat.joinChannel(token_id=userToken["token_id"], channel_name=channel_name)
+    await chat.joinChannel(token_id=userToken["token_id"], channel_name=channel_name)
 
     glob.amplitude.track(
         BaseEvent(

@@ -10,7 +10,7 @@ from objects.osuToken import Token
 
 async def handle(userToken: Token, rawPacketData: bytes):  # Friend remove packet
     friend_user_id = clientPackets.addRemoveFriend(rawPacketData)["friendID"]
-    userUtils.removeFriend(userToken["user_id"], friend_user_id)
+    await userUtils.removeFriend(userToken["user_id"], friend_user_id)
 
     glob.amplitude.track(
         BaseEvent(

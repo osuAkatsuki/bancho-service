@@ -17,7 +17,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
 
         await userUtils.updateFirstPlaces(userID)
 
-        if not (targetToken := tokenList.getTokenFromUserID(userID)):
+        if not (targetToken := await tokenList.getTokenFromUserID(userID)):
             return
 
         targetToken["privileges"] = await userUtils.getPrivileges(userID)

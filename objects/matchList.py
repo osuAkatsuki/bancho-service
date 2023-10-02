@@ -19,7 +19,7 @@ def make_key() -> str:
     return "bancho:matches"
 
 
-def createMatch(
+async def createMatch(
     match_name: str,
     match_password: str,
     beatmap_id: int,
@@ -42,7 +42,7 @@ def createMatch(
     :return: match ID
     """
     # Add a new match to matches list and create its stream
-    multiplayer_match = match.create_match(
+    multiplayer_match = await match.create_match(
         match_name=match_name,
         match_password=match_password,
         beatmap_id=beatmap_id,
@@ -61,9 +61,11 @@ def createMatch(
         is_in_progress=False,
         creation_time=time(),
     )
-    streamList.add(match.create_stream_name(multiplayer_match["match_id"]))
-    streamList.add(match.create_playing_stream_name(multiplayer_match["match_id"]))
-    channelList.addChannel(
+    await streamList.add(match.create_stream_name(multiplayer_match["match_id"]))
+    await streamList.add(
+        match.create_playing_stream_name(multiplayer_match["match_id"]),
+    )
+    await channelList.addChannel(
         f"#multi_{multiplayer_match['match_id']}",
         description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
         public_read=True,
@@ -75,7 +77,7 @@ def createMatch(
     return multiplayer_match["match_id"]
 
 
-def disposeMatch(match_id: int) -> None:
+async def disposeMatch(match_id: int) -> None:
     """
     Destroy match object with id = matchID
 
@@ -83,20 +85,20 @@ def disposeMatch(match_id: int) -> None:
     :return:
     """
     # Make sure the match exists
-    if match_id not in match.get_match_ids():
+    if match_id not in await match.get_match_ids():
         return
 
     # Get match and disconnect all players
-    multiplayer_match = match.get_match(match_id)
+    multiplayer_match = await match.get_match(match_id)
     assert multiplayer_match is not None
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for _slot in slots:
-        _token = tokenList.getTokenFromUserID(_slot["user_id"], ignoreIRC=True)
+        _token = await tokenList.getTokenFromUserID(_slot["user_id"], ignoreIRC=True)
         if _token is not None:
-            match.userLeft(
+            await match.userLeft(
                 match_id,
                 _token["token_id"],
                 # don't dispose the match twice when we remove all players
@@ -104,23 +106,23 @@ def disposeMatch(match_id: int) -> None:
             )
 
     # Delete chat channel
-    channelList.removeChannel(f"#multi_{match_id}")
+    await channelList.removeChannel(f"#multi_{match_id}")
 
     stream_name = match.create_stream_name(match_id)
     playing_stream_name = match.create_playing_stream_name(match_id)
 
     # Send matchDisposed packet before disposing streams
-    streamList.broadcast(stream_name, serverPackets.disposeMatch(match_id))
+    await streamList.broadcast(stream_name, serverPackets.disposeMatch(match_id))
 
     # Dispose all streams
-    streamList.dispose(stream_name)
-    streamList.dispose(playing_stream_name)
-    streamList.remove(stream_name)
-    streamList.remove(playing_stream_name)
+    await streamList.dispose(stream_name)
+    await streamList.dispose(playing_stream_name)
+    await streamList.remove(stream_name)
+    await streamList.remove(playing_stream_name)
 
     # Send match dispose packet to everyone in lobby
-    streamList.broadcast("lobby", serverPackets.disposeMatch(match_id))
-    match.delete_match(match_id)
+    await streamList.broadcast("lobby", serverPackets.disposeMatch(match_id))
+    await match.delete_match(match_id)
 
 
 # deleting this code 2022-12-30 because
@@ -151,7 +153,7 @@ def disposeMatch(match_id: int) -> None:
 #         # Dispose all empty matches
 #         for matchID in emptyMatches:
 #             try:
-#                 self.disposeMatch(matchID)
+#                 await self.disposeMatch(matchID)
 #             except Exception as e:
 #                 exceptions.append(e)
 #                 log.error(
@@ -166,15 +168,15 @@ def disposeMatch(match_id: int) -> None:
 #         Timer(30, self.cleanupLoop).start()
 
 
-def matchExists(matchID: int) -> bool:
-    return matchID in match.get_match_ids()
+async def matchExists(matchID: int) -> bool:
+    return matchID in await match.get_match_ids()
 
 
-def getMatchByID(match_id: int) -> Optional[match.Match]:
-    if matchExists(match_id):
-        return match.get_match(match_id)
+async def getMatchByID(match_id: int) -> Optional[match.Match]:
+    if await matchExists(match_id):
+        return await match.get_match(match_id)
 
 
 # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
-def getMatchFromChannel(chan: str) -> Optional[match.Match]:
-    return getMatchByID(channelList.getMatchIDFromChannel(chan))
+async def getMatchFromChannel(chan: str) -> Optional[match.Match]:
+    return await getMatchByID(await channelList.getMatchIDFromChannel(chan))

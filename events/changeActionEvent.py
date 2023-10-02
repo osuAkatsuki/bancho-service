@@ -63,7 +63,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         userToken["game_mode"] = packetData["gameMode"]
         should_update_cached_stats = True
 
-    osuToken.update_token(
+    await osuToken.update_token(
         userToken["token_id"],
         relax=userToken["relax"],
         autopilot=userToken["autopilot"],
@@ -80,9 +80,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     # Enqueue our new user panel and stats to us and our spectators
     recipients = [userToken]
-    spectators = osuToken.get_spectators(userToken["token_id"])
+    spectators = await osuToken.get_spectators(userToken["token_id"])
     for spectator_user_id in spectators:
-        token = osuToken.get_token_by_user_id(spectator_user_id)
+        token = await osuToken.get_token_by_user_id(spectator_user_id)
         if token is not None:
             recipients.append(token)
 
@@ -90,11 +90,11 @@ async def handle(userToken: Token, rawPacketData: bytes):
         # Force our own packet
         force = spectator == userToken
 
-        osuToken.enqueue(
+        await osuToken.enqueue(
             spectator["token_id"],
-            serverPackets.userPanel(userToken["user_id"], force),
+            await serverPackets.userPanel(userToken["user_id"], force),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             spectator["token_id"],
-            serverPackets.userStats(userToken["user_id"], force),
+            await serverPackets.userStats(userToken["user_id"], force),
         )

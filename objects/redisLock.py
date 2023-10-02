@@ -14,23 +14,23 @@ class redisLock:
     def __init__(self, key: str) -> None:
         self.key = key
 
-    def try_acquire(self) -> Optional[bool]:
-        return glob.redis.set(self.key, "1", ex=LOCK_EXPIRY, nx=True)
+    async def try_acquire(self) -> Optional[bool]:
+        return await glob.redis.set(self.key, "1", ex=LOCK_EXPIRY, nx=True)
 
-    def acquire(self) -> None:
-        while not self.try_acquire():
+    async def acquire(self) -> None:
+        while not await self.try_acquire():
             time.sleep(RETRY_DELAY)
 
-    def release(self) -> None:
-        glob.redis.delete(self.key)
+    async def release(self) -> None:
+        await glob.redis.delete(self.key)
 
-    def __enter__(self) -> None:
-        self.acquire()
+    async def __aenter__(self) -> None:
+        await self.acquire()
 
-    def __exit__(
+    async def __aexit__(
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        self.release()
+        await self.release()
