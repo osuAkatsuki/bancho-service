@@ -261,8 +261,8 @@ class handler(AsyncRequestHandler):
     async def post(self) -> None:
         try:
             await self._post()
-        except Exception as e:
-            logging.exception(e)
+        except Exception:
+            logging.exception("An unhandled error occurred")
 
     async def get(self) -> None:
         self.write(HTML_PAGE)
