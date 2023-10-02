@@ -4,6 +4,7 @@ from amplitude import EventOptions
 from amplitude import Identify
 
 from common.constants import actions
+from common.log import logger
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
 from objects import glob
@@ -17,7 +18,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
         await userUtils.changeUsername(userID, newUsername=newUsername)
         await userUtils.appendNotes(
             userID,
-            f"Username change: '{oldUsername}' -> '{newUsername}'",
+            notes=f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
         if targetToken:
             await osuToken.kick(
@@ -44,8 +45,22 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
         identify_obj.set("username", newUsername)
         glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
 
+        logger.info(
+            "Job successfully updated username",
+            extra={
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
     except userUtils.usernameAlreadyInUseError:
-        # log.rap(999, "Username change: {} is already in use!", through="Bancho")
+        logger.error(
+            "Job failed to update username",
+            extra={
+                "reason": "username_exists",
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
         if targetToken:
             await osuToken.kick(
                 targetToken["token_id"],
@@ -53,7 +68,14 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "username_change",
             )
     except userUtils.invalidUsernameError:
-        # log.rap(999, "Username change: {} is not a valid username!", through="Bancho")
+        logger.error(
+            "Job failed to update username",
+            extra={
+                "reason": "username_invalid",
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
         if targetToken:
             await osuToken.kick(
                 targetToken["token_id"],

@@ -4,7 +4,7 @@ from json import loads
 from urllib.request import urlopen
 
 import settings
-from common.log import logUtils as log
+from common.log import logger
 
 
 def getCountry(ip: str) -> str:
@@ -21,7 +21,10 @@ def getCountry(ip: str) -> str:
         )["country"]
         return result.upper()
     except:
-        log.error("Error in get country")
+        logger.exception(
+            "An error occurred while resolving ip geolocation",
+            extra={"ip": ip},
+        )
         return "XX"
 
 
@@ -39,7 +42,7 @@ def getLocation(ip: str) -> tuple[float, float]:
         )["loc"].split(",")
         return float(result[0]), float(result[1])
     except:
-        log.error("Error in get position")
+        logger.exception("Error in get position", extra={"ip": ip})
         return 0.0, 0.0
 
 

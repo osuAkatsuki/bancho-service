@@ -15,7 +15,7 @@ from dill import dumps
 
 from common.constants import mods
 from common.constants import osuFlags as osu_flags
-from common.log import logUtils as log
+from common.log import logger
 
 possible_chars = ascii_uppercase + digits
 
@@ -171,7 +171,7 @@ def getTimestamp(full: bool = False) -> str:
     return strftime("%Y-%m-%d %H:%M:%S" if full else "%H:%M:%S", localtime())
 
 
-def hexString(s: int) -> str:
+def hexString(s: str) -> str:
     """
     Output `s`'s bytes in DEX
     :param s: string
@@ -190,7 +190,7 @@ def getTotalSize(o: object) -> int:
     try:
         return len(dumps(o, recurse=True))
     except:
-        log.error("Error while getting total object size!")
+        logger.error("Error while getting total object size!")
         return 0
 
 

@@ -4,8 +4,7 @@ import time
 
 import orjson
 from amplitude import BaseEvent
-from cmyui.logging import Ansi
-from cmyui.logging import log
+from common.log import logger
 
 import settings
 from constants import serverPackets
@@ -60,7 +59,13 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         f"ripple:change_username_pending:{token['user_id']}",
     )
     if newUsername:
-        log(f"Sending username change request for {token['username']}.")
+        logger.info(
+            "Sending username change request",
+            {
+                "old_username": token["username"],
+                "new_username": newUsername.decode("utf-8"),
+            },
+        )
         await glob.redis.publish(
             "peppy:change_username",
             orjson.dumps(
@@ -96,8 +101,11 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
     )
 
     # Console output
-    log(
-        f"{token['username']} ({token['user_id']}) logged out. "
-        f"({len(await osuToken.get_token_ids()) - 1} online)",
-        Ansi.LBLUE,
+    logger.info(
+        "User signed out of bancho session",
+        extra={
+            "user_id": token["user_id"],
+            "username": token["username"],
+            "ip": token["ip"],
+        },
     )

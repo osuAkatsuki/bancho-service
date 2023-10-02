@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
+from common.log import logger
 from constants import clientPackets
 from constants import exceptions
 from constants import serverPackets
@@ -86,5 +86,5 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
         )
 
     except exceptions.matchCreateError:
-        log.error("Error while creating match!")
+        logger.exception("An error occurred while creating a multiplayer match")
         await osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)

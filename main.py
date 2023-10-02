@@ -25,9 +25,7 @@ from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
-from handlers import ciTriggerHandler
 from handlers import mainHandler
-from helpers import consoleHelper
 from irc import ircserver
 from objects import banchoConfig
 from objects import channelList
@@ -241,7 +239,6 @@ async def main() -> int:
             (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
             (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
             (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
-            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
             (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
             (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
         ]

@@ -12,3 +12,4 @@ redis
 requests
 tornado
 PyYAML
+python-json-logger

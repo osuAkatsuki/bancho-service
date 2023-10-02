@@ -13,7 +13,7 @@ from common import channel_utils
 from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
-from common.log import logUtils as log
+from common.log import logger
 from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
@@ -877,7 +877,6 @@ async def kick(
         return
 
     # Send packet to target
-    log.info(f"{token['username']} has been disconnected. ({reason})")
     if message:
         await enqueue(token_id, serverPackets.notification(message))
 
@@ -885,6 +884,15 @@ async def kick(
 
     # Logout event
     await logoutEvent.handle(token, deleteToken=token["irc"])
+
+    logger.info(
+        "Invalidated a user's bancho session",
+        extra={
+            "username": token["username"],
+            "user_id": token["user_id"],
+            "reason": reason,
+        },
+    )
 
 
 async def silence(
@@ -1002,7 +1010,7 @@ async def updateCachedStats(token_id: str) -> None:
     )
 
     if not stats:
-        log.warning("Stats query returned None")
+        logger.warning("Stats query returned None")
         return
 
     await update_token(

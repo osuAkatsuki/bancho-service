@@ -19,7 +19,7 @@ import time
 import traceback
 
 import settings
-from common.log import logUtils as log
+from common.log import logger
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import channelList
@@ -144,8 +144,14 @@ class Client:
         # Send error to client and close socket
         self.message(f"ERROR :{quitmsg}")
         self.socket.close()
-        log.info(
-            f"[IRC] Disconnected connection from {self.ip}:{self.port} ({quitmsg})",
+
+        logger.info(
+            "IRC client disconnected",
+            extra={
+                "ip": self.ip,
+                "port": self.port,
+                "quit_msg": quitmsg,
+            },
         )
 
         # Remove socket from server
@@ -164,11 +170,11 @@ class Client:
         try:
             # Try to read incoming data from socket
             data = self.socket.recv(2**10)
-            log.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
+            logger.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
             quitmsg = "EOT"
-        except OSError as x:
+        except OSError:
             # Error while reading data, this client will be disconnected
-            log.error(f"[IRC] An error occurred while reading data from socket: {x!r}")
+            logger.exception("[IRC] An error occurred while reading data from socket")
 
             data = b""
             quitmsg = "An error occurred"
@@ -231,10 +237,18 @@ class Client:
         """
         try:
             sent = self.socket.send(self.__writebuffer.encode())
-            log.debug(f"[IRC] [{self.ip}:{self.port}] <- {self.__writebuffer[:sent]}")
+            logger.debug(
+                "IRC client data transmitted",
+                extra={
+                    "ip": self.ip,
+                    "port": self.port,
+                    "quit_msg": self.__writebuffer[:sent],
+                },
+            )
             self.__writebuffer = self.__writebuffer[sent:]
-        except OSError as x:
-            await self.disconnect(str(x))
+        except OSError:
+            logger.exception("[IRC] An error occurred while writing data to socket")
+            await self.disconnect("An error occurred")
 
     async def checkAlive(self) -> None:
         """
@@ -341,7 +355,7 @@ class Client:
             # Make sure we are not connected to Bancho
             token = tokenList.getTokenFromUsername(
                 await chat.fixUsernameForBancho(nick),
-                True,
+                ignoreIRC=True,
             )
             if token:
                 self.reply(f"433 * {nick} :Nickname is already in use")
@@ -719,8 +733,11 @@ class Server:
         serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             serversocket.bind(("0.0.0.0", self.port))
-        except OSError as e:
-            log.error(f"[IRC] Could not bind port {self.port}:{e}")
+        except OSError:
+            logger.exception(
+                "IRC server could not bind port",
+                extra={"port": self.port},
+            )
             sys.exit(1)
         serversocket.listen(5)
         lastAliveCheck = time.time()
@@ -748,8 +765,9 @@ class Server:
                         conn, addr = x.accept()
                         try:
                             self.clients[conn] = Client(self, conn)
-                            log.info(
-                                f"[IRC] Accepted connection from {addr[0]}:{addr[1]}",
+                            logger.info(
+                                "IRC connection accepted",
+                                extra={"host": addr[0], "port": addr[1]},
                             )
                         except OSError:
                             try:
@@ -769,15 +787,10 @@ class Server:
                         await client.checkAlive()
                     lastAliveCheck = now
             except:
-                log.error(
-                    "[IRC] Unknown error!\n```\n{}\n{}```".format(
-                        sys.exc_info(),
-                        traceback.format_exc(),
-                    ),
-                )
+                logger.exception("Unknown error in IRC handling")
 
         for client_socket, client in self.clients.items():
-            client.disconnect()
+            await client.disconnect()
             client_socket.close()
             del self.clients[client.socket]
 
