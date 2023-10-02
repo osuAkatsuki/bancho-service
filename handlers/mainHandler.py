@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import gzip
+import logging
 import struct
 from uuid import UUID
-import logging
 
 import settings
 from common.web.requestsManager import AsyncRequestHandler

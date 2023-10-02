@@ -4,6 +4,7 @@ import asyncio
 import logging
 from os import name
 from typing import Optional
+
 import httpx
 
 import settings
@@ -34,7 +35,7 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
                 extra={"discord_channel": discord_channel},
             )
             return
-        elif discord_webhook_url is "":
+        elif discord_webhook_url == "":
             logging.warning(
                 f"No discord webhook embed is configurated for discord channel",
                 extra={"discord_channel": discord_channel},
