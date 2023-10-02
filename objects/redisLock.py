@@ -14,7 +14,7 @@ class redisLock:
     def __init__(self, key: str) -> None:
         self.key = key
 
-    async def try_acquire(self, expiry: float) -> Optional[bool]:
+    async def _try_acquire(self, expiry: float) -> Optional[bool]:
         return await glob.redis.set(self.key, "1", ex=expiry, nx=True)
 
     async def acquire(
@@ -22,7 +22,7 @@ class redisLock:
         expiry: float = DEFAULT_LOCK_EXPIRY,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
-        while not await self.try_acquire(expiry):
+        while not await self._try_acquire(expiry):
             time.sleep(retry_delay)
 
     async def release(self) -> None:
