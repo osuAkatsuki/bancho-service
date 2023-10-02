@@ -8,6 +8,8 @@ httpx
 orjson
 psutil
 python-dotenv
+python-json-logger
+PyYAML
 redis
 requests
 tornado

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
 from helpers import countryHelper
@@ -27,12 +26,13 @@ async def handle(userToken: Token, rawPacketData: bytes):
             return
 
         # Check password
-        if multiplayer_match["match_password"] not in ("", password):
-            await osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
-            log.warning(
-                f"{userToken['username']} has tried to join a mp room, but he typed the wrong password.",
-            )
-            return
+        if multiplayer_match["match_password"]:
+            if password != multiplayer_match["match_password"]:
+                await osuToken.enqueue(
+                    userToken["token_id"],
+                    serverPackets.matchJoinFail,
+                )
+                return
 
         # Password is correct, join match
         await osuToken.joinMatch(userToken["token_id"], matchID)

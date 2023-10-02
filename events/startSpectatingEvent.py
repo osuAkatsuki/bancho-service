@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
 from constants import clientPackets
 from constants import exceptions
 from objects import glob
@@ -15,7 +16,11 @@ async def handle(userToken: Token, rawPacketData: bytes):
     try:
         # Start spectating packet
         packetData = clientPackets.startSpectating(rawPacketData)
+    except:
+        logging.warning("Failed to parse start spectating packet.")
+        return
 
+    try:
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
             await osuToken.stopSpectating(userToken["token_id"])
@@ -46,5 +51,11 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        log.warning("Spectator start: token not found.")
+        logging.warning(
+            "Spectator start: token not found.",
+            extra={
+                "user_id": userToken["user_id"],
+                "host_user_id": packetData["userID"],
+            },
+        )
         await osuToken.stopSpectating(userToken["token_id"])

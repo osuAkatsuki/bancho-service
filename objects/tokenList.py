@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Literal
 from typing import Optional
 from typing import overload
 
-from common.log import logUtils as log
 from common.ripple import userUtils
 from constants.exceptions import periodicLoopException
 from constants.exceptions import tokenNotFoundException
@@ -77,7 +77,10 @@ async def deleteToken(token_id: str) -> None:
 
     token = await osuToken.get_token(token_id)
     if token is None:
-        log.warning("Token not found while attempting to delete it")
+        logging.warning(
+            "Token not found while attempting to delete it",
+            extra={"token_id": token_id},
+        )
         return
 
     if token["ip"]:
@@ -259,7 +262,7 @@ async def usersTimeoutCheckLoop() -> None:
     :return:
     """
     try:
-        log.debug("Checking timed out clients")
+        logging.debug("Checking timed out clients")
         exceptions: list[Exception] = []
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
@@ -278,19 +281,22 @@ async def usersTimeoutCheckLoop() -> None:
                     and not token["irc"]
                     and not token["tournament"]
                 ):
-                    log.warning(
-                        f"{token['username']} timed out after a silence of {time.time() - token['ping_time']:.2f} seconds.",
+                    logging.warning(
+                        "Timing out inactive bancho session",
+                        extra={
+                            "username": token["username"],
+                            "seconds_inactive": time.time() - token["ping_time"],
+                        },
                     )
 
                     try:
                         await logoutEvent.handle(token, _=None)
                     except tokenNotFoundException as e:
                         pass  # lol
-                    except Exception as e:
-                        raise
-                        exceptions.append(e)
-                        log.error(
-                            "Something wrong happened while disconnecting a timed out client.",
+                    except Exception as exc:
+                        exceptions.append(exc)
+                        logging.exception(
+                            "An error occurred while disconnecting a timed out client",
                         )
 
         # Re-raise exceptions if needed

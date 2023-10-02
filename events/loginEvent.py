@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import time
 from datetime import datetime as dt
@@ -12,13 +13,11 @@ from typing import TYPE_CHECKING
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
-from cmyui.logging import Ansi
-from cmyui.logging import log
 
 import settings
 from common import generalUtils
 from common.constants import privileges
-from common.log import logUtils
+from common.log import rap_logs
 from common.ripple import userUtils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
@@ -115,7 +114,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # disallow clients older than 1 year
         if osuVersion < (dt.now() - td(365)):
-            log(f"Denied login from {osuVersionStr}.", Ansi.LYELLOW)
+            logging.warning(
+                "Denied login from client too old",
+                extra={"version": osuVersionStr},
+            )
             raise exceptions.haxException()
 
         """ No login errors! """
@@ -126,14 +128,17 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if pending_verification or not await userUtils.hasVerifiedHardware(userID):
             if await userUtils.verifyUser(userID, clientData):
                 # Valid account
-                log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
+                logging.info(
+                    "User verified their account",
+                    extra={"user_id": userID, "username": username},
+                )
                 await verifiedCache.set(userID, True)
                 firstLogin = True
             else:
                 # Multiaccount detected
-                log(
-                    f"{username} ({userID}) tried to create another account.",
-                    Ansi.LRED,
+                logging.warning(
+                    "User tried to create another account",
+                    extra={"user_id": userID, "username": username},
                 )
                 await verifiedCache.set(userID, False)
                 shouldBan = True
@@ -185,10 +190,13 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         responseTokenString = userToken["token_id"]
 
         # Console output
-        log(
-            f"{username} ({userID}) logged in. "
-            f"({len(await osuToken.get_token_ids()) - 1} online)",
-            Ansi.CYAN,
+        logging.info(
+            "User logged in",
+            extra={
+                "user_id": userID,
+                "username": username,
+                "online_users": len(await osuToken.get_token_ids()),
+            },
         )
 
         # Check restricted mode (and eventually send message)
@@ -244,13 +252,13 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                         ),
                     ),
                 )
-                logUtils.rap(
+                await rap_logs.send_rap_log(
                     userID,
                     "has been automatically restricted due to a pending freeze.",
                 )
-                logUtils.ac(
-                    f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
-                    "ac_general",
+                await rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
+                    discord_channel="ac_general",
                 )
 
         # Send message if premium / donor expires soon
@@ -287,11 +295,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     [userID],
                 )
 
-                logUtils.ac(
-                    f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
-                    "ac_confidential",
+                await rap_logs.send_rap_log(userID, f"{rolename} subscription expired.")
+                await rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
+                    discord_channel="ac_confidential",
                 )
-                await logUtils.rap(userID, f"{rolename} subscription expired.")
 
                 await osuToken.enqueue(
                     userToken["token_id"],
@@ -582,19 +590,27 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not restricted and (
             v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
         ):
-            logUtils.ac(
-                f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
-                "ac_general",
+            await rap_logs.send_rap_log_as_discord_webhook(
+                message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
+                discord_channel="ac_general",
             )
     except:
-        log(f"Unknown error\n```\n{exc_info()}\n{format_exc()}```", Ansi.LRED)
+        logging.exception("An unhandled exception occurred during login")
     finally:
         # Console and discord log
         if len(loginData) < 3:
-            logUtils.ac(
-                f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
-                "ac_confidential",
+            logging.warning(
+                "Invalid bancho login request",
+                extra={
+                    "reason": "insufficient_post_data",
+                    "ip": requestIP,
+                },
             )
+        # TODO: re-add discord webhook
+        await rap_logs.send_rap_log_as_discord_webhook(
+            message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
+            discord_channel="ac_confidential",
+        )
 
         # Return token string and data
         return responseTokenString, bytes(responseData)

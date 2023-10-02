@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 import redis.asyncio as redis
 
-from common.log import logUtils as log
 from common.redis import generalPubSubHandler
 
 
@@ -49,8 +50,12 @@ class listener:
             # Make sure the handler exists
             if item["channel"] in self.handlers:
                 if "cached_stats" not in item["channel"]:
-                    log.info(
-                        "Redis pubsub: {} <- {} ".format(item["channel"], item["data"]),
+                    logging.info(
+                        "Handling redis pubsub item",
+                        extra={
+                            "channel": item["channel"],
+                            "data": item["data"],
+                        },
                     )
 
                 if isinstance(
@@ -74,7 +79,10 @@ class listener:
 
         channels = list(self.handlers.keys())
         await pubsub.subscribe(*channels)
-        log.info(f"Subscribed to redis pubsub channels: {channels}")
+        logging.info(
+            "Subscribed to redis pubsub channels",
+            extra={"channels": channels},
+        )
 
         async for item in pubsub.listen():
             await self.processItem(item)

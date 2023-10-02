@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import re
 import secrets
@@ -16,7 +17,7 @@ from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-from common.log import logUtils as log
+from common.log import rap_logs
 from common.ripple import scoreUtils
 from common.ripple import userUtils
 from common.web import discord
@@ -320,15 +321,18 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     if targetToken := await osuToken.get_token_by_user_id(targetID):
         await osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
-    await log.rap(userID, f"has banned {target} ({targetID}) for {reason}")
-    log.ac(
-        "\n\n".join(
+    await rap_logs.send_rap_log(
+        userID,
+        f"has banned {target} ({targetID}) for {reason}",
+    )
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message="\n\n".join(
             [
                 f"{fro} has banned [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
             ],
         ),
-        "ac_general",
+        discord_channel="ac_general",
     )
 
     await userUtils.appendNotes(targetID, f"{username} banned for: {reason}")
@@ -356,10 +360,10 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
     # Set allowed to 1
     await userUtils.unban(targetID)
 
-    await log.rap(userID, f"has unbanned {target}")
-    log.ac(
-        f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
-        "ac_general",
+    await rap_logs.send_rap_log(userID, f"has unbanned {target}")
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message=f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
+        discord_channel="ac_general",
     )
 
     await userUtils.appendNotes(targetID, f"{fro} ({userID}) unbanned for: {reason}")
@@ -398,15 +402,18 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     if targetToken := await osuToken.get_token_by_user_id(targetID):
         await osuToken.setRestricted(targetToken["token_id"])
 
-    await log.rap(userID, f"has restricted {target} ({targetID}) for: {reason}")
-    log.ac(
-        "\n\n".join(
+    await rap_logs.send_rap_log(
+        userID,
+        f"has restricted {target} ({targetID}) for: {reason}",
+    )
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message="\n\n".join(
             [
                 f"{fro} has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
             ],
         ),
-        "ac_general",
+        discord_channel="ac_general",
     )
 
     await userUtils.appendNotes(targetID, f"{fro} ({userID}) restricted for: {reason}")
@@ -436,10 +443,10 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
     await userUtils.unrestrict(targetID)
 
-    await log.rap(userID, f"has unrestricted {target}")
-    log.ac(
-        f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
-        "ac_general",
+    await rap_logs.send_rap_log(userID, f"has unrestricted {target}")
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message=f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
+        discord_channel="ac_general",
     )
 
     await userUtils.appendNotes(
@@ -609,8 +616,15 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
             params={"b": currentMap, "m": currentMods},
             timeout=2,
         )
-    except Exception as e:
-        print(e)
+    except:
+        logging.exception(
+            "Failed to retrieve PP from LESS API",
+            extra={
+                "user_id": userID,
+                "beatmap_id": currentMap,
+                "mods": currentMods,
+            },
+        )
         return "Score server currently down, could not retrieve PP."
 
     if not response or response.status_code != 200:
@@ -769,7 +783,10 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     match = fokabot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
-        log.error(f"Error while parsing /np message (tillerinoNp): '{npmsg}'")
+        logging.error(
+            "Error parsing /np message",
+            extra={"chat_message": npmsg},
+        )
         return "An error occurred while parsing /np message :/ - reported to devs"
 
     mods_int = 0
@@ -1249,7 +1266,10 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         adminMsg = f"{fro} has reported {target} for {reason} ({additionalInfo})"
 
         # Log report to discord
-        log.warning(adminMsg, "ac_general")
+        await rap_logs.send_rap_log_as_discord_webhook(
+            message=adminMsg,
+            discord_channel="ac_general",
+        )
     except exceptions.invalidUserException:
         msg = "This user is immune to reports. They are either an Akatsuki developer, or the bot."
     except exceptions.invalidArgumentsException:
@@ -1434,7 +1454,10 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         userID,
         f"Changed username: '{fro}' -> '{newUsername}'.",
     )
-    await log.rap(userID, f"changed their name from '{fro}' to '{newUsername}'.")
+    await rap_logs.send_rap_log(
+        userID,
+        f"changed their name from '{fro}' to '{newUsername}'.",
+    )
     return f"Changed username to ({fro} -> {newUsername})."
 
 
@@ -1671,9 +1694,7 @@ async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
 
     # Only allow the user to run it once / 10s.
     _time = int(time.time())
-    print(_time)
-    print(_time - 10)
-    print(ratelimit)
+
     if ratelimit > _time - 10:
         return f"This command can only be run every 10 seconds (Cooldown: {10 - (_time - ratelimit)}s)."
 
