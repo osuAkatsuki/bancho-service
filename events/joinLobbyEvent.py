@@ -6,7 +6,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, _):
+async def handle(userToken: Token, _):
     # Add user to users in lobby
     osuToken.joinStream(userToken["token_id"], "lobby")
 

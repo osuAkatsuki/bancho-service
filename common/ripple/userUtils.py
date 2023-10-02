@@ -24,13 +24,13 @@ from objects import glob
 from objects import tokenList
 
 
-def getBeatmapTime(beatmapID: int) -> Any:
+async def getBeatmapTime(beatmapID: int) -> Any:
     """
     Get the total length of a beatmap from the mirror.
     """
 
     # First try to grab locally before using mirror.
-    res = glob.db.fetch(
+    res = await glob.db.fetch(
         "SELECT hit_length FROM beatmaps " "WHERE beatmap_id = %s",
         [beatmapID],
     )
@@ -47,7 +47,7 @@ def getBeatmapTime(beatmapID: int) -> Any:
     return 0
 
 
-def submitBeatmapRequest(
+async def submitBeatmapRequest(
     userID: int,
     beatmapID: int,
     mapType: str,
@@ -61,7 +61,7 @@ def submitBeatmapRequest(
     :param mapType: either s or b, s being for set, b for map
     :param gameMode: gamemode for the maps nomination
     """
-    b = glob.db.fetch(
+    b = await glob.db.fetch(
         "SELECT song_name, beatmapset_id FROM beatmaps " "WHERE beatmap_id = %s",
         [beatmapID],
     )
@@ -69,7 +69,7 @@ def submitBeatmapRequest(
     if not b:
         return False
 
-    username: Optional[str] = getUsername(userID)
+    username: Optional[str] = await getUsername(userID)
 
     embed = Webhook(settings.WEBHOOK_RANK_REQUESTS, color=5516472)
     embed.set_author(
@@ -95,7 +95,7 @@ def submitBeatmapRequest(
     return True
 
 
-def getMaxCombo(userID: int, gameMode: int) -> int:
+async def getMaxCombo(userID: int, gameMode: int) -> int:
     """
     Get user max combo relative to `gameMode`.
 
@@ -103,7 +103,7 @@ def getMaxCombo(userID: int, gameMode: int) -> int:
     :param gameMode: game mode number
     :return: dictionary with result
     """
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT max_combo FROM scores "
         "WHERE userid = %s AND play_mode = %s "
         "AND completed = 3 "  # best score
@@ -117,7 +117,7 @@ def getMaxCombo(userID: int, gameMode: int) -> int:
     return result["max_combo"]
 
 
-def incrementPlaytime(userID: int, gameMode: int = 0, length: int = 0) -> None:
+async def incrementPlaytime(userID: int, gameMode: int = 0, length: int = 0) -> None:
     """
     Increment a users playtime.
 
@@ -125,7 +125,7 @@ def incrementPlaytime(userID: int, gameMode: int = 0, length: int = 0) -> None:
     """
 
     modeForDB = gameModes.getGameModeForDB(gameMode)
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT playtime_{gm} AS playtime FROM users_stats "
         "WHERE id = %s".format(gm=modeForDB),
         [userID],
@@ -134,14 +134,19 @@ def incrementPlaytime(userID: int, gameMode: int = 0, length: int = 0) -> None:
     if not result:
         return
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users_stats SET playtime_{gm} = %s "
         "WHERE id = %s".format(gm=modeForDB),
         [int(result["playtime"] + length), userID],
     )
 
 
-def updateBeatmapPlaycount(userID: int, beatmapHash: str, gameMode: int, relax: bool):
+async def updateBeatmapPlaycount(
+    userID: int,
+    beatmapHash: str,
+    gameMode: int,
+    relax: bool,
+):
     """
     Inserts a playcount into the beatmap specific playcount per user table
     or increments if duplicate composite key
@@ -151,7 +156,7 @@ def updateBeatmapPlaycount(userID: int, beatmapHash: str, gameMode: int, relax: 
     :param gameMode: game mode Munber
     :param relax:
     """
-    glob.db.execute(
+    await glob.db.execute(
         "INSERT INTO beatmaps_playcounts "
         "VALUES (%s, %s, %s, %s, DEFAULT) "
         "ON DUPLICATE KEY UPDATE COUNT = COUNT + 1",
@@ -159,7 +164,7 @@ def updateBeatmapPlaycount(userID: int, beatmapHash: str, gameMode: int, relax: 
     )
 
 
-def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
+async def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
     """
     Get a users playtime in a specific gameMode.
 
@@ -168,7 +173,7 @@ def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
     """
 
     modeForDB = gameModes.getGameModeForDB(gameMode)
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT playtime_{gm} as playtime FROM users_stats "
         "WHERE id = %s".format(gm=modeForDB),
         [userID],
@@ -177,14 +182,14 @@ def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
     return result["playtime"] if result else None
 
 
-def getPlaytimeTotal(userID: int) -> int:
+async def getPlaytimeTotal(userID: int) -> int:
     """
     Get a users playtime for all gameModes combined.
 
     :param userID:
     """
 
-    res = glob.db.fetch(
+    res = await glob.db.fetch(
         "SELECT playtime_std, playtime_ctb, playtime_mania, playtime_taiko "
         "FROM users_stats WHERE id = %s",
         [userID],
@@ -193,17 +198,18 @@ def getPlaytimeTotal(userID: int) -> int:
     return sum(res.values()) if res else 0
 
 
-def getWhitelist(userID: int) -> int:
+async def getWhitelist(userID: int) -> int:
     """
     Return a user's whitelist status from database.
     """
-
-    return glob.db.fetch("SELECT whitelist FROM users " "WHERE id = %s", [userID])[
-        "whitelist"
-    ]
+    res = await glob.db.fetch("SELECT whitelist FROM users " "WHERE id = %s", [userID])
+    return res["whitelist"]
 
 
-def checkWhitelist(userID: int, requirement: int) -> int:  # TODO: redo this? it's bad
+async def checkWhitelist(
+    userID: int,
+    requirement: int,
+) -> int:  # TODO: redo this? it's bad
     """
     Return whether the user has whitelist access to the corresponding bit.
 
@@ -213,11 +219,12 @@ def checkWhitelist(userID: int, requirement: int) -> int:  # TODO: redo this? it
     3:  both whitelist
     """
 
-    return getWhitelist(userID) & requirement
+    whitelist = await getWhitelist(userID)
+    return whitelist & requirement
 
 
 # whitelistUserPPLimit
-def editWhitelist(userID: int, bit: int) -> None:
+async def editWhitelist(userID: int, bit: int) -> None:
     """
     Change a userID's whitelist status to bit.
 
@@ -227,7 +234,10 @@ def editWhitelist(userID: int, bit: int) -> None:
     bit 3 = vanilla & relax
     """
 
-    glob.db.execute("UPDATE users SET whitelist = %s " "WHERE id = %s", [bit, userID])
+    await glob.db.execute(
+        "UPDATE users SET whitelist = %s " "WHERE id = %s",
+        [bit, userID],
+    )
 
     # User is online, update their token's whitelist.
     userToken = tokenList.getTokenFromUserID(userID)
@@ -235,7 +245,7 @@ def editWhitelist(userID: int, bit: int) -> None:
         userToken["whitelist"] = bit
 
 
-def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
+async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
     """
     Get all user stats relative to `gameMode`.
 
@@ -253,7 +263,7 @@ def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
         table = "ap_stats"
 
     # Get stats
-    stats = glob.db.fetch(
+    stats = await glob.db.fetch(
         "SELECT ranked_score_{gm} AS rankedScore, "
         "avg_accuracy_{gm} AS accuracy, "
         "playcount_{gm} AS playcount, "
@@ -270,14 +280,14 @@ def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
     return stats
 
 
-def getIDSafe(_safeUsername: str) -> Optional[int]:
+async def getIDSafe(_safeUsername: str) -> Optional[int]:
     """
     Get user ID from a safe username
     :param _safeUsername: safe username
     :return: None if the user doesn't exist, else user id
     """
 
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT id " "FROM users " "WHERE username_safe = %s",
         [_safeUsername],
     )
@@ -285,12 +295,12 @@ def getIDSafe(_safeUsername: str) -> Optional[int]:
     return result["id"] if result else None
 
 
-def getMapNominator(beatmapID: int) -> Optional[Any]:
+async def getMapNominator(beatmapID: int) -> Optional[Any]:
     """
     Get the user who ranked a map by beatmapID.
     """
 
-    res = glob.db.fetch(
+    res = await glob.db.fetch(
         "SELECT song_name, ranked, rankedby " "FROM beatmaps WHERE beatmap_id = %s",
         [beatmapID],
     )
@@ -298,7 +308,7 @@ def getMapNominator(beatmapID: int) -> Optional[Any]:
     return res if res else None
 
 
-def getID(username: str) -> int:
+async def getID(username: str) -> int:
     """
     Get username's user ID from userID redis cache (if cache hit)
     or from db (and cache it for other requests) if cache miss
@@ -313,7 +323,7 @@ def getID(username: str) -> int:
 
     if not userID:
         # If it's not in redis, get it from mysql
-        userID = getIDSafe(usernameSafe)
+        userID = await getIDSafe(usernameSafe)
 
         # If it's invalid, return 0
         if not userID:
@@ -331,7 +341,7 @@ def getID(username: str) -> int:
     return int(userID)
 
 
-def getUsername(userID: int) -> Optional[str]:
+async def getUsername(userID: int) -> Optional[str]:
     """
     Get userID's username.
 
@@ -339,12 +349,15 @@ def getUsername(userID: int) -> Optional[str]:
     :return: username or None
     """
 
-    result = glob.db.fetch("SELECT username " "FROM users " "WHERE id = %s", [userID])
+    result = await glob.db.fetch(
+        "SELECT username " "FROM users " "WHERE id = %s",
+        [userID],
+    )
 
     return result["username"] if result else None
 
 
-def getSafeUsername(userID: int) -> Optional[str]:
+async def getSafeUsername(userID: int) -> Optional[str]:
     """
     Get userID's safe username.
 
@@ -352,7 +365,7 @@ def getSafeUsername(userID: int) -> Optional[str]:
     :return: username or None
     """
 
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT username_safe " "FROM users " "WHERE id = %s",
         [userID],
     )
@@ -360,7 +373,7 @@ def getSafeUsername(userID: int) -> Optional[str]:
     return result["username_safe"] if result else None
 
 
-def exists(userID: int) -> bool:
+async def exists(userID: int) -> bool:
     """
     Check if given userID exists.
 
@@ -368,10 +381,13 @@ def exists(userID: int) -> bool:
     :return: True if the user exists, else False
     """
 
-    return glob.db.fetch("SELECT id FROM users " "WHERE id = %s", [userID]) is not None
+    return (
+        await glob.db.fetch("SELECT id FROM users " "WHERE id = %s", [userID])
+        is not None
+    )
 
 
-def checkLogin(userID: int, password: str, ip: str = "") -> bool:
+async def checkLogin(userID: int, password: str, ip: str = "") -> bool:
     """
     Check userID's login with specified password.
 
@@ -392,7 +408,7 @@ def checkLogin(userID: int, password: str, ip: str = "") -> bool:
 
     # Otherwise, check password
     # Get password data
-    passwordData = glob.db.fetch(
+    passwordData = await glob.db.fetch(
         "SELECT password_md5, salt, password_version FROM users WHERE id = %s LIMIT 1",
         [userID],
     )
@@ -408,13 +424,10 @@ def checkLogin(userID: int, password: str, ip: str = "") -> bool:
 
         if db_pw_bcrypt in glob.bcrypt_cache:  # ~0.01ms
             return pw_md5 == glob.bcrypt_cache[db_pw_bcrypt]
-        else:  # ~200ms
-            if bcrypt.checkpw(pw_md5, db_pw_bcrypt):
-                glob.bcrypt_cache[db_pw_bcrypt] = pw_md5
-                return True
-            return False
-
-    if passwordData["password_version"] == 1:
+        elif bcrypt.checkpw(pw_md5, db_pw_bcrypt):  # ~200ms
+            glob.bcrypt_cache[db_pw_bcrypt] = pw_md5
+            return True
+    elif passwordData["password_version"] == 1:
         ok = passwordUtils.checkOldPassword(
             password,
             passwordData["salt"],
@@ -423,13 +436,15 @@ def checkLogin(userID: int, password: str, ip: str = "") -> bool:
         if not ok:
             return False
         newpass = passwordUtils.genBcrypt(password)
-        glob.db.execute(
+        await glob.db.execute(
             "UPDATE users SET password_md5=%s, salt='', password_version='2' WHERE id = %s LIMIT 1",
             [newpass, userID],
         )
 
+    return False
 
-def getRequiredScoreForLevel(level):
+
+def getRequiredScoreForLevel(level) -> int:
     """
     Return score required to reach a level.
 
@@ -442,13 +457,13 @@ def getRequiredScoreForLevel(level):
             return 5000 / 3 * (4 * (level**3) - 3 * (level**2) - level) + 1.25 * (
                 1.8 ** (level - 60)
             )
-        elif level <= 0 or level == 1:
+        else:
             return 1  # Should be 0, but we get division by 0 below so set to 1
-    elif level >= 101:
+    else:
         return 0x645395C2D + 100000000000 * (level - 100)
 
 
-def getLevel(totalScore: int):
+async def getLevel(totalScore: int):
     """
     Return level from totalScore
 
@@ -474,7 +489,7 @@ def getLevel(totalScore: int):
             level += 1
 
 
-def updateLevel(
+async def updateLevel(
     userID: int,
     gameMode: int = 0,
     totalScore: int = 0,
@@ -498,26 +513,26 @@ def updateLevel(
 
     table = "rx_stats" if relax else "users_stats"
 
-    if totalScore == 0:
-        totalScore = glob.db.fetch(
+    if not totalScore:
+        res = await glob.db.fetch(
             f"SELECT total_score_{mode} as total_score " f"FROM {table} WHERE id = %s",
             [userID],
         )
 
-        if totalScore:
-            totalScore = totalScore["total_score"]
+        if res:
+            totalScore = res["total_score"]
 
     # Calculate level from totalScore
-    level = getLevel(totalScore)
+    level = await getLevel(totalScore)
 
     # Save new level
-    glob.db.execute(
+    await glob.db.execute(
         f"UPDATE {table} SET level_{mode} = %s " "WHERE id = %s",
         [level, userID],
     )
 
 
-def calculateAccuracy(userID: int, gameMode: int, relax: bool) -> float:
+async def calculateAccuracy(userID: int, gameMode: int, relax: bool) -> float:
     """
     Calculate accuracy value for userID relative to gameMode.
 
@@ -530,7 +545,7 @@ def calculateAccuracy(userID: int, gameMode: int, relax: bool) -> float:
     table = "scores_relax" if relax else "scores"
 
     # Get best accuracy scores
-    bestAccScores = glob.db.fetchAll(
+    bestAccScores = await glob.db.fetchAll(
         f"SELECT accuracy FROM {table} "
         "WHERE userid = %s AND play_mode = %s "
         "AND completed = 3 ORDER BY pp DESC LIMIT 125",
@@ -557,7 +572,7 @@ def calculateAccuracy(userID: int, gameMode: int, relax: bool) -> float:
     return v
 
 
-def calculatePP(userID: int, gameMode: int, relax: bool) -> int:
+async def calculatePP(userID: int, gameMode: int, relax: bool) -> int:
     """
     Calculate userID's total PP for gameMode.
 
@@ -572,7 +587,7 @@ def calculatePP(userID: int, gameMode: int, relax: bool) -> int:
     return sum(
         round(round(row["pp"]) * 0.95**i)
         for i, row in enumerate(
-            glob.db.fetchAll(
+            await glob.db.fetchAll(
                 f"SELECT pp FROM {table} LEFT JOIN(beatmaps) USING(beatmap_md5) "
                 "WHERE userid = %s AND play_mode = %s AND completed = 3 "
                 "AND ranked >= 2 AND ranked != 5 AND pp IS NOT NULL ORDER BY pp DESC LIMIT 125",
@@ -582,7 +597,7 @@ def calculatePP(userID: int, gameMode: int, relax: bool) -> int:
     )
 
 
-def updateAccuracy(userID: int, gameMode: int, relax: bool) -> None:
+async def updateAccuracy(userID: int, gameMode: int, relax: bool) -> None:
     """
     Update accuracy value for userID relative to gameMode in DB.
 
@@ -592,17 +607,17 @@ def updateAccuracy(userID: int, gameMode: int, relax: bool) -> None:
     :return:
     """
 
-    newAcc = calculateAccuracy(userID, gameMode, relax)
+    newAcc = await calculateAccuracy(userID, gameMode, relax)
     mode = gameModes.getGameModeForDB(gameMode)
 
     table = "rx_stats" if relax else "users_stats"
-    glob.db.execute(
+    await glob.db.execute(
         f"UPDATE {table} SET avg_accuracy_{mode} = %s " "WHERE id = %s LIMIT 1",
         [newAcc, userID],
     )
 
 
-def updatePP(userID: int, gameMode: int, relax: bool) -> None:
+async def updatePP(userID: int, gameMode: int, relax: bool) -> None:
     """
     Update userID's pp with new value.
 
@@ -615,11 +630,11 @@ def updatePP(userID: int, gameMode: int, relax: bool) -> None:
     # 	return
 
     # Get new total PP and update db
-    newPP = calculatePP(userID, gameMode, relax)
+    newPP = await calculatePP(userID, gameMode, relax)
     mode = gameModes.getGameModeForDB(gameMode)
 
     table = "rx_stats" if relax else "users_stats"
-    glob.db.execute(
+    await glob.db.execute(
         f"UPDATE {table} SET pp_{mode} = %s " "WHERE id = %s LIMIT 1",
         [newPP, userID],
     )
@@ -637,7 +652,7 @@ ALLOWED_GRADES = {
 }
 
 
-def updateStats(userID: int, __score, __old=None) -> None:
+async def updateStats(userID: int, __score, __old=None) -> None:
     """
     Update stats (playcount, total score, ranked score, level bla bla)
     with data relative to a score object
@@ -664,14 +679,14 @@ def updateStats(userID: int, __score, __old=None) -> None:
     table = "rx_stats" if relax else "users_stats"
 
     # Update total score and playcount
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE {t} SET total_score_{m} = total_score_{m} + %s, "
         "playcount_{m}=playcount_{m}+1 WHERE id = %s LIMIT 1".format(m=mode, t=table),
         [__score.score, userID],
     )
 
     # Calculate new level and update it
-    updateLevel(userID, __score.gameMode, relax)
+    await updateLevel(userID, __score.gameMode, relax)
 
     # Update level, accuracy and ranked score only if we have passed the song
     if __score.passed:
@@ -696,19 +711,19 @@ def updateStats(userID: int, __score, __old=None) -> None:
                 qbase += f', {__old.grade}_count_{mode} = {__old.grade}_count_{mode} - 1'
         """
 
-        glob.db.execute(
+        await glob.db.execute(
             qbase + " WHERE id = %s LIMIT 1",
             [__score.rankedScoreIncrease, userID],
         )
 
         # Update accuracy
-        updateAccuracy(userID, __score.gameMode, relax)
+        await updateAccuracy(userID, __score.gameMode, relax)
 
         # Update pp
-        updatePP(userID, __score.gameMode, relax)
+        await updatePP(userID, __score.gameMode, relax)
 
 
-def updateLatestActivity(userID: int) -> None:
+async def updateLatestActivity(userID: int) -> None:
     """
     Update userID's latest activity to current UNIX time.
 
@@ -716,13 +731,13 @@ def updateLatestActivity(userID: int) -> None:
     :return:
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " "SET latest_activity = UNIX_TIMESTAMP() " "WHERE id = %s",
         [userID],
     )
 
 
-def getRankedScore(userID: int, gameMode: int) -> int:
+async def getRankedScore(userID: int, gameMode: int) -> int:
     """
     Get userID's ranked score relative to gameMode.
 
@@ -732,7 +747,7 @@ def getRankedScore(userID: int, gameMode: int) -> int:
     """
 
     mode = gameModes.getGameModeForDB(gameMode)
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         f"SELECT ranked_score_{mode} " "FROM users_stats " "WHERE id = %s",
         [userID],
     )
@@ -740,7 +755,7 @@ def getRankedScore(userID: int, gameMode: int) -> int:
     return result[f"ranked_score_{mode}"] if result else 0
 
 
-def getPP(userID: int, gameMode: int, relax: bool, autopilot: bool) -> int:
+async def getPP(userID: int, gameMode: int, relax: bool, autopilot: bool) -> int:
     """
     Get userID's PP relative to gameMode.
 
@@ -758,14 +773,14 @@ def getPP(userID: int, gameMode: int, relax: bool, autopilot: bool) -> int:
     else:
         stats_table = "users_stats"
 
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         f"SELECT pp_{mode} FROM {stats_table} WHERE id = %s",
         [userID],
     )
     return result[f"pp_{mode}"] if result else 0
 
 
-def incrementReplaysWatched(userID: int, gameMode: int, mods_used: int) -> None:
+async def incrementReplaysWatched(userID: int, gameMode: int, mods_used: int) -> None:
     """
     Increment userID's replays watched by others relative to gameMode.
 
@@ -776,14 +791,14 @@ def incrementReplaysWatched(userID: int, gameMode: int, mods_used: int) -> None:
 
     mode = gameModes.getGameModeForDB(gameMode)
     table = "rx_stats" if mods_used & mods.RELAX else "users_stats"
-    glob.db.execute(
+    await glob.db.execute(
         f"UPDATE {table} SET replays_watched_{mode} = replays_watched_{mode} + 1 "
         "WHERE id = %s",
         [userID],
     )
 
 
-def IPLog(userID: int, ip: int) -> None:
+async def IPLog(userID: int, ip: int) -> None:
     """
     Log user IP.
 
@@ -792,7 +807,7 @@ def IPLog(userID: int, ip: int) -> None:
     :return:
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         'INSERT INTO ip_user (userid, ip, occurencies) VALUES (%s, %s, "1") '
         "ON DUPLICATE KEY UPDATE occurencies = occurencies + 1",
         [userID, ip],
@@ -814,7 +829,7 @@ def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
         return glob.redis.exists(f"bancho:sessions_by_ip:{userID}")
 
 
-def is2FAEnabled(userID: int):
+async def is2FAEnabled(userID: int):
     """
     Returns True if 2FA/Google auth 2FA is enable for `userID`
 
@@ -822,13 +837,13 @@ def is2FAEnabled(userID: int):
     :return: True if 2fa is enabled, else False
     """
 
-    return glob.db.fetch(
+    return await glob.db.fetch(
         "SELECT 2fa_totp.userid FROM 2fa_totp " "WHERE userid = %s AND enabled = 1",
         [userID],
     )
 
 
-def check2FA(userID: int, ip: int) -> bool:
+async def check2FA(userID: int, ip: int) -> bool:
     """
     Returns True if this IP is untrusted.
     Returns always False if 2fa is not enabled on `userID`
@@ -838,16 +853,17 @@ def check2FA(userID: int, ip: int) -> bool:
     :return: True if untrusted, False if trusted or 2fa is disabled.
     """
 
-    if not is2FAEnabled(userID):
+    enabled = await is2FAEnabled(userID)
+    if not enabled:
         return False
 
-    return not glob.db.fetch(
+    return not await glob.db.fetch(
         "SELECT id FROM ip_user " "WHERE userid = %s AND ip = %s",
         [userID, ip],
     )
 
 
-def isAllowed(userID: int) -> bool:
+async def isAllowed(userID: int) -> bool:
     """
     Check if userID is not banned or restricted
 
@@ -856,7 +872,7 @@ def isAllowed(userID: int) -> bool:
     """
 
     return (
-        glob.db.fetch(
+        await glob.db.fetch(
             "SELECT 1 FROM users " "WHERE id = %s " "AND privileges & 3 = 3",
             [userID],
         )
@@ -864,7 +880,7 @@ def isAllowed(userID: int) -> bool:
     )
 
 
-def isRestricted(userID: int) -> bool:
+async def isRestricted(userID: int) -> bool:
     """
     Check if userID is restricted
 
@@ -873,7 +889,7 @@ def isRestricted(userID: int) -> bool:
     """
 
     return (
-        glob.db.fetch(
+        await glob.db.fetch(
             "SELECT 1 FROM users "
             "WHERE id = %s "
             "AND privileges & 1 = 0 "  # hidden profile
@@ -884,7 +900,7 @@ def isRestricted(userID: int) -> bool:
     )
 
 
-def isBanned(userID: int) -> bool:
+async def isBanned(userID: int) -> bool:
     """
     Check if userID is banned
 
@@ -893,7 +909,7 @@ def isBanned(userID: int) -> bool:
     """
 
     return (
-        glob.db.fetch(
+        await glob.db.fetch(
             "SELECT 1 FROM users "
             "WHERE id = %s "
             "AND privileges & 3 = 0",  # no access, hidden profile
@@ -903,7 +919,7 @@ def isBanned(userID: int) -> bool:
     )
 
 
-def isLocked(userID: int) -> bool:
+async def isLocked(userID: int) -> bool:
     """
     Check if userID is locked
 
@@ -912,7 +928,7 @@ def isLocked(userID: int) -> bool:
     """
 
     return (
-        glob.db.fetch(
+        await glob.db.fetch(
             "SELECT 1 FROM users "
             "WHERE id = %s "
             "AND privileges & 1 != 0 "  # public profile
@@ -923,7 +939,7 @@ def isLocked(userID: int) -> bool:
     )
 
 
-def ban(userID: int) -> None:
+async def ban(userID: int) -> None:
     """
     Ban userID
 
@@ -932,7 +948,7 @@ def ban(userID: int) -> None:
     """
 
     # Set user as banned in db
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users "
         "SET privileges = privileges & %s, "
         "ban_datetime = UNIX_TIMESTAMP() "
@@ -951,10 +967,10 @@ def ban(userID: int) -> None:
     glob.redis.publish("peppy:ban", userID)
 
     # Remove the user from global and country leaderboards
-    removeFromLeaderboard(userID)
+    await removeFromLeaderboard(userID)
 
 
-def unban(userID: int) -> None:
+async def unban(userID: int) -> None:
     """
     Unban userID
 
@@ -962,7 +978,7 @@ def unban(userID: int) -> None:
     :return:
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users "
         "SET privileges = privileges | %s, "
         "ban_datetime = 0 "
@@ -973,16 +989,16 @@ def unban(userID: int) -> None:
     glob.redis.publish("peppy:unban", userID)
 
 
-def restrict(userID: int) -> None:
+async def restrict(userID: int) -> None:
     """
     Restrict userID
 
     :param userID: user id
     :return:
     """
-    if not isRestricted(userID):
+    if not await isRestricted(userID):
         # Set user as restricted in db
-        glob.db.execute(
+        await glob.db.execute(
             "UPDATE users SET privileges = privileges & %s, "
             "ban_datetime = UNIX_TIMESTAMP() WHERE id = %s",
             [~privileges.USER_PUBLIC, userID],
@@ -992,10 +1008,10 @@ def restrict(userID: int) -> None:
         glob.redis.publish("peppy:ban", userID)
 
         # Remove the user from global and country leaderboards
-        removeFromLeaderboard(userID)
+        await removeFromLeaderboard(userID)
 
 
-def unrestrict(userID: int) -> None:
+async def unrestrict(userID: int) -> None:
     """
     Unrestrict userID.
     Same as unban().
@@ -1004,10 +1020,10 @@ def unrestrict(userID: int) -> None:
     :return:
     """
 
-    unban(userID)
+    await unban(userID)
 
 
-def appendNotes(
+async def appendNotes(
     userID: int,
     notes: str,
     addNl: bool = True,
@@ -1029,13 +1045,13 @@ def appendNotes(
     if addNl:
         notes = f"\n{notes}"
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " 'SET notes = CONCAT(COALESCE(notes, ""), %s) ' "WHERE id = %s",
         [notes, userID],
     )
 
 
-def getPrivileges(userID: int) -> int:
+async def getPrivileges(userID: int) -> int:
     """
     Return `userID`'s privileges
 
@@ -1043,12 +1059,15 @@ def getPrivileges(userID: int) -> int:
     :return: privileges number
     """
 
-    result = glob.db.fetch("SELECT privileges " "FROM users " "WHERE id = %s", [userID])
+    result = await glob.db.fetch(
+        "SELECT privileges " "FROM users " "WHERE id = %s",
+        [userID],
+    )
 
     return result["privileges"] if result else 0
 
 
-def getFreezeTime(userID: int) -> int:
+async def getFreezeTime(userID: int) -> int:
     """
     Return a `userID`'s enqueued restriction date.
 
@@ -1056,17 +1075,23 @@ def getFreezeTime(userID: int) -> int:
     :return: timestamp
     """
 
-    result = glob.db.fetch("SELECT frozen " "FROM users " "WHERE id = %s", [userID])
+    result = await glob.db.fetch(
+        "SELECT frozen " "FROM users " "WHERE id = %s",
+        [userID],
+    )
 
     return result["frozen"] if result else 0
 
 
-def getFreezeReason(userID: int) -> Optional[str]:
-    result = glob.db.fetch("SELECT freeze_reason FROM users WHERE id = %s", [userID])
+async def getFreezeReason(userID: int) -> Optional[str]:
+    result = await glob.db.fetch(
+        "SELECT freeze_reason FROM users WHERE id = %s",
+        [userID],
+    )
     return result["freeze_reason"] if result["freeze_reason"] else None
 
 
-def freeze(userID: int, author: int = 999) -> None:
+async def freeze(userID: int, author: int = 999) -> None:
     """
     Enqueue a 'pending' restriction on a user. (7 days)
     Used for getting liveplays from users already suspected of cheating.
@@ -1075,23 +1100,23 @@ def freeze(userID: int, author: int = 999) -> None:
     :param author: userID of the author (restricter)
     """
 
-    beginFreezeTimer(userID)  # to fix cron bugs
+    await beginFreezeTimer(userID)  # to fix cron bugs
 
-    author_name = getUsername(author)
-    target_name = getUsername(userID)
+    author_name = await getUsername(author)
+    target_name = await getUsername(userID)
 
-    appendNotes(userID, f"{author_name} ({author}) froze this user.")
-    log.rap(author, f"froze {target_name} ({userID}).")
+    await appendNotes(userID, f"{author_name} ({author}) froze this user.")
+    await log.rap(author, f"froze {target_name} ({userID}).")
     log.ac(
         f"{author_name} has frozen [{target_name}](https://akatsuki.gg/u/{userID}).",
         "ac_general",
     )
 
 
-def beginFreezeTimer(userID) -> None:
+async def beginFreezeTimer(userID) -> int:
     restriction_time = int(time.time() + (86400 * 7))
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users SET frozen = %s " "WHERE id = %s",
         [restriction_time, userID],
     )
@@ -1099,7 +1124,7 @@ def beginFreezeTimer(userID) -> None:
     return restriction_time  # Return so we can update the time
 
 
-def unfreeze(userID: int, author: int = 999, _log=True) -> None:
+async def unfreeze(userID: int, author: int = 999, _log=True) -> None:
     """
     Dequeue a 'pending' restriction on a user.
 
@@ -1107,24 +1132,24 @@ def unfreeze(userID: int, author: int = 999, _log=True) -> None:
     :param author: userID of the author (restricter)
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " "SET frozen = 0, freeze_reason = '' WHERE id = %s",
         [userID],
     )
 
     if _log:
-        author_name = getUsername(author)
-        target_name = getUsername(userID)
+        author_name = await getUsername(author)
+        target_name = await getUsername(userID)
 
-        appendNotes(userID, f"{author_name} ({author}) unfroze this user.")
-        log.rap(author, f"unfroze {target_name} ({userID}).")
+        await appendNotes(userID, f"{author_name} ({author}) unfroze this user.")
+        await log.rap(author, f"unfroze {target_name} ({userID}).")
         log.ac(
             f"{author_name} has unfrozen [{target_name}](https://akatsuki.gg/u/{userID}).",
             "ac_general",
         )
 
 
-def getSilenceEnd(userID: int) -> int:
+async def getSilenceEnd(userID: int) -> int:
     """
     Get userID's **ABSOLUTE** silence end UNIX time
     Remember to subtract time.time() if you want to get the actual silence time
@@ -1133,12 +1158,19 @@ def getSilenceEnd(userID: int) -> int:
     :return: UNIX time
     """
 
-    return glob.db.fetch("SELECT silence_end " "FROM users " "WHERE id = %s", [userID])[
-        "silence_end"
-    ]
+    rec = await glob.db.fetch(
+        "SELECT silence_end " "FROM users " "WHERE id = %s",
+        [userID],
+    )
+    return rec["silence_end"]
 
 
-def silence(userID: int, seconds: int, silenceReason: str, author: int = 999) -> None:
+async def silence(
+    userID: int,
+    seconds: int,
+    silenceReason: str,
+    author: int = 999,
+) -> None:
     """
     Silence `userID` for `seconds` for `silenceReason`.
 
@@ -1151,20 +1183,20 @@ def silence(userID: int, seconds: int, silenceReason: str, author: int = 999) ->
 
     silence_time = int(time.time() + seconds)
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " "SET silence_end = %s, silence_reason = %s " "WHERE id = %s",
         [silence_time, silenceReason, userID],
     )
 
-    log.rap(
+    await log.rap(
         author,
-        f'has silenced {getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
+        f'has silenced {await getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
         if seconds
-        else f"has removed {getUsername(userID)}'s silence",
+        else f"has removed {await getUsername(userID)}'s silence",
     )
 
 
-def getTotalScore(userID: int, gameMode: int) -> int:
+async def getTotalScore(userID: int, gameMode: int) -> int:
     """
     Get `userID`'s total score relative to `gameMode`
 
@@ -1175,13 +1207,14 @@ def getTotalScore(userID: int, gameMode: int) -> int:
 
     modeForDB = gameModes.getGameModeForDB(gameMode)
 
-    return glob.db.fetch(
+    rec = await glob.db.fetch(
         f"SELECT total_score_{modeForDB} " "FROM users_stats " "WHERE id = %s",
         [userID],
-    )[f"total_score_{modeForDB}"]
+    )
+    return rec[f"total_score_{modeForDB}"]
 
 
-def getAccuracy(userID: int, gameMode: int) -> float:
+async def getAccuracy(userID: int, gameMode: int) -> float:
     """
     Get `userID`'s average accuracy relative to `gameMode`
 
@@ -1192,10 +1225,11 @@ def getAccuracy(userID: int, gameMode: int) -> float:
 
     modeForDB = gameModes.getGameModeForDB(gameMode)
 
-    return glob.db.fetch(
+    rec = await glob.db.fetch(
         f"SELECT avg_accuracy_{modeForDB} " "FROM users_stats " "WHERE id = %s",
         [userID],
-    )[f"avg_accuracy_{modeForDB}"]
+    )
+    return rec[f"avg_accuracy_{modeForDB}"]
 
 
 def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
@@ -1221,7 +1255,7 @@ def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
     return int(position) + 1 if position is not None else 0
 
 
-def getPlaycount(userID: int, gameMode: int) -> int:
+async def getPlaycount(userID: int, gameMode: int) -> int:
     """
     Get `userID`'s playcount relative to `gameMode`
 
@@ -1232,13 +1266,14 @@ def getPlaycount(userID: int, gameMode: int) -> int:
 
     modeForDB = gameModes.getGameModeForDB(gameMode)
 
-    return glob.db.fetch(
+    rec = await glob.db.fetch(
         f"SELECT playcount_{modeForDB} " "FROM users_stats " "WHERE id = %s",
         [userID],
-    )[f"playcount_{modeForDB}"]
+    )
+    return rec[f"playcount_{modeForDB}"]
 
 
-def getFriendList(userID: int):
+async def getFriendList(userID: int):
     """
     Get `userID`'s friendlist
 
@@ -1248,7 +1283,7 @@ def getFriendList(userID: int):
 
     # Get friends from db
     # TODO: tuple cursor support? or use cmyui.mysql sync ver/make this native async
-    friends = glob.db.fetchAll(
+    friends = await glob.db.fetchAll(
         "SELECT user2 " "FROM users_relationships " "WHERE user1 = %s",
         [userID],
     )
@@ -1264,7 +1299,7 @@ def getFriendList(userID: int):
         return friends
 
 
-def addFriend(userID: int, friendID: int) -> None:
+async def addFriend(userID: int, friendID: int) -> None:
     """
     Add `friendID` to `userID`'s friend list
 
@@ -1278,20 +1313,20 @@ def addFriend(userID: int, friendID: int) -> None:
         return
 
     # Check user isn't already a friend of ours
-    if glob.db.fetch(
+    if await glob.db.fetch(
         "SELECT id " "FROM users_relationships " "WHERE user1 = %s AND user2 = %s",
         [userID, friendID],
     ):
         return
 
     # Set new value
-    glob.db.execute(
+    await glob.db.execute(
         "INSERT INTO users_relationships " "(user1, user2) VALUES (%s, %s)",
         [userID, friendID],
     )
 
 
-def removeFriend(userID: int, friendID: int) -> None:
+async def removeFriend(userID: int, friendID: int) -> None:
     """
     Remove `friendID` from `userID`'s friend list
 
@@ -1302,21 +1337,13 @@ def removeFriend(userID: int, friendID: int) -> None:
 
     # Delete user relationship. We don't need to check if the relationship was there, because who gives a shit,
     # if they were not friends and they don't want to be anymore, be it. ¯\_(ツ)_/¯
-    glob.db.execute(
+    await glob.db.execute(
         "DELETE FROM users_relationships " "WHERE user1 = %s AND user2 = %s",
         [userID, friendID],
     )
 
 
-def scoreboardMismatch(userID: int, username: str) -> None:
-    if not isRestricted(userID):
-        log.warning(
-            f"**[{username}](https://akatsuki.gg/u/{userID}) has signed in using a custom client**.",
-            "ac_general",
-        )
-
-
-def getCountry(userID: int) -> str:
+async def getCountry(userID: int) -> str:
     """
     Get `userID`'s country **(two letters)**.
 
@@ -1324,13 +1351,14 @@ def getCountry(userID: int) -> str:
     :return: country code (two letters)
     """
 
-    return glob.db.fetch(
+    rec = await glob.db.fetch(
         "SELECT country " "FROM users_stats " "WHERE id = %s",
         [userID],
-    )["country"]
+    )
+    return rec["country"]
 
 
-def setCountry(userID: int, country: str) -> None:
+async def setCountry(userID: int, country: str) -> None:
     """
     Set userID's country
 
@@ -1339,13 +1367,13 @@ def setCountry(userID: int, country: str) -> None:
     :return:
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users_stats " "SET country = %s " "WHERE id = %s",
         [country, userID],
     )
 
 
-def logIP(userID: int, ip: str) -> None:
+async def logIP(userID: int, ip: str) -> None:
     """
     User IP log
     USED FOR MULTIACCOUNT DETECTION
@@ -1355,7 +1383,7 @@ def logIP(userID: int, ip: str) -> None:
     :return:
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "INSERT INTO ip_user (userid, ip, occurencies) VALUES (%s, %s, 1) "
         "ON DUPLICATE KEY UPDATE occurencies = occurencies + 1",
         [userID, ip],
@@ -1370,7 +1398,7 @@ def deleteBanchoSessionIpLookup(userID: int, ip: str) -> None:
     glob.redis.srem(f"bancho:sessions_by_ip:{userID}", ip)
 
 
-def setPrivileges(userID: int, priv: int) -> None:
+async def setPrivileges(userID: int, priv: int) -> None:
     """
     Set userID's privileges in db
 
@@ -1379,13 +1407,13 @@ def setPrivileges(userID: int, priv: int) -> None:
     :return:
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " "SET privileges = %s " "WHERE id = %s",
         [priv, userID],
     )
 
 
-def getGroupPrivileges(groupName: str) -> Optional[int]:
+async def getGroupPrivileges(groupName: str) -> Optional[int]:
     """
     Returns the privileges number of a group, by its name
 
@@ -1393,7 +1421,7 @@ def getGroupPrivileges(groupName: str) -> Optional[int]:
     :return: privilege integer or `None` if the group doesn't exist
     """
 
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT privileges " "FROM privileges_groups " "WHERE name = %s",
         [groupName],
     )
@@ -1401,7 +1429,7 @@ def getGroupPrivileges(groupName: str) -> Optional[int]:
     return result["privileges"] if result else None
 
 
-def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
+async def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
     """
     Check if `userID` is in a privilege group.
     Donor privilege is ignored while checking for groups.
@@ -1411,7 +1439,7 @@ def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
     :return: True if `userID` is in `groupName`, else False
     """
 
-    groupPrivileges = glob.db.fetch(
+    groupPrivileges = await glob.db.fetch(
         "SELECT privileges " "FROM privileges_groups " "WHERE name = %s",
         [groupName],
     )
@@ -1424,11 +1452,14 @@ def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
     if userToken:
         userPrivileges = userToken["privileges"]
     else:
-        userPrivileges = getPrivileges(userID)
+        userPrivileges = await getPrivileges(userID)
     return userPrivileges & groupPrivileges == groupPrivileges
 
 
-def isInAnyPrivilegeGroup(userID: int, groups: Union[List[str], Tuple[str]]) -> bool:
+async def isInAnyPrivilegeGroup(
+    userID: int,
+    groups: Union[List[str], Tuple[str]],
+) -> bool:
     """
     Checks if a user is in at least one of the specified groups
 
@@ -1437,12 +1468,13 @@ def isInAnyPrivilegeGroup(userID: int, groups: Union[List[str], Tuple[str]]) -> 
     :return: `True` if `userID` is in at least one of the specified groups, otherwise `False`
     """
 
-    return getPrivileges(userID) in [
+    privileges = await getPrivileges(userID)
+    return privileges in [
         glob.groupPrivileges[v] for v in groups if v in glob.groupPrivileges
     ]
 
 
-def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
+async def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
     """
     Compare a user's login hwid's against what are stored in the db for admin account security.
 
@@ -1452,7 +1484,10 @@ def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
     :param disk: The given disk address
     """
 
-    allowed = glob.db.fetch("SELECT * FROM hw_comparison " "WHERE id = %s", [userID])
+    allowed = await glob.db.fetch(
+        "SELECT * FROM hw_comparison " "WHERE id = %s",
+        [userID],
+    )
 
     return not (
         allowed
@@ -1464,7 +1499,7 @@ def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
     )
 
 
-def logHardware(userID: int, hashes: List[str], activation: bool = False) -> bool:
+async def logHardware(userID: int, hashes: List[str], activation: bool = False) -> bool:
     """
     Hardware log
     USED FOR MULTIACCOUNT DETECTION
@@ -1481,7 +1516,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
     """
 
     # Get username
-    username = getUsername(userID)
+    username = await getUsername(userID)
 
     # Make sure the strings are not empty
     for i in hashes[2:5]:
@@ -1493,7 +1528,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
             return False
 
     # Run some HWID checks on that user if he is not restricted
-    if not isRestricted(userID):
+    if not await isRestricted(userID):
         """
         compare_ids = compareHWID(userID, hashes[2], hashes[3], hashes[4])
 
@@ -1506,7 +1541,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
         if hashes[2] == "b4ec3c4334a0249dae95c284ec5983df":
             # Running under wine, check by unique id
             log.debug("Logging Linux/Mac hardware")
-            banned = glob.db.fetchAll(
+            banned = await glob.db.fetchAll(
                 """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
                 LEFT JOIN users ON users.id = hw_user.userid
                 WHERE hw_user.userid != %(userid)s
@@ -1520,7 +1555,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
         else:
             # Running under windows, do all checks
             log.debug("Logging Windows hardware")
-            banned = glob.db.fetchAll(
+            banned = await glob.db.fetchAll(
                 """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
                 LEFT JOIN users ON users.id = hw_user.userid
                 WHERE hw_user.userid != %(userid)s
@@ -1542,7 +1577,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
                 continue
 
             # Get the total numbers of logins
-            total = glob.db.fetch(
+            total = await glob.db.fetch(
                 "SELECT COUNT(*) AS count FROM hw_user WHERE userid = %s",
                 [userID],
             )
@@ -1554,8 +1589,8 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
             # Calculate 10% of total
             if i["occurencies"] >= (total * 10) / 100:
                 # If the banned user has logged in more than 10% of the times from this user, restrict this user
-                restrict(userID)
-                appendNotes(
+                await restrict(userID)
+                await appendNotes(
                     userID,
                     f'Logged in from HWID set used more than 10% from user {i["username"],} ({i["userid"]}), who is banned/restricted.',
                 )
@@ -1567,7 +1602,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
             banned_ids.append(i["userid"])
 
     # Update hash set occurencies
-    glob.db.execute(
+    await glob.db.execute(
         """
                 INSERT INTO hw_user (id, userid, mac, unique_id, disk_id, occurencies) VALUES (NULL, %s, %s, %s, %s, 1)
                 ON DUPLICATE KEY UPDATE occurencies = occurencies + 1
@@ -1577,7 +1612,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
 
     # Optionally, set this hash as 'used for activation'
     if activation:
-        glob.db.execute(
+        await glob.db.execute(
             "UPDATE hw_user SET activated = 1 WHERE userid = %s AND mac = %s AND unique_id = %s AND disk_id = %s",
             [userID, hashes[2], hashes[3], hashes[4]],
         )
@@ -1588,7 +1623,7 @@ def logHardware(userID: int, hashes: List[str], activation: bool = False) -> boo
     return True
 
 
-def resetPendingFlag(userID: int, success: bool = True) -> None:
+async def resetPendingFlag(userID: int, success: bool = True) -> None:
     """
     Remove pending flag from an user.
 
@@ -1596,19 +1631,19 @@ def resetPendingFlag(userID: int, success: bool = True) -> None:
     :param success: if True, set USER_PUBLIC and USER_NORMAL flags too
     """
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " "SET privileges = privileges & %s " "WHERE id = %s",
         [~privileges.USER_PENDING_VERIFICATION, userID],
     )
 
     if success:
-        glob.db.execute(
+        await glob.db.execute(
             "UPDATE users " "SET privileges = privileges | %s " "WHERE id = %s",
             [privileges.USER_PUBLIC | privileges.USER_NORMAL, userID],
         )
 
 
-def verifyUser(userID: int, hashes: List[str]) -> bool:
+async def verifyUser(userID: int, hashes: list[str]) -> bool:
     """
     Activate `userID`'s account.
 
@@ -1623,7 +1658,7 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
     """
 
     # Get username
-    username = getUsername(userID)
+    username = await getUsername(userID)
 
     # Check for valid hash set
     for i in hashes[2:5]:
@@ -1645,14 +1680,14 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
             "ac_confidential",
         )
         log.debug("Veryfing with Linux/Mac hardware")
-        match = glob.db.fetchAll(
+        match = await glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE unique_id = %(uid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"uid": hashes[3], "userid": userID},
         )
     else:
         # Running under windows, full check
         log.debug("Veryfing with Windows hardware")
-        match = glob.db.fetchAll(
+        match = await glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE mac = %(mac)s AND unique_id = %(uid)s AND disk_id = %(diskid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"mac": hashes[2], "uid": hashes[3], "diskid": hashes[4], "userid": userID},
         )
@@ -1662,18 +1697,21 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
 
         # Get original userID and username (lowest ID)
         originalUserID = match[0]["userid"]
-        originalUsername: Optional[str] = getUsername(originalUserID)
+        originalUsername: Optional[str] = await getUsername(originalUserID)
 
         # Ban this user and append notes
-        ban(userID)  # this removes the USER_PENDING_VERIFICATION flag too
-        appendNotes(
+        await ban(userID)  # this removes the USER_PENDING_VERIFICATION flag too
+        await appendNotes(
             userID,
             f"{originalUsername}'s multiaccount ({originalUserID}), found HWID match while verifying account.",
         )
-        appendNotes(originalUserID, f"Has created multiaccount {username} ({userID}).")
+        await appendNotes(
+            originalUserID,
+            f"Has created multiaccount {username} ({userID}).",
+        )
 
         # Restrict the original
-        restrict(originalUserID)
+        await restrict(originalUserID)
 
         # Discord message
         log.warning(
@@ -1685,14 +1723,14 @@ def verifyUser(userID: int, hashes: List[str]) -> bool:
         return False
     else:
         # No matches found, set USER_PUBLIC and USER_NORMAL flags and reset USER_PENDING_VERIFICATION flag
-        resetPendingFlag(userID)
+        await resetPendingFlag(userID)
         # log.info("User **{}** ({}) has verified his account with hash set _{}_".format(username, userID, hashes[2:5]), 'ac_confidential')
 
         # Allow login
         return True
 
 
-def hasVerifiedHardware(userID: int):
+async def hasVerifiedHardware(userID: int):
     """
     Checks if `userID` has activated his account through HWID
 
@@ -1700,13 +1738,13 @@ def hasVerifiedHardware(userID: int):
     :return: True if hwid activation data is in db, otherwise False
     """
 
-    return glob.db.fetch(
+    return await glob.db.fetch(
         "SELECT id FROM hw_user WHERE userid = %s " "AND activated = 1",
         [userID],
     )
 
 
-def getDonorExpire(userID: int) -> int:
+async def getDonorExpire(userID: int) -> int:
     """
     Return `userID`'s donor expiration UNIX timestamp
 
@@ -1714,7 +1752,10 @@ def getDonorExpire(userID: int) -> int:
     :return: donor expiration UNIX timestamp
     """
 
-    data = glob.db.fetch("SELECT donor_expire FROM users " "WHERE id = %s", [userID])
+    data = await glob.db.fetch(
+        "SELECT donor_expire FROM users " "WHERE id = %s",
+        [userID],
+    )
 
     return data["donor_expire"] if data else 0
 
@@ -1739,7 +1780,7 @@ def safeUsername(username: str) -> str:
     return username.lower().strip().replace(" ", "_")
 
 
-def changeUsername(
+async def changeUsername(
     userID: int = 0,
     oldUsername: str = "",
     newUsername: str = "",
@@ -1763,27 +1804,30 @@ def changeUsername(
     newUsernameSafe = safeUsername(newUsername)
 
     # Make sure this username is not already in use
-    if getIDSafe(newUsernameSafe):
+    name_exists = await getIDSafe(newUsernameSafe)
+    if name_exists:
         raise usernameAlreadyInUseError()
 
     # Get userID or oldUsername
     if not userID:
-        userID: int = getID(oldUsername)
+        userID = await getID(oldUsername)
     else:
-        oldUsername: Optional[str] = getUsername(userID)
+        possiblyUsername = await getUsername(userID)
+        assert possiblyUsername is not None
+        oldUsername = possiblyUsername
 
     # Change username
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users " "SET username = %s, username_safe = %s " "WHERE id = %s",
         [newUsername, newUsernameSafe, userID],
     )
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE users_stats " "SET username = %s " "WHERE id = %s",
         [newUsername, userID],
     )
 
-    glob.db.execute(
+    await glob.db.execute(
         "UPDATE rx_stats " "SET username = %s " "WHERE id = %s",
         [newUsername, userID],
     )
@@ -1794,7 +1838,7 @@ def changeUsername(
     glob.redis.delete(f"ripple:change_username_pending:{userID}")
 
 
-def removeFromLeaderboard(userID: int) -> None:
+async def removeFromLeaderboard(userID: int) -> None:
     """
     Removes userID from global and country leaderboards.
 
@@ -1803,7 +1847,7 @@ def removeFromLeaderboard(userID: int) -> None:
     """
 
     # Remove the user from global and country leaderboards, for every mode
-    country: str = getCountry(userID).lower()
+    country: str = (await getCountry(userID)).lower()
     for board in ("leaderboard", "relaxboard"):
         for mode in ("std", "taiko", "ctb", "mania"):
             glob.redis.zrem(f"ripple:{board}:{mode}", str(userID))
@@ -1811,7 +1855,7 @@ def removeFromLeaderboard(userID: int) -> None:
                 glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(userID))
 
 
-def getClan(userID: int) -> str:
+async def getClan(userID: int) -> str:
     """
     Get userID's clan
 
@@ -1819,10 +1863,10 @@ def getClan(userID: int) -> str:
     :return: username or None
     """
 
-    username = getUsername(userID)
+    username = await getUsername(userID)
     assert username is not None
 
-    clan = glob.db.fetch(
+    clan = await glob.db.fetch(
         "SELECT tag FROM clans "
         "LEFT JOIN users ON clans.id = users.clan_id "
         "WHERE users.id = %s",
@@ -1832,8 +1876,8 @@ def getClan(userID: int) -> str:
     return f'[{clan["tag"]}] {username}' if clan else username
 
 
-def getClanTag(userID: int) -> Optional[str]:
-    clan = glob.db.fetch(
+async def getClanTag(userID: int) -> Optional[str]:
+    clan = await glob.db.fetch(
         "SELECT tag FROM clans "
         "LEFT JOIN users ON clans.id = users.clan_id "
         "WHERE users.id = %s",
@@ -1842,14 +1886,14 @@ def getClanTag(userID: int) -> Optional[str]:
     return clan["tag"] if clan else ""
 
 
-def getOverwriteWaitRemainder(userID: int) -> int:
+async def getOverwriteWaitRemainder(userID: int) -> int:
     """
     There is a forced 60s wait between overwrites (to save server from spam to lag).
 
     Return the time left before the command can be used again.
     """
 
-    raw_db_return = glob.db.fetch(
+    raw_db_return = await glob.db.fetch(
         "SELECT previous_overwrite FROM users WHERE id = %s",
         [userID],
     )
@@ -1857,7 +1901,7 @@ def getOverwriteWaitRemainder(userID: int) -> int:
     return raw_db_return["previous_overwrite"]
 
 
-def removeFirstPlaces(
+async def removeFirstPlaces(
     userID: int,
     akat_mode: Optional[int] = None,
     game_mode: Optional[int] = None,
@@ -1872,7 +1916,7 @@ def removeFirstPlaces(
     if game_mode is not None:
         q.append(f"AND mode = {game_mode}")
 
-    for score in glob.db.fetchAll(" ".join(q), [userID]):
+    for score in await glob.db.fetchAll(" ".join(q), [userID]):
         if score["rx"]:
             table = "scores_relax"
             sort = "pp"
@@ -1880,7 +1924,7 @@ def removeFirstPlaces(
             table = "scores"
             sort = "score"
 
-        new = glob.db.fetch(  # Get the 2nd top play.
+        new = await glob.db.fetch(  # Get the 2nd top play.
             "SELECT s.id, s.userid FROM {t} s "
             "LEFT JOIN users u ON s.userid = u.id "
             "WHERE s.beatmap_md5 = %s AND s.play_mode = %s "
@@ -1890,19 +1934,19 @@ def removeFirstPlaces(
         )
 
         if new:  # Transfer the #1 to the old #2.
-            glob.db.execute(
+            await glob.db.execute(
                 "UPDATE scores_first SET scoreid = %s, userid = %s "
                 "WHERE scoreid = %s",
                 [new["id"], new["userid"], score["scoreid"]],
             )
         else:  # There is no 2nd place, this was the only score.
-            glob.db.execute(
+            await glob.db.execute(
                 "DELETE FROM scores_first WHERE scoreid = %s",
                 [score["scoreid"]],
             )
 
 
-def updateFirstPlaces(userID: int) -> None:
+async def updateFirstPlaces(userID: int) -> None:
     # (Done for both vanilla, and relax).
     # Go through all of the users plays, check if any are #1.
     # If they are, check if theres a score in scores_first.
@@ -1910,7 +1954,7 @@ def updateFirstPlaces(userID: int) -> None:
     # add the score to scores_first.
 
     for rx, table_name in enumerate(("scores", "scores_relax")):
-        for score in glob.db.fetchAll(
+        for score in await glob.db.fetchAll(
             "SELECT s.id, s.pp, s.score, s.play_mode, "
             "s.beatmap_md5, b.ranked FROM {t} s "
             "LEFT JOIN beatmaps b USING(beatmap_md5) "
@@ -1923,7 +1967,7 @@ def updateFirstPlaces(userID: int) -> None:
             order = "pp" if rx and score["ranked"] != 5 else "score"
 
             # Get the current first place.
-            firstPlace = glob.db.fetch(
+            firstPlace = await glob.db.fetch(
                 "SELECT s.{0}, s.userid FROM {1} s "
                 "LEFT JOIN users u ON s.userid = u.id "
                 "WHERE s.beatmap_md5 = %s AND s.play_mode = %s "
@@ -1941,7 +1985,7 @@ def updateFirstPlaces(userID: int) -> None:
                 or score[order] > firstPlace[order]
                 or userID == firstPlace["userid"]
             ):
-                glob.db.execute(
+                await glob.db.execute(
                     "REPLACE INTO scores_first " "VALUES (%s, %s, %s, %s, %s)",
                     [score["beatmap_md5"], score["play_mode"], rx, score["id"], userID],
                 )
@@ -1951,12 +1995,12 @@ def getProfile(userID: int) -> str:
     return f"https://akatsuki.gg/u/{userID}"
 
 
-def getProfileEmbed(userID: int, clan: bool = False) -> Optional[str]:
-    profile_embed = f"({getUsername(userID)})[{getProfile(userID)}]"
+async def getProfileEmbed(userID: int, clan: bool = False) -> Optional[str]:
+    profile_embed = f"({await getUsername(userID)})[{getProfile(userID)}]"
 
     # get their clan id & tag for embed
     if clan:
-        res = glob.db.fetch(
+        res = await glob.db.fetch(
             "SELECT c.id, c.tag FROM clans c "
             "LEFT JOIN users u ON c.id = u.clan_id "
             "WHERE u.id = %s",

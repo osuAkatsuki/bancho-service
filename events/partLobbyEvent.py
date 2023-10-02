@@ -5,7 +5,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, _):
+async def handle(userToken: Token, _):
     # Remove user from users in lobby
     osuToken.leaveStream(userToken["token_id"], "lobby")
 

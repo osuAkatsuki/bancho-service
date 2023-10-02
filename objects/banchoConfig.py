@@ -21,33 +21,25 @@ class banchoConfig:
         "loginNotification": "",
     }
 
-    def __init__(self, loadFromDB: bool = True) -> None:
-        """
-        Initialize a banchoConfig object (and load bancho_settings from db)
-
-        loadFromDB -- if True, load values from db. If False, don't load values. Optional.
-        """
-        if loadFromDB:
-            try:
-                self.loadSettings()
-            except:
-                raise
-
-    def loadSettings(self) -> None:
+    async def loadSettings(self) -> None:
         """
         (re)load bancho_settings from DB and set values in config array
         """
         self.config["banchoMaintenance"] = generalUtils.stringToBool(
-            glob.db.fetch(
-                "SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'",
+            (
+                await glob.db.fetch(
+                    "SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'",
+                )
             )["value_int"],
         )
         self.config["freeDirect"] = generalUtils.stringToBool(
-            glob.db.fetch(
-                "SELECT value_int FROM bancho_settings WHERE name = 'free_direct'",
+            (
+                await glob.db.fetch(
+                    "SELECT value_int FROM bancho_settings WHERE name = 'free_direct'",
+                )
             )["value_int"],
         )
-        mainMenuIcon = glob.db.fetch(
+        mainMenuIcon = await glob.db.fetch(
             "SELECT file_id, url FROM main_menu_icons WHERE is_current = 1 LIMIT 1",
         )
         if mainMenuIcon is None:
@@ -55,28 +47,30 @@ class banchoConfig:
         else:
             imageURL = mainMenuIcon["file_id"]
             self.config["menuIcon"] = f"{imageURL}|{mainMenuIcon['url']}"
-        self.config["loginNotification"] = glob.db.fetch(
-            "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
+        self.config["loginNotification"] = (
+            await glob.db.fetch(
+                "SELECT value_string FROM bancho_settings WHERE name = 'login_notification'",
+            )
         )["value_string"]
 
-    def setMaintenance(self, maintenance: bool) -> None:
+    async def setMaintenance(self, maintenance: bool) -> None:
         """
         Turn on/off bancho maintenance mode. Write new value to db too
 
         maintenance -- if True, turn on maintenance mode. If false, turn it off
         """
         self.config["banchoMaintenance"] = maintenance
-        glob.db.execute(
+        await glob.db.execute(
             "UPDATE bancho_settings SET value_int = %s WHERE name = 'bancho_maintenance'",
             [int(maintenance)],
         )
 
-    def reload(self) -> None:
+    async def reload(self) -> None:
         # Reload settings from bancho_settings
-        glob.banchoConf.loadSettings()
+        await glob.banchoConf.loadSettings()
 
         # Reload channels too
-        channelList.loadChannels()
+        await channelList.loadChannels()
 
         # Send new channels and new bottom icon to everyone
         streamList.broadcast(

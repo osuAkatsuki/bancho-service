@@ -112,10 +112,10 @@ def userSupporterGMT(supporter: bool, GMT: bool, tournamentStaff: bool) -> bytes
     )
 
 
-def friendList(userID: int) -> bytes:
+def friendList(userID: int, friends_list: list[int]) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_friendsList,
-        ((userUtils.getFriendList(userID), dataTypes.INT_LIST),),
+        ((friends_list, dataTypes.INT_LIST),),
     )
 
 

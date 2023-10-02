@@ -5,7 +5,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, _):
+async def handle(userToken: Token, _):
     # Make sure we are in a match
     if userToken["match_id"] is None:
         return
@@ -17,4 +17,4 @@ def handle(userToken: Token, _):
         if multiplayer_match is None:
             return
 
-        match.playerCompleted(multiplayer_match["match_id"], userToken["user_id"])
+        await match.playerCompleted(multiplayer_match["match_id"], userToken["user_id"])

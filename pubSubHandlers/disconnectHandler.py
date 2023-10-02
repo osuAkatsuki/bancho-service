@@ -10,7 +10,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.structure = {"userID": 0, "reason": ""}
 
-    def handle(self, data):
+    async def handle(self, data):
         if (data := super().parseData(data)) is None:
             return
 

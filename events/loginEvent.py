@@ -41,7 +41,7 @@ osu_ver_regex = re.compile(
 )
 
 
-def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, data
+async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, data
     # Data to return
     userToken = None
     responseTokenString = "ayy"
@@ -74,7 +74,7 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
 
         # Try to get the ID from username
         username = loginData[0]
-        userID = userUtils.getID(username)
+        userID = await userUtils.getID(username)
 
         if not userID:
             # Invalid username
@@ -82,12 +82,12 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         elif userID == 999:
             raise exceptions.invalidArgumentsException()
 
-        if not userUtils.checkLogin(userID, loginData[1]):
+        if not await userUtils.checkLogin(userID, loginData[1]):
             # Invalid password
             raise exceptions.loginFailedException()
 
         # Make sure we are not banned or locked
-        priv = userUtils.getPrivileges(userID)
+        priv = await userUtils.getPrivileges(userID)
         pending_verification = priv & privileges.USER_PENDING_VERIFICATION != 0
 
         if not pending_verification:
@@ -123,8 +123,8 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         # Verify this user (if pending activation)
         firstLogin = False
         shouldBan = False
-        if pending_verification or not userUtils.hasVerifiedHardware(userID):
-            if userUtils.verifyUser(userID, clientData):
+        if pending_verification or not await userUtils.hasVerifiedHardware(userID):
+            if await userUtils.verifyUser(userID, clientData):
                 # Valid account
                 log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
                 verifiedCache.set(userID, True)
@@ -139,7 +139,7 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
                 shouldBan = True
 
         # Save HWID in db for multiaccount detection
-        hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
+        hwAllowed = await userUtils.logHardware(userID, clientData, firstLogin)
 
         # This is false only if HWID is empty
         # if HWID is banned, we get restricted so there's no
@@ -148,10 +148,10 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
             raise exceptions.haxException()
 
         # Log user IP
-        userUtils.logIP(userID, requestIP)
+        await userUtils.logIP(userID, requestIP)
 
         if shouldBan:
-            userUtils.ban(userID)
+            await userUtils.ban(userID)
             raise exceptions.loginBannedException()
 
         # Delete old tokens for that user and generate a new one
@@ -169,9 +169,9 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
 
         with redisLock("bancho:locks:tokens"):
             if not isTournament:
-                tokenList.deleteOldTokens(userID)
+                await tokenList.deleteOldTokens(userID)
 
-            userToken = tokenList.addToken(
+            userToken = await tokenList.addToken(
                 userID,
                 ip=requestIP,
                 irc=False,
@@ -192,28 +192,28 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         )
 
         # Check restricted mode (and eventually send message)
-        osuToken.checkRestricted(userToken["token_id"])
+        await osuToken.checkRestricted(userToken["token_id"])
 
         """ osu!Akatuki account freezing. """
 
         # Get the user's `frozen` status from the DB
         # For a normal user, this will return 0.
         # For a frozen user, this will return a unix timestamp (the date of their pending restriction).
-        freeze_timestamp = userUtils.getFreezeTime(userID)
+        freeze_timestamp = await userUtils.getFreezeTime(userID)
         current_time = int(time.time())
 
         if freeze_timestamp:
             if freeze_timestamp == 1:  # Begin the timer.
-                freeze_timestamp = userUtils.beginFreezeTimer(userID)
+                freeze_timestamp = await userUtils.beginFreezeTimer(userID)
 
-            # reason = userUtils.getFreezeReason(userID)
+            # reason = await userUtils.getFreezeReason(userID)
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
                 aika_token = tokenList.getTokenFromUserID(999)
                 assert aika_token is not None
 
-                chat.sendMessage(
+                await chat.sendMessage(
                     token_id=aika_token["token_id"],
                     to=username,
                     message="\n".join(
@@ -230,8 +230,8 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
             else:  # We are restricting the user
                 # TODO: perhaps move this to the cron?
                 # right now a user can avoid a resitrction by simply not logging in lol..
-                userUtils.restrict(userID)
-                userUtils.unfreeze(userID, _log=False)
+                await userUtils.restrict(userID)
+                await userUtils.unfreeze(userID, _log=False)
 
                 osuToken.enqueue(
                     userToken["token_id"],
@@ -256,19 +256,19 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         # Send message if premium / donor expires soon
         # This should NOT be done at login, but done by the cron
         if userToken["privileges"] & privileges.USER_DONOR:
-            expireDate = userUtils.getDonorExpire(userID)
+            expireDate = await userUtils.getDonorExpire(userID)
             premium = userToken["privileges"] & privileges.USER_PREMIUM
             rolename = "premium" if premium else "supporter"
 
             if current_time >= expireDate:
-                userUtils.setPrivileges(
+                await userUtils.setPrivileges(
                     userID,
                     userToken["privileges"] - privileges.USER_DONOR
                     | (privileges.USER_PREMIUM if premium else 0),
                 )
 
                 # 36 = supporter, 59 = premium
-                badges = glob.db.fetchAll(
+                badges = await glob.db.fetchAll(
                     "SELECT id FROM user_badges WHERE badge IN (59, 36) AND user = %s",
                     [userID],
                 )
@@ -276,13 +276,13 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
                     for (
                         badge
                     ) in badges:  # Iterate through user badges, deleting them all
-                        glob.db.execute(
+                        await glob.db.execute(
                             "DELETE FROM user_badges WHERE id = %s",
                             [badge["id"]],
                         )
 
                 # Remove their custom privileges
-                glob.db.execute(
+                await glob.db.execute(
                     "UPDATE users_stats set can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
                     [userID],
                 )
@@ -291,7 +291,7 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
                     f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
                     "ac_confidential",
                 )
-                logUtils.rap(userID, f"{rolename} subscription expired.")
+                await logUtils.rap(userID, f"{rolename} subscription expired.")
 
                 osuToken.enqueue(
                     userToken["token_id"],
@@ -321,7 +321,7 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         # Set silence end UNIX time in token
         osuToken.update_token(
             userToken["token_id"],
-            silence_end_time=userUtils.getSilenceEnd(userID),
+            silence_end_time=await userUtils.getSilenceEnd(userID),
         )
 
         # Get only silence remaining seconds
@@ -414,7 +414,11 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
 
         # Send friends list
-        osuToken.enqueue(userToken["token_id"], serverPackets.friendList(userID))
+        friends_list = await userUtils.getFriendList(userID)
+        osuToken.enqueue(
+            userToken["token_id"],
+            serverPackets.friendList(userID, friends_list),
+        )
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
@@ -449,8 +453,8 @@ def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, dat
         osuToken.update_token(userToken["token_id"], country=country)
 
         # Set country in db if user has no country (first bancho login)
-        if userUtils.getCountry(userID) == "XX":
-            userUtils.setCountry(userID, countryLetters)
+        if await userUtils.getCountry(userID) == "XX":
+            await userUtils.setCountry(userID, countryLetters)
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
