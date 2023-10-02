@@ -621,12 +621,13 @@ class Server:
     def __init__(self, port: int):
         self.host = settings.IRC_HOSTNAME
         self.port = port
-        self.clients = {}  # Socket - - > Client instance.
+        self.clients: dict[socket.socket, Client] = {}
         self.motd = [
             "Welcome to bancho-service's embedded IRC server!",
             "This is a VERY simple IRC server and it's still in beta.",
             "Expect things to crash and not work as expected :(",
         ]
+        self.running = False
 
     async def forceDisconnection(
         self,
@@ -705,6 +706,9 @@ class Server:
         if client.socket in self.clients:
             del self.clients[client.socket]
 
+    def close(self) -> None:
+        self.running = False
+
     async def start(self) -> None:
         """
         Start IRC server main loop
@@ -722,7 +726,8 @@ class Server:
         lastAliveCheck = time.time()
 
         # Main server loop
-        while True:
+        self.running = True
+        while self.running:
             try:
                 (iwtd, owtd, ewtd) = select.select(
                     [serversocket] + [x.socket for x in self.clients.values()],
@@ -770,6 +775,13 @@ class Server:
                         traceback.format_exc(),
                     ),
                 )
+
+        for client_socket, client in self.clients.items():
+            client.disconnect()
+            client_socket.close()
+            del self.clients[client.socket]
+
+        serversocket.close()
 
 
 async def main(port: int = 6667) -> None:

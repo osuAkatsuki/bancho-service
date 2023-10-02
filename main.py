@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from typing import Optional
 
 import psutil
 import redis.asyncio as redis
@@ -26,7 +27,6 @@ from handlers import apiVerifiedStatusHandler
 from handlers import ciTriggerHandler
 from handlers import mainHandler
 from helpers import consoleHelper
-from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig
 from objects import channelList
@@ -45,20 +45,6 @@ from pubSubHandlers import unbanHandler
 from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
-
-
-def make_app():
-    return tornado.web.Application(
-        [
-            (r"/", mainHandler.handler),
-            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
-            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
-            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
-            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
-            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
-            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
-        ],
-    )
 
 
 ASCII_LOGO = "\n".join(
@@ -101,6 +87,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 async def main() -> int:
+    http_server: Optional[tornado.httpserver.HTTPServer] = None
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
@@ -205,8 +192,6 @@ async def main() -> int:
         if settings.DEBUG:
             log("Server running in debug mode.", Ansi.LYELLOW)
 
-        glob.application = make_app()
-
         # # start irc server if configured
         if settings.IRC_ENABLE:
             log(
@@ -249,8 +234,20 @@ async def main() -> int:
             )
             asyncio.create_task(pubsub_listener.run())
 
-        # Start tornado
-        glob.application.listen(settings.APP_PORT)
+        # Start the HTTP server
+        glob.application = tornado.web.Application(
+            [
+                (r"/", mainHandler.handler),
+                (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
+                (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
+                (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
+                (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
+                (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+                (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
+            ],
+        )
+        http_server = tornado.httpserver.HTTPServer(glob.application)
+        http_server.listen(settings.APP_PORT)
 
         log(
             f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
@@ -258,8 +255,42 @@ async def main() -> int:
         )
         shutdown_event = asyncio.Event()
         await shutdown_event.wait()
+    except KeyboardInterrupt:
+        # Remove the "^C" from the terminal window
+        print("\x1b[2K", end="\r")
+        log("Received keyboard interrupt, shutting down.", Ansi.LYELLOW)
     finally:
-        system.dispose()
+        if http_server is not None:
+            log("Closing HTTP listener", Ansi.LMAGENTA)
+            http_server.stop()
+
+            # Allow grace period for ongoing connections to finish
+            GRACE_PERIOD_SECONDS = 10
+            await asyncio.wait_for(
+                http_server.close_all_connections(),
+                timeout=GRACE_PERIOD_SECONDS,
+            )
+
+        # TODO: we can be more graceful with this one, but p3
+        if settings.IRC_ENABLE:
+            log("Closing IRC server", Ansi.LMAGENTA)
+            glob.ircServer.close()
+            log("Closed IRC server", Ansi.LGREEN)
+
+        log("Closing connection to redis", Ansi.LMAGENTA)
+        await glob.redis.close()
+        log("Closed connection to redis", Ansi.LGREEN)
+
+        log("Closing connection(s) to MySQL", Ansi.LMAGENTA)
+        await glob.db.stop()
+        log("Closed connection(s) to MySQL", Ansi.LGREEN)
+
+        log("Disconnecting from IRC", Ansi.LMAGENTA)
+        await fokabot.disconnect()
+        log("Disconnected from IRC", Ansi.LGREEN)
+
+        log("Shutting down", Ansi.LMAGENTA)
+        log("Goodbye!", Ansi.LGREEN)
 
     return 0
 
