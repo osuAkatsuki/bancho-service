@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import httpx
 from os import name
 from typing import Optional
+
+import httpx
 
 import settings
 from common.ripple import userUtils
