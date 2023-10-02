@@ -19,7 +19,7 @@ import time
 import traceback
 
 import settings
-from common.log import logger
+import logging
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import channelList
@@ -145,7 +145,7 @@ class Client:
         self.message(f"ERROR :{quitmsg}")
         self.socket.close()
 
-        logger.info(
+        logging.info(
             "IRC client disconnected",
             extra={
                 "ip": self.ip,
@@ -170,11 +170,11 @@ class Client:
         try:
             # Try to read incoming data from socket
             data = self.socket.recv(2**10)
-            logger.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
+            logging.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
             quitmsg = "EOT"
         except OSError:
             # Error while reading data, this client will be disconnected
-            logger.exception("[IRC] An error occurred while reading data from socket")
+            logging.exception("[IRC] An error occurred while reading data from socket")
 
             data = b""
             quitmsg = "An error occurred"
@@ -237,7 +237,7 @@ class Client:
         """
         try:
             sent = self.socket.send(self.__writebuffer.encode())
-            logger.debug(
+            logging.debug(
                 "IRC client data transmitted",
                 extra={
                     "ip": self.ip,
@@ -247,7 +247,7 @@ class Client:
             )
             self.__writebuffer = self.__writebuffer[sent:]
         except OSError:
-            logger.exception("[IRC] An error occurred while writing data to socket")
+            logging.exception("[IRC] An error occurred while writing data to socket")
             await self.disconnect("An error occurred")
 
     async def checkAlive(self) -> None:
@@ -734,7 +734,7 @@ class Server:
         try:
             serversocket.bind(("0.0.0.0", self.port))
         except OSError:
-            logger.exception(
+            logging.exception(
                 "IRC server could not bind port",
                 extra={"port": self.port},
             )
@@ -765,7 +765,7 @@ class Server:
                         conn, addr = x.accept()
                         try:
                             self.clients[conn] = Client(self, conn)
-                            logger.info(
+                            logging.info(
                                 "IRC connection accepted",
                                 extra={"host": addr[0], "port": addr[1]},
                             )
@@ -787,7 +787,7 @@ class Server:
                         await client.checkAlive()
                     lastAliveCheck = now
             except:
-                logger.exception("Unknown error in IRC handling")
+                logging.exception("Unknown error in IRC handling")
 
         for client_socket, client in self.clients.items():
             await client.disconnect()

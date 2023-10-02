@@ -6,7 +6,7 @@ from typing import Literal
 from typing import Optional
 from typing import overload
 
-from common.log import logger
+import logging
 from common.ripple import userUtils
 from constants.exceptions import periodicLoopException
 from constants.exceptions import tokenNotFoundException
@@ -77,7 +77,7 @@ async def deleteToken(token_id: str) -> None:
 
     token = await osuToken.get_token(token_id)
     if token is None:
-        logger.warning(
+        logging.warning(
             "Token not found while attempting to delete it",
             extra={"token_id": token_id},
         )
@@ -262,7 +262,7 @@ async def usersTimeoutCheckLoop() -> None:
     :return:
     """
     try:
-        logger.debug("Checking timed out clients")
+        logging.debug("Checking timed out clients")
         exceptions: list[Exception] = []
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
@@ -281,7 +281,7 @@ async def usersTimeoutCheckLoop() -> None:
                     and not token["irc"]
                     and not token["tournament"]
                 ):
-                    logger.warning(
+                    logging.warning(
                         "Timing out inactive bancho session",
                         extra={
                             "username": token["username"],
@@ -295,7 +295,7 @@ async def usersTimeoutCheckLoop() -> None:
                         pass  # lol
                     except Exception as exc:
                         exceptions.append(exc)
-                        logger.exception(
+                        logging.exception(
                             "An error occurred while disconnecting a timed out client"
                         )
 

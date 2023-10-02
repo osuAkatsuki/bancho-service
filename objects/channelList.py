@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import json
-import logging
 from typing import Optional
 from typing import TypedDict
 
-from cmyui.logging import Ansi
-from cmyui.logging import log
-from common.log import logger
+import logging
 
 from constants import exceptions
 from constants import serverPackets
@@ -138,12 +135,12 @@ async def addChannel(
         try:
             await osuToken.joinChannel(fokaToken["token_id"], name)
         except exceptions.userAlreadyInChannelException:
-            logger.warning(
+            logging.warning(
                 "User already in public chat channel",
                 extra={"username": glob.BOT_NAME, "channel_name": name},
             )
 
-    logger.info("Created chat channel in redis", extra={"channel_name": name})
+    logging.info("Created chat channel in redis", extra={"channel_name": name})
 
 
 async def removeChannel(name: str) -> None:
@@ -154,7 +151,7 @@ async def removeChannel(name: str) -> None:
     """
     channels = await getChannelNames()
     if name not in channels:
-        logger.warning(
+        logging.warning(
             "Attempted to remove channel from redis that does not exist",
             extra={"channel_name": name},
         )
@@ -173,7 +170,7 @@ async def removeChannel(name: str) -> None:
     await streamList.remove(f"chat/{name}")
     await glob.redis.delete(make_key(name))
     await glob.redis.srem("bancho:channels", name)
-    logger.info("Deleted channel from redis", extra={"channel_name": name})
+    logging.info("Deleted channel from redis", extra={"channel_name": name})
 
 
 async def updateChannel(
@@ -208,7 +205,7 @@ async def updateChannel(
         channel["moderated"] = moderated
 
     await glob.redis.set(make_key(name), json.dumps(channel))
-    logger.info("Updated channel in redis", extra={"channel_name": name})
+    logging.info("Updated channel in redis", extra={"channel_name": name})
 
 
 async def getMatchIDFromChannel(channel_name: str) -> int:

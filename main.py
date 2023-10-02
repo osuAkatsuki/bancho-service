@@ -6,15 +6,12 @@ import os
 from typing import Optional
 
 import psutil
-from common.log import logger
+import logging
 import redis.asyncio as redis
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-from cmyui.logging import Ansi
-from cmyui.logging import log
-from cmyui.logging import printc
 
 import settings
 from common.constants import bcolors
@@ -30,6 +27,10 @@ from irc import ircserver
 from objects import banchoConfig
 from objects import channelList
 from objects import fokabot
+import logging.config
+
+import yaml
+
 from objects import glob
 from objects import match
 from objects import osuToken
@@ -82,10 +83,8 @@ async def main() -> int:
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        logger.configure_logging()
-
         # set up datadog
-        logger.info("Setting up datadog clients")
+        logging.info("Setting up datadog clients")
         try:
             if settings.DATADOG_ENABLE:
                 glob.dog = datadogClient.datadogClient(
@@ -108,20 +107,20 @@ async def main() -> int:
                     ],
                 )
         except:
-            logger.exception("Error creating datadog client")
+            logging.exception("Error creating datadog client")
             raise
 
         # Connect to db
-        logger.info("Connecting to SQL")
+        logging.info("Connecting to SQL")
         try:
             glob.db = DBPool()
             await glob.db.start()
         except:
-            logger.exception("Error connecting to sql")
+            logging.exception("Error connecting to sql")
             raise
 
         # Connect to redis
-        logger.info("Connecting to redis")
+        logging.info("Connecting to redis")
         try:
             glob.redis = redis.Redis(
                 host=settings.REDIS_HOST,
@@ -131,16 +130,16 @@ async def main() -> int:
             )
             await glob.redis.ping()
         except:
-            logger.exception("Error connecting to redis")
+            logging.exception("Error connecting to redis")
             raise
 
         # Load bancho_settings
-        logger.info("Loading bancho settings")
+        logging.info("Loading bancho settings")
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
             await glob.banchoConf.loadSettings()
         except:
-            logger.exception("Error loading bancho settings")
+            logging.exception("Error loading bancho settings")
             raise
 
         # fetch privilege groups into memory
@@ -163,24 +162,24 @@ async def main() -> int:
         await streamList.add("main")
         await streamList.add("lobby")
 
-        logger.info(
+        logging.info(
             "Connecting the in-game chat bot",
             extra={"bot_name": glob.BOT_NAME},
         )
         await fokabot.connect()
 
         if not settings.LOCALIZE_ENABLE:
-            logger.info("User localization is disabled")
+            logging.info("User localization is disabled")
 
         if not settings.APP_GZIP:
-            logger.info("Gzip compression is disabled")
+            logging.info("Gzip compression is disabled")
 
         if settings.DEBUG:
-            logger.info("Server running in debug mode")
+            logging.info("Server running in debug mode")
 
         # # start irc server if configured
         if settings.IRC_ENABLE:
-            logger.info(
+            logging.info(
                 "IRC server listening on tcp port",
                 extra={"port": settings.IRC_PORT},
             )
@@ -194,15 +193,15 @@ async def main() -> int:
         # bancho-service instances will be run as processes on the same machine.
         raw_result = await glob.redis.get("bancho:primary_instance_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
-            logger.info("Starting background loops")
+            logging.info("Starting background loops")
             await glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
-            logger.info("Starting user timeout loop")
+            logging.info("Starting user timeout loop")
             await tokenList.usersTimeoutCheckLoop()
-            logger.info("Started user timeout loop")
-            logger.info("Starting spam protection loop")
+            logging.info("Started user timeout loop")
+            logging.info("Starting spam protection loop")
             await tokenList.spamProtectionResetLoop()
-            logger.info("Started spam protection loop")
+            logging.info("Started spam protection loop")
 
             # Connect to pubsub channels
             PUBSUB_HANDLERS = {
@@ -219,7 +218,7 @@ async def main() -> int:
                 #     lambda x: x == b"reload" and await glob.banchoConf.reload()
                 # ),
             }
-            logger.info(
+            logging.info(
                 "Starting pubsub listeners",
                 extra={"handlers": list(PUBSUB_HANDLERS)},
             )
@@ -228,7 +227,7 @@ async def main() -> int:
                 handlers=PUBSUB_HANDLERS,
             )
             asyncio.create_task(pubsub_listener.run())
-            logger.info(
+            logging.info(
                 "Started pubsub listeners",
                 extra={"handlers": list(PUBSUB_HANDLERS)},
             )
@@ -242,11 +241,11 @@ async def main() -> int:
             (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
             (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
         ]
-        logger.info("Starting HTTP server")
+        logging.info("Starting HTTP server")
         glob.application = tornado.web.Application(API_ENDPOINTS)
         http_server = tornado.httpserver.HTTPServer(glob.application)
         http_server.listen(settings.APP_PORT)
-        logger.info(
+        logging.info(
             "HTTP server listening for clients",
             extra={
                 "port": settings.APP_PORT,
@@ -256,10 +255,10 @@ async def main() -> int:
         shutdown_event = asyncio.Event()
         await shutdown_event.wait()
     finally:
-        logger.info("Shutting down all services")
+        logging.info("Shutting down all services")
 
         if http_server is not None:
-            logger.info("Closing HTTP listener")
+            logging.info("Closing HTTP listener")
             http_server.stop()
 
             # Allow grace period for ongoing connections to finish
@@ -270,28 +269,35 @@ async def main() -> int:
 
         # TODO: we can be more graceful with this one, but p3
         if settings.IRC_ENABLE:
-            logger.info("Closing IRC server")
+            logging.info("Closing IRC server")
             glob.ircServer.close()
-            logger.info("Closed IRC server")
+            logging.info("Closed IRC server")
 
-        logger.info("Closing connection to redis")
+        logging.info("Closing connection to redis")
         await glob.redis.aclose()
-        logger.info("Closed connection to redis")
+        logging.info("Closed connection to redis")
 
-        logger.info("Closing connection(s) to MySQL")
+        logging.info("Closing connection(s) to MySQL")
         await glob.db.stop()
-        logger.info("Closed connection(s) to MySQL")
+        logging.info("Closed connection(s) to MySQL")
 
-        logger.info("Disconnecting from IRC")
+        logging.info("Disconnecting from IRC")
         await fokabot.disconnect()
-        logger.info("Disconnected from IRC")
+        logging.info("Disconnected from IRC")
 
-        logger.info("Goodbye!")
+        logging.info("Goodbye!")
 
     return 0
 
 
+def configure_logging() -> None:
+    with open("logging.yaml") as f:
+        config = yaml.safe_load(f.read())
+        logging.config.dictConfig(config)
+
+
 if __name__ == "__main__":
+    configure_logging()
     try:
         exit_code = asyncio.run(main())
     except KeyboardInterrupt:

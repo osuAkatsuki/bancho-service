@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Optional
 from typing import TypedDict
 
-from common.log import logger
+import logging
 from constants import dataTypes
 from constants import matchModModes
 from constants import matchTeams
@@ -1165,7 +1165,7 @@ async def sendUpdates(match_id: int) -> None:
     if censored_data is not None:
         await streamList.broadcast("lobby", censored_data)
     else:
-        logger.error(
+        logging.error(
             f"Failed to send updates to a multiplayer match",
             extra={"match_id": match_id},
         )
@@ -1201,7 +1201,7 @@ async def checkTeams(match_id: int) -> bool:
             elif firstTeam != _slot["team"]:
                 return True
 
-    logger.warning(
+    logging.warning(
         "Invalid teams detected for multiplayer match",
         extra={"match_id": match_id},
     )

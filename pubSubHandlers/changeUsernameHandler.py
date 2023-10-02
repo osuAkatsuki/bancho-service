@@ -4,7 +4,7 @@ from amplitude import EventOptions
 from amplitude import Identify
 
 from common.constants import actions
-from common.log import logger
+import logging
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
 from objects import glob
@@ -45,7 +45,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
         identify_obj.set("username", newUsername)
         glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
 
-        logger.info(
+        logging.info(
             "Job successfully updated username",
             extra={
                 "user_id": userID,
@@ -53,7 +53,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
             },
         )
     except userUtils.usernameAlreadyInUseError:
-        logger.error(
+        logging.error(
             "Job failed to update username",
             extra={
                 "reason": "username_exists",
@@ -68,7 +68,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "username_change",
             )
     except userUtils.invalidUsernameError:
-        logger.error(
+        logging.error(
             "Job failed to update username",
             extra={
                 "reason": "username_invalid",

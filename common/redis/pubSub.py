@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import redis.asyncio as redis
 
-from common.log import logger
+import logging
 from common.redis import generalPubSubHandler
 
 
@@ -49,7 +49,7 @@ class listener:
             # Make sure the handler exists
             if item["channel"] in self.handlers:
                 if "cached_stats" not in item["channel"]:
-                    logger.info(
+                    logging.info(
                         "Handling redis pubsub item",
                         extra={
                             "channel": item["channel"],
@@ -78,7 +78,7 @@ class listener:
 
         channels = list(self.handlers.keys())
         await pubsub.subscribe(*channels)
-        logger.info(
+        logging.info(
             "Subscribed to redis pubsub channels",
             extra={"channels": channels},
         )

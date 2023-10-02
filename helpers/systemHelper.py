@@ -13,7 +13,7 @@ from typing import Any
 from typing import NoReturn
 
 import psutil
-from common.log import logger
+import logging
 
 from constants import serverPackets
 from objects import glob
@@ -47,7 +47,7 @@ async def scheduleShutdown(
     :return:
     """
     # Console output
-    logger.info(
+    logging.info(
         "Service shutdown scheduled",
         extra={
             "type": "restart" if restart else "shutdown",
@@ -85,7 +85,7 @@ def restartServer() -> NoReturn:
 
     :return:
     """
-    logger.info("Restarting bancho-service...")
+    logging.info("Restarting bancho-service...")
 
     # TODO: publish to redis to restart and update lets
     _exit(0)  # restart handled by script now
@@ -97,7 +97,7 @@ def shutdownServer() -> NoReturn:  # type: ignore
 
     :return:
     """
-    logger.info("Shutting down bancho-service...")
+    logging.info("Shutting down bancho-service...")
     sig = SIGKILL  # if runningUnderUnix() else CTRL_C_EVENT
     kill(getpid(), sig)
 

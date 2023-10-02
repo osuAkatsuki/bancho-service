@@ -4,7 +4,7 @@ import time
 
 import orjson
 from amplitude import BaseEvent
-from common.log import logger
+import logging
 
 import settings
 from constants import serverPackets
@@ -59,7 +59,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         f"ripple:change_username_pending:{token['user_id']}",
     )
     if newUsername:
-        logger.info(
+        logging.info(
             "Sending username change request",
             {
                 "old_username": token["username"],
@@ -101,7 +101,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
     )
 
     # Console output
-    logger.info(
+    logging.info(
         "User signed out of bancho session",
         extra={
             "user_id": token["user_id"],

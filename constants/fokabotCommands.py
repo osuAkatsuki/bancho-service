@@ -16,7 +16,8 @@ from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-from common.log import logger, rap_logs
+import logging
+from common.log import rap_logs
 from common.ripple import scoreUtils
 from common.ripple import userUtils
 from common.web import discord
@@ -614,7 +615,7 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
             timeout=2,
         )
     except:
-        logger.exception(
+        logging.exception(
             "Failed to retrieve PP from LESS API",
             extra={
                 "user_id": userID,
@@ -780,7 +781,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     match = fokabot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
-        logger.error(
+        logging.error(
             "Error parsing /np message",
             extra={"chat_message": npmsg},
         )

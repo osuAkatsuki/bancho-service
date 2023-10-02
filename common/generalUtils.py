@@ -15,7 +15,7 @@ from dill import dumps
 
 from common.constants import mods
 from common.constants import osuFlags as osu_flags
-from common.log import logger
+import logging
 
 possible_chars = ascii_uppercase + digits
 
@@ -190,7 +190,7 @@ def getTotalSize(o: object) -> int:
     try:
         return len(dumps(o, recurse=True))
     except:
-        logger.error("Error while getting total object size!")
+        logging.error("Error while getting total object size!")
         return 0
 
 
