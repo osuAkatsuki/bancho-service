@@ -1643,7 +1643,7 @@ async def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[s
         return "Our logs sadly do not go back far enough to find this data."
 
     status_readable = {0: "unranked", 2: "ranked", 5: "loved"}[res["ranked"]]
-    rankedby = userUtils.getProfileEmbed(res["rankedby"])
+    rankedby = await userUtils.getProfileEmbed(res["rankedby"])
 
     return f'{res["song_name"]} was {status_readable} by: {rankedby}.'
 
