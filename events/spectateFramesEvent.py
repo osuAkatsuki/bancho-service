@@ -20,6 +20,6 @@ async def handle(userToken: Token, rawPacketData: bytes):
         "Broadcasting osu! spectator frames",
         extra={
             "host_user_id": userToken["user_id"],
-            "num_clients": stream.getClientCount(streamName),
+            "num_clients": await stream.getClientCount(streamName),
         },
     )
