@@ -19,7 +19,6 @@ import tornado.web
 import yaml
 
 import settings
-from common.constants import bcolors
 from common.ddog import datadogClient
 from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
@@ -33,8 +32,6 @@ from objects import banchoConfig
 from objects import channelList
 from objects import fokabot
 from objects import glob
-from objects import match
-from objects import osuToken
 from objects import streamList
 from objects import tokenList
 from objects.dbPool import DBPool
