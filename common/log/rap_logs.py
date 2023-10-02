@@ -54,6 +54,12 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
             except (httpx.NetworkError, httpx.TimeoutException):
                 await asyncio.sleep(RETRY_INTERVAL)
                 continue
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 429:
+                    await asyncio.sleep(RETRY_INTERVAL)
+                    continue
+                else:
+                    raise
 
 
 async def send_rap_log(

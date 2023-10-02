@@ -259,6 +259,7 @@ class handler(AsyncRequestHandler):
         self.add_header("Content-Type", "text/html; charset=UTF-8")
 
     async def post(self) -> None:
+        # XXX:HACK around tornado/asyncio poor exception support
         try:
             await self._post()
         except Exception:
