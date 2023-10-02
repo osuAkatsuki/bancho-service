@@ -126,10 +126,11 @@ def cheesegullRequest(
 
 
 def getListing(rankedStatus, page, gameMode, query):
-    glob.dog.increment(
-        f"{glob.DATADOG_PREFIX}.cheesegull_requests",
-        tags=["cheesegull:listing"],
-    )
+    if glob.dog is not None:
+        glob.dog.increment(
+            f"{glob.DATADOG_PREFIX}.cheesegull_requests",
+            tags=["cheesegull:listing"],
+        )
     params = {"query": query, "offset": page, "amount": 100}
     if rankedStatus:
         params["status"] = rankedStatus
@@ -141,18 +142,20 @@ def getListing(rankedStatus, page, gameMode, query):
 
 
 def getBeatmapSet(id):
-    glob.dog.increment(
-        f"{glob.DATADOG_PREFIX}.cheesegull_requests",
-        tags=["cheesegull:set"],
-    )
+    if glob.dog is not None:
+        glob.dog.increment(
+            f"{glob.DATADOG_PREFIX}.cheesegull_requests",
+            tags=["cheesegull:set"],
+        )
     return cheesegullRequest(f"s/{id}")
 
 
 def getBeatmap(id):
-    glob.dog.increment(
-        f"{glob.DATADOG_PREFIX}.cheesegull_requests",
-        tags=["cheesegull:beatmap"],
-    )
+    if glob.dog is not None:
+        glob.dog.increment(
+            f"{glob.DATADOG_PREFIX}.cheesegull_requests",
+            tags=["cheesegull:beatmap"],
+        )
     setID = cheesegullRequest(f"b/{id}", wants="ParentSetID")
     return getBeatmapSet(setID) if setID and setID > 0 else None
 

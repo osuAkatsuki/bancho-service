@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -100,7 +101,8 @@ def signal_handler(signum, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-if __name__ == "__main__":
+
+async def main() -> int:
     try:
         # Server start
         printc(ASCII_LOGO, Ansi.LGREEN)
@@ -115,6 +117,31 @@ if __name__ == "__main__":
         # TODO: do we need this anymore now with stateless design?
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
+        # set up datadog
+        try:
+            if settings.DATADOG_ENABLE:
+                glob.dog = datadogClient.datadogClient(
+                    apiKey=settings.DATADOG_API_KEY,
+                    appKey=settings.DATADOG_APP_KEY,
+                    periodicChecks=[
+                        datadogClient.periodicCheck(
+                            "online_users",
+                            lambda: len(osuToken.get_token_ids()),
+                        ),
+                        datadogClient.periodicCheck(
+                            "multiplayer_matches",
+                            lambda: len(match.get_match_ids()),
+                        ),
+                        datadogClient.periodicCheck(
+                            "chat_channels",
+                            lambda: len(channelList.getChannelNames()),
+                        ),
+                    ],
+                )
+        except:
+            log("Error creating datadog client.", Ansi.LRED)
+            raise
 
         # Connect to db
         try:
@@ -197,40 +224,13 @@ if __name__ == "__main__":
 
         glob.application = make_app()
 
-        # set up datadog
-        try:
-            if settings.DATADOG_ENABLE:
-                glob.dog = datadogClient.datadogClient(
-                    apiKey=settings.DATADOG_API_KEY,
-                    appKey=settings.DATADOG_APP_KEY,
-                    periodicChecks=[
-                        datadogClient.periodicCheck(
-                            "online_users",
-                            lambda: len(osuToken.get_token_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "multiplayer_matches",
-                            lambda: len(match.get_match_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "chat_channels",
-                            lambda: len(channelList.getChannelNames()),
-                        ),
-                    ],
-                )
-        except:
-            log("Error creating datadog client.", Ansi.LRED)
-            raise
-
         # start irc server if configured
         if settings.IRC_ENABLE:
             log(
                 f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
                 Ansi.LMAGENTA,
             )
-            threading.Thread(
-                target=lambda: ircserver.main(port=settings.IRC_PORT),
-            ).start()
+            glob.pool.submit(ircserver.main, port=settings.IRC_PORT)
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
@@ -270,7 +270,13 @@ if __name__ == "__main__":
             f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
             Ansi.LMAGENTA,
         )
-
-        tornado.ioloop.IOLoop.instance().start()
+        shutdown_event = asyncio.Event()
+        await shutdown_event.wait()
     finally:
         system.dispose()
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(asyncio.run(main()))

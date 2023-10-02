@@ -20,6 +20,7 @@ from common import generalUtils
 from common.constants import privileges
 from common.log import logUtils
 from common.ripple import userUtils
+from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -34,24 +35,19 @@ from objects import tokenList
 from objects import verifiedCache
 from objects.redisLock import redisLock
 
-if TYPE_CHECKING:
-    import tornado.web
-
 osu_ver_regex = re.compile(
     r"^b(?P<ver>\d{8})(?:\.(?P<subver>\d))?"
     r"(?P<stream>beta|cuttingedge|dev|tourney)?$",
 )
 
 
-def handle(
-    web_handler: tornado.web.RequestHandler,
-) -> tuple[str, bytes]:  # token, data
+def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, data
     # Data to return
     userToken = None
     responseTokenString = "ayy"
     responseData = bytearray()
 
-    # Get IP from tornado request
+    # Get client ip of the incoming request
     requestIP = web_handler.getRequestIP()
 
     # Split POST body so we can get username/password/hardware data

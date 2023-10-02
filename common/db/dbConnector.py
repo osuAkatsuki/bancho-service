@@ -118,8 +118,9 @@ class connectionsPool:
         """
         # Make sure we below 50 retries
         # log.info("Pool size: {}".format(self.pool.qsize()))
-        glob.dog.increment(f"{glob.DATADOG_PREFIX}.mysql_pool.queries")
-        glob.dog.gauge(f"{glob.DATADOG_PREFIX}.mysql_pool.size", self.pool.qsize())
+        if glob.dog is not None:
+            glob.dog.increment(f"{glob.DATADOG_PREFIX}.mysql_pool.queries")
+            glob.dog.gauge(f"{glob.DATADOG_PREFIX}.mysql_pool.size", self.pool.qsize())
         if level >= 50:
             log.warning(
                 "Too many failed connection attempts. No MySQL connection available.",
@@ -150,7 +151,10 @@ class connectionsPool:
             # Connection to server lost
             # Wait 1 second and try again
             log.warning("Can't connect to MySQL database. Retrying in 1 second...")
-            glob.dog.increment(f"{glob.DATADOG_PREFIX}.mysql_pool.failed_connections")
+            if glob.dog is not None:
+                glob.dog.increment(
+                    f"{glob.DATADOG_PREFIX}.mysql_pool.failed_connections",
+                )
             time.sleep(1)
             return self.getWorker(level=level + 1)
 

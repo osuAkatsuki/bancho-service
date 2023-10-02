@@ -9,4 +9,4 @@ psutil
 python-dotenv
 redis
 requests
-tornado<5.0.0
+tornado
