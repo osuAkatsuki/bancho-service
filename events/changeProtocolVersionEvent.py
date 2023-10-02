@@ -5,7 +5,7 @@ from constants import clientPackets
 from objects import osuToken
 
 
-def handle(userToken: osuToken.Token, packetData):
+async def handle(userToken: osuToken.Token, packetData):
     """User is using Akatsuki's patcher and is trying to upgrade their connection."""
 
     packetData = clientPackets.changeProtocolVersion(packetData)

@@ -11,11 +11,11 @@ from objects import osuToken
 from objects import tokenList
 
 
-def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
+async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
     try:
         oldUsername = userUtils.getUsername(userID)
-        userUtils.changeUsername(userID, newUsername=newUsername)
-        userUtils.appendNotes(
+        await userUtils.changeUsername(userID, newUsername=newUsername)
+        await userUtils.appendNotes(
             userID,
             f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
@@ -67,14 +67,14 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.structure = {"userID": 0, "newUsername": ""}
 
-    def handle(self, data):
+    async def handle(self, data):
         if not (data := super().parseData(data)):
             return
 
         # Get the user's token
         if (targetToken := tokenList.getTokenFromUserID(data["userID"])) is None:
             # If the user is offline change username immediately
-            handleUsernameChange(data["userID"], data["newUsername"])
+            await handleUsernameChange(data["userID"], data["newUsername"])
         else:
             if targetToken["irc"] or targetToken["action_id"] not in {
                 actions.PLAYING,
@@ -82,7 +82,11 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             }:
                 # If the user is online and he's connected through IRC or he's not playing,
                 # change username and kick the user immediately
-                handleUsernameChange(data["userID"], data["newUsername"], targetToken)
+                await handleUsernameChange(
+                    data["userID"],
+                    data["newUsername"],
+                    targetToken,
+                )
             else:
                 # If the user is playing, delay the username change until he submits the score
                 # On submit modular, lets will send the username change request again

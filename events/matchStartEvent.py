@@ -8,7 +8,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, _):
+async def handle(userToken: Token, _):
     # Make sure we are in a match
     if userToken["match_id"] is None:
         return

@@ -29,13 +29,13 @@ NOW_PLAYING_REGEX = re.compile(
 )
 
 
-def connect() -> None:
+async def connect() -> None:
     with redisLock(f"bancho:locks:aika"):
         token = tokenList.getTokenFromUserID(999)
         if token is not None:
             return
 
-        token = tokenList.addToken(999)
+        token = await tokenList.addToken(999)
         assert token is not None
 
         osuToken.update_token(token["token_id"], action_id=actions.IDLE)
@@ -65,7 +65,11 @@ class CommandResponse(TypedDict):
     hidden: bool
 
 
-def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandResponse]:
+async def fokabotResponse(
+    fro: str,
+    chan: str,
+    message: str,
+) -> Optional[CommandResponse]:
     """
     Check if a message has triggered FokaBot
 
@@ -83,12 +87,12 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
             continue
 
         # message has triggered a command
-        userID = userUtils.getID(fro)
+        userID = await userUtils.getID(fro)
 
         # Make sure the user has right permissions
         if (
             cmd["privileges"]
-            and not userUtils.getPrivileges(userID) & cmd["privileges"]
+            and not await userUtils.getPrivileges(userID) & cmd["privileges"]
         ):
             return None
 
@@ -100,16 +104,16 @@ def fokabotResponse(fro: str, chan: str, message: str) -> Optional[CommandRespon
                 "hidden": True,
             }
 
-        def handle_command(cmd, fro, chan, msg):
+        async def handle_command(cmd, fro, chan, msg):
             try:
-                resp = cmd["callback"](fro, chan, msg)
+                resp = await cmd["callback"](fro, chan, msg)
             except Exception as e:
                 return e
 
             return resp
 
         if cmd["callback"]:
-            resp = handle_command(cmd, fro, chan, message_split[1:])
+            resp = await handle_command(cmd, fro, chan, message_split[1:])
 
             if isinstance(resp, Exception):
                 raise resp

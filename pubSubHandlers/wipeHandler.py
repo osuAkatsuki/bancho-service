@@ -9,10 +9,10 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.type = "int_list"
 
-    def handle(self, userID):
+    async def handle(self, userID):
         userID, rx, gm = super().parseData(userID)
         if any(i is None for i in (userID, rx, gm)):
             return
 
         # TODO: update flame's cache and send gamemode on wipe.
-        userUtils.removeFirstPlaces(userID, rx, gm)
+        await userUtils.removeFirstPlaces(userID, rx, gm)

@@ -8,7 +8,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentMatchInfoRequest(rawPacketData)
 
     match_id = packetData["matchID"]

@@ -181,7 +181,7 @@ def ac(message: str, discord: Optional[str] = None) -> None:
     logMessage(message, "ANTICHEAT", bcolors.CYAN, discord)
 
 
-def rap(
+async def rap(
     userID: int,
     message: str,
     discord: Optional[str] = None,
@@ -196,7 +196,7 @@ def rap(
     :param admin: admin who submitted this. Default: Aika
     :return:
     """
-    glob.db.execute(
+    await glob.db.execute(
         "INSERT INTO rap_logs (id, userid, text, datetime, through) "  # could be admin in db too?
         "VALUES (NULL, %s, %s, UNIX_TIMESTAMP(), %s)",
         [userID, message, admin],

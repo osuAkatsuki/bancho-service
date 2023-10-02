@@ -27,7 +27,7 @@ class handler(AsyncRequestHandler):
             aika_token = tokenList.getTokenFromUserID(999)
             assert aika_token is not None
 
-            chatHelper.sendMessage(
+            await chatHelper.sendMessage(
                 token_id=aika_token["token_id"],
                 to=self.get_argument("to").encode().decode("utf-8", "replace"),
                 message=self.get_argument("msg").encode().decode("utf-8", "replace"),

@@ -18,7 +18,6 @@ from cmyui.logging import printc
 
 import settings
 from common.constants import bcolors
-from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
@@ -39,6 +38,7 @@ from objects import match
 from objects import osuToken
 from objects import streamList
 from objects import tokenList
+from objects.dbPool import DBPool
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
 from pubSubHandlers import disconnectHandler
@@ -146,13 +146,8 @@ async def main() -> int:
         # Connect to db
         try:
             log("Connecting to SQL.", Ansi.LMAGENTA)
-            glob.db = dbConnector.db(
-                host=settings.DB_HOST,
-                username=settings.DB_USER,
-                password=settings.DB_PASS,
-                database=settings.DB_NAME,
-                initialSize=settings.DB_WORKERS,
-            )
+            glob.db = DBPool()
+            await glob.db.start()
         except:
             log(f"Error connecting to sql.", Ansi.LRED)
             raise
@@ -174,6 +169,7 @@ async def main() -> int:
         # Load bancho_settings
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
+            await glob.banchoConf.loadSettings()
         except:
             log(f"Error loading bancho settings.", Ansi.LMAGENTA)
             raise
@@ -197,21 +193,21 @@ async def main() -> int:
         glob.groupPrivileges = {
             row["name"].lower(): row["privileges"]
             for row in (
-                glob.db.fetchAll(
+                await glob.db.fetchAll(
                     "SELECT name, privileges FROM privileges_groups",
                 )
                 or []
             )
         }
 
-        channelList.loadChannels()
+        await channelList.loadChannels()
 
         # Initialize stremas
         streamList.add("main")
         streamList.add("lobby")
 
         log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
-        fokabot.connect()
+        await fokabot.connect()
 
         if not settings.LOCALIZE_ENABLE:
             log("User localization is disabled.", Ansi.LYELLOW)
@@ -243,8 +239,8 @@ async def main() -> int:
             log("Starting background loops.", Ansi.LMAGENTA)
             glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
-            tokenList.usersTimeoutCheckLoop()
-            tokenList.spamProtectionResetLoop()
+            await tokenList.usersTimeoutCheckLoop()
+            await tokenList.spamProtectionResetLoop()
 
             # Connect to pubsub channels
             pubSub.listener(

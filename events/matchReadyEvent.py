@@ -5,7 +5,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, _):
+async def handle(userToken: Token, _):
     if userToken["match_id"] is None:
         return
 
@@ -26,4 +26,4 @@ def handle(userToken: Token, _):
         # If this is a tournament match, we should send the current status of ready
         # players.
         if multiplayer_match["is_tourney"]:
-            match.sendReadyStatus(multiplayer_match["match_id"])
+            await match.sendReadyStatus(multiplayer_match["match_id"])

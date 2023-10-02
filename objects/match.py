@@ -580,7 +580,7 @@ def updateHP(match_id: int, slot_id: int, hp: int) -> None:
     assert _slot is not None
 
 
-def playerCompleted(match_id: int, user_id: int) -> None:
+async def playerCompleted(match_id: int, user_id: int) -> None:
     """
     Set userID's slot completed to True
 
@@ -605,10 +605,10 @@ def playerCompleted(match_id: int, user_id: int) -> None:
             total_playing += 1
 
     if total_playing == completed:
-        allPlayersCompleted(match_id)
+        await allPlayersCompleted(match_id)
 
 
-def allPlayersCompleted(match_id: int) -> None:
+async def allPlayersCompleted(match_id: int) -> None:
     """
     Cleanup match stuff and send match end packet to everyone
 
@@ -679,7 +679,7 @@ def allPlayersCompleted(match_id: int) -> None:
     ):
         aika_token = tokenList.getTokenFromUserID(999)
         assert aika_token is not None
-        chat.sendMessage(
+        await chat.sendMessage(
             token_id=aika_token["token_id"],
             to=channel_name,
             message="Match has just finished.",
@@ -1048,7 +1048,7 @@ def playerFailed(match_id: int, user_id: int) -> None:
     )
 
 
-def invite(match_id: int, fro: int, to: int) -> None:
+async def invite(match_id: int, fro: int, to: int) -> None:
     """
     Fro invites to in this match.
 
@@ -1064,7 +1064,7 @@ def invite(match_id: int, fro: int, to: int) -> None:
 
     # Aika is too busy
     if to == 999:
-        chat.sendMessage(
+        await chat.sendMessage(
             token_id=toToken["token_id"],
             to=froToken["username"],
             message="I'd love to join your match, but I've got a job to do!.",
@@ -1080,7 +1080,7 @@ def invite(match_id: int, fro: int, to: int) -> None:
         "Come join my multiplayer match: "
         f'"[osump://{multiplayer_match["match_id"]}/{pw_safe} {multiplayer_match["match_name"]}]"'
     )
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=froToken["token_id"],
         to=toToken["username"],
         message=message,
@@ -1324,7 +1324,7 @@ def resetReady(match_id: int) -> None:
             slot.update_slot(match_id, slot_id, status=new_status)
 
 
-def sendReadyStatus(match_id: int) -> None:
+async def sendReadyStatus(match_id: int) -> None:
     channel_name = f"#multi_{match_id}"
 
     # Make sure match exists before attempting to do anything else
@@ -1360,7 +1360,7 @@ def sendReadyStatus(match_id: int) -> None:
 
     aika_token = tokenList.getTokenFromUserID(999)
     assert aika_token is not None
-    chat.sendMessage(
+    await chat.sendMessage(
         token_id=aika_token["token_id"],
         to=channel_name,
         message=message,
