@@ -598,13 +598,14 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         logging.exception("An unhandled exception occurred during login")
     finally:
         # Console and discord log
-        logging.warning(
-            "Invalid bancho login request",
-            extra={
-                "reason": "insufficient_post_data",
-                "ip": requestIP,
-            },
-        )
+        if len(loginData) < 3:
+            logging.warning(
+                "Invalid bancho login request",
+                extra={
+                    "reason": "insufficient_post_data",
+                    "ip": requestIP,
+                },
+            )
         # TODO: re-add discord webhook
         await rap_logs.send_rap_log_as_discord_webhook(
             message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
