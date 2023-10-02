@@ -76,13 +76,13 @@ def fileMd5(filename: str) -> str:
 
 
 def getRank(
-    gameMode: Optional[int] = None,
-    __mods: Optional[int] = None,
-    acc: Optional[float] = None,
-    c300: Optional[int] = None,
-    c100: Optional[int] = None,
-    c50: Optional[int] = None,
-    cmiss: Optional[int] = None,
+    gameMode: int,
+    __mods: int,
+    acc: float,
+    c300: int,
+    c100: int,
+    c50: int,
+    cmiss: int,
     *,
     score_=None,
 ) -> str:

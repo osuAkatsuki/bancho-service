@@ -6,6 +6,7 @@ import os
 from typing import Optional
 
 import psutil
+from common.log import logger
 import redis.asyncio as redis
 import tornado.gen
 import tornado.httpserver
@@ -47,16 +48,6 @@ from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
 
-ASCII_LOGO = "\n".join(
-    [
-        "      _/_/    _/                    _/                          _/        _/",
-        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/       ",
-        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/  ",
-        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/   ",
-        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/    ",
-    ],
-)
-
 # XXX: temporary for debugging purposes
 import sys
 import signal
@@ -89,21 +80,14 @@ signal.signal(signal.SIGINT, signal_handler)
 async def main() -> int:
     http_server: Optional[tornado.httpserver.HTTPServer] = None
     try:
-        # Server start
-        printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to Akatsuki's bancho-service", Ansi.LGREEN)
-        log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
-        log(
-            f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/bancho-service",
-            Ansi.LGREEN,
-        )
-        log("Press CTRL+C to exit\n", Ansi.LGREEN)
-
         # TODO: do we need this anymore now with stateless design?
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
+        logger.configure_logging()
+
         # set up datadog
+        logger.info("Setting up datadog clients")
         try:
             if settings.DATADOG_ENABLE:
                 glob.dog = datadogClient.datadogClient(
@@ -126,21 +110,21 @@ async def main() -> int:
                     ],
                 )
         except:
-            log("Error creating datadog client.", Ansi.LRED)
+            logger.exception("Error creating datadog client")
             raise
 
         # Connect to db
+        logger.info("Connecting to SQL")
         try:
-            log("Connecting to SQL.", Ansi.LMAGENTA)
             glob.db = DBPool()
             await glob.db.start()
         except:
-            log(f"Error connecting to sql.", Ansi.LRED)
+            logger.exception("Error connecting to sql")
             raise
 
         # Connect to redis
+        logger.info("Connecting to redis")
         try:
-            log("Connecting to redis.", Ansi.LMAGENTA)
             glob.redis = redis.Redis(
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
@@ -149,15 +133,16 @@ async def main() -> int:
             )
             await glob.redis.ping()
         except:
-            log(f"Error connecting to redis.", Ansi.LRED)
+            logger.exception("Error connecting to redis")
             raise
 
         # Load bancho_settings
+        logger.info("Loading bancho settings")
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
             await glob.banchoConf.loadSettings()
         except:
-            log(f"Error loading bancho settings.", Ansi.LMAGENTA)
+            logger.exception("Error loading bancho settings")
             raise
 
         # fetch privilege groups into memory
@@ -180,23 +165,26 @@ async def main() -> int:
         await streamList.add("main")
         await streamList.add("lobby")
 
-        log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
+        logger.info(
+            "Connecting the in-game chat bot",
+            extra={"bot_name": glob.BOT_NAME},
+        )
         await fokabot.connect()
 
         if not settings.LOCALIZE_ENABLE:
-            log("User localization is disabled.", Ansi.LYELLOW)
+            logger.info("User localization is disabled")
 
         if not settings.APP_GZIP:
-            log("Gzip compression is disabled.", Ansi.LYELLOW)
+            logger.info("Gzip compression is disabled")
 
         if settings.DEBUG:
-            log("Server running in debug mode.", Ansi.LYELLOW)
+            logger.info("Server running in debug mode")
 
         # # start irc server if configured
         if settings.IRC_ENABLE:
-            log(
-                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
-                Ansi.LMAGENTA,
+            logger.info(
+                "IRC server listening on tcp port",
+                extra={"port": settings.IRC_PORT},
             )
             asyncio.create_task(ircserver.main(port=settings.IRC_PORT))
 
@@ -208,87 +196,100 @@ async def main() -> int:
         # bancho-service instances will be run as processes on the same machine.
         raw_result = await glob.redis.get("bancho:primary_instance_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
-            log("Starting background loops.", Ansi.LMAGENTA)
+            logger.info("Starting background loops")
             await glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
+            logger.info("Starting user timeout loop")
             await tokenList.usersTimeoutCheckLoop()
+            logger.info("Started user timeout loop")
+            logger.info("Starting spam protection loop")
             await tokenList.spamProtectionResetLoop()
+            logger.info("Started spam protection loop")
 
             # Connect to pubsub channels
+            PUBSUB_HANDLERS = {
+                "peppy:ban": banHandler.handler(),
+                "peppy:unban": unbanHandler.handler(),
+                "peppy:silence": updateSilenceHandler.handler(),
+                "peppy:disconnect": disconnectHandler.handler(),
+                "peppy:notification": notificationHandler.handler(),
+                "peppy:change_username": changeUsernameHandler.handler(),
+                "peppy:update_cached_stats": updateStatsHandler.handler(),
+                "peppy:wipe": wipeHandler.handler(),
+                # TODO: support this?
+                # "peppy:reload_settings": (
+                #     lambda x: x == b"reload" and await glob.banchoConf.reload()
+                # ),
+            }
+            logger.info(
+                "Starting pubsub listeners",
+                extra={"handlers": list(PUBSUB_HANDLERS)},
+            )
             pubsub_listener = pubSub.listener(
-                glob.redis,
-                {
-                    "peppy:ban": banHandler.handler(),
-                    "peppy:unban": unbanHandler.handler(),
-                    "peppy:silence": updateSilenceHandler.handler(),
-                    "peppy:disconnect": disconnectHandler.handler(),
-                    "peppy:notification": notificationHandler.handler(),
-                    "peppy:change_username": changeUsernameHandler.handler(),
-                    "peppy:update_cached_stats": updateStatsHandler.handler(),
-                    "peppy:wipe": wipeHandler.handler(),
-                    # TODO: support this?
-                    # "peppy:reload_settings": (
-                    #     lambda x: x == b"reload" and await glob.banchoConf.reload()
-                    # ),
-                },
+                redis_connection=glob.redis,
+                handlers=PUBSUB_HANDLERS,
             )
             asyncio.create_task(pubsub_listener.run())
+            logger.info(
+                "Started pubsub listeners",
+                extra={"handlers": list(PUBSUB_HANDLERS)},
+            )
 
         # Start the HTTP server
-        glob.application = tornado.web.Application(
-            [
-                (r"/", mainHandler.handler),
-                (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
-                (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
-                (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
-                (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
-                (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
-                (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
-            ],
-        )
+        API_ENDPOINTS = [
+            (r"/", mainHandler.handler),
+            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
+            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
+            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
+            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
+            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
+        ]
+        logger.info("Starting HTTP server")
+        glob.application = tornado.web.Application(API_ENDPOINTS)
         http_server = tornado.httpserver.HTTPServer(glob.application)
         http_server.listen(settings.APP_PORT)
-
-        log(
-            f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
-            Ansi.LMAGENTA,
+        logger.info(
+            "HTTP server listening for clients",
+            extra={
+                "port": settings.APP_PORT,
+                "endpoints": [e[0] for e in API_ENDPOINTS],
+            },
         )
         shutdown_event = asyncio.Event()
         await shutdown_event.wait()
     finally:
-        log("Shutting down all services.", Ansi.LYELLOW)
+        logger.info("Shutting down all services")
 
         if http_server is not None:
-            log("Closing HTTP listener", Ansi.LMAGENTA)
+            logger.info("Closing HTTP listener")
             http_server.stop()
 
             # Allow grace period for ongoing connections to finish
-            GRACE_PERIOD_SECONDS = 10
             await asyncio.wait_for(
                 http_server.close_all_connections(),
-                timeout=GRACE_PERIOD_SECONDS,
+                timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
             )
 
         # TODO: we can be more graceful with this one, but p3
         if settings.IRC_ENABLE:
-            log("Closing IRC server", Ansi.LMAGENTA)
+            logger.info("Closing IRC server")
             glob.ircServer.close()
-            log("Closed IRC server", Ansi.LGREEN)
+            logger.info("Closed IRC server")
 
-        log("Closing connection to redis", Ansi.LMAGENTA)
+        logger.info("Closing connection to redis")
         await glob.redis.aclose()
-        log("Closed connection to redis", Ansi.LGREEN)
+        logger.info("Closed connection to redis")
 
-        log("Closing connection(s) to MySQL", Ansi.LMAGENTA)
+        logger.info("Closing connection(s) to MySQL")
         await glob.db.stop()
-        log("Closed connection(s) to MySQL", Ansi.LGREEN)
+        logger.info("Closed connection(s) to MySQL")
 
-        log("Disconnecting from IRC", Ansi.LMAGENTA)
+        logger.info("Disconnecting from IRC")
         await fokabot.disconnect()
-        log("Disconnected from IRC", Ansi.LGREEN)
+        logger.info("Disconnected from IRC")
 
-        log("Shutting down", Ansi.LMAGENTA)
-        log("Goodbye!", Ansi.LGREEN)
+        logger.info("Goodbye!")
 
     return 0
 
