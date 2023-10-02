@@ -278,7 +278,7 @@ async def main() -> int:
             log("Closed IRC server", Ansi.LGREEN)
 
         log("Closing connection to redis", Ansi.LMAGENTA)
-        await glob.redis.close()
+        await glob.redis.aclose()
         log("Closed connection to redis", Ansi.LGREEN)
 
         log("Closing connection(s) to MySQL", Ansi.LMAGENTA)
