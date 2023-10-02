@@ -255,11 +255,9 @@ async def main() -> int:
         )
         shutdown_event = asyncio.Event()
         await shutdown_event.wait()
-    except KeyboardInterrupt:
-        # Remove the "^C" from the terminal window
-        print("\x1b[2K", end="\r")
-        log("Received keyboard interrupt, shutting down.", Ansi.LYELLOW)
     finally:
+        log("Shutting down all services.", Ansi.LYELLOW)
+
         if http_server is not None:
             log("Closing HTTP listener", Ansi.LMAGENTA)
             http_server.stop()
@@ -296,4 +294,9 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    exit(asyncio.run(main()))
+    try:
+        exit_code = asyncio.run(main())
+    except KeyboardInterrupt:
+        exit_code = 0
+
+    exit(exit_code)
