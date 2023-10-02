@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
 from constants import clientPackets
 from constants import exceptions
 from objects import glob
@@ -11,23 +12,27 @@ from objects import tokenList
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     try:
         # Start spectating packet
         packetData = clientPackets.startSpectating(rawPacketData)
+    except:
+        logging.warning("Failed to parse start spectating packet.")
+        return
 
+    try:
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
-            osuToken.stopSpectating(userToken["token_id"])
+            await osuToken.stopSpectating(userToken["token_id"])
             return
 
         # Get host token
-        targetToken = tokenList.getTokenFromUserID(packetData["userID"])
+        targetToken = await tokenList.getTokenFromUserID(packetData["userID"])
         if targetToken is None:
             raise exceptions.tokenNotFoundException
 
         # Start spectating new user
-        osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
+        await osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
 
         glob.amplitude.track(
             BaseEvent(
@@ -46,5 +51,11 @@ def handle(userToken: Token, rawPacketData: bytes):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        log.warning("Spectator start: token not found.")
-        osuToken.stopSpectating(userToken["token_id"])
+        logging.warning(
+            "Spectator start: token not found.",
+            extra={
+                "user_id": userToken["user_id"],
+                "host_user_id": packetData["userID"],
+            },
+        )
+        await osuToken.stopSpectating(userToken["token_id"])

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import time
 from datetime import datetime as dt
@@ -12,14 +13,13 @@ from typing import TYPE_CHECKING
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
-from cmyui.logging import Ansi
-from cmyui.logging import log
 
 import settings
 from common import generalUtils
 from common.constants import privileges
-from common.log import logUtils
+from common.log import rap_logs
 from common.ripple import userUtils
+from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -34,24 +34,19 @@ from objects import tokenList
 from objects import verifiedCache
 from objects.redisLock import redisLock
 
-if TYPE_CHECKING:
-    import tornado.web
-
 osu_ver_regex = re.compile(
     r"^b(?P<ver>\d{8})(?:\.(?P<subver>\d))?"
     r"(?P<stream>beta|cuttingedge|dev|tourney)?$",
 )
 
 
-def handle(
-    web_handler: tornado.web.RequestHandler,
-) -> tuple[str, bytes]:  # token, data
+async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, data
     # Data to return
     userToken = None
     responseTokenString = "ayy"
     responseData = bytearray()
 
-    # Get IP from tornado request
+    # Get client ip of the incoming request
     requestIP = web_handler.getRequestIP()
 
     # Split POST body so we can get username/password/hardware data
@@ -78,7 +73,7 @@ def handle(
 
         # Try to get the ID from username
         username = loginData[0]
-        userID = userUtils.getID(username)
+        userID = await userUtils.getID(username)
 
         if not userID:
             # Invalid username
@@ -86,12 +81,12 @@ def handle(
         elif userID == 999:
             raise exceptions.invalidArgumentsException()
 
-        if not userUtils.checkLogin(userID, loginData[1]):
+        if not await userUtils.checkLogin(userID, loginData[1]):
             # Invalid password
             raise exceptions.loginFailedException()
 
         # Make sure we are not banned or locked
-        priv = userUtils.getPrivileges(userID)
+        priv = await userUtils.getPrivileges(userID)
         pending_verification = priv & privileges.USER_PENDING_VERIFICATION != 0
 
         if not pending_verification:
@@ -119,7 +114,10 @@ def handle(
 
         # disallow clients older than 1 year
         if osuVersion < (dt.now() - td(365)):
-            log(f"Denied login from {osuVersionStr}.", Ansi.LYELLOW)
+            logging.warning(
+                "Denied login from client too old",
+                extra={"version": osuVersionStr},
+            )
             raise exceptions.haxException()
 
         """ No login errors! """
@@ -127,23 +125,26 @@ def handle(
         # Verify this user (if pending activation)
         firstLogin = False
         shouldBan = False
-        if pending_verification or not userUtils.hasVerifiedHardware(userID):
-            if userUtils.verifyUser(userID, clientData):
+        if pending_verification or not await userUtils.hasVerifiedHardware(userID):
+            if await userUtils.verifyUser(userID, clientData):
                 # Valid account
-                log(f"{username} ({userID}) verified successfully!", Ansi.LGREEN)
-                verifiedCache.set(userID, True)
+                logging.info(
+                    "User verified their account",
+                    extra={"user_id": userID, "username": username},
+                )
+                await verifiedCache.set(userID, True)
                 firstLogin = True
             else:
                 # Multiaccount detected
-                log(
-                    f"{username} ({userID}) tried to create another account.",
-                    Ansi.LRED,
+                logging.warning(
+                    "User tried to create another account",
+                    extra={"user_id": userID, "username": username},
                 )
-                verifiedCache.set(userID, False)
+                await verifiedCache.set(userID, False)
                 shouldBan = True
 
         # Save HWID in db for multiaccount detection
-        hwAllowed = userUtils.logHardware(userID, clientData, firstLogin)
+        hwAllowed = await userUtils.logHardware(userID, clientData, firstLogin)
 
         # This is false only if HWID is empty
         # if HWID is banned, we get restricted so there's no
@@ -152,10 +153,10 @@ def handle(
             raise exceptions.haxException()
 
         # Log user IP
-        userUtils.logIP(userID, requestIP)
+        await userUtils.logIP(userID, requestIP)
 
         if shouldBan:
-            userUtils.ban(userID)
+            await userUtils.ban(userID)
             raise exceptions.loginBannedException()
 
         # Delete old tokens for that user and generate a new one
@@ -171,11 +172,11 @@ def handle(
         else:
             amplitude_device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
 
-        with redisLock("bancho:locks:tokens"):
+        async with redisLock("bancho:locks:tokens"):
             if not isTournament:
-                tokenList.deleteOldTokens(userID)
+                await tokenList.deleteOldTokens(userID)
 
-            userToken = tokenList.addToken(
+            userToken = await tokenList.addToken(
                 userID,
                 ip=requestIP,
                 irc=False,
@@ -189,35 +190,38 @@ def handle(
         responseTokenString = userToken["token_id"]
 
         # Console output
-        log(
-            f"{username} ({userID}) logged in. "
-            f"({len(osuToken.get_token_ids()) - 1} online)",
-            Ansi.CYAN,
+        logging.info(
+            "User logged in",
+            extra={
+                "user_id": userID,
+                "username": username,
+                "online_users": len(await osuToken.get_token_ids()),
+            },
         )
 
         # Check restricted mode (and eventually send message)
-        osuToken.checkRestricted(userToken["token_id"])
+        await osuToken.checkRestricted(userToken["token_id"])
 
         """ osu!Akatuki account freezing. """
 
         # Get the user's `frozen` status from the DB
         # For a normal user, this will return 0.
         # For a frozen user, this will return a unix timestamp (the date of their pending restriction).
-        freeze_timestamp = userUtils.getFreezeTime(userID)
+        freeze_timestamp = await userUtils.getFreezeTime(userID)
         current_time = int(time.time())
 
         if freeze_timestamp:
             if freeze_timestamp == 1:  # Begin the timer.
-                freeze_timestamp = userUtils.beginFreezeTimer(userID)
+                freeze_timestamp = await userUtils.beginFreezeTimer(userID)
 
-            # reason = userUtils.getFreezeReason(userID)
+            # reason = await userUtils.getFreezeReason(userID)
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
-                aika_token = tokenList.getTokenFromUserID(999)
+                aika_token = await tokenList.getTokenFromUserID(999)
                 assert aika_token is not None
 
-                chat.sendMessage(
+                await chat.sendMessage(
                     token_id=aika_token["token_id"],
                     to=username,
                     message="\n".join(
@@ -234,10 +238,10 @@ def handle(
             else:  # We are restricting the user
                 # TODO: perhaps move this to the cron?
                 # right now a user can avoid a resitrction by simply not logging in lol..
-                userUtils.restrict(userID)
-                userUtils.unfreeze(userID, _log=False)
+                await userUtils.restrict(userID)
+                await userUtils.unfreeze(userID, _log=False)
 
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         "\n\n".join(
@@ -248,31 +252,31 @@ def handle(
                         ),
                     ),
                 )
-                logUtils.rap(
+                await rap_logs.send_rap_log(
                     userID,
                     "has been automatically restricted due to a pending freeze.",
                 )
-                logUtils.ac(
-                    f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
-                    "ac_general",
+                await rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
+                    discord_channel="ac_general",
                 )
 
         # Send message if premium / donor expires soon
         # This should NOT be done at login, but done by the cron
         if userToken["privileges"] & privileges.USER_DONOR:
-            expireDate = userUtils.getDonorExpire(userID)
+            expireDate = await userUtils.getDonorExpire(userID)
             premium = userToken["privileges"] & privileges.USER_PREMIUM
             rolename = "premium" if premium else "supporter"
 
             if current_time >= expireDate:
-                userUtils.setPrivileges(
+                await userUtils.setPrivileges(
                     userID,
                     userToken["privileges"] - privileges.USER_DONOR
                     | (privileges.USER_PREMIUM if premium else 0),
                 )
 
                 # 36 = supporter, 59 = premium
-                badges = glob.db.fetchAll(
+                badges = await glob.db.fetchAll(
                     "SELECT id FROM user_badges WHERE badge IN (59, 36) AND user = %s",
                     [userID],
                 )
@@ -280,24 +284,24 @@ def handle(
                     for (
                         badge
                     ) in badges:  # Iterate through user badges, deleting them all
-                        glob.db.execute(
+                        await glob.db.execute(
                             "DELETE FROM user_badges WHERE id = %s",
                             [badge["id"]],
                         )
 
                 # Remove their custom privileges
-                glob.db.execute(
+                await glob.db.execute(
                     "UPDATE users_stats set can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
                     [userID],
                 )
 
-                logUtils.ac(
-                    f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
-                    "ac_confidential",
+                await rap_logs.send_rap_log(userID, f"{rolename} subscription expired.")
+                await rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
+                    discord_channel="ac_confidential",
                 )
-                logUtils.rap(userID, f"{rolename} subscription expired.")
 
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         "\n\n".join(
@@ -315,7 +319,7 @@ def handle(
                 expireDate - current_time <= 86400 * 7
             ):  # Notify within 7 days of expiry
                 expireIn = generalUtils.secondsToReadable(expireDate - current_time)
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         f"Your {rolename} tag expires in {expireIn}.",
@@ -323,13 +327,13 @@ def handle(
                 )
 
         # Set silence end UNIX time in token
-        osuToken.update_token(
+        await osuToken.update_token(
             userToken["token_id"],
-            silence_end_time=userUtils.getSilenceEnd(userID),
+            silence_end_time=await userUtils.getSilenceEnd(userID),
         )
 
         # Get only silence remaining seconds
-        silenceSeconds = osuToken.getSilenceSecondsLeft(userToken["token_id"])
+        silenceSeconds = await osuToken.getSilenceSecondsLeft(userToken["token_id"])
 
         # Get supporter/GMT
         userGMT = osuToken.is_staff(userToken["privileges"])
@@ -344,7 +348,7 @@ def handle(
 
         # Send login notification before maintenance message
         if glob.banchoConf.config["loginNotification"]:
-            osuToken.enqueue(
+            await osuToken.enqueue(
                 userToken["token_id"],
                 serverPackets.notification(
                     glob.banchoConf.config["loginNotification"].format(
@@ -357,11 +361,11 @@ def handle(
         if glob.banchoConf.config["banchoMaintenance"]:
             if not userGMT:
                 # We are not mod/admin, delete token, send notification and logout
-                tokenList.deleteToken(responseTokenString)
+                await tokenList.deleteToken(responseTokenString)
                 raise exceptions.banchoMaintenanceException()
             else:
                 # We are mod/admin, send warning notification and continue
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
                         "Akatsuki is currently in maintenance mode. Only admins have full access to the server.\n"
@@ -370,72 +374,88 @@ def handle(
                 )
 
         # Send all needed login packets
-        osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
-        osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
-        osuToken.enqueue(
+        await osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
+        await osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
+        await osuToken.enqueue(
             userToken["token_id"],
             serverPackets.silenceEndTime(silenceSeconds),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"],
             serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"],
-            serverPackets.userPanel(userID, force=True),
+            await serverPackets.userPanel(userID, force=True),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             userToken["token_id"],
-            serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(userID, force=True),
         )
 
         # Default opened channels.
-        chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
-        chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
+        await chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
+        await chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
 
         # Join role-related channels.
         if userToken["privileges"] & privileges.ADMIN_CAKER:
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#devlog")
+            await chat.joinChannel(
+                token_id=userToken["token_id"],
+                channel_name="#devlog",
+            )
         if osuToken.is_staff(userToken["privileges"]):
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#staff")
+            await chat.joinChannel(
+                token_id=userToken["token_id"],
+                channel_name="#staff",
+            )
         if userToken["privileges"] & privileges.USER_PREMIUM:
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#premium")
+            await chat.joinChannel(
+                token_id=userToken["token_id"],
+                channel_name="#premium",
+            )
         if userToken["privileges"] & privileges.USER_DONOR:
-            chat.joinChannel(token_id=userToken["token_id"], channel_name="#supporter")
+            await chat.joinChannel(
+                token_id=userToken["token_id"],
+                channel_name="#supporter",
+            )
 
         # Output channels info
-        for channel in channelList.getChannels():
+        for channel in await channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
-                client_count = stream.getClientCount(f"chat/{channel['name']}")
+                client_count = await stream.getClientCount(f"chat/{channel['name']}")
                 packet_data = serverPackets.channelInfo(
                     channel["name"],
                     channel["description"],
                     client_count,
                 )
-                osuToken.enqueue(userToken["token_id"], packet_data)
+                await osuToken.enqueue(userToken["token_id"], packet_data)
 
         # Channel info end.
-        osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
+        await osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
 
         # Send friends list
-        osuToken.enqueue(userToken["token_id"], serverPackets.friendList(userID))
+        friends_list = await userUtils.getFriendList(userID)
+        await osuToken.enqueue(
+            userToken["token_id"],
+            serverPackets.friendList(userID, friends_list),
+        )
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
-            osuToken.enqueue(
+            await osuToken.enqueue(
                 userToken["token_id"],
                 serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
             )
 
         # Save token in redis
-        glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
+        await glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
 
         # Send online users' panels
-        for token in osuToken.get_tokens():
+        for token in await osuToken.get_tokens():
             if not osuToken.is_restricted(token["privileges"]):
-                osuToken.enqueue(
+                await osuToken.enqueue(
                     userToken["token_id"],
-                    serverPackets.userPanel(token["user_id"]),
+                    await serverPackets.userPanel(token["user_id"]),
                 )
 
         # Get location and country from ip.zxq.co or database.
@@ -449,16 +469,16 @@ def handle(
             country = 0
 
         # Set location and country
-        osuToken.setLocation(userToken["token_id"], latitude, longitude)
-        osuToken.update_token(userToken["token_id"], country=country)
+        await osuToken.setLocation(userToken["token_id"], latitude, longitude)
+        await osuToken.update_token(userToken["token_id"], country=country)
 
         # Set country in db if user has no country (first bancho login)
-        if userUtils.getCountry(userID) == "XX":
-            userUtils.setCountry(userID, countryLetters)
+        if await userUtils.getCountry(userID) == "XX":
+            await userUtils.setCountry(userID, countryLetters)
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
-            streamList.broadcast("main", serverPackets.userPanel(userID))
+            await streamList.broadcast("main", await serverPackets.userPanel(userID))
 
         glob.amplitude.track(
             BaseEvent(
@@ -512,7 +532,7 @@ def handle(
         )
 
         # Set reponse data to right value and reset our queue
-        responseData = osuToken.dequeue(userToken["token_id"])
+        responseData = await osuToken.dequeue(userToken["token_id"])
     except exceptions.loginFailedException:
         # Login failed error packet
         # (we don't use enqueue because we don't have a token since login has failed)
@@ -536,7 +556,7 @@ def handle(
     except exceptions.banchoMaintenanceException:
         # Bancho is in maintenance mode
         if userToken:
-            responseData = osuToken.dequeue(userToken["token_id"])
+            responseData = await osuToken.dequeue(userToken["token_id"])
         else:
             responseData.clear()
         responseData += serverPackets.notification(
@@ -570,19 +590,27 @@ def handle(
         if not restricted and (
             v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
         ):
-            logUtils.ac(
-                f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
-                "ac_general",
+            await rap_logs.send_rap_log_as_discord_webhook(
+                message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
+                discord_channel="ac_general",
             )
     except:
-        log(f"Unknown error\n```\n{exc_info()}\n{format_exc()}```", Ansi.LRED)
+        logging.exception("An unhandled exception occurred during login")
     finally:
         # Console and discord log
         if len(loginData) < 3:
-            logUtils.ac(
-                f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
-                "ac_confidential",
+            logging.warning(
+                "Invalid bancho login request",
+                extra={
+                    "reason": "insufficient_post_data",
+                    "ip": requestIP,
+                },
             )
+        # TODO: re-add discord webhook
+        await rap_logs.send_rap_log_as_discord_webhook(
+            message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
+            discord_channel="ac_confidential",
+        )
 
         # Return token string and data
         return responseTokenString, bytes(responseData)

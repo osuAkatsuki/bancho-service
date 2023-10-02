@@ -2,30 +2,32 @@
 from __future__ import annotations
 
 import time
+from typing import Optional
 from typing import TYPE_CHECKING
 
+import httpx
 from amplitude import Amplitude
 from amplitude import Config as AmplitudeConfig
 
 import settings
-from common.ddog import datadogClient
 
 if TYPE_CHECKING:
-    from concurrent.futures import ThreadPoolExecutor
+    from redis.asyncio import Redis
 
-    from redis import Redis
-    from common.db import dbConnector
-    from objects.banchoConfig import banchoConfig
+    from objects.dbPool import DBPool
+    from common.ddog.datadogClient import datadogClient
     from irc.ircserver import Server as IRCServer
+    from objects.banchoConfig import banchoConfig
+
 
 DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
+http_client = httpx.AsyncClient()
 application = None
-db: dbConnector.db
+db: DBPool
 redis: Redis
 banchoConf: banchoConfig
-dog = datadogClient.datadogClient()
-pool: ThreadPoolExecutor
+dog: Optional[datadogClient] = None
 ircServer: IRCServer
 
 restarting = False
@@ -33,10 +35,8 @@ restarting = False
 startTime = int(time.time())
 latestBuild = 0
 
-
 groupPrivileges: dict[str, int] = {}
 bcrypt_cache: dict[bytes, bytes] = {}
-
 
 amplitude = Amplitude(
     settings.AMPLITUDE_API_KEY,

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import datetime as dt
-from json import dumps
 from time import time
 from typing import Any
 
-from requests import post
-
-from common.log import logUtils as log
+from objects import glob
 
 
 class Webhook:
@@ -123,25 +121,29 @@ class Webhook:
         empty = all(not d for d in data["embeds"])
 
         if empty and "content" not in data:
-            print("You cant post an empty payload.")
+            logging.error("Attempted to post an empty payload in a discord webhook")
         if empty:
             data["embeds"] = []
 
-        return dumps(data, indent=4)
+        return data
 
-    def post(self):
+    async def post(self):
         """
         Send the JSON formated object to the specified `self.url`.
         """
 
-        r = post(
+        response = await glob.http_client.post(
             self.url,
-            data=self.json,
-            timeout=1,
-            headers={"Content-Type": "application/json"},
+            json=self.json,
         )
 
-        if not r or r.status_code == 400:
-            log.error(f"Failed to post discord webhook.")
+        if response.status_code not in range(200, 300):
+            logging.error(
+                "Failed to post discord webhook.",
+                extra={
+                    "status_code": response.status_code,
+                    "response": response.text,
+                },
+            )
         else:
-            log.info("Posted webhook to Discord.")
+            logging.info("Posted webhook to Discord.")

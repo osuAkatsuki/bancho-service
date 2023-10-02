@@ -6,10 +6,13 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, _):
+async def handle(userToken: Token, _):
     # Add user to users in lobby
-    osuToken.joinStream(userToken["token_id"], "lobby")
+    await osuToken.joinStream(userToken["token_id"], "lobby")
 
     # Send matches data
-    for match_id in match.get_match_ids():
-        osuToken.enqueue(userToken["token_id"], serverPackets.createMatch(match_id))
+    for match_id in await match.get_match_ids():
+        await osuToken.enqueue(
+            userToken["token_id"],
+            await serverPackets.createMatch(match_id),
+        )

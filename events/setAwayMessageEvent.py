@@ -7,12 +7,12 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     # Read packet data
     packetData = clientPackets.setAwayMessage(rawPacketData)
 
     # Set token away message
-    osuToken.update_token(
+    await osuToken.update_token(
         userToken["token_id"],
         away_message=packetData["awayMessage"],
     )
@@ -23,7 +23,7 @@ def handle(userToken: Token, rawPacketData: bytes):
     else:
         fokaMessage = f"Your away message is now: {packetData['awayMessage']}."
 
-    osuToken.enqueue(
+    await osuToken.enqueue(
         userToken["token_id"],
         serverPackets.sendMessage(
             fro=glob.BOT_NAME,

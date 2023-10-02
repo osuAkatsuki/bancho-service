@@ -10,9 +10,9 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.type = "int"
 
-    def handle(self, userID):
+    async def handle(self, userID):
         if (userID := super().parseData(userID)) is None:
             return
 
-        if targetToken := tokenList.getTokenFromUserID(userID):
+        if targetToken := await tokenList.getTokenFromUserID(userID):
             osuToken.silence(targetToken["token_id"])

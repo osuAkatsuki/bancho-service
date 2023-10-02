@@ -11,6 +11,7 @@ The high-level code has been rewritten to make it compatible with bancho-service
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import select
 import socket
@@ -19,7 +20,6 @@ import time
 import traceback
 
 import settings
-from common.log import logUtils as log
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import channelList
@@ -56,7 +56,7 @@ class Client:
         self.supposedUserID = 0
         self.joinedChannels = []
 
-    def messageChannel(self, channel, command, message, includeSelf=False):
+    async def messageChannel(self, channel, command, message, includeSelf=False):
         line = f":{command} {message}"
         for value in self.server.clients.values():
             if channel in value.joinedChannels and (value != self or includeSelf):
@@ -129,7 +129,11 @@ class Client:
         """
         self.replyCode(403, f"{command} :Not enough parameters")
 
-    def disconnect(self, quitmsg: str = "Client quit", callLogout: bool = True) -> None:
+    async def disconnect(
+        self,
+        quitmsg: str = "Client quit",
+        callLogout: bool = True,
+    ) -> None:
         """
         Disconnects this client from the IRC server
 
@@ -140,8 +144,14 @@ class Client:
         # Send error to client and close socket
         self.message(f"ERROR :{quitmsg}")
         self.socket.close()
-        log.info(
-            f"[IRC] Disconnected connection from {self.ip}:{self.port} ({quitmsg})",
+
+        logging.info(
+            "IRC client disconnected",
+            extra={
+                "ip": self.ip,
+                "port": self.port,
+                "quit_msg": quitmsg,
+            },
         )
 
         # Remove socket from server
@@ -149,9 +159,9 @@ class Client:
 
         # Bancho logout
         if callLogout and self.banchoUsername != "":
-            chat.IRCDisconnect(self.IRCUsername)
+            await chat.IRCDisconnect(self.IRCUsername)
 
-    def readSocket(self) -> None:
+    async def readSocket(self) -> None:
         """
         Read data coming from this client socket
 
@@ -160,24 +170,26 @@ class Client:
         try:
             # Try to read incoming data from socket
             data = self.socket.recv(2**10)
-            log.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
+            logging.debug(f"[IRC] [{self.ip}:{self.port}] -> {data}")
             quitmsg = "EOT"
-        except OSError as x:
+        except OSError:
             # Error while reading data, this client will be disconnected
+            logging.exception("[IRC] An error occurred while reading data from socket")
+
             data = b""
-            quitmsg = x
+            quitmsg = "An error occurred"
 
         if data:
             # Parse received data if needed
             self.__readbuffer += data.decode("latin_1")
-            self.parseBuffer()
+            await self.parseBuffer()
             self.__timestamp = time.time()
             self.__sentPing = False
         else:
             # No data, disconnect this socket
-            self.disconnect(quitmsg)
+            await self.disconnect(quitmsg)
 
-    def parseBuffer(self) -> None:
+    async def parseBuffer(self) -> None:
         """
         Parse self.__readbuffer, get command, arguments and call its handler
 
@@ -215,9 +227,9 @@ class Client:
                         arguments.append(y[1])
 
             # Handle command with its arguments
-            self.__handleCommand(command, arguments)
+            await self.__handleCommand(command, arguments)
 
-    def writeSocket(self) -> None:
+    async def writeSocket(self) -> None:
         """
         Write buffer to socket
 
@@ -225,12 +237,20 @@ class Client:
         """
         try:
             sent = self.socket.send(self.__writebuffer.encode())
-            log.debug(f"[IRC] [{self.ip}:{self.port}] <- {self.__writebuffer[:sent]}")
+            logging.debug(
+                "IRC client data transmitted",
+                extra={
+                    "ip": self.ip,
+                    "port": self.port,
+                    "quit_msg": self.__writebuffer[:sent],
+                },
+            )
             self.__writebuffer = self.__writebuffer[sent:]
-        except OSError as x:
-            self.disconnect(str(x))
+        except OSError:
+            logging.exception("[IRC] An error occurred while writing data to socket")
+            await self.disconnect("An error occurred")
 
-    def checkAlive(self) -> None:
+    async def checkAlive(self) -> None:
         """
         Check if this client is still connected.
         If the client is dead, disconnect it.
@@ -239,7 +259,7 @@ class Client:
         """
         now = time.time()
         if self.__timestamp + 180 < now:
-            self.disconnect("ping timeout")
+            await self.disconnect("ping timeout")
             return
         if not self.__sentPing and self.__timestamp + 90 < now:
             if self.__handleCommand == self.mainHandler:
@@ -248,9 +268,9 @@ class Client:
                 self.__sentPing = True
             else:
                 # Not registered.
-                self.disconnect("ping timeout")
+                await self.disconnect("ping timeout")
 
-    def sendLusers(self) -> None:
+    async def sendLusers(self) -> None:
         """
         Send lusers response to this client
 
@@ -258,10 +278,10 @@ class Client:
         """
         self.replyCode(
             251,
-            f"There are {len(osuToken.get_token_ids())} users and 0 services on 1 server",
+            f"There are {len(await osuToken.get_token_ids())} users and 0 services on 1 server",
         )
 
-    def sendMotd(self) -> None:
+    async def sendMotd(self) -> None:
         """
         Send MOTD to this client
 
@@ -279,10 +299,10 @@ class Client:
     HANDLERS
     """ """"""
 
-    def dummyHandler(self, command: str, arguments: list[str]) -> None:
+    async def dummyHandler(self, command: str, arguments: list[str]) -> None:
         pass
 
-    def passHandler(self, command: str, arguments: list[str]) -> None:
+    async def passHandler(self, command: str, arguments: list[str]) -> None:
         """PASS command handler"""
         if command == "PASS":
             if len(arguments) == 0:
@@ -292,7 +312,7 @@ class Client:
                 m = hashlib.md5()
                 m.update(arguments[0].encode("utf-8"))
                 tokenHash = m.hexdigest()
-                supposedUser = glob.db.fetch(
+                supposedUser = await glob.db.fetch(
                     "SELECT users.username, users.id FROM users LEFT JOIN irc_tokens ON users.id = irc_tokens.userid WHERE irc_tokens.token = %s LIMIT 1",
                     [tokenHash],
                 )
@@ -306,9 +326,9 @@ class Client:
                     # Wrong IRC Token
                     self.reply("464 :Password incorrect")
         elif command == "QUIT":
-            self.disconnect()
+            await self.disconnect()
 
-    def registerHandler(self, command: str, arguments: list[str]) -> None:
+    async def registerHandler(self, command: str, arguments: list[str]) -> None:
         """NICK and USER commands handler"""
         if command == "NICK":
             if len(arguments) < 1:
@@ -334,8 +354,8 @@ class Client:
 
             # Make sure we are not connected to Bancho
             token = tokenList.getTokenFromUsername(
-                chat.fixUsernameForBancho(nick),
-                True,
+                await chat.fixUsernameForBancho(nick),
+                ignoreIRC=True,
             )
             if token:
                 self.reply(f"433 * {nick} :Nickname is already in use")
@@ -343,7 +363,7 @@ class Client:
 
             # Everything seems fine, set username (nickname)
             self.IRCUsername = nick  # username for IRC
-            self.banchoUsername = chat.fixUsernameForBancho(
+            self.banchoUsername = await chat.fixUsernameForBancho(
                 self.IRCUsername,
             )  # username for bancho
 
@@ -360,7 +380,7 @@ class Client:
             return
         elif command == "QUIT":
             # Disconnect if we have received a QUIT command
-            self.disconnect()
+            await self.disconnect()
             return
         else:
             # Ignore any other command while logging in
@@ -369,7 +389,7 @@ class Client:
         # If we now have a valid username, connect to bancho and send IRC welcome stuff
         if self.IRCUsername != "":
             # Bancho connection
-            chat.IRCConnect(self.banchoUsername)
+            await chat.IRCConnect(self.banchoUsername)
 
             # IRC reply
             self.replyCode(1, "Welcome to the Internet Relay Network")
@@ -379,22 +399,22 @@ class Client:
             )
             self.replyCode(3, "This server was created since the beginning")
             self.replyCode(4, f"{self.server.host} bancho-service o o")
-            self.sendLusers()
-            self.sendMotd()
+            await self.sendLusers()
+            await self.sendMotd()
             self.__handleCommand = self.mainHandler
 
-    def quitHandler(self, _, arguments: list[str]) -> None:
+    async def quitHandler(self, _, arguments: list[str]) -> None:
         """QUIT command handler"""
-        self.disconnect(self.IRCUsername if len(arguments) < 1 else arguments[0])
+        await self.disconnect(self.IRCUsername if len(arguments) < 1 else arguments[0])
 
-    def joinHandler(self, _, arguments: list[str]) -> None:
+    async def joinHandler(self, _, arguments: list[str]) -> None:
         """JOIN command handler"""
         if len(arguments) < 1:
             self.reply461("JOIN")
             return
 
         # Get bancho token object
-        token = tokenList.getTokenFromUsername(self.banchoUsername)
+        token = await tokenList.getTokenFromUsername(self.banchoUsername)
         if token is None:
             return
 
@@ -419,13 +439,13 @@ class Client:
                 continue
 
             # Attempt to join the channel
-            response = chat.IRCJoinChannel(self.banchoUsername, channel_name)
+            response = await chat.IRCJoinChannel(self.banchoUsername, channel_name)
             if response == 0:
                 # Joined successfully
                 self.joinedChannels.append(channel_name)
 
                 # Let everyone in this channel know that we've joined
-                self.messageChannel(
+                await self.messageChannel(
                     channel_name,
                     f"{self.IRCUsername} JOIN",
                     channel_name,
@@ -433,7 +453,7 @@ class Client:
                 )
 
                 # Send channel description (topic)
-                channel = channelList.getChannel(channel_name)
+                channel = await channelList.getChannel(channel_name)
                 if channel is None:
                     self.reply403(channel_name)
                     continue
@@ -444,13 +464,13 @@ class Client:
                     self.replyCode(332, channel["description"], channel=channel_name)
 
                 # Build connected users list
-                if f"chat/{channel_name}" not in streamList.getStreams():
+                if f"chat/{channel_name}" not in await streamList.getStreams():
                     self.reply403(channel_name)
                     continue
-                users = stream.getClients(f"chat/{channel_name}")
+                users = await stream.getClients(f"chat/{channel_name}")
                 usernames = []
                 for user in users:
-                    token = osuToken.get_token(user)
+                    token = await osuToken.get_token(user)
                     if token is None:
                         continue
                     usernames.append(
@@ -466,14 +486,14 @@ class Client:
                 self.reply403(channel_name)
                 continue
 
-    def partHandler(self, _, arguments: list[str]) -> None:
+    async def partHandler(self, _, arguments: list[str]) -> None:
         """PART command handler"""
         if len(arguments) < 1:
             self.reply461("PART")
             return
 
         # Get bancho token object
-        token = tokenList.getTokenFromUsername(self.banchoUsername)
+        token = await tokenList.getTokenFromUsername(self.banchoUsername)
         if token is None:
             return
 
@@ -484,7 +504,9 @@ class Client:
             # Make sure we in that channel
             # (we already check this bancho-side, but we need to do it
             # also here k maron)
-            if channel.lower() not in osuToken.get_joined_channels(token["token_id"]):
+            if channel.lower() not in await osuToken.get_joined_channels(
+                token["token_id"],
+            ):
                 continue
 
             # Attempt to part the channel
@@ -497,7 +519,7 @@ class Client:
             elif response == 442:
                 self.replyCode(442, "You're not on that channel", channel=channel)
 
-    def noticePrivmsgHandler(self, command: str, arguments: list[str]) -> None:
+    async def noticePrivmsgHandler(self, command: str, arguments: list[str]) -> None:
         """NOTICE and PRIVMSG commands handler (same syntax)"""
         # Syntax check
         if len(arguments) == 0:
@@ -511,10 +533,10 @@ class Client:
 
         # Send the message to bancho and reply
         if not recipientIRC.startswith("#"):
-            recipientBancho = chat.fixUsernameForBancho(recipientIRC)
+            recipientBancho = await chat.fixUsernameForBancho(recipientIRC)
         else:
             recipientBancho = recipientIRC
-        response = chat.sendMessage(
+        response = await chat.sendMessage(
             self.banchoUsername,
             recipientBancho,
             message,
@@ -533,7 +555,7 @@ class Client:
         # Send the message to IRC and bancho
         if recipientIRC.startswith("#"):
             # Public message (IRC)
-            if recipientIRC not in channelList.getChannelNames():
+            if recipientIRC not in await channelList.getChannelNames():
                 self.replyCode(401, "No such nick/channel", channel=recipientIRC)
                 return
             for value in self.server.clients.values():
@@ -549,27 +571,28 @@ class Client:
                         f":{self.IRCUsername} PRIVMSG {recipientIRC} :{message}",
                     )
 
-    def motdHandler(self, command: str, arguments: list[str]) -> None:
+    async def motdHandler(self, command: str, arguments: list[str]) -> None:
         """MOTD command handler"""
-        self.sendMotd()
+        await self.sendMotd()
 
-    def lusersHandler(self, command: str, arguments: list[str]) -> None:
+    async def lusersHandler(self, command: str, arguments: list[str]) -> None:
         """LUSERS command handler"""
-        self.sendLusers()
+        await self.sendLusers()
 
-    def pingHandler(self, _, arguments: list[str]) -> None:
+    async def pingHandler(self, _, arguments: list[str]) -> None:
         """PING command handler"""
         if len(arguments) < 1:
             self.replyCode(409, "No origin specified")
             return
         self.reply(f"PONG {self.server.host} :{arguments[0]}")
 
-    def pongHandler(self, command: str, arguments: list[str]) -> None:
+    async def pongHandler(self, command: str, arguments: list[str]) -> None:
         """(fake) PONG command handler"""
 
-    def awayHandler(self, _, arguments: list[str]) -> None:
+    async def awayHandler(self, _, arguments: list[str]) -> None:
         """AWAY command handler"""
-        response = chat.IRCAway(self.banchoUsername, " ".join(arguments))
+        response = await chat.IRCAway(self.banchoUsername, " ".join(arguments))
+        assert response is not None
         self.replyCode(
             response,
             "You are no longer marked as being away"
@@ -577,7 +600,7 @@ class Client:
             else "You have been marked as being away",
         )
 
-    def mainHandler(self, command: str, arguments: list[str]) -> None:
+    async def mainHandler(self, command: str, arguments: list[str]) -> None:
         """
         Handler for post-login commands
         """
@@ -603,7 +626,7 @@ class Client:
             "USER": self.dummyHandler,
         }
         try:
-            handlers[command](command, arguments)
+            await handlers[command](command, arguments)
         except KeyError:
             self.replyCode(421, f"Unknown command ({command})")
 
@@ -612,14 +635,19 @@ class Server:
     def __init__(self, port: int):
         self.host = settings.IRC_HOSTNAME
         self.port = port
-        self.clients = {}  # Socket - - > Client instance.
+        self.clients: dict[socket.socket, Client] = {}
         self.motd = [
             "Welcome to bancho-service's embedded IRC server!",
             "This is a VERY simple IRC server and it's still in beta.",
             "Expect things to crash and not work as expected :(",
         ]
+        self.running = False
 
-    def forceDisconnection(self, username: str, isBanchoUsername: bool = True) -> None:
+    async def forceDisconnection(
+        self,
+        username: str,
+        isBanchoUsername: bool = True,
+    ) -> None:
         """
         Disconnect someone from IRC if connected
 
@@ -631,7 +659,7 @@ class Server:
             if (value.IRCUsername == username and not isBanchoUsername) or (
                 value.banchoUsername == username and isBanchoUsername
             ):
-                value.disconnect(callLogout=False)
+                await value.disconnect(callLogout=False)
                 break  # or dictionary changes size during iteration
 
     def banchoJoinChannel(self, username: str, channel: str) -> None:
@@ -692,7 +720,10 @@ class Server:
         if client.socket in self.clients:
             del self.clients[client.socket]
 
-    def start(self) -> None:
+    def close(self) -> None:
+        self.running = False
+
+    async def start(self) -> None:
         """
         Start IRC server main loop
 
@@ -702,14 +733,18 @@ class Server:
         serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             serversocket.bind(("0.0.0.0", self.port))
-        except OSError as e:
-            log.error(f"[IRC] Could not bind port {self.port}:{e}")
+        except OSError:
+            logging.exception(
+                "IRC server could not bind port",
+                extra={"port": self.port},
+            )
             sys.exit(1)
         serversocket.listen(5)
         lastAliveCheck = time.time()
 
         # Main server loop
-        while True:
+        self.running = True
+        while self.running:
             try:
                 (iwtd, owtd, ewtd) = select.select(
                     [serversocket] + [x.socket for x in self.clients.values()],
@@ -725,13 +760,14 @@ class Server:
                 # Handle incoming connections
                 for x in iwtd:
                     if x in self.clients:
-                        self.clients[x].readSocket()
+                        await self.clients[x].readSocket()
                     else:
                         conn, addr = x.accept()
                         try:
                             self.clients[conn] = Client(self, conn)
-                            log.info(
-                                f"[IRC] Accepted connection from {addr[0]}:{addr[1]}",
+                            logging.info(
+                                "IRC connection accepted",
+                                extra={"host": addr[0], "port": addr[1]},
                             )
                         except OSError:
                             try:
@@ -742,24 +778,26 @@ class Server:
                 # Handle outgoing connections
                 for x in owtd:
                     if x in self.clients:  # client may have been disconnected
-                        self.clients[x].writeSocket()
+                        await self.clients[x].writeSocket()
 
                 # Make sure all IRC clients are still connected
                 now = time.time()
                 if lastAliveCheck + 10 < now:
                     for client in list(self.clients.values()):
-                        client.checkAlive()
+                        await client.checkAlive()
                     lastAliveCheck = now
             except:
-                log.error(
-                    "[IRC] Unknown error!\n```\n{}\n{}```".format(
-                        sys.exc_info(),
-                        traceback.format_exc(),
-                    ),
-                )
+                logging.exception("Unknown error in IRC handling")
+
+        for client_socket, client in self.clients.items():
+            await client.disconnect()
+            client_socket.close()
+            del self.clients[client.socket]
+
+        serversocket.close()
 
 
-def main(port: int = 6667) -> None:
+async def main(port: int = 6667) -> None:
     """
     Create and start an IRC server
 
@@ -767,4 +805,4 @@ def main(port: int = 6667) -> None:
     :return:
     """
     glob.ircServer = Server(port)
-    glob.ircServer.start()
+    await glob.ircServer.start()

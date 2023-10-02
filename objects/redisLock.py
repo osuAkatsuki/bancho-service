@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import time
+from types import TracebackType
+from typing import Optional
 
 from objects import glob
 
@@ -12,22 +14,27 @@ class redisLock:
     def __init__(self, key: str) -> None:
         self.key = key
 
-    def _try_acquire(self, expiry: float) -> bool | None:
-        return glob.redis.set(self.key, "1", ex=expiry, nx=True)
+    async def try_acquire(self, expiry: float) -> Optional[bool]:
+        return await glob.redis.set(self.key, "1", ex=expiry, nx=True)
 
-    def acquire(
+    async def acquire(
         self,
         expiry: float = DEFAULT_LOCK_EXPIRY,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
-        while not self._try_acquire(expiry):
+        while not await self.try_acquire(expiry):
             time.sleep(retry_delay)
 
-    def release(self) -> None:
-        glob.redis.delete(self.key)
+    async def release(self) -> None:
+        await glob.redis.delete(self.key)
 
-    def __enter__(self) -> None:
-        self.acquire()
+    async def __aenter__(self) -> None:
+        await self.acquire()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        await self.release()

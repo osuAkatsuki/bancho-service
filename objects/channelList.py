@@ -5,9 +5,6 @@ import logging
 from typing import Optional
 from typing import TypedDict
 
-from cmyui.logging import Ansi
-from cmyui.logging import log
-
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -36,20 +33,20 @@ def make_key(channel_name: str) -> str:
     return f"bancho:channels:{channel_name}"
 
 
-def loadChannels() -> None:
+async def loadChannels() -> None:
     """
     Load chat channels from db and add them to channels list
     :return:
     """
     # Get channels from DB
-    channels = glob.db.fetchAll("SELECT * FROM bancho_channels")
+    channels = await glob.db.fetchAll("SELECT * FROM bancho_channels")
     assert channels is not None
 
     # Add each channel if needed
-    current_channels = glob.redis.smembers("bancho:channels")
+    current_channels = await glob.redis.smembers("bancho:channels")
     for chan in channels:
         if chan["name"] not in current_channels:
-            addChannel(
+            await addChannel(
                 chan["name"],
                 chan["description"],
                 chan["public_read"] == 1,
@@ -58,34 +55,34 @@ def loadChannels() -> None:
             )
 
 
-def getChannelNames() -> set[str]:
+async def getChannelNames() -> set[str]:
     """
     Get all channels from channels list
     :return: list of channels
     """
-    raw_channel_names: set[bytes] = glob.redis.smembers("bancho:channels")
+    raw_channel_names: set[bytes] = await glob.redis.smembers("bancho:channels")
     return {name.decode() for name in raw_channel_names}
 
 
-def getChannel(channel_name: str) -> Optional[Channel]:
+async def getChannel(channel_name: str) -> Optional[Channel]:
     """
     Get all channels from channels list
     :return: list of channels
     """
-    raw_channel = glob.redis.get(f"bancho:channels:{channel_name}")
+    raw_channel = await glob.redis.get(f"bancho:channels:{channel_name}")
     if raw_channel is None:
         return None
     return json.loads(raw_channel)
 
 
-def getChannels() -> list[Channel]:
+async def getChannels() -> list[Channel]:
     """
     Get all channels from channels list
     :return: list of channels
     """
     channels = []
-    for channel_name in getChannelNames():
-        channel = getChannel(channel_name)
+    for channel_name in await getChannelNames():
+        channel = await getChannel(channel_name)
         if channel is None:
             continue
 
@@ -94,7 +91,7 @@ def getChannels() -> list[Channel]:
     return channels
 
 
-def addChannel(
+async def addChannel(
     name: str,
     description: str,
     public_read: bool,
@@ -112,13 +109,13 @@ def addChannel(
     :param hidden: if True, thic channel won't be shown in channels list
     :return:
     """
-    channels = getChannelNames()
+    channels = await getChannelNames()
     if name in channels:
         return
 
-    streamList.add(f"chat/{name}")
-    glob.redis.sadd("bancho:channels", name)
-    glob.redis.set(
+    await streamList.add(f"chat/{name}")
+    await glob.redis.sadd("bancho:channels", name)
+    await glob.redis.set(
         make_key(name),
         json.dumps(
             {
@@ -132,44 +129,50 @@ def addChannel(
         ),
     )
     # Make Foka join the channel
-    fokaToken = tokenList.getTokenFromUserID(999)
-    assert fokaToken is not None
+    fokaToken = await tokenList.getTokenFromUserID(999)
     if fokaToken:
         try:
-            osuToken.joinChannel(fokaToken["token_id"], name)
+            await osuToken.joinChannel(fokaToken["token_id"], name)
         except exceptions.userAlreadyInChannelException:
-            logging.warning(f"{glob.BOT_NAME} has already joined channel {name}")
-    log(f"Created channel {name}.")
+            logging.warning(
+                "User already in public chat channel",
+                extra={"username": glob.BOT_NAME, "channel_name": name},
+            )
+
+    logging.info("Created chat channel in redis", extra={"channel_name": name})
 
 
-def removeChannel(name: str) -> None:
+async def removeChannel(name: str) -> None:
     """
     Removes a channel from channels list
     :param name: channel name
     :return:
     """
-    channels = getChannelNames()
+    channels = await getChannelNames()
     if name not in channels:
-        log(f"{name} is not in channels list?", Ansi.LYELLOW)
+        logging.warning(
+            "Attempted to remove channel from redis that does not exist",
+            extra={"channel_name": name},
+        )
         return
 
-    streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
-    for token_id in stream.getClients(f"chat/{name}"):
-        token = osuToken.get_token(token_id)
+    await streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
+    for token_id in await stream.getClients(f"chat/{name}"):
+        token = await osuToken.get_token(token_id)
         if token is not None:
-            chat.partChannel(
+            await chat.partChannel(
                 channel_name=name,
                 token_id=token_id,
                 kick=True,
             )
-    streamList.dispose(f"chat/{name}")
-    streamList.remove(f"chat/{name}")
-    glob.redis.delete(make_key(name))
-    glob.redis.srem("bancho:channels", name)
-    log(f"Removed channel {name}.")
+    await streamList.dispose(f"chat/{name}")
+    await streamList.remove(f"chat/{name}")
+    await glob.redis.delete(make_key(name))
+    await glob.redis.srem("bancho:channels", name)
+    logging.info("Deleted channel from redis", extra={"channel_name": name})
 
 
-def updateChannel(
+async def updateChannel(
     name: str,
     description: Optional[str] = None,
     public_read: Optional[bool] = None,
@@ -185,7 +188,7 @@ def updateChannel(
     :param public_write: same as public read, but regards writing permissions
     :return:
     """
-    channel = getChannel(name)
+    channel = await getChannel(name)
     if channel is None:
         raise exceptions.channelUnknownException()
 
@@ -200,11 +203,11 @@ def updateChannel(
     if moderated is not None:
         channel["moderated"] = moderated
 
-    glob.redis.set(make_key(name), json.dumps(channel))
-    log(f"Updated channel {name}.")
+    await glob.redis.set(make_key(name), json.dumps(channel))
+    logging.info("Updated channel in redis", extra={"channel_name": name})
 
 
-def getMatchIDFromChannel(channel_name: str) -> int:
+async def getMatchIDFromChannel(channel_name: str) -> int:
     if not channel_name.lower().startswith("#multi_"):
         raise exceptions.wrongChannelException()
 
@@ -213,7 +216,7 @@ def getMatchIDFromChannel(channel_name: str) -> int:
         raise exceptions.wrongChannelException()
 
     matchID = int(parts[1])
-    if matchID not in match.get_match_ids():
+    if matchID not in await match.get_match_ids():
         raise exceptions.matchNotFoundException()
 
     return matchID

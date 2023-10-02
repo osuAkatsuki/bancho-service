@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
 from constants import clientPackets
 from constants import exceptions
 from constants import serverPackets
@@ -14,7 +15,7 @@ from objects import osuToken
 from objects.redisLock import redisLock
 
 
-def handle(token: osuToken.Token, rawPacketData: bytes):
+async def handle(token: osuToken.Token, rawPacketData: bytes):
     try:
         # Read packet data
         packetData = clientPackets.createMatch(rawPacketData)
@@ -26,7 +27,7 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
 
         # Create a match object
         # TODO: Player number check
-        match_id = matchList.createMatch(
+        match_id = await matchList.createMatch(
             match_name,
             packetData["matchPassword"].strip(),
             packetData["beatmapID"],
@@ -36,19 +37,19 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
             token["user_id"],
         )
 
-        # Make sure the match has been created
-        multiplayer_match = match.get_match(match_id)
-        if multiplayer_match is None:
-            raise exceptions.matchCreateError()
+        async with redisLock(f"{match.make_key(match_id)}:lock"):
+            # Make sure the match has been created
+            multiplayer_match = await match.get_match(match_id)
+            if multiplayer_match is None:
+                raise exceptions.matchCreateError()
 
-        with redisLock(f"{match.make_key(match_id)}:lock"):
             # Join that match
-            osuToken.joinMatch(token["token_id"], match_id)
+            await osuToken.joinMatch(token["token_id"], match_id)
 
             # Give host to match creator
-            match.setHost(match_id, token["user_id"])
-            match.sendUpdates(match_id)
-            match.changePassword(match_id, packetData["matchPassword"])
+            await match.setHost(match_id, token["user_id"])
+            await match.sendUpdates(match_id)
+            await match.changePassword(match_id, packetData["matchPassword"])
 
         glob.amplitude.track(
             BaseEvent(
@@ -86,5 +87,5 @@ def handle(token: osuToken.Token, rawPacketData: bytes):
         )
 
     except exceptions.matchCreateError:
-        log.error("Error while creating match!")
-        osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)
+        logging.exception("An error occurred while creating a multiplayer match")
+        await osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)

@@ -8,9 +8,9 @@ from objects import glob
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     channel_name = clientPackets.channelJoin(rawPacketData)["channel"]
-    chat.partChannel(token_id=userToken["token_id"], channel_name=channel_name)
+    await chat.partChannel(token_id=userToken["token_id"], channel_name=channel_name)
 
     glob.amplitude.track(
         BaseEvent(

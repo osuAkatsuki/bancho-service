@@ -9,15 +9,15 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     # Make sure we are not banned
-    # if userUtils.isBanned(userID):
+    # if await userUtils.isBanned(userID):
     # 	userToken.enqueue(serverPackets.loginBanned)
     # 	return
 
     # Send restricted message if needed
     # if userToken["restricted"]:
-    # 	userToken.checkRestricted(True)
+    # 	await userToken.checkRestricted(True)
 
     # Change action packet
     packetData = clientPackets.userActionChange(rawPacketData)
@@ -46,7 +46,7 @@ def handle(userToken: Token, rawPacketData: bytes):
         should_update_cached_stats = True
 
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-    user_pp = userUtils.getPP(
+    user_pp = await userUtils.getPP(
         userToken["user_id"],
         userToken["game_mode"],
         userToken["relax"],
@@ -63,7 +63,7 @@ def handle(userToken: Token, rawPacketData: bytes):
         userToken["game_mode"] = packetData["gameMode"]
         should_update_cached_stats = True
 
-    osuToken.update_token(
+    await osuToken.update_token(
         userToken["token_id"],
         relax=userToken["relax"],
         autopilot=userToken["autopilot"],
@@ -76,13 +76,13 @@ def handle(userToken: Token, rawPacketData: bytes):
         beatmap_id=packetData["beatmapID"],
     )
     if should_update_cached_stats:
-        osuToken.updateCachedStats(userToken["token_id"])
+        await osuToken.updateCachedStats(userToken["token_id"])
 
     # Enqueue our new user panel and stats to us and our spectators
     recipients = [userToken]
-    spectators = osuToken.get_spectators(userToken["token_id"])
+    spectators = await osuToken.get_spectators(userToken["token_id"])
     for spectator_user_id in spectators:
-        token = osuToken.get_token_by_user_id(spectator_user_id)
+        token = await osuToken.get_token_by_user_id(spectator_user_id)
         if token is not None:
             recipients.append(token)
 
@@ -90,11 +90,11 @@ def handle(userToken: Token, rawPacketData: bytes):
         # Force our own packet
         force = spectator == userToken
 
-        osuToken.enqueue(
+        await osuToken.enqueue(
             spectator["token_id"],
-            serverPackets.userPanel(userToken["user_id"], force),
+            await serverPackets.userPanel(userToken["user_id"], force),
         )
-        osuToken.enqueue(
+        await osuToken.enqueue(
             spectator["token_id"],
-            serverPackets.userStats(userToken["user_id"], force),
+            await serverPackets.userStats(userToken["user_id"], force),
         )

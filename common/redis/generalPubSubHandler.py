@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
-from typing import Optional
 
 
 def shape(d: dict) -> dict:
@@ -21,7 +22,7 @@ class wrongStructureError(Exception):
     pass
 
 
-class generalPubSubHandler:
+class generalPubSubHandler(ABC):
     __slots__ = ("structure", "type", "strict")
 
     def __init__(self) -> None:
@@ -29,7 +30,11 @@ class generalPubSubHandler:
         self.type = "json"
         self.strict = True
 
-    def parseData(self, data: bytes) -> Optional[Any]:
+    @abstractmethod
+    async def handle(self, userID):
+        ...
+
+    def parseData(self, data: bytes) -> Any:
         """
         Parse received data
 

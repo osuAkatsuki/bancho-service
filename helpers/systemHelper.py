@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from math import floor
 from os import _exit
 from os import getloadavg
@@ -7,31 +9,17 @@ from os import getpid
 from os import kill
 from os import name
 from signal import SIGKILL
-from threading import Timer
 from time import time
 from typing import Any
 from typing import NoReturn
 
 import psutil
 
-from common.constants import bcolors
-from common.log import logUtils as log
 from constants import serverPackets
-from helpers import consoleHelper
 from objects import glob
 from objects import match
 from objects import osuToken
 from objects import streamList
-
-
-def dispose() -> None:
-    """
-    Perform some clean up. Called on shutdown.
-
-    :return:
-    """
-    print("> Disposing server...")
-    consoleHelper.printColored("Goodbye!", bcolors.GREEN)
 
 
 def runningUnderUnix() -> bool:
@@ -43,7 +31,7 @@ def runningUnderUnix() -> bool:
     return name == "posix"
 
 
-def scheduleShutdown(
+async def scheduleShutdown(
     sendRestartTime: int,
     restart: bool,
     message: str = "",
@@ -59,26 +47,36 @@ def scheduleShutdown(
     :return:
     """
     # Console output
-    log.info(
-        f"bancho-service will {'restart' if restart else 'shutdown'} in {sendRestartTime + delay} seconds!",
+    logging.info(
+        "Service shutdown scheduled",
+        extra={
+            "type": "restart" if restart else "shutdown",
+            "wait_time": sendRestartTime,
+        },
     )
-    log.info(f"Sending server restart packets in {sendRestartTime} seconds...")
 
     # Send notification if set
     if message:
-        streamList.broadcast("main", serverPackets.notification(message))
+        await streamList.broadcast("main", serverPackets.notification(message))
 
     # Schedule server restart packet
-    Timer(
-        sendRestartTime,
-        streamList.broadcast,
-        ["main", serverPackets.banchoRestart(delay * 2 * 1000)],
-    ).start()
+    loop = asyncio.get_running_loop()
+    loop.call_later(
+        delay=sendRestartTime,
+        callback=lambda: asyncio.create_task(
+            streamList.broadcast(
+                "main",
+                serverPackets.banchoRestart(delay * 2 * 1000),
+            ),
+        ),
+    )
     glob.restarting = True
 
     # Schedule actual server shutdown/restart some seconds after server restart packet, so everyone gets it
-    action = restartServer if restart else shutdownServer
-    Timer(sendRestartTime + delay, action).start()
+    loop.call_later(
+        delay=sendRestartTime + delay,
+        callback=restartServer if restart else shutdownServer,
+    )
 
 
 def restartServer() -> NoReturn:
@@ -87,8 +85,7 @@ def restartServer() -> NoReturn:
 
     :return:
     """
-    log.info("Restarting bancho-service...")
-    dispose()
+    logging.info("Restarting bancho-service...")
 
     # TODO: publish to redis to restart and update lets
     _exit(0)  # restart handled by script now
@@ -100,13 +97,12 @@ def shutdownServer() -> NoReturn:  # type: ignore
 
     :return:
     """
-    log.info("Shutting down bancho-service...")
-    dispose()
+    logging.info("Shutting down bancho-service...")
     sig = SIGKILL  # if runningUnderUnix() else CTRL_C_EVENT
     kill(getpid(), sig)
 
 
-def getSystemInfo() -> dict[str, Any]:
+async def getSystemInfo() -> dict[str, Any]:
     """
     Get a dictionary with some system/server info
 
@@ -114,8 +110,8 @@ def getSystemInfo() -> dict[str, Any]:
     """
     data = {
         "unix": runningUnderUnix(),
-        "connectedUsers": len(osuToken.get_token_ids()),
-        "matches": len(match.get_match_ids()),
+        "connectedUsers": len(await osuToken.get_token_ids()),
+        "matches": len(await match.get_match_ids()),
     }
 
     # General stats

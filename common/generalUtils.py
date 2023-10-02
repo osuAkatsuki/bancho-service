@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from functools import partial
 from hashlib import md5
 from random import choice
@@ -15,7 +16,6 @@ from dill import dumps
 
 from common.constants import mods
 from common.constants import osuFlags as osu_flags
-from common.log import logUtils as log
 
 possible_chars = ascii_uppercase + digits
 
@@ -76,13 +76,13 @@ def fileMd5(filename: str) -> str:
 
 
 def getRank(
-    gameMode: Optional[int] = None,
-    __mods: Optional[int] = None,
-    acc: Optional[float] = None,
-    c300: Optional[int] = None,
-    c100: Optional[int] = None,
-    c50: Optional[int] = None,
-    cmiss: Optional[int] = None,
+    gameMode: int,
+    __mods: int,
+    acc: float,
+    c300: int,
+    c100: int,
+    c50: int,
+    cmiss: int,
     *,
     score_=None,
 ) -> str:
@@ -171,7 +171,7 @@ def getTimestamp(full: bool = False) -> str:
     return strftime("%Y-%m-%d %H:%M:%S" if full else "%H:%M:%S", localtime())
 
 
-def hexString(s: int) -> str:
+def hexString(s: str) -> str:
     """
     Output `s`'s bytes in DEX
     :param s: string
@@ -190,7 +190,7 @@ def getTotalSize(o: object) -> int:
     try:
         return len(dumps(o, recurse=True))
     except:
-        log.error("Error while getting total object size!")
+        logging.error("Error while getting total object size!")
         return 0
 
 

@@ -11,12 +11,12 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.structure = {"userID": 0, "message": ""}
 
-    def handle(self, data):
+    async def handle(self, data):
         if (data := super().parseData(data)) is None:
             return
 
-        if targetToken := tokenList.getTokenFromUserID(data["userID"]):
-            osuToken.enqueue(
+        if targetToken := await tokenList.getTokenFromUserID(data["userID"]):
+            await osuToken.enqueue(
                 targetToken["token_id"],
                 serverPackets.notification(data["message"]),
             )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import EventOptions
 from amplitude import Identify
 
@@ -11,16 +13,16 @@ from objects import osuToken
 from objects import tokenList
 
 
-def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
+async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
     try:
-        oldUsername = userUtils.getUsername(userID)
-        userUtils.changeUsername(userID, newUsername=newUsername)
-        userUtils.appendNotes(
+        oldUsername = await userUtils.getUsername(userID)
+        await userUtils.changeUsername(userID, newUsername=newUsername)
+        await userUtils.appendNotes(
             userID,
-            f"Username change: '{oldUsername}' -> '{newUsername}'",
+            notes=f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
         if targetToken:
-            osuToken.kick(
+            await osuToken.kick(
                 targetToken["token_id"],
                 f"Your username has been changed to {newUsername}. Please log in again.",
                 "username_change",
@@ -44,18 +46,39 @@ def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
         identify_obj.set("username", newUsername)
         glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
 
+        logging.info(
+            "Job successfully updated username",
+            extra={
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
     except userUtils.usernameAlreadyInUseError:
-        # log.rap(999, "Username change: {} is already in use!", through="Bancho")
+        logging.error(
+            "Job failed to update username",
+            extra={
+                "reason": "username_exists",
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
         if targetToken:
-            osuToken.kick(
+            await osuToken.kick(
                 targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
             )
     except userUtils.invalidUsernameError:
-        # log.rap(999, "Username change: {} is not a valid username!", through="Bancho")
+        logging.error(
+            "Job failed to update username",
+            extra={
+                "reason": "username_invalid",
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
         if targetToken:
-            osuToken.kick(
+            await osuToken.kick(
                 targetToken["token_id"],
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
@@ -67,14 +90,14 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         super().__init__()
         self.structure = {"userID": 0, "newUsername": ""}
 
-    def handle(self, data):
+    async def handle(self, data):
         if not (data := super().parseData(data)):
             return
 
         # Get the user's token
-        if (targetToken := tokenList.getTokenFromUserID(data["userID"])) is None:
+        if (targetToken := await tokenList.getTokenFromUserID(data["userID"])) is None:
             # If the user is offline change username immediately
-            handleUsernameChange(data["userID"], data["newUsername"])
+            await handleUsernameChange(data["userID"], data["newUsername"])
         else:
             if targetToken["irc"] or targetToken["action_id"] not in {
                 actions.PLAYING,
@@ -82,14 +105,18 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             }:
                 # If the user is online and he's connected through IRC or he's not playing,
                 # change username and kick the user immediately
-                handleUsernameChange(data["userID"], data["newUsername"], targetToken)
+                await handleUsernameChange(
+                    data["userID"],
+                    data["newUsername"],
+                    targetToken,
+                )
             else:
                 # If the user is playing, delay the username change until he submits the score
                 # On submit modular, lets will send the username change request again
                 # through redis once the score has been submitted
                 # The check is performed on bancho logout too, so if the user disconnects
                 # without submitting a score, the username gets changed on bancho logout
-                glob.redis.set(
+                await glob.redis.set(
                     f'ripple:change_username_pending:{data["userID"]}',
                     data["newUsername"],
                 )

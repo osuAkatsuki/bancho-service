@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import settings
 from common.constants import mods
 from common.constants import privileges
-from common.log import logUtils as log
+from common.log import rap_logs
 from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
-def joinChannel(
+async def joinChannel(
     user_id: int = 0,
     channel_name: str = "",
     token_id: Optional[str] = None,
@@ -45,22 +46,22 @@ def joinChannel(
     try:
         # Get token if not defined
         if token_id is None:
-            token = tokenList.getTokenFromUserID(user_id)
+            token = await tokenList.getTokenFromUserID(user_id)
             # Make sure the token exists
             if token is None:
                 raise exceptions.userNotFoundException
         else:
-            token = osuToken.get_token(token_id)
+            token = await osuToken.get_token(token_id)
             if token is None:
                 raise exceptions.userNotFoundException
 
         # Normal channel, do check stuff
         # Make sure the channel exists
-        if channel_name not in channelList.getChannelNames():
+        if channel_name not in await channelList.getChannelNames():
             raise exceptions.channelUnknownException()
 
         # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
-        channel = channelList.getChannel(channel_name)
+        channel = await channelList.getChannel(channel_name)
         if channel is None:
             raise exceptions.channelUnknownException()
 
@@ -68,39 +69,63 @@ def joinChannel(
             raise exceptions.channelUnknownException()
 
         # Add the channel to our joined channel
-        osuToken.joinChannel(token["token_id"], channel_name)
+        await osuToken.joinChannel(token["token_id"], channel_name)
 
         # Send channel joined (IRC)
         if settings.IRC_ENABLE and not toIRC:
             glob.ircServer.banchoJoinChannel(token["username"], channel_name)
 
         # Console output
-        # log.info(f"{token['username']} joined channel {channel}")
+        # logging.info(
+        #     "User joined public chat channel",
+        #     extra={
+        #         "username": token["username"],
+        #         "user_id": token["user_id"],
+        #         "channel_name": channel,
+        #     },
+        # )
 
         # IRC code return
         return 0
     except exceptions.channelNoPermissionsException:
         assert token is not None
-        log.warning(
-            f"{token['username']} attempted to join channel {channel_name}, but they have no read permissions.",
+        logging.warning(
+            "User attempted to join a channel they have no read permissions",
+            extra={
+                "username": token["username"],
+                "user_id": token["user_id"],
+                "channel_name": channel_name,
+            },
         )
         return 403
     except exceptions.channelUnknownException:
         assert token is not None
-        log.warning(
-            f"{token['username']} attempted to join an unknown channel ({channel_name}).",
+        logging.warning(
+            "User attempted to join an unknown channel",
+            extra={
+                "username": token["username"],
+                "user_id": token["user_id"],
+                "channel_name": channel_name,
+            },
         )
         return 403
     except exceptions.userAlreadyInChannelException:
         assert token is not None
-        log.warning(f"User {token['username']} already in channel {channel_name}.")
+        logging.warning(
+            "User attempted to join a channel they are already in",
+            extra={
+                "username": token["username"],
+                "user_id": token["user_id"],
+                "channel_name": channel_name,
+            },
+        )
         return 403
     except exceptions.userNotFoundException:
-        log.warning("User not connected to IRC/Bancho.")
+        logging.warning("User not connected to IRC/Bancho.")
         return 403  # idk
 
 
-def partChannel(
+async def partChannel(
     userID: int = 0,
     channel_name: str = "",
     token_id: Optional[str] = None,
@@ -128,12 +153,12 @@ def partChannel(
 
         # Get token if not defined
         if token_id is None:
-            token = tokenList.getTokenFromUserID(userID)
+            token = await tokenList.getTokenFromUserID(userID)
             # Make sure the token exists
             if token is None:
                 raise exceptions.userNotFoundException()
         else:
-            token = osuToken.get_token(token_id)
+            token = await osuToken.get_token(token_id)
             if token is None:
                 raise exceptions.userNotFoundException
 
@@ -154,11 +179,11 @@ def partChannel(
             channelClient = "#multiplayer"
 
         # Make sure the channel exists
-        if channel_name not in channelList.getChannelNames():
+        if channel_name not in await channelList.getChannelNames():
             raise exceptions.channelUnknownException()
 
         # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
-        channel = channelList.getChannel(channel_name)
+        channel = await channelList.getChannel(channel_name)
         if channel is None:
             raise exceptions.channelUnknownException()
 
@@ -166,18 +191,18 @@ def partChannel(
             raise exceptions.channelUnknownException()
 
         # Part channel (token-side and channel-side)
-        osuToken.partChannel(token["token_id"], channel_name)
+        await osuToken.partChannel(token["token_id"], channel_name)
 
         # Delete temporary channel if everyone left
         key = f"chat/{channel_name}"
-        if key in streamList.getStreams():
-            if channel["instance"] and stream.getClientCount(key) - 1 == 0:
-                channelList.removeChannel(channel_name)
+        if key in await streamList.getStreams():
+            if channel["instance"] and (await stream.getClientCount(key)) - 1 == 0:
+                await channelList.removeChannel(channel_name)
 
         # Force close tab if needed
         # NOTE: Maybe always needed, will check later
         if kick:
-            osuToken.enqueue(
+            await osuToken.enqueue(
                 token["token_id"],
                 serverPackets.channelKicked(channelClient),
             )
@@ -187,24 +212,41 @@ def partChannel(
             glob.ircServer.banchoPartChannel(token["username"], channel_name)
 
         # Console output
-        # log.info(f"{token.username} parted channel {channel_name} ({channelClient}).")
+        # logging.info(
+        #     "User left public chat channel",
+        #     extra={
+        #         "username": token["username"],
+        #         "user_id": token["user_id"],
+        #         "channel_name": channel,
+        #     },
+        # )
 
         # Return IRC code
         return 0
     except exceptions.channelUnknownException:
         assert token is not None
-        log.warning(
-            f"{token['username']} attempted to part an unknown channel ({channel_name}).",
+        logging.warning(
+            "User attempted to leave a channel that does not exist",
+            extra={
+                "username": token["username"],
+                "user_id": token["user_id"],
+                "channel_name": channel_name,
+            },
         )
         return 403
     except exceptions.userNotInChannelException:
         assert token is not None
-        log.warning(
-            f"{token['username']} attempted to part {channel_name}, but he's not in that channel.",
+        logging.warning(
+            "User attempted to leave a channel they are not in",
+            extra={
+                "username": token["username"],
+                "user_id": token["user_id"],
+                "channel_name": channel_name,
+            },
         )
         return 442
     except exceptions.userNotFoundException:
-        log.warning("User not connected to IRC/Bancho.")
+        logging.warning("User not connected to IRC/Bancho.")
         return 442  # idk
 
 
@@ -223,7 +265,7 @@ gamer_ids = [
 ]
 
 
-def sendMessage(
+async def sendMessage(
     fro: Optional[str] = "",
     to: str = "",
     message: str = "",
@@ -244,11 +286,11 @@ def sendMessage(
 
     try:
         if token_id is None:
-            userToken = tokenList.getTokenFromUsername(fro)
+            userToken = await tokenList.getTokenFromUsername(fro)
             if userToken is None:
                 raise exceptions.userNotFoundException()
         else:
-            userToken = osuToken.get_token(token_id)
+            userToken = await osuToken.get_token(token_id)
             if userToken is None:
                 raise exceptions.userNotFoundException()
             fro = userToken["username"]
@@ -262,7 +304,7 @@ def sendMessage(
             raise exceptions.userRestrictedException()
 
         # Make sure the user is not silenced
-        if osuToken.isSilenced(userToken["token_id"]):
+        if await osuToken.isSilenced(userToken["token_id"]):
             raise exceptions.userSilencedException()
 
         # Redirect !report to FokaBot
@@ -301,7 +343,7 @@ def sendMessage(
         if isChannel:
             # CHANNEL
             # Make sure the channel exists
-            channel = channelList.getChannel(to)
+            channel = await channelList.getChannel(to)
             if channel is None:
                 raise exceptions.channelUnknownException()
 
@@ -310,7 +352,7 @@ def sendMessage(
                 raise exceptions.channelModeratedException()
 
             # Make sure we are in the channel
-            if to not in osuToken.get_joined_channels(token_id):
+            if to not in await osuToken.get_joined_channels(token_id):
                 # I'm too lazy to put and test the correct IRC error code here...
                 # but IRC is not strict at all so who cares
                 raise exceptions.userNotInChannelException()
@@ -343,7 +385,7 @@ def sendMessage(
 
             # Check message for commands
             if not action_msg:
-                fokaMessage = fokabot.fokabotResponse(
+                fokaMessage = await fokabot.fokabotResponse(
                     userToken["username"],
                     to,
                     message,
@@ -357,8 +399,9 @@ def sendMessage(
                 match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
-                    log.error(
-                        f"Error while parsing /np message (sendMessage): '{npmsg}'",
+                    logging.error(
+                        "Error parsing /np message",
+                        extra={"chat_message": npmsg},
                     )
                     return "An error occurred while parsing /np message :/ - reported to devs"
 
@@ -371,7 +414,7 @@ def sendMessage(
                 beatmap_id = int(match["bid"])
 
                 # Return tillerino message
-                userToken = osuToken.update_token(
+                userToken = await osuToken.update_token(
                     token_id,
                     last_np={
                         "beatmap_id": beatmap_id,
@@ -392,14 +435,18 @@ def sendMessage(
                 if fokaMessage["hidden"]:  # Send to user & gmt+
                     send_to = {
                         t["token_id"]
-                        for t in osuToken.get_tokens()  # TODO: use redis
+                        for t in await osuToken.get_tokens()  # TODO: use redis
                         if t["token_id"] != token_id
                         and osuToken.is_staff(t["privileges"])
                         and t["user_id"] != 999
                     }
 
                     # Send their command
-                    streamList.broadcast_limited(f"chat/{to}", msg_packet, send_to)
+                    await streamList.broadcast_limited(
+                        f"chat/{to}",
+                        msg_packet,
+                        send_to,
+                    )
 
                     # Send Aika's response
                     send_to.add(userToken["token_id"])
@@ -409,29 +456,29 @@ def sendMessage(
                         message=fokaMessage["response"],
                         fro_id=999,
                     )
-                    streamList.broadcast_limited(
+                    await streamList.broadcast_limited(
                         f"chat/{to}",
                         response_packet,
                         send_to,
                     )
                 else:  # Send to all streams
-                    osuToken.addMessageInBuffer(token_id, to, message)
-                    streamList.broadcast(
+                    await osuToken.addMessageInBuffer(token_id, to, message)
+                    await streamList.broadcast(
                         f"chat/{to}",
                         msg_packet,
                         but=[userToken["token_id"]],
                     )
 
-                    aika_token = tokenList.getTokenFromUserID(999)
+                    aika_token = await tokenList.getTokenFromUserID(999)
                     assert aika_token is not None
-                    sendMessage(
+                    await sendMessage(
                         token_id=aika_token["token_id"],
                         to=to,
                         message=fokaMessage["response"],
                     )
             else:
-                osuToken.addMessageInBuffer(token_id, to, message)
-                streamList.broadcast(
+                await osuToken.addMessageInBuffer(token_id, to, message)
+                await streamList.broadcast(
                     f"chat/{to}",
                     msg_packet,
                     but=[userToken["token_id"]],
@@ -439,7 +486,7 @@ def sendMessage(
         else:
             # USER
             # Make sure recipient user is connected
-            recipient_token = tokenList.getTokenFromUsername(to)
+            recipient_token = await tokenList.getTokenFromUsername(to)
             if recipient_token is None:
                 raise exceptions.userNotFoundException()
 
@@ -448,8 +495,8 @@ def sendMessage(
                 raise exceptions.userTournamentException()
 
             # Notify the sender that the recipient is silenced.
-            if osuToken.isSilenced(recipient_token["token_id"]):
-                osuToken.enqueue(
+            if await osuToken.isSilenced(recipient_token["token_id"]):
+                await osuToken.enqueue(
                     recipient_token["token_id"],
                     serverPackets.targetSilenced(
                         to=to,
@@ -466,8 +513,8 @@ def sendMessage(
                 # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
                 if recipient_token["block_non_friends_dm"] and userToken[
                     "user_id"
-                ] not in userUtils.getFriendList(recipient_token["user_id"]):
-                    osuToken.enqueue(
+                ] not in await userUtils.getFriendList(recipient_token["user_id"]):
+                    await osuToken.enqueue(
                         token_id,
                         serverPackets.targetBlockingDMs(
                             to=to,
@@ -478,25 +525,28 @@ def sendMessage(
                     raise exceptions.userBlockingDMsException
 
             # Away check
-            if osuToken.awayCheck(recipient_token["token_id"], userToken["user_id"]):
-                sendMessage(
+            if await osuToken.awayCheck(
+                recipient_token["token_id"],
+                userToken["user_id"],
+            ):
+                await sendMessage(
                     fro=to,
                     to=fro,
-                    message=f"\x01ACTION is away: {recipient_token['away_message']}\x01",
+                    message=f"\x01ACTION is away: {recipient_token['away_message'] or ''}\x01",
                 )
 
             if to == glob.BOT_NAME:
                 # Check message for commands
-                fokaMessage = fokabot.fokabotResponse(
+                fokaMessage = await fokabot.fokabotResponse(
                     userToken["username"],
                     to,
                     message,
                 )
 
                 if fokaMessage:
-                    aika_token = tokenList.getTokenFromUserID(999)
+                    aika_token = await tokenList.getTokenFromUserID(999)
                     assert aika_token is not None
-                    sendMessage(
+                    await sendMessage(
                         token_id=aika_token["token_id"],
                         to=fro,
                         message=fokaMessage["response"],
@@ -508,91 +558,151 @@ def sendMessage(
                     message=message,
                     fro_id=userToken["user_id"],
                 )
-                osuToken.enqueue(recipient_token["token_id"], packet)
+                await osuToken.enqueue(recipient_token["token_id"], packet)
 
         # Spam protection (ignore staff)
         if not osuToken.is_staff(userToken["privileges"]):
-            osuToken.spamProtection(token_id)
+            await osuToken.spamProtection(token_id)
 
         if (
             any([bytes(gid).decode() in message for gid in gamer_ids])
             and not action_msg
             and not osuToken.is_staff(userToken["privileges"])
         ):
-            webhook = "ac_confidential"
+            webhook_channel = "ac_confidential"
         else:
-            webhook = None
+            webhook_channel = None
 
         if isChannel:
-            if webhook:
-                log.chat(f"{osuToken.getMessagesBufferString(token_id)}", webhook)
+            if webhook_channel:
+                await rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"{osuToken.getMessagesBufferString(token_id)}",
+                    discord_channel=webhook_channel,
+                )
             else:
-                log.chat(f"{userToken['username']} @ {to}: {message}")
+                logging.info(
+                    "User sent a chat message",
+                    extra={
+                        "sender": userToken["username"],
+                        "recipeint": to,
+                        "chat_message": message,
+                    },
+                )
         else:
-            log.pm(f"{fro} @ {to}: {message}", webhook)
+            if webhook_channel:
+                await rap_logs.send_rap_log_as_discord_webhook(
+                    message=f"{fro} @ {to}: {message}",
+                    discord_channel=webhook_channel,
+                )
 
         return 0
     except exceptions.userSilencedException:
-        osuToken.enqueue(
+        silence_time_left = await osuToken.getSilenceSecondsLeft(token_id)
+        await osuToken.enqueue(
             token_id,
-            serverPackets.silenceEndTime(osuToken.getSilenceSecondsLeft(token_id)),
+            serverPackets.silenceEndTime(silence_time_left),
         )
-        log.warning(f"{userToken['username']} tried to send a message during silence.")
+        logging.warning(
+            "User tried to send a message during silence",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+            },
+        )
         return 404
     except exceptions.userNotInChannelException:
-        log.warning(
-            f"{userToken['username']} tried to send a message to channel to {to}, but they are not in the channel.",
+        logging.warning(
+            "User tried to send a message to a channel they are not in",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "channel_name": to,
+            },
         )
         return 404
     except exceptions.channelModeratedException:
-        log.warning(
-            f"{userToken['username']} tried to send a message to a channel that is in moderated mode ({to}).",
+        logging.warning(
+            "User tried to send a message to a moderated channel",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "channel_name": to,
+            },
         )
         return 404
     except exceptions.channelUnknownException:
-        log.warning(
-            f"{userToken['username']} tried to send a message to an unknown channel ({to}).",
+        logging.warning(
+            "User tried to send a message to an unknown channel",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "channel_name": to,
+            },
         )
         return 403
     except exceptions.channelNoPermissionsException:
-        log.warning(
-            f"{userToken['username']} tried to send a message to channel {to}, but they have no write permissions.",
+        logging.warning(
+            "User tried to send a message to a channel they have no write permissions",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "channel_name": to,
+            },
         )
         return 404
     except exceptions.userRestrictedException:
-        log.warning(
-            f"{userToken['username']} tried to send a message {to}, but the recipient is in restricted mode.",
+        # TODO: this is kinda weird that we can't differentiate
+        # between sender and recipient restricted here..
+        logging.warning(
+            "Sender or recipient in messaging interaction were restricted",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "recipient": to,
+            },
         )
         return 404
     except exceptions.userTournamentException:
-        log.warning(
-            f"{userToken['username']} tried to send a message {to}, but the recipient is a tournament client.",
+        logging.warning(
+            "User tried to send a message to a tournament client",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "recipient": to,
+            },
         )
         return 404
     except exceptions.userNotFoundException:
-        log.warning("User not connected to IRC/Bancho.")
+        logging.warning("User not connected to IRC/Bancho.")
         return 401
     except exceptions.userBlockingDMsException:
-        log.warning(
-            f"{userToken['username']} tried to send a message to {to}, but the recipient is blocking non-friends dms.",
+        logging.warning(
+            "User tried to send a message to a user that is blocking non-friends dms",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "recipient": to,
+            },
         )
         return 404
     except exceptions.invalidArgumentsException:
-        log.warning(
-            f"{userToken['username']} tried to send an invalid message to {to}.",
+        logging.warning(
+            "User tried to send an invalid message",
+            extra={
+                "username": userToken["username"],
+                "user_id": userToken["user_id"],
+                "recipient": to,
+            },
         )
         return 404
-    except Exception as e:  # unhandled
-        import traceback
-
-        traceback.print_exc()
-        log.warning(f"chatHelper {e}")
+    except:
+        logging.exception("An unhandled exception occurred whle sending a chat message")
 
 
 """ IRC-Bancho Connect/Disconnect/Join/Part interfaces"""
 
 
-def fixUsernameForBancho(username: str) -> str:
+async def fixUsernameForBancho(username: str) -> str:
     """
     Convert username from IRC format (without spaces) to Bancho format (with spaces)
 
@@ -605,7 +715,7 @@ def fixUsernameForBancho(username: str) -> str:
         return username
 
     # Exact match first
-    result = glob.db.fetch(
+    result = await glob.db.fetch(
         "SELECT id " "FROM users " "WHERE username = %s LIMIT 1",
         [username],
     )
@@ -626,7 +736,7 @@ def fixUsernameForIRC(username: str) -> str:
     return username.replace(" ", "_")
 
 
-def IRCConnect(username: str) -> None:
+async def IRCConnect(username: str) -> None:
     """
     Handle IRC login bancho-side.
     Add token and broadcast login packet.
@@ -634,20 +744,19 @@ def IRCConnect(username: str) -> None:
     :param username: username
     :return:
     """
-    user_id = userUtils.getID(username)
+    user_id = await userUtils.getID(username)
     if not user_id:
-        log.warning(f"{username} doesn't exist.")
         return
 
-    with redisLock(f"bancho:locks:tokens"):
-        tokenList.deleteOldTokens(user_id)
-        tokenList.addToken(user_id, irc=True)
+    async with redisLock("bancho:locks:tokens"):
+        await tokenList.deleteOldTokens(user_id)
+        await tokenList.addToken(user_id, irc=True)
 
-    streamList.broadcast("main", serverPackets.userPanel(user_id))
-    log.info(f"{username} logged in from IRC.")
+    await streamList.broadcast("main", await serverPackets.userPanel(user_id))
+    logging.info("User logged into IRC", extra={"username": username})
 
 
-def IRCDisconnect(username: str) -> None:
+async def IRCDisconnect(username: str) -> None:
     """
     Handle IRC logout bancho-side.
     Remove token and broadcast logout packet.
@@ -655,16 +764,15 @@ def IRCDisconnect(username: str) -> None:
     :param username: username
     :return:
     """
-    token = osuToken.get_token_by_username(username)
+    token = await osuToken.get_token_by_username(username)
     if token is None:
-        log.warning(f"{username} doesn't exist.")
         return
 
-    logoutEvent.handle(token)  # TODO
-    log.info(f"{username} disconnected from IRC.")
+    await logoutEvent.handle(token)  # TODO
+    logging.info("User logged out of IRC", extra={"username": username})
 
 
-def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
+async def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
     """
     Handle IRC channel join bancho-side.
 
@@ -672,18 +780,21 @@ def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
     :param channel: channel name
     :return: IRC return code
     """
-    userID = userUtils.getID(username)
+    userID = await userUtils.getID(username)
     if not userID:
-        log.warning(f"{username} doesn't exist.")
+        logging.warning(
+            "User not found by name when attempting to join channel",
+            extra={"username": username},
+        )
         return
 
     # NOTE: This should have also `toIRC` = False` tho,
     # since we send JOIN message later on ircserver.py.
     # Will test this later
-    return joinChannel(userID, channel)
+    return await joinChannel(userID, channel)
 
 
-def IRCPartChannel(username: str, channel: str) -> Optional[int]:
+async def IRCPartChannel(username: str, channel: str) -> Optional[int]:
     """
     Handle IRC channel part bancho-side.
 
@@ -691,15 +802,18 @@ def IRCPartChannel(username: str, channel: str) -> Optional[int]:
     :param channel: channel name
     :return: IRC return code
     """
-    userID = userUtils.getID(username)
+    userID = await userUtils.getID(username)
     if not userID:
-        log.warning(f"{username} doesn't exist.")
+        logging.warning(
+            "User not found by name when attempting to leave channel",
+            extra={"username": username},
+        )
         return
 
-    return partChannel(userID, channel)
+    return await partChannel(userID, channel)
 
 
-def IRCAway(username: str, message: str) -> Optional[int]:
+async def IRCAway(username: str, message: str) -> Optional[int]:
     """
     Handle IRC away command bancho-side.
 
@@ -707,17 +821,23 @@ def IRCAway(username: str, message: str) -> Optional[int]:
     :param message: away message
     :return: IRC return code
     """
-    userID = userUtils.getID(username)
+    userID = await userUtils.getID(username)
     if not userID:
-        log.warning(f"{username} doesn't exist.")
+        logging.warning(
+            "User not found by name when attempting to handle the AWAY command",
+            extra={"username": username},
+        )
         return  # TODO: should this be returning a code?
 
-    token = osuToken.get_token_by_user_id(userID)
+    token = await osuToken.get_token_by_user_id(userID)
     if token is None:
-        log.warning(f"{username} is not connected to Bancho.")
+        logging.warning(
+            "User session not found by name when attempting to handle the AWAY command",
+            extra={"username": username, "user_id": userID},
+        )
         return
 
-    osuToken.update_token(
+    await osuToken.update_token(
         token["token_id"],
         away_message=message,
     )

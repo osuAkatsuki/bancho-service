@@ -1,23 +1,25 @@
 #!/usr/bin/env python3.9
 from __future__ import annotations
 
+import asyncio
+import logging.config
 import os
-import threading
-from concurrent.futures import ThreadPoolExecutor
+import signal
+import sys
+import traceback
+from datetime import datetime
+from typing import Optional
 
 import psutil
-import redis
+import redis.asyncio as redis
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-from cmyui.logging import Ansi
-from cmyui.logging import log
-from cmyui.logging import printc
+import yaml
 
 import settings
 from common.constants import bcolors
-from common.db import dbConnector
 from common.ddog import datadogClient
 from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
@@ -25,10 +27,7 @@ from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
-from handlers import ciTriggerHandler
 from handlers import mainHandler
-from helpers import consoleHelper
-from helpers import systemHelper as system
 from irc import ircserver
 from objects import banchoConfig
 from objects import channelList
@@ -38,6 +37,7 @@ from objects import match
 from objects import osuToken
 from objects import streamList
 from objects import tokenList
+from objects.dbPool import DBPool
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
 from pubSubHandlers import disconnectHandler
@@ -48,38 +48,7 @@ from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
 
-def make_app():
-    return tornado.web.Application(
-        [
-            (r"/", mainHandler.handler),
-            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
-            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
-            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
-            (r"/api/v1/ciTrigger", ciTriggerHandler.handler),
-            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
-            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
-        ],
-    )
-
-
-ASCII_LOGO = "\n".join(
-    [
-        "      _/_/    _/                    _/                          _/        _/",
-        "   _/    _/  _/  _/      _/_/_/  _/_/_/_/    _/_/_/  _/    _/  _/  _/       ",
-        "  _/_/_/_/  _/_/      _/    _/    _/      _/_/      _/    _/  _/_/      _/  ",
-        " _/    _/  _/  _/    _/    _/    _/          _/_/  _/    _/  _/  _/    _/   ",
-        "_/    _/  _/    _/    _/_/_/      _/_/  _/_/_/      _/_/_/  _/    _/  _/    ",
-    ],
-)
-
-# XXX: temporary for debugging purposes
-import sys
-import signal
-import traceback
-from datetime import datetime
-
-
-def signal_handler(signum, frame):
+def dump_thread_stacks():
     try:
         os.mkdir("stacktraces")
     except FileExistsError:
@@ -91,73 +60,80 @@ def signal_handler(signum, frame):
             traceback.print_stack(stack, file=f)
             print("\n", file=f)
 
+
+def signal_handler(signum, frame):
+    dump_thread_stacks()
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     signal.default_int_handler(signum, frame)
 
 
 signal.signal(signal.SIGINT, signal_handler)
 
-if __name__ == "__main__":
-    try:
-        # Server start
-        printc(ASCII_LOGO, Ansi.LGREEN)
-        log(f"Welcome to Akatsuki's bancho-service", Ansi.LGREEN)
-        log("Made by the Ripple and Akatsuki teams", Ansi.LGREEN)
-        log(
-            f"{bcolors.UNDERLINE}https://github.com/osuAkatsuki/bancho-service",
-            Ansi.LGREEN,
-        )
-        log("Press CTRL+C to exit\n", Ansi.LGREEN)
 
+async def main() -> int:
+    http_server: Optional[tornado.httpserver.HTTPServer] = None
+    try:
         # TODO: do we need this anymore now with stateless design?
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        # Connect to db
+        # set up datadog
+        logging.info("Setting up datadog clients")
         try:
-            log("Connecting to SQL.", Ansi.LMAGENTA)
-            glob.db = dbConnector.db(
-                host=settings.DB_HOST,
-                username=settings.DB_USER,
-                password=settings.DB_PASS,
-                database=settings.DB_NAME,
-                initialSize=settings.DB_WORKERS,
-            )
+            if settings.DATADOG_ENABLE:
+                glob.dog = datadogClient.datadogClient(
+                    apiKey=settings.DATADOG_API_KEY,
+                    appKey=settings.DATADOG_APP_KEY,
+                    periodicChecks=[
+                        # TODO: compatibility with asyncio
+                        # datadogClient.periodicCheck(
+                        #     "online_users",
+                        #     lambda: len(await osuToken.get_token_ids()),
+                        # ),
+                        # datadogClient.periodicCheck(
+                        #     "multiplayer_matches",
+                        #     lambda: len(await match.get_match_ids()),
+                        # ),
+                        # datadogClient.periodicCheck(
+                        #     "chat_channels",
+                        #     lambda: len(await channelList.getChannelNames()),
+                        # ),
+                    ],
+                )
         except:
-            log(f"Error connecting to sql.", Ansi.LRED)
+            logging.exception("Error creating datadog client")
+            raise
+
+        # Connect to db
+        logging.info("Connecting to SQL")
+        try:
+            glob.db = DBPool()
+            await glob.db.start()
+        except:
+            logging.exception("Error connecting to sql")
             raise
 
         # Connect to redis
+        logging.info("Connecting to redis")
         try:
-            log("Connecting to redis.", Ansi.LMAGENTA)
             glob.redis = redis.Redis(
-                settings.REDIS_HOST,
-                settings.REDIS_PORT,
-                settings.REDIS_DB,
-                settings.REDIS_PASS,
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                db=settings.REDIS_DB,
+                password=settings.REDIS_PASS,
             )
-            glob.redis.ping()
+            await glob.redis.ping()
         except:
-            log(f"Error connecting to redis.", Ansi.LRED)
+            logging.exception("Error connecting to redis")
             raise
 
         # Load bancho_settings
+        logging.info("Loading bancho settings")
         try:
             glob.banchoConf = banchoConfig.banchoConfig()
+            await glob.banchoConf.loadSettings()
         except:
-            log(f"Error loading bancho settings.", Ansi.LMAGENTA)
-            raise
-
-        # Create threads pool
-        try:
-            glob.pool = ThreadPoolExecutor(max_workers=settings.APP_THREADS)
-        except ValueError:
-            log(f"Error creating threads pool.", Ansi.LRED)
-            consoleHelper.printError()
-            consoleHelper.printColored(
-                "[!] Error while creating threads pool. Please check your config.ini and run the server again",
-                bcolors.RED,
-            )
+            logging.exception("Error loading bancho settings")
             raise
 
         # fetch privilege groups into memory
@@ -167,67 +143,41 @@ if __name__ == "__main__":
         glob.groupPrivileges = {
             row["name"].lower(): row["privileges"]
             for row in (
-                glob.db.fetchAll(
+                await glob.db.fetchAll(
                     "SELECT name, privileges FROM privileges_groups",
                 )
                 or []
             )
         }
 
-        channelList.loadChannels()
+        await channelList.loadChannels()
 
         # Initialize stremas
-        streamList.add("main")
-        streamList.add("lobby")
+        await streamList.add("main")
+        await streamList.add("lobby")
 
-        log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
-        fokabot.connect()
+        logging.info(
+            "Connecting the in-game chat bot",
+            extra={"bot_name": glob.BOT_NAME},
+        )
+        await fokabot.connect()
 
         if not settings.LOCALIZE_ENABLE:
-            log("User localization is disabled.", Ansi.LYELLOW)
+            logging.info("User localization is disabled")
 
         if not settings.APP_GZIP:
-            log("Gzip compression is disabled.", Ansi.LYELLOW)
+            logging.info("Gzip compression is disabled")
 
         if settings.DEBUG:
-            log("Server running in debug mode.", Ansi.LYELLOW)
+            logging.info("Server running in debug mode")
 
-        glob.application = make_app()
-
-        # set up datadog
-        try:
-            if settings.DATADOG_ENABLE:
-                glob.dog = datadogClient.datadogClient(
-                    apiKey=settings.DATADOG_API_KEY,
-                    appKey=settings.DATADOG_APP_KEY,
-                    periodicChecks=[
-                        datadogClient.periodicCheck(
-                            "online_users",
-                            lambda: len(osuToken.get_token_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "multiplayer_matches",
-                            lambda: len(match.get_match_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "chat_channels",
-                            lambda: len(channelList.getChannelNames()),
-                        ),
-                    ],
-                )
-        except:
-            log("Error creating datadog client.", Ansi.LRED)
-            raise
-
-        # start irc server if configured
+        # # start irc server if configured
         if settings.IRC_ENABLE:
-            log(
-                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
-                Ansi.LMAGENTA,
+            logging.info(
+                "IRC server listening on tcp port",
+                extra={"port": settings.IRC_PORT},
             )
-            threading.Thread(
-                target=lambda: ircserver.main(port=settings.IRC_PORT),
-            ).start()
+            asyncio.create_task(ircserver.main(port=settings.IRC_PORT))
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
@@ -235,39 +185,116 @@ if __name__ == "__main__":
         # the service), but for now we'll just run them all in the same process.
         # TODO:FIXME there is additionally an assumption made here that all
         # bancho-service instances will be run as processes on the same machine.
-        raw_result = glob.redis.get("bancho:primary_instance_pid")
+        raw_result = await glob.redis.get("bancho:primary_instance_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
-            log("Starting background loops.", Ansi.LMAGENTA)
-            glob.redis.set("bancho:primary_instance_pid", os.getpid())
+            logging.info("Starting background loops")
+            await glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
-            tokenList.usersTimeoutCheckLoop()
-            tokenList.spamProtectionResetLoop()
+            logging.info("Starting user timeout loop")
+            await tokenList.usersTimeoutCheckLoop()
+            logging.info("Started user timeout loop")
+            logging.info("Starting spam protection loop")
+            await tokenList.spamProtectionResetLoop()
+            logging.info("Started spam protection loop")
 
             # Connect to pubsub channels
-            pubSub.listener(
-                glob.redis,
-                {
-                    "peppy:ban": banHandler.handler(),
-                    "peppy:unban": unbanHandler.handler(),
-                    "peppy:silence": updateSilenceHandler.handler(),
-                    "peppy:disconnect": disconnectHandler.handler(),
-                    "peppy:notification": notificationHandler.handler(),
-                    "peppy:change_username": changeUsernameHandler.handler(),
-                    "peppy:update_cached_stats": updateStatsHandler.handler(),
-                    "peppy:wipe": wipeHandler.handler(),
-                    "peppy:reload_settings": lambda x: x == b"reload"
-                    and glob.banchoConf.reload(),
-                },
-            ).start()
+            PUBSUB_HANDLERS = {
+                "peppy:ban": banHandler.handler(),
+                "peppy:unban": unbanHandler.handler(),
+                "peppy:silence": updateSilenceHandler.handler(),
+                "peppy:disconnect": disconnectHandler.handler(),
+                "peppy:notification": notificationHandler.handler(),
+                "peppy:change_username": changeUsernameHandler.handler(),
+                "peppy:update_cached_stats": updateStatsHandler.handler(),
+                "peppy:wipe": wipeHandler.handler(),
+                # TODO: support this?
+                # "peppy:reload_settings": (
+                #     lambda x: x == b"reload" and await glob.banchoConf.reload()
+                # ),
+            }
+            logging.info(
+                "Starting pubsub listeners",
+                extra={"handlers": list(PUBSUB_HANDLERS)},
+            )
+            pubsub_listener = pubSub.listener(
+                redis_connection=glob.redis,
+                handlers=PUBSUB_HANDLERS,
+            )
+            asyncio.create_task(pubsub_listener.run())
+            logging.info(
+                "Started pubsub listeners",
+                extra={"handlers": list(PUBSUB_HANDLERS)},
+            )
 
-        # Start tornado
-        glob.application.listen(settings.APP_PORT)
-
-        log(
-            f"Tornado listening for HTTP(s) clients on 127.0.0.1:{settings.APP_PORT}.",
-            Ansi.LMAGENTA,
+        # Start the HTTP server
+        API_ENDPOINTS = [
+            (r"/", mainHandler.handler),
+            (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
+            (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
+            (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
+            (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
+        ]
+        logging.info("Starting HTTP server")
+        glob.application = tornado.web.Application(API_ENDPOINTS)
+        http_server = tornado.httpserver.HTTPServer(glob.application)
+        http_server.listen(settings.APP_PORT)
+        logging.info(
+            "HTTP server listening for clients",
+            extra={
+                "port": settings.APP_PORT,
+                "endpoints": [e[0] for e in API_ENDPOINTS],
+            },
         )
-
-        tornado.ioloop.IOLoop.instance().start()
+        shutdown_event = asyncio.Event()
+        await shutdown_event.wait()
     finally:
-        system.dispose()
+        logging.info("Shutting down all services")
+
+        if http_server is not None:
+            logging.info("Closing HTTP listener")
+            http_server.stop()
+
+            # Allow grace period for ongoing connections to finish
+            await asyncio.wait_for(
+                http_server.close_all_connections(),
+                timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
+            )
+
+        # TODO: we can be more graceful with this one, but p3
+        if settings.IRC_ENABLE:
+            logging.info("Closing IRC server")
+            glob.ircServer.close()
+            logging.info("Closed IRC server")
+
+        logging.info("Closing connection to redis")
+        await glob.redis.aclose()
+        logging.info("Closed connection to redis")
+
+        logging.info("Closing connection(s) to MySQL")
+        await glob.db.stop()
+        logging.info("Closed connection(s) to MySQL")
+
+        logging.info("Disconnecting from IRC")
+        await fokabot.disconnect()
+        logging.info("Disconnected from IRC")
+
+        logging.info("Goodbye!")
+
+    return 0
+
+
+def configure_logging() -> None:
+    with open("logging.yaml") as f:
+        config = yaml.safe_load(f.read())
+        logging.config.dictConfig(config)
+
+
+if __name__ == "__main__":
+    configure_logging()
+    try:
+        exit_code = asyncio.run(main())
+    except KeyboardInterrupt:
+        exit_code = 0
+
+    exit(exit_code)

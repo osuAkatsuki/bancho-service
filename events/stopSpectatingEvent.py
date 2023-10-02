@@ -1,25 +1,28 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
 from constants import exceptions
 from objects import glob
 from objects import osuToken
 
 
-def handle(userToken: osuToken.Token, _=None):
+async def handle(userToken: osuToken.Token, _=None):
     try:
         # User must be spectating someone
         if userToken["spectating_user_id"] is None:
             return
 
         # Get host token
-        targetToken = osuToken.get_token_by_user_id(userToken["spectating_user_id"])
+        targetToken = await osuToken.get_token_by_user_id(
+            userToken["spectating_user_id"],
+        )
         if targetToken is None:
             raise exceptions.tokenNotFoundException
 
-        osuToken.stopSpectating(userToken["token_id"])
+        await osuToken.stopSpectating(userToken["token_id"])
 
         glob.amplitude.track(
             BaseEvent(
@@ -38,4 +41,4 @@ def handle(userToken: osuToken.Token, _=None):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        log.warning("Spectator stop: host token not found.")
+        logging.warning("Spectator stop: host token not found")

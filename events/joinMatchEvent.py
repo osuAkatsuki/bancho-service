@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from amplitude import BaseEvent
 
-from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
 from helpers import countryHelper
@@ -13,29 +12,30 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes):
     # read packet data
     packetData = clientPackets.joinMatch(rawPacketData)
     matchID = packetData["matchID"]
     password = packetData["password"]
 
-    # Make sure the match exists
-    multiplayer_match = match.get_match(matchID)
-    if multiplayer_match is None:
-        osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
-        return
-
-    with redisLock(f"{match.make_key(matchID)}:lock"):
-        # Check password
-        if multiplayer_match["match_password"] not in ("", password):
-            osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
-            log.warning(
-                f"{userToken['username']} has tried to join a mp room, but he typed the wrong password.",
-            )
+    async with redisLock(f"{match.make_key(matchID)}:lock"):
+        # Make sure the match exists
+        multiplayer_match = await match.get_match(matchID)
+        if multiplayer_match is None:
+            await osuToken.enqueue(userToken["token_id"], serverPackets.matchJoinFail)
             return
 
+        # Check password
+        if multiplayer_match["match_password"]:
+            if password != multiplayer_match["match_password"]:
+                await osuToken.enqueue(
+                    userToken["token_id"],
+                    serverPackets.matchJoinFail,
+                )
+                return
+
         # Password is correct, join match
-        osuToken.joinMatch(userToken["token_id"], matchID)
+        await osuToken.joinMatch(userToken["token_id"], matchID)
 
     glob.amplitude.track(
         BaseEvent(
