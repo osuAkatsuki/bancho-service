@@ -5,7 +5,7 @@ import logging
 from os import name
 from typing import Optional
 
-from requests import RequestException
+import httpx
 
 import settings
 from common.ripple import userUtils
@@ -35,6 +35,12 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
                 extra={"discord_channel": discord_channel},
             )
             return
+        elif discord_webhook_url == "":
+            logging.warning(
+                f"No discord webhook embed is configurated for discord channel",
+                extra={"discord_channel": discord_channel},
+            )
+            return
 
         embed = Webhook(discord_webhook_url, color=DISCORD_WEBHOOK_EMBED_COLOR)
         embed.add_field(name="** **", value=message)
@@ -45,7 +51,7 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
             try:
                 await embed.post()
                 break
-            except RequestException:
+            except (httpx.NetworkError, httpx.TimeoutException):
                 await asyncio.sleep(RETRY_INTERVAL)
                 continue
 
@@ -70,7 +76,7 @@ async def send_rap_log(
         [user_id, message, admin],
     )
     if discord_channel is not None:
-        await asyncio.create_task(
+        asyncio.create_task(
             send_rap_log_as_discord_webhook(
                 message=f"{userUtils.getUsername(user_id)} {message}",
                 discord_channel=discord_channel,
