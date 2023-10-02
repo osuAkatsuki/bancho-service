@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import httpx
 from os import name
 from typing import Optional
-
-from requests import RequestException
 
 import settings
 from common.ripple import userUtils
@@ -45,9 +44,15 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
             try:
                 await embed.post()
                 break
-            except RequestException:
+            except (httpx.NetworkError, httpx.TimeoutException):
                 await asyncio.sleep(RETRY_INTERVAL)
                 continue
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 429:
+                    await asyncio.sleep(RETRY_INTERVAL)
+                    continue
+                else:
+                    raise
 
 
 async def send_rap_log(

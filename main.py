@@ -251,12 +251,15 @@ async def main() -> int:
         if http_server is not None:
             logging.info("Closing HTTP listener")
             http_server.stop()
+            logging.info("Closed HTTP listener")
 
+            logging.info("Closing HTTP connections")
             # Allow grace period for ongoing connections to finish
             await asyncio.wait_for(
                 http_server.close_all_connections(),
                 timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
             )
+            logging.info("Closed HTTP connections")
 
         # TODO: we can be more graceful with this one, but p3
         if settings.IRC_ENABLE:

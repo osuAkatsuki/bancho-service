@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import logging
 import struct
 from uuid import UUID
 
@@ -143,7 +144,7 @@ HTML_PAGE = (
 
 
 class handler(AsyncRequestHandler):
-    async def post(self) -> None:
+    async def _post(self) -> None:
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")
         requestData = self.request.body
@@ -256,6 +257,15 @@ class handler(AsyncRequestHandler):
         # self.add_header("Connection", "keep-alive")
         # self.add_header("Keep-Alive", "timeout=5, max=100")
         self.add_header("Content-Type", "text/html; charset=UTF-8")
+
+    async def post(self) -> None:
+        # XXX:HACK around tornado/asyncio poor exception support
+        try:
+            await self._post()
+        except Exception:
+            logging.exception(
+                "An unhandled exception occurred while handling a bancho request",
+            )
 
     async def get(self) -> None:
         self.write(HTML_PAGE)
