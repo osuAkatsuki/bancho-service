@@ -47,7 +47,7 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
                 await embed.post()
                 break
             except RequestException:
-                time.sleep(RETRY_INTERVAL)
+                await asyncio.sleep(RETRY_INTERVAL)
                 continue
 
 

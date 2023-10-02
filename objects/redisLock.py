@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import time
+import asyncio
 from types import TracebackType
 from typing import Optional
 
@@ -19,7 +19,7 @@ class redisLock:
 
     async def acquire(self) -> None:
         while not await self.try_acquire():
-            time.sleep(RETRY_DELAY)
+            await asyncio.sleep(RETRY_DELAY)
 
     async def release(self) -> None:
         await glob.redis.delete(self.key)
