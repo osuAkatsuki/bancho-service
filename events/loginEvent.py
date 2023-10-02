@@ -603,11 +603,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     "ip": requestIP,
                 },
             )
-        # TODO: re-add discord webhook
-        await rap_logs.send_rap_log_as_discord_webhook(
-            message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
-            discord_channel="ac_confidential",
-        )
+
+            # TODO: re-add discord webhook
+            await rap_logs.send_rap_log_as_discord_webhook(
+                message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
+                discord_channel="ac_confidential",
+            )
 
         # Return token string and data
         return responseTokenString, bytes(responseData)
