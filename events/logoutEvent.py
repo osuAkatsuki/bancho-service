@@ -44,7 +44,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
 
     # Disconnect from IRC if needed
     if settings.IRC_ENABLE and token["irc"]:
-        glob.ircServer.forceDisconnection(token["username"])
+        await glob.ircServer.forceDisconnection(token["username"])
 
     # Delete token
     if deleteToken:

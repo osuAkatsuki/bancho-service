@@ -5,14 +5,13 @@ import time
 from typing import Optional
 from typing import TYPE_CHECKING
 
+import httpx
 from amplitude import Amplitude
 from amplitude import Config as AmplitudeConfig
 
 import settings
 
 if TYPE_CHECKING:
-    from concurrent.futures import ThreadPoolExecutor
-
     from redis.asyncio import Redis
 
     from objects.dbPool import DBPool
@@ -23,12 +22,12 @@ if TYPE_CHECKING:
 
 DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
+http_client = httpx.AsyncClient()
 application = None
 db: DBPool
 redis: Redis
 banchoConf: banchoConfig
 dog: Optional[datadogClient] = None
-pool: ThreadPoolExecutor
 ircServer: IRCServer
 
 restarting = False

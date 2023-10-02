@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime as dt
-from json import dumps
 from time import time
 from typing import Any
 
-from requests import post
-
 from common.log import logUtils as log
+from objects import glob
 
 
 class Webhook:
@@ -127,21 +125,19 @@ class Webhook:
         if empty:
             data["embeds"] = []
 
-        return dumps(data, indent=4)
+        return data
 
-    def post(self):
+    async def post(self):
         """
         Send the JSON formated object to the specified `self.url`.
         """
 
-        r = post(
+        response = await glob.http_client.post(
             self.url,
-            data=self.json,
-            timeout=1,
-            headers={"Content-Type": "application/json"},
+            json=self.json,
         )
 
-        if not r or r.status_code == 400:
+        if response.status_code not in range(200, 300):
             log.error(f"Failed to post discord webhook.")
         else:
             log.info("Posted webhook to Discord.")

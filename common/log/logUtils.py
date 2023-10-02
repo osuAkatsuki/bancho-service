@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from os import name
 from sys import stdout as _stdout
 from typing import Optional
@@ -18,15 +19,16 @@ ENDL = "\n" if name == "posix" else "\r\n"
 MAX_DISCORD_WEBHOOK_RETRIES = 5
 
 
-def send_discord_webhook(message: str, webhook_url: str) -> None:
+async def send_discord_webhook(message: str, webhook_url: str) -> None:
     embed = Webhook(webhook_url, color=0x542CB8)
     embed.add_field(name="** **", value=message)
     embed.set_footer(text=f"Akatsuki Anticheat")
     embed.set_thumbnail("https://akatsuki.gg/static/logos/logo.png")
 
+    # TODO: use tenacity for the retry limit & unify to single function
     for _ in range(MAX_DISCORD_WEBHOOK_RETRIES):
         try:
-            embed.post()
+            await embed.post()
             break
         except RequestException:
             continue
@@ -87,10 +89,15 @@ def logMessage(
     if discord is not None:
         # send to discord, if provided
         if discord == "ac_general":
-            send_discord_webhook(message, settings.WEBHOOK_AC_GENERAL)
+            asyncio.create_task(
+                send_discord_webhook(message, settings.WEBHOOK_AC_GENERAL),
+            )
 
         elif discord == "ac_confidential":
-            send_discord_webhook(message, settings.WEBHOOK_AC_CONFIDENTIAL)
+            asyncio.create_task(
+                send_discord_webhook(message, settings.WEBHOOK_AC_CONFIDENTIAL),
+            )
+
         else:
             error(f"Unknown discord webhook {discord}")
 

@@ -4,6 +4,7 @@ bcrypt
 cmyui
 datadog
 dill
+httpx
 orjson
 psutil
 python-dotenv

@@ -36,7 +36,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
             packetData["totalScore"],
         )
         await match.updateHP(
-            multiplayer_match["match_id"], slot_id, packetData["currentHp"],
+            multiplayer_match["match_id"],
+            slot_id,
+            packetData["currentHp"],
         )
 
         # Enqueue frames to who's playing

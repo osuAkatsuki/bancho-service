@@ -21,5 +21,5 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         await osuToken.updateCachedStats(targetToken["token_id"])
         await osuToken.enqueue(
             targetToken["token_id"],
-            serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(userID, force=True),
         )

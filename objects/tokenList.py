@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 import time
 from typing import Literal
 from typing import Optional
@@ -15,10 +14,6 @@ from events import logoutEvent
 from objects import glob
 from objects import osuToken
 from objects.redisLock import redisLock
-
-# def __init__(self) -> None:
-#     self.tokens: MutableMapping[str, osuToken.token] = {}
-#     self._lock = threading.Lock()
 
 
 async def addToken(

@@ -12,5 +12,7 @@ async def handle(userToken: Token, _):
     # Part lobby channel
     # Done automatically by the client
     await chat.partChannel(
-        channel_name="#lobby", token_id=userToken["token_id"], kick=True,
+        channel_name="#lobby",
+        token_id=userToken["token_id"],
+        kick=True,
     )
