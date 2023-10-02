@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
 from typing import List
@@ -17,7 +18,6 @@ from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-import logging
 from common.log import rap_logs
 from common.ripple import passwordUtils
 from common.web.discord import Webhook

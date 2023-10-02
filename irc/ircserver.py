@@ -11,6 +11,7 @@ The high-level code has been rewritten to make it compatible with bancho-service
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import select
 import socket
@@ -19,7 +20,6 @@ import time
 import traceback
 
 import settings
-import logging
 from common.ripple import userUtils
 from helpers import chatHelper as chat
 from objects import channelList

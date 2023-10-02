@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import EventOptions
 from amplitude import Identify
 
 from common.constants import actions
-import logging
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
 from objects import glob

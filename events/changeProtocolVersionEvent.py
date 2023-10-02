@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 from constants import clientPackets
 from objects import osuToken
 

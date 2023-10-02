@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
 from json import loads
 from urllib.request import urlopen
 
 import settings
-import logging
 
 
 def getCountry(ip: str) -> str:

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Literal
 from typing import Optional
 from typing import overload
 
-import logging
 from common.ripple import userUtils
 from constants.exceptions import periodicLoopException
 from constants.exceptions import tokenNotFoundException
@@ -296,7 +296,7 @@ async def usersTimeoutCheckLoop() -> None:
                     except Exception as exc:
                         exceptions.append(exc)
                         logging.exception(
-                            "An error occurred while disconnecting a timed out client"
+                            "An error occurred while disconnecting a timed out client",
                         )
 
         # Re-raise exceptions if needed

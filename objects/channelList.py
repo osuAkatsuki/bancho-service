@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Optional
 from typing import TypedDict
-
-import logging
 
 from constants import exceptions
 from constants import serverPackets

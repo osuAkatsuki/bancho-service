@@ -2,16 +2,21 @@
 from __future__ import annotations
 
 import asyncio
+import logging.config
 import os
+import signal
+import sys
+import traceback
+from datetime import datetime
 from typing import Optional
 
 import psutil
-import logging
 import redis.asyncio as redis
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+import yaml
 
 import settings
 from common.constants import bcolors
@@ -27,10 +32,6 @@ from irc import ircserver
 from objects import banchoConfig
 from objects import channelList
 from objects import fokabot
-import logging.config
-
-import yaml
-
 from objects import glob
 from objects import match
 from objects import osuToken
@@ -45,13 +46,6 @@ from pubSubHandlers import unbanHandler
 from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
-
-
-# XXX: temporary for debugging purposes
-import sys
-import signal
-import traceback
-from datetime import datetime
 
 
 def dump_thread_stacks():

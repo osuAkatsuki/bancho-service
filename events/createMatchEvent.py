@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import BaseEvent
 
-import logging
 from constants import clientPackets
 from constants import exceptions
 from constants import serverPackets

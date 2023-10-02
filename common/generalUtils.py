@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from functools import partial
 from hashlib import md5
 from random import choice
@@ -15,7 +16,6 @@ from dill import dumps
 
 from common.constants import mods
 from common.constants import osuFlags as osu_flags
-import logging
 
 possible_chars = ascii_uppercase + digits
 

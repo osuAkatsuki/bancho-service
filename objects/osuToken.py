@@ -13,7 +13,6 @@ from common import channel_utils
 from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
-import logging
 from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets

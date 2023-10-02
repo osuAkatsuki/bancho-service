@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from math import floor
 from os import _exit
 from os import getloadavg
@@ -13,7 +14,6 @@ from typing import Any
 from typing import NoReturn
 
 import psutil
-import logging
 
 from constants import serverPackets
 from objects import glob

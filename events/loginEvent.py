@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import time
 from datetime import datetime as dt
@@ -12,12 +13,11 @@ from typing import TYPE_CHECKING
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
-import logging
-from common.log import rap_logs
 
 import settings
 from common import generalUtils
 from common.constants import privileges
+from common.log import rap_logs
 from common.ripple import userUtils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions

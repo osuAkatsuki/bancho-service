@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from copy import deepcopy
 from typing import Optional
 from typing import TypedDict
 
-import logging
 from constants import dataTypes
 from constants import matchModModes
 from constants import matchTeams

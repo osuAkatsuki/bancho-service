@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from os import name
 from typing import Optional
@@ -8,7 +9,6 @@ from typing import Optional
 from requests import RequestException
 
 import settings
-import logging
 from common.ripple import userUtils
 from common.web.discord import Webhook
 from objects import glob
@@ -75,5 +75,5 @@ async def send_rap_log(
             send_rap_log_as_discord_webhook(
                 message=f"{userUtils.getUsername(user_id)} {message}",
                 discord_channel=discord_channel,
-            )
+            ),
         )

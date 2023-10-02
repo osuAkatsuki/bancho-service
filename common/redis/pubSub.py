@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 import redis.asyncio as redis
 
-import logging
 from common.redis import generalPubSubHandler
 
 

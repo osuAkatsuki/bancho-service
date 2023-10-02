@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
 import time
 
 import orjson
 from amplitude import BaseEvent
-import logging
 
 import settings
 from constants import serverPackets

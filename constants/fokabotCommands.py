@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import re
 import secrets
@@ -16,7 +17,6 @@ from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-import logging
 from common.log import rap_logs
 from common.ripple import scoreUtils
 from common.ripple import userUtils
@@ -322,7 +322,8 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
         await osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
     await rap_logs.send_rap_log(
-        userID, f"has banned {target} ({targetID}) for {reason}"
+        userID,
+        f"has banned {target} ({targetID}) for {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n\n".join(
@@ -402,7 +403,8 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
         await osuToken.setRestricted(targetToken["token_id"])
 
     await rap_logs.send_rap_log(
-        userID, f"has restricted {target} ({targetID}) for: {reason}"
+        userID,
+        f"has restricted {target} ({targetID}) for: {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n\n".join(

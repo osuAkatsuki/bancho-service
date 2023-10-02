@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import settings
 from common.constants import mods
 from common.constants import privileges
-import logging
 from common.log import rap_logs
 from common.ripple import userUtils
 from constants import exceptions
