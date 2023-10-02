@@ -6,9 +6,6 @@ import re
 import time
 from datetime import datetime as dt
 from datetime import timedelta as td
-from sys import exc_info
-from traceback import format_exc
-from typing import TYPE_CHECKING
 
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions

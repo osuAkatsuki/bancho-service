@@ -17,7 +17,6 @@ import select
 import socket
 import sys
 import time
-import traceback
 
 import settings
 from common.ripple import userUtils
