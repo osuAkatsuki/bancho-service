@@ -29,7 +29,7 @@ def make_key(match_id: int, slot_id: Union[int, Literal["*"]]) -> str:
     return f"bancho:matches:{match_id}:slots:{slot_id}"
 
 
-def create_slot(match_id: int, slot_id: int) -> Slot:
+async def create_slot(match_id: int, slot_id: int) -> Slot:
     slot: Slot = {
         "status": slotStatuses.FREE,
         "team": matchTeams.NO_TEAM,
@@ -43,20 +43,20 @@ def create_slot(match_id: int, slot_id: int) -> Slot:
         "failed": False,
         "passed": True,
     }
-    glob.redis.set(make_key(match_id, slot_id), json.dumps(slot))
+    await glob.redis.set(make_key(match_id, slot_id), json.dumps(slot))
     return slot
 
 
-def get_slot(match_id: int, slot_id: int) -> Optional[Slot]:
-    slot = glob.redis.get(make_key(match_id, slot_id))
+async def get_slot(match_id: int, slot_id: int) -> Optional[Slot]:
+    slot = await glob.redis.get(make_key(match_id, slot_id))
     if slot is None:
         return None
     return json.loads(slot)
 
 
-def get_slots(match_id: int) -> list[Slot]:
+async def get_slots(match_id: int) -> list[Slot]:
     keys = [make_key(match_id, slot_id) for slot_id in range(16)]
-    raw_slots = glob.redis.mget(keys)
+    raw_slots = await glob.redis.mget(keys)
     slots = []
     for raw_slot in raw_slots:
         assert raw_slot is not None
@@ -64,7 +64,7 @@ def get_slots(match_id: int) -> list[Slot]:
     return slots
 
 
-def update_slot(
+async def update_slot(
     match_id: int,
     slot_id: int,
     status: Optional[int] = None,
@@ -79,7 +79,7 @@ def update_slot(
     failed: Optional[bool] = None,
     passed: Optional[bool] = None,
 ) -> Optional[Slot]:
-    slot = get_slot(match_id, slot_id)
+    slot = await get_slot(match_id, slot_id)
     if slot is None:
         return None
 
@@ -106,15 +106,15 @@ def update_slot(
     if passed is not None:
         slot["passed"] = passed
 
-    glob.redis.set(make_key(match_id, slot_id), json.dumps(slot))
+    await glob.redis.set(make_key(match_id, slot_id), json.dumps(slot))
     return slot
 
 
-def delete_slot(match_id: int, slot_id: int) -> None:
+async def delete_slot(match_id: int, slot_id: int) -> None:
     # TODO: should we throw error when no slot exists?
-    glob.redis.delete(make_key(match_id, slot_id))
+    await glob.redis.delete(make_key(match_id, slot_id))
 
 
-def delete_slots(match_id: int) -> None:
+async def delete_slots(match_id: int) -> None:
     # TODO: should we throw error when no slots exist?
-    glob.redis.delete(*glob.redis.keys(make_key(match_id, "*")))
+    await glob.redis.delete(*await glob.redis.keys(make_key(match_id, "*")))

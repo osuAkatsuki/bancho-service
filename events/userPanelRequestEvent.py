@@ -19,4 +19,4 @@ async def handle(userToken: Token, rawPacketData: bytes):
     for i in packetData["users"]:
         # Enqueue userpanel packets relative to this user
         log.debug(f"Sending panel for user {i}.")
-        osuToken.enqueue(userToken["token_id"], serverPackets.userPanel(i))
+        await osuToken.enqueue(userToken["token_id"], await serverPackets.userPanel(i))

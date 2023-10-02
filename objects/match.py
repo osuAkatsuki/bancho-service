@@ -58,7 +58,7 @@ def make_key(match_id: int) -> str:
     return f"bancho:matches:{match_id}"
 
 
-def create_match(
+async def create_match(
     match_name: str,
     match_password: str,
     beatmap_id: int,
@@ -77,10 +77,10 @@ def create_match(
     is_in_progress: bool,
     creation_time: float,
 ) -> Match:
-    match_id = glob.redis.incr("bancho:matches:last_id")
-    glob.redis.sadd("bancho:matches", match_id)
+    match_id = await glob.redis.incr("bancho:matches:last_id")
+    await glob.redis.sadd("bancho:matches", match_id)
     for slot_id in range(16):
-        slot.create_slot(match_id, slot_id)
+        await slot.create_slot(match_id, slot_id)
     match: Match = {
         "match_id": match_id,
         "match_name": match_name,
@@ -101,24 +101,24 @@ def create_match(
         "is_in_progress": is_in_progress,
         "creation_time": creation_time,
     }
-    glob.redis.set(make_key(match_id), json.dumps(match))
+    await glob.redis.set(make_key(match_id), json.dumps(match))
     return match
 
 
-def get_match_ids() -> set[int]:
-    raw_match_ids = glob.redis.smembers("bancho:matches")
+async def get_match_ids() -> set[int]:
+    raw_match_ids = await glob.redis.smembers("bancho:matches")
     return {int(match_id) for match_id in raw_match_ids}
 
 
-def get_match(match_id: int) -> Optional[Match]:
-    raw_match = glob.redis.get(make_key(match_id))
+async def get_match(match_id: int) -> Optional[Match]:
+    raw_match = await glob.redis.get(make_key(match_id))
     if raw_match is None:
         return None
 
     return json.loads(raw_match)
 
 
-def update_match(
+async def update_match(
     match_id: int,
     match_name: Optional[str] = None,
     match_password: Optional[str] = None,
@@ -138,7 +138,7 @@ def update_match(
     is_in_progress: Optional[bool] = None,
     creation_time: Optional[float] = None,
 ) -> Optional[Match]:
-    match = get_match(match_id)
+    match = await get_match(match_id)
     if match is None:
         return
 
@@ -177,17 +177,17 @@ def update_match(
     if creation_time is not None:
         match["creation_time"] = creation_time
 
-    glob.redis.set(make_key(match_id), json.dumps(match))
+    await glob.redis.set(make_key(match_id), json.dumps(match))
     return match
 
 
-def delete_match(match_id: int) -> None:
+async def delete_match(match_id: int) -> None:
     # TODO: should we throw error when no match exists?
-    glob.redis.srem("bancho:matches", match_id)
-    glob.redis.delete(make_key(match_id))
+    await glob.redis.srem("bancho:matches", match_id)
+    await glob.redis.delete(make_key(match_id))
 
     # TODO: should devs have to do this separately?
-    slot.delete_slots(match_id)
+    await slot.delete_slots(match_id)
 
 
 def create_stream_name(match_id: int) -> str:
@@ -198,7 +198,9 @@ def create_playing_stream_name(match_id: int) -> str:
     return f"multi/{match_id}/playing"
 
 
-def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, int]]:
+async def getMatchData(
+    match_id: int, censored: bool = False,
+) -> tuple[tuple[object, int], ...]:
     """
     Return binary match data structure for packetHelper
 
@@ -208,13 +210,13 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
     """
     # General match info
 
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
-    struct = [
+    struct: list[tuple[object, int]] = [
         (multiplayer_match["match_id"], dataTypes.UINT16),
         (int(multiplayer_match["is_in_progress"]), dataTypes.BYTE),
         (0, dataTypes.BYTE),  # TODO: what is this?
@@ -239,11 +241,11 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
 
     struct.extend(
         [
-            (tokenList.getUserIDFromToken(slot["user_token"]), dataTypes.UINT32)
+            (await tokenList.getUserIDFromToken(slot["user_token"]), dataTypes.UINT32)
             for slot in slots
             if (
                 slot["user_token"]
-                and osuToken.get_token(slot["user_token"]) is not None
+                and await osuToken.get_token(slot["user_token"]) is not None
             )
         ],
     )
@@ -270,7 +272,7 @@ def getMatchData(match_id: int, censored: bool = False) -> tuple[tuple[object, i
     return tuple(struct)
 
 
-def setHost(match_id: int, new_host_id: int) -> bool:
+async def setHost(match_id: int, new_host_id: int) -> bool:
     """
     Set room host to newHost and send him host packet
 
@@ -279,42 +281,42 @@ def setHost(match_id: int, new_host_id: int) -> bool:
     :return:
     """
 
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    old_host = tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
+    old_host = await tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
     assert old_host is not None
 
     if not osuToken.is_staff(old_host["privileges"]):
-        remove_referee(match_id, multiplayer_match["host_user_id"])
+        await remove_referee(match_id, multiplayer_match["host_user_id"])
 
-    add_referee(match_id, new_host_id)
+    await add_referee(match_id, new_host_id)
 
-    slot_id = getUserSlotID(match_id, new_host_id)
+    slot_id = await getUserSlotID(match_id, new_host_id)
     if slot_id is None:
         return False
 
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
     if _slot["user_token"] is None:
         return False
 
-    user_token = osuToken.get_token(_slot["user_token"])
+    user_token = await osuToken.get_token(_slot["user_token"])
     if user_token is None:
         return False
 
-    match.update_match(
+    await match.update_match(
         match_id,
         host_user_id=new_host_id,
     )
 
-    osuToken.enqueue(user_token["token_id"], serverPackets.matchTransferHost)
-    sendUpdates(match_id)
+    await osuToken.enqueue(user_token["token_id"], serverPackets.matchTransferHost)
+    await sendUpdates(match_id)
     return True
 
 
-def removeHost(match_id: int) -> None:
+async def removeHost(match_id: int) -> None:
     """
     Removes the host (for tourney matches)
 
@@ -322,18 +324,18 @@ def removeHost(match_id: int) -> None:
     :return:
     """
 
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    remove_referee(match_id, multiplayer_match["host_user_id"])
+    await remove_referee(match_id, multiplayer_match["host_user_id"])
 
-    update_match(match_id, host_user_id=-1)
+    await update_match(match_id, host_user_id=-1)
 
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
 # TODO: this func probably should not exist; jkurwa
-def setSlot(
+async def setSlot(
     match_id: int,
     slot_id: int,
     status: Optional[int] = None,
@@ -345,10 +347,10 @@ def setSlot(
     skip: Optional[bool] = None,
     complete: Optional[bool] = None,
 ) -> slot.Slot:
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
-    _slot = slot.update_slot(
+    _slot = await slot.update_slot(
         match_id,
         slot_id,
         status=status,
@@ -364,7 +366,7 @@ def setSlot(
     return _slot
 
 
-def setSlotMods(match_id: int, slot_id: int, mods: int) -> None:
+async def setSlotMods(match_id: int, slot_id: int, mods: int) -> None:
     """
     Set slotID mods. Same as calling setSlot and then sendUpdate
 
@@ -373,11 +375,11 @@ def setSlotMods(match_id: int, slot_id: int, mods: int) -> None:
     :return:
     """
     # Set new slot data and send update
-    setSlot(match_id, slot_id, mods=mods)
-    sendUpdates(match_id)
+    await setSlot(match_id, slot_id, mods=mods)
+    await sendUpdates(match_id)
 
 
-def toggleSlotReady(match_id: int, slot_id: int) -> None:
+async def toggleSlotReady(match_id: int, slot_id: int) -> None:
     """
     Switch slotID ready/not ready status
     Same as calling setSlot and then sendUpdate
@@ -386,10 +388,10 @@ def toggleSlotReady(match_id: int, slot_id: int) -> None:
     :return:
     """
 
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
     # Update ready status and setnd update
@@ -402,11 +404,11 @@ def toggleSlotReady(match_id: int, slot_id: int) -> None:
     else:
         newStatus = slotStatuses.READY
 
-    setSlot(match_id, slot_id, newStatus)
-    sendUpdates(match_id)
+    await setSlot(match_id, slot_id, newStatus)
+    await sendUpdates(match_id)
 
 
-def toggleSlotLocked(match_id: int, slot_id: int) -> None:
+async def toggleSlotLocked(match_id: int, slot_id: int) -> None:
     """
     Lock a slot
     Same as calling setSlot and then sendUpdate
@@ -415,7 +417,7 @@ def toggleSlotLocked(match_id: int, slot_id: int) -> None:
     :return:
     """
 
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
     # Check if slot is already locked
@@ -425,19 +427,19 @@ def toggleSlotLocked(match_id: int, slot_id: int) -> None:
         newStatus = slotStatuses.LOCKED
 
     # Send updated settings to kicked user, so he returns to lobby
-    if _slot["user_token"] and _slot["user_token"] in osuToken.get_token_ids():
-        packet_data = serverPackets.updateMatch(match_id)
+    if _slot["user_token"] and _slot["user_token"] in await osuToken.get_token_ids():
+        packet_data = await serverPackets.updateMatch(match_id)
         if packet_data is None:
             # TODO: is this correct behaviour?
             # ripple was doing this before the stateless refactor,
             # but i'm pretty certain the osu! client won't like this.
-            osuToken.enqueue(_slot["user_token"], b"")
+            await osuToken.enqueue(_slot["user_token"], b"")
             return None
 
-        osuToken.enqueue(_slot["user_token"], packet_data)
+        await osuToken.enqueue(_slot["user_token"], packet_data)
 
     # Set new slot status
-    setSlot(
+    await setSlot(
         match_id,
         slot_id=slot_id,
         status=newStatus,
@@ -448,28 +450,28 @@ def toggleSlotLocked(match_id: int, slot_id: int) -> None:
     )
 
     # Send updates to everyone else
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
-def playerLoaded(match_id: int, user_id: int) -> None:
+async def playerLoaded(match_id: int, user_id: int) -> None:
     """
     Set a player loaded status to True
 
     :param userID: ID of user
     :return:
     """
-    slot_id = getUserSlotID(match_id, user_id)
+    slot_id = await getUserSlotID(match_id, user_id)
     if slot_id is None:
         return
 
     # Set loaded to True
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
-    _slot = slot.update_slot(match_id, slot_id, loaded=True)
+    _slot = await slot.update_slot(match_id, slot_id, loaded=True)
     assert _slot is not None
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Check whether all players are loaded
@@ -482,46 +484,46 @@ def playerLoaded(match_id: int, user_id: int) -> None:
             playing += 1
 
     if playing == loaded:
-        allPlayersLoaded(match_id)
+        await allPlayersLoaded(match_id)
 
 
-def allPlayersLoaded(match_id: int) -> None:
+async def allPlayersLoaded(match_id: int) -> None:
     """
     Send allPlayersLoaded packet to every playing usr in match
 
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     playing_stream_name = create_playing_stream_name(match_id)
-    streamList.broadcast(playing_stream_name, serverPackets.allPlayersLoaded)
+    await streamList.broadcast(playing_stream_name, serverPackets.allPlayersLoaded)
 
 
-def playerSkip(match_id: int, user_id: int) -> None:
+async def playerSkip(match_id: int, user_id: int) -> None:
     """
     Set a player skip status to True
 
     :param userID: ID of user
     :return:
     """
-    slot_id = getUserSlotID(match_id, user_id)
+    slot_id = await getUserSlotID(match_id, user_id)
     if slot_id is None:
         return
 
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
     # Set skip to True
-    _slot = slot.update_slot(match_id, slot_id, skip=True)
+    _slot = await slot.update_slot(match_id, slot_id, skip=True)
     assert _slot is not None
 
     # Send skip packet to every playing user
     playing_stream_name = create_playing_stream_name(match_id)
     packet_data = serverPackets.playerSkipped(slot_id)
-    streamList.broadcast(playing_stream_name, packet_data)
+    await streamList.broadcast(playing_stream_name, packet_data)
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Check all skipped
@@ -534,10 +536,10 @@ def playerSkip(match_id: int, user_id: int) -> None:
             total_playing += 1
 
     if total_playing == skipped:
-        allPlayersSkipped(match_id)
+        await allPlayersSkipped(match_id)
 
 
-def allPlayersSkipped(match_id):
+async def allPlayersSkipped(match_id):
     """
     Send allPlayersSkipped packet to every playing usr in match
 
@@ -545,10 +547,10 @@ def allPlayersSkipped(match_id):
     """
 
     playing_stream_name = create_playing_stream_name(match_id)
-    streamList.broadcast(playing_stream_name, serverPackets.allPlayersSkipped)
+    await streamList.broadcast(playing_stream_name, serverPackets.allPlayersSkipped)
 
 
-def updateScore(match_id: int, slot_id: int, score: int) -> None:
+async def updateScore(match_id: int, slot_id: int, score: int) -> None:
     """
     Update score for a slot
 
@@ -556,14 +558,14 @@ def updateScore(match_id: int, slot_id: int, score: int) -> None:
     :param score: the new score to update
     :return:
     """
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
-    _slot = slot.update_slot(match_id, slot_id, score=score)
+    _slot = await slot.update_slot(match_id, slot_id, score=score)
     assert _slot is not None
 
 
-def updateHP(match_id: int, slot_id: int, hp: int) -> None:
+async def updateHP(match_id: int, slot_id: int, hp: int) -> None:
     """
     Update HP for a slot
 
@@ -571,12 +573,12 @@ def updateHP(match_id: int, slot_id: int, hp: int) -> None:
     :param hp: the new hp to update
     :return:
     """
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
     failed = hp == 254
 
-    _slot = slot.update_slot(match_id, slot_id, failed=failed)
+    _slot = await slot.update_slot(match_id, slot_id, failed=failed)
     assert _slot is not None
 
 
@@ -586,13 +588,13 @@ async def playerCompleted(match_id: int, user_id: int) -> None:
 
     :param userID: ID of user
     """
-    slot_id = getUserSlotID(match_id, user_id)
+    slot_id = await getUserSlotID(match_id, user_id)
     if slot_id is None:
         return
 
-    setSlot(match_id, slot_id, complete=True)
+    await setSlot(match_id, slot_id, complete=True)
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Check all completed
@@ -614,7 +616,7 @@ async def allPlayersCompleted(match_id: int) -> None:
 
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     # Collect some info about the match that just ended to send to the api
@@ -627,7 +629,7 @@ async def allPlayersCompleted(match_id: int) -> None:
         "scores": {},
     }
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Add score info for each player
@@ -642,29 +644,29 @@ async def allPlayersCompleted(match_id: int) -> None:
             }
 
     # Send the info to the api
-    glob.redis.publish(
+    await glob.redis.publish(
         "api:mp_complete_match",
         json.dumps(infoToSend),
     )  # cant use orjson
 
     # Reset inProgress
-    multiplayer_match = update_match(match_id, is_in_progress=False)
+    multiplayer_match = await update_match(match_id, is_in_progress=False)
     assert multiplayer_match is not None
 
     # Reset slots
-    resetSlots(match_id)
+    await resetSlots(match_id)
 
     # Send match update
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
     # Send match complete
     stream_name = create_stream_name(match_id)
-    streamList.broadcast(stream_name, serverPackets.matchComplete)
+    await streamList.broadcast(stream_name, serverPackets.matchComplete)
 
     # Destroy playing stream
     playing_stream_name = create_playing_stream_name(match_id)
-    streamList.dispose(playing_stream_name)
-    streamList.remove(playing_stream_name)
+    await streamList.dispose(playing_stream_name)
+    await streamList.remove(playing_stream_name)
 
     # Console output
     # log.info("MPROOM{}: Match completed".format(self.matchID))
@@ -675,9 +677,9 @@ async def allPlayersCompleted(match_id: int) -> None:
     # saying that the match has completed.
     if (
         multiplayer_match["is_tourney"]
-        and channel_name in channelList.getChannelNames()
+        and channel_name in await channelList.getChannelNames()
     ):
-        aika_token = tokenList.getTokenFromUserID(999)
+        aika_token = await tokenList.getTokenFromUserID(999)
         assert aika_token is not None
         await chat.sendMessage(
             token_id=aika_token["token_id"],
@@ -686,8 +688,8 @@ async def allPlayersCompleted(match_id: int) -> None:
         )
 
 
-def resetSlots(match_id: int) -> None:
-    slots = slot.get_slots(match_id)
+async def resetSlots(match_id: int) -> None:
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # TODO: make sure slot_id is right?
@@ -695,7 +697,7 @@ def resetSlots(match_id: int) -> None:
     # also not sure we start from 0.
     for slot_id, _slot in enumerate(slots):
         if _slot["user_token"] is not None and _slot["status"] == slotStatuses.PLAYING:
-            slot.update_slot(
+            await slot.update_slot(
                 match_id,
                 slot_id,
                 status=slotStatuses.NOT_READY,
@@ -708,13 +710,13 @@ def resetSlots(match_id: int) -> None:
             )
 
 
-def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
+async def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
     """
     Get slot ID occupied by userID
 
     :return: slot id if found, None if user is not in room
     """
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for slot_id, _slot in enumerate(slots):
@@ -722,27 +724,27 @@ def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
             return slot_id
 
 
-def userJoin(match_id: int, token_id: str) -> bool:
+async def userJoin(match_id: int, token_id: str) -> bool:
     """
     Add someone to users in match
 
     :param user: user object of the user
     :return: True if join success, False if fail (room is full)
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
-    token = osuToken.get_token(token_id)
+    token = await osuToken.get_token(token_id)
     assert token is not None
 
     # Make sure we're not in this match
     for slot_id, _slot in enumerate(slots):
         if _slot["user_token"] == token_id:
             # Set bugged slot to free
-            setSlot(
+            await setSlot(
                 match_id,
                 slot_id,
                 status=slotStatuses.FREE,
@@ -764,7 +766,7 @@ def userJoin(match_id: int, token_id: str) -> bool:
             ):
                 team = matchTeams.RED if slot_id % 2 == 0 else matchTeams.BLUE
 
-            setSlot(
+            await setSlot(
                 match_id,
                 slot_id,
                 status=slotStatuses.NOT_READY,
@@ -775,10 +777,10 @@ def userJoin(match_id: int, token_id: str) -> bool:
             )
 
             if osuToken.is_staff(token["privileges"]):
-                add_referee(match_id, token["user_id"])
+                await add_referee(match_id, token["user_id"])
 
             # Send updated match data
-            sendUpdates(match_id)
+            await sendUpdates(match_id)
             return True
 
     if osuToken.is_staff(
@@ -794,7 +796,7 @@ def userJoin(match_id: int, token_id: str) -> bool:
                 else:
                     team = matchTeams.NO_TEAM
 
-                setSlot(
+                await setSlot(
                     match_id,
                     slot_id,
                     status=slotStatuses.NOT_READY,
@@ -805,13 +807,13 @@ def userJoin(match_id: int, token_id: str) -> bool:
                 )
 
                 # Send updated match data
-                sendUpdates(match_id)
+                await sendUpdates(match_id)
                 return True
 
     return False
 
 
-def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
+async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
     """
     Remove someone from users in match
 
@@ -819,19 +821,19 @@ def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
     :param disposeMatch: if `True`, will try to dispose match if there are no users in the room
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    token = osuToken.get_token(token_id)
+    token = await osuToken.get_token(token_id)
     assert token is not None
 
     # Make sure the user is in room
-    slot_id = getUserSlotID(match_id, token["user_id"])
+    slot_id = await getUserSlotID(match_id, token["user_id"])
     if slot_id is None:
         return
 
     # Set that slot to free
-    setSlot(
+    await setSlot(
         match_id,
         slot_id,
         status=slotStatuses.FREE,
@@ -843,16 +845,16 @@ def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
 
     # Check if everyone left
     if (
-        countUsers(match_id) == 0
+        await countUsers(match_id) == 0
         and disposeMatch
         and not multiplayer_match["is_tourney"]
     ):
         # Dispose match
-        matchList.disposeMatch(multiplayer_match["match_id"])  # TODO
+        await matchList.disposeMatch(multiplayer_match["match_id"])  # TODO
         # log.info("MPROOM{}: Room disposed because all users left.".format(self.matchID))
         return
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Check if host left
@@ -862,18 +864,18 @@ def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
             if _slot["user_token"] is None:
                 continue
 
-            token = osuToken.get_token(_slot["user_token"])
+            token = await osuToken.get_token(_slot["user_token"])
             if token is None:
                 continue
 
-            setHost(match_id, token["user_id"])
+            await setHost(match_id, token["user_id"])
             break
 
     # Send updated match data
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
-def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
+async def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
     """
     Change userID slot to newSlotID
 
@@ -882,10 +884,10 @@ def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
     :return:
     """
 
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Make sure the match is not locked
@@ -893,7 +895,7 @@ def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
         return False
 
     # Make sure the user is in room
-    old_slot_id = getUserSlotID(match_id, user_id)
+    old_slot_id = await getUserSlotID(match_id, user_id)
     if old_slot_id is None:
         return False
 
@@ -910,7 +912,7 @@ def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
     old_data = deepcopy(slots[old_slot_id])
 
     # Free old slot
-    setSlot(
+    await setSlot(
         match_id,
         old_slot_id,
         status=slotStatuses.FREE,
@@ -924,7 +926,7 @@ def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
     )
 
     # Occupy new slot
-    setSlot(
+    await setSlot(
         match_id,
         new_slot_id,
         status=old_data["status"],
@@ -935,52 +937,52 @@ def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
     )
 
     # Send updated match data
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
     return True
 
 
-def changePassword(match_id: int, newPassword: str) -> None:
+async def changePassword(match_id: int, newPassword: str) -> None:
     """
     Change match password to newPassword
 
     :param newPassword: new password string
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    multiplayer_match = update_match(match_id, match_password=newPassword)
+    multiplayer_match = await update_match(match_id, match_password=newPassword)
     assert multiplayer_match is not None
 
     # Send password change to every user in match
-    streamList.broadcast(
+    await streamList.broadcast(
         create_stream_name(match_id),
         serverPackets.changeMatchPassword(multiplayer_match["match_password"]),
     )
 
     # Send new match settings too
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
-def changeMods(match_id: int, mods: int) -> None:
+async def changeMods(match_id: int, mods: int) -> None:
     """
     Set match global mods
 
     :param mods: mods bitwise int thing
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     # Set new mods and send update
-    multiplayer_match = update_match(match_id, mods=mods)
+    multiplayer_match = await update_match(match_id, mods=mods)
     assert multiplayer_match is not None
 
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
-def userHasBeatmap(match_id: int, user_id: int, has_beatmap: bool = True) -> None:
+async def userHasBeatmap(match_id: int, user_id: int, has_beatmap: bool = True) -> None:
     """
     Set no beatmap status for userID
 
@@ -989,7 +991,7 @@ def userHasBeatmap(match_id: int, user_id: int, has_beatmap: bool = True) -> Non
     :return:
     """
     # Make sure the user is in room
-    slot_id = getUserSlotID(match_id, user_id)
+    slot_id = await getUserSlotID(match_id, user_id)
     if slot_id is None:
         return
 
@@ -999,31 +1001,34 @@ def userHasBeatmap(match_id: int, user_id: int, has_beatmap: bool = True) -> Non
     else:
         new_status = slotStatuses.NO_MAP
 
-    setSlot(match_id, slot_id, new_status)
+    await setSlot(match_id, slot_id, new_status)
 
     # Send updates
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
-def transferHost(match_id: int, slot_id: int) -> None:
+async def transferHost(match_id: int, slot_id: int) -> None:
     """
     Transfer host to slotID
 
     :param slotID: ID of slot
     :return:
     """
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
     # Make sure there is someone in that slot
-    if not _slot["user_token"] or _slot["user_token"] not in osuToken.get_token_ids():
+    if (
+        not _slot["user_token"]
+        or _slot["user_token"] not in await osuToken.get_token_ids()
+    ):
         return
 
     # Transfer host
-    setHost(match_id, _slot["user_id"])
+    await setHost(match_id, _slot["user_id"])
 
 
-def playerFailed(match_id: int, user_id: int) -> None:
+async def playerFailed(match_id: int, user_id: int) -> None:
     """
     Send userID's failed packet to everyone in match
 
@@ -1031,18 +1036,18 @@ def playerFailed(match_id: int, user_id: int) -> None:
     :return:
     """
     # Make sure the user is in room
-    slot_id = getUserSlotID(match_id, user_id)
+    slot_id = await getUserSlotID(match_id, user_id)
     if slot_id is None:
         return
 
-    _slot = slot.get_slot(match_id, slot_id)
+    _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
 
-    _slot = slot.update_slot(match_id, slot_id, passed=False)
+    _slot = await slot.update_slot(match_id, slot_id, passed=False)
 
     # Send packet to all players
     playing_stream_name = create_playing_stream_name(match_id)
-    streamList.broadcast(
+    await streamList.broadcast(
         playing_stream_name,
         serverPackets.playerFailed(slot_id),
     )
@@ -1057,8 +1062,8 @@ async def invite(match_id: int, fro: int, to: int) -> None:
     :return:
     """
     # Get tokens
-    froToken = tokenList.getTokenFromUserID(fro, _all=False)
-    toToken = tokenList.getTokenFromUserID(to, _all=False)
+    froToken = await tokenList.getTokenFromUserID(fro, _all=False)
+    toToken = await tokenList.getTokenFromUserID(to, _all=False)
     if not froToken or not toToken:
         return
 
@@ -1071,7 +1076,7 @@ async def invite(match_id: int, fro: int, to: int) -> None:
         )
         return
 
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     # Send message
@@ -1087,26 +1092,28 @@ async def invite(match_id: int, fro: int, to: int) -> None:
     )
 
 
-def countUsers(match_id: int) -> int:
+async def countUsers(match_id: int) -> int:
     """
     Return how many players are in that match
 
     :return: number of users
     """
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     return sum(1 for slot in slots if slot["user_token"] is not None)
 
 
-def changeTeam(match_id: int, user_id: int, new_team: Optional[int] = None) -> None:
+async def changeTeam(
+    match_id: int, user_id: int, new_team: Optional[int] = None,
+) -> None:
     """
     Change userID's team
 
     :param userID: id of user
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     # Make sure this match's mode has teams
@@ -1121,11 +1128,11 @@ def changeTeam(match_id: int, user_id: int, new_team: Optional[int] = None) -> N
         return
 
     # Make sure the user is in room
-    slot_id = getUserSlotID(match_id, user_id)
+    slot_id = await getUserSlotID(match_id, user_id)
     if slot_id is None:
         return
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     # Update slot and send update
@@ -1135,39 +1142,39 @@ def changeTeam(match_id: int, user_id: int, new_team: Optional[int] = None) -> N
         else:
             new_team = matchTeams.RED
 
-        setSlot(match_id, slot_id, status=None, team=new_team)
+        await setSlot(match_id, slot_id, status=None, team=new_team)
 
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
 
 
-def sendUpdates(match_id: int) -> None:
+async def sendUpdates(match_id: int) -> None:
     """
     Send match updates packet to everyone in lobby and room streams
 
     :return:
     """
-    uncensored_data = serverPackets.updateMatch(match_id)
+    uncensored_data = await serverPackets.updateMatch(match_id)
     if uncensored_data is not None:
         stream_name = create_stream_name(match_id)
-        streamList.broadcast(stream_name, uncensored_data)
+        await streamList.broadcast(stream_name, uncensored_data)
 
-    censored_data = serverPackets.updateMatch(match_id, censored=True)
+    censored_data = await serverPackets.updateMatch(match_id, censored=True)
     if censored_data is not None:
-        streamList.broadcast("lobby", censored_data)
+        await streamList.broadcast("lobby", censored_data)
     else:
         log.error(
             f"MPROOM{match_id}: Can't send match update packet, match data is None!!!",
         )
 
 
-def checkTeams(match_id: int) -> bool:
+async def checkTeams(match_id: int) -> bool:
     """
     Check if match teams are valid
 
     :return: True if valid, False if invalid
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     if (
@@ -1180,7 +1187,7 @@ def checkTeams(match_id: int) -> bool:
     # We have teams, check if they are valid
     firstTeam = -1
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for _slot in slots:
@@ -1194,43 +1201,43 @@ def checkTeams(match_id: int) -> bool:
     return False
 
 
-def start(match_id: int) -> bool:
+async def start(match_id: int) -> bool:
     """
     Start the match
 
     :return:
     """
-    multiplayer_match = get_match(match_id)
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     # Remove isStarting timer flag thingie
-    multiplayer_match = update_match(match_id, is_starting=False)
+    multiplayer_match = await update_match(match_id, is_starting=False)
     assert multiplayer_match is not None
 
     # Make sure we have enough players
-    if not checkTeams(match_id):
+    if not await checkTeams(match_id):
         return False
 
     # Create playing channel
     playing_stream_name = create_playing_stream_name(match_id)
-    streamList.add(playing_stream_name)
+    await streamList.add(playing_stream_name)
 
     # Change inProgress value
-    multiplayer_match = update_match(match_id, is_in_progress=True)
+    multiplayer_match = await update_match(match_id, is_in_progress=True)
     assert multiplayer_match is not None
 
     # Set playing to ready players and set load, skip and complete to False
     # Make clients join playing stream
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for slot_id, _slot in enumerate(slots):
         if _slot["user_token"] is None:
             continue
 
-        user_token = osuToken.get_token(_slot["user_token"])
+        user_token = await osuToken.get_token(_slot["user_token"])
         if user_token is not None:
-            slot.update_slot(
+            await slot.update_slot(
                 match_id,
                 slot_id,
                 status=slotStatuses.PLAYING,
@@ -1239,56 +1246,58 @@ def start(match_id: int) -> bool:
                 complete=False,
             )
 
-            osuToken.joinStream(user_token["token_id"], playing_stream_name)
+            await osuToken.joinStream(user_token["token_id"], playing_stream_name)
 
     # Send match start packet
-    streamList.broadcast(
+    await streamList.broadcast(
         playing_stream_name,
-        serverPackets.matchStart(match_id),
+        await serverPackets.matchStart(match_id),
     )
 
     # Send updates
-    sendUpdates(match_id)
+    await sendUpdates(match_id)
     return True
 
 
-def forceSize(match_id: int, matchSize: int) -> None:
-    slots = slot.get_slots(match_id)
+async def forceSize(match_id: int, matchSize: int) -> None:
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for i in range(matchSize):
         if slots[i]["status"] == slotStatuses.LOCKED:
-            toggleSlotLocked(match_id, i)
+            await toggleSlotLocked(match_id, i)
     for i in range(matchSize, 16):
         if slots[i]["status"] != slotStatuses.LOCKED:
-            toggleSlotLocked(match_id, i)
+            await toggleSlotLocked(match_id, i)
 
 
-def abort(match_id: int) -> None:
-    multiplayer_match = get_match(match_id)
+async def abort(match_id: int) -> None:
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
     if not multiplayer_match["is_in_progress"]:
         log.warning(f"MPROOM{match_id}: Match is not in progress!")
         return
 
-    multiplayer_match = update_match(match_id, is_in_progress=False, is_starting=False)
+    multiplayer_match = await update_match(
+        match_id, is_in_progress=False, is_starting=False,
+    )
     assert multiplayer_match is not None
 
-    resetSlots(match_id)
-    sendUpdates(match_id)
+    await resetSlots(match_id)
+    await sendUpdates(match_id)
 
     playing_stream_name = create_playing_stream_name(match_id)
-    streamList.broadcast(playing_stream_name, serverPackets.matchAbort)
-    streamList.dispose(playing_stream_name)
-    streamList.remove(playing_stream_name)
+    await streamList.broadcast(playing_stream_name, serverPackets.matchAbort)
+    await streamList.dispose(playing_stream_name)
+    await streamList.remove(playing_stream_name)
 
 
-def initializeTeams(match_id: int) -> None:
-    multiplayer_match = get_match(match_id)
+async def initializeTeams(match_id: int) -> None:
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     if multiplayer_match["match_team_type"] in {
@@ -1298,40 +1307,40 @@ def initializeTeams(match_id: int) -> None:
         # Set teams
         for slot_id in range(len(slots)):
             new_team = matchTeams.RED if slot_id % 2 == 0 else matchTeams.BLUE
-            slot.update_slot(match_id, slot_id, team=new_team)
+            await slot.update_slot(match_id, slot_id, team=new_team)
     else:
         # Reset teams
         for slot_id in range(len(slots)):
             new_team = matchTeams.NO_TEAM
-            slot.update_slot(match_id, slot_id, team=new_team)
+            await slot.update_slot(match_id, slot_id, team=new_team)
 
 
-def resetMods(match_id: int) -> None:
-    slots = slot.get_slots(match_id)
+async def resetMods(match_id: int) -> None:
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for slot_id in range(len(slots)):
-        slot.update_slot(match_id, slot_id, mods=0)
+        await slot.update_slot(match_id, slot_id, mods=0)
 
 
-def resetReady(match_id: int) -> None:
-    slots = slot.get_slots(match_id)
+async def resetReady(match_id: int) -> None:
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     for slot_id, _slot in enumerate(slots):
         if _slot["status"] == slotStatuses.READY:
             new_status = slotStatuses.NOT_READY
-            slot.update_slot(match_id, slot_id, status=new_status)
+            await slot.update_slot(match_id, slot_id, status=new_status)
 
 
 async def sendReadyStatus(match_id: int) -> None:
     channel_name = f"#multi_{match_id}"
 
     # Make sure match exists before attempting to do anything else
-    if channel_name not in channelList.getChannelNames():
+    if channel_name not in await channelList.getChannelNames():
         return
 
-    slots = slot.get_slots(match_id)
+    slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
     totalUsers = 0
@@ -1358,7 +1367,7 @@ async def sendReadyStatus(match_id: int) -> None:
 
         message = " ".join(message)
 
-    aika_token = tokenList.getTokenFromUserID(999)
+    aika_token = await tokenList.getTokenFromUserID(999)
     assert aika_token is not None
     await chat.sendMessage(
         token_id=aika_token["token_id"],
@@ -1370,18 +1379,18 @@ async def sendReadyStatus(match_id: int) -> None:
 # TODO: abstract these redis calls into a repository
 
 
-def add_referee(match_id: int, user_id: int) -> None:
-    multiplayer_match = get_match(match_id)
+async def add_referee(match_id: int, user_id: int) -> None:
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)
+    await glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)
 
 
-def get_referees(match_id: int) -> set[int]:
-    multiplayer_match = get_match(match_id)
+async def get_referees(match_id: int) -> set[int]:
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    raw_referees: set[bytes] = glob.redis.smembers(
+    raw_referees: set[bytes] = await glob.redis.smembers(
         f"bancho:matches:{match_id}:referees",
     )
     referees = {int(referee) for referee in raw_referees}
@@ -1389,8 +1398,8 @@ def get_referees(match_id: int) -> set[int]:
     return referees
 
 
-def remove_referee(match_id: int, user_id: int) -> None:
-    multiplayer_match = get_match(match_id)
+async def remove_referee(match_id: int, user_id: int) -> None:
+    multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)
+    await glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)

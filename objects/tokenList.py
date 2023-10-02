@@ -7,8 +7,6 @@ from typing import Literal
 from typing import Optional
 from typing import overload
 
-import redis
-
 from common.log import logUtils as log
 from common.ripple import userUtils
 from constants.exceptions import periodicLoopException
@@ -48,7 +46,7 @@ async def addToken(
     )
     assert res is not None
 
-    token = osuToken.create_token(
+    token = await osuToken.create_token(
         user_id,
         res["username"],
         res["privileges"],
@@ -63,18 +61,18 @@ async def addToken(
 
     await osuToken.updateCachedStats(token["token_id"])
     if ip != "":
-        userUtils.saveBanchoSessionIpLookup(token["user_id"], ip)
+        await userUtils.saveBanchoSessionIpLookup(token["user_id"], ip)
 
-    osuToken.joinStream(token["token_id"], "main")
+    await osuToken.joinStream(token["token_id"], "main")
 
-    token = osuToken.get_token(token["token_id"])
+    token = await osuToken.get_token(token["token_id"])
     assert token is not None
 
-    glob.redis.incr("ripple:online_users")
+    await glob.redis.incr("ripple:online_users")
     return token
 
 
-def deleteToken(token_id: str) -> None:
+async def deleteToken(token_id: str) -> None:
     """
     Delete a token from token list if it exists
 
@@ -82,26 +80,26 @@ def deleteToken(token_id: str) -> None:
     :return:
     """
 
-    token = osuToken.get_token(token_id)
+    token = await osuToken.get_token(token_id)
     if token is None:
         log.warning("Token not found while attempting to delete it")
         return
 
     if token["ip"]:
-        userUtils.deleteBanchoSessionIpLookup(token["user_id"], token["ip"])
+        await userUtils.deleteBanchoSessionIpLookup(token["user_id"], token["ip"])
 
-    osuToken.delete_token(token_id)
-    glob.redis.decr("ripple:online_users")
+    await osuToken.delete_token(token_id)
+    await glob.redis.decr("ripple:online_users")
 
 
-def getUserIDFromToken(token_id: str) -> Optional[int]:
+async def getUserIDFromToken(token_id: str) -> Optional[int]:
     """
     Get user ID from a token
 
     :param token: token to find
     :return: None if not found, userID if found
     """
-    token = osuToken.get_token(token_id)
+    token = await osuToken.get_token(token_id)
     if token is None:
         return
 
@@ -109,7 +107,7 @@ def getUserIDFromToken(token_id: str) -> Optional[int]:
 
 
 @overload
-def getTokenFromUserID(
+async def getTokenFromUserID(
     userID: int,
     ignoreIRC: bool = ...,
     _all: Literal[False] = False,
@@ -118,7 +116,7 @@ def getTokenFromUserID(
 
 
 @overload
-def getTokenFromUserID(
+async def getTokenFromUserID(
     userID: int,
     ignoreIRC: bool = ...,
     _all: Literal[True] = ...,
@@ -126,7 +124,7 @@ def getTokenFromUserID(
     ...
 
 
-def getTokenFromUserID(
+async def getTokenFromUserID(
     userID: int,
     ignoreIRC: bool = False,
     _all: bool = False,
@@ -142,7 +140,7 @@ def getTokenFromUserID(
     """
     # Make sure the token exists
     ret = []
-    for value in osuToken.get_tokens():
+    for value in await osuToken.get_tokens():
         if value["user_id"] == userID:
             if ignoreIRC and value["irc"]:
                 continue
@@ -157,7 +155,7 @@ def getTokenFromUserID(
 
 
 @overload
-def getTokenFromUsername(
+async def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = ...,
     _all: Literal[False] = ...,
@@ -166,7 +164,7 @@ def getTokenFromUsername(
 
 
 @overload
-def getTokenFromUsername(
+async def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = ...,
     _all: Literal[True] = ...,
@@ -174,7 +172,7 @@ def getTokenFromUsername(
     ...
 
 
-def getTokenFromUsername(
+async def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = False,
     _all: bool = False,
@@ -192,7 +190,7 @@ def getTokenFromUsername(
 
     # Make sure the token exists
     ret = []
-    for value in osuToken.get_tokens():
+    for value in await osuToken.get_tokens():
         if userUtils.safeUsername(value["username"]) == username:
             if ignoreIRC and value["irc"]:
                 continue
@@ -215,7 +213,7 @@ async def deleteOldTokens(userID: int) -> None:
     """
     # Delete older tokens
     delete: list[osuToken.Token] = []
-    for token in osuToken.get_tokens():
+    for token in await osuToken.get_tokens():
         if token["user_id"] == userID:
             delete.append(token)
 
@@ -223,7 +221,7 @@ async def deleteOldTokens(userID: int) -> None:
         await logoutEvent.handle(i)
 
 
-def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
+async def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
     """
     Enqueue a packet to multiple users
 
@@ -232,7 +230,7 @@ def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
     :param but: if True, enqueue to everyone but users in `who` array
     :return:
     """
-    for value in osuToken.get_tokens():
+    for value in await osuToken.get_tokens():
         shouldEnqueue = False
         if value["user_id"] in who and not but:
             shouldEnqueue = True
@@ -240,18 +238,18 @@ def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
             shouldEnqueue = True
 
         if shouldEnqueue:
-            osuToken.enqueue(value["token_id"], packet)
+            await osuToken.enqueue(value["token_id"], packet)
 
 
-def enqueueAll(packet: bytes) -> None:
+async def enqueueAll(packet: bytes) -> None:
     """
     Enqueue packet(s) to every connected user
 
     :param packet: packet bytes to enqueue
     :return:
     """
-    for token_id in osuToken.get_token_ids():
-        osuToken.enqueue(token_id, packet)
+    for token_id in await osuToken.get_token_ids():
+        await osuToken.enqueue(token_id, packet)
 
 
 # NOTE: this number is defined by the osu! client
@@ -270,11 +268,11 @@ async def usersTimeoutCheckLoop() -> None:
         exceptions: list[Exception] = []
         timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
 
-        for token_id in osuToken.get_token_ids():
-            with redisLock(
+        for token_id in await osuToken.get_token_ids():
+            async with redisLock(
                 f"{osuToken.make_key(token_id)}:processing_lock",
             ):
-                token = osuToken.get_token(token_id)
+                token = await osuToken.get_token(token_id)
                 if token is None:
                     continue
 
@@ -294,6 +292,7 @@ async def usersTimeoutCheckLoop() -> None:
                     except tokenNotFoundException as e:
                         pass  # lol
                     except Exception as e:
+                        raise
                         exceptions.append(e)
                         log.error(
                             "Something wrong happened while disconnecting a timed out client.",
@@ -321,11 +320,11 @@ async def spamProtectionResetLoop() -> None:
     """
     try:
         # Reset spamRate for every token
-        for token_id in osuToken.get_token_ids():
-            with redisLock(
+        for token_id in await osuToken.get_token_ids():
+            async with redisLock(
                 f"{osuToken.make_key(token_id)}:processing_lock",
             ):
-                osuToken.update_token(token_id, spam_rate=0)
+                await osuToken.update_token(token_id, spam_rate=0)
     finally:
         # Schedule a new check (endless loop)
         loop = asyncio.get_running_loop()

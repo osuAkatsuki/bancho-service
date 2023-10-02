@@ -15,7 +15,7 @@ async def handle(userToken: Token, _=None):
         return
 
     # Make sure the match exists
-    multiplayer_match = match.get_match(matchID)
+    multiplayer_match = await match.get_match(matchID)
     if multiplayer_match is None:
         return
 

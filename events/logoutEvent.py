@@ -27,41 +27,41 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         return
 
     # Stop spectating
-    osuToken.stopSpectating(token["token_id"])
+    await osuToken.stopSpectating(token["token_id"])
 
     # Part matches
     await osuToken.leaveMatch(token["token_id"])
 
     # Part all joined channels
-    for channel_name in osuToken.get_joined_channels(token["token_id"]):
-        chat.partChannel(token_id=token["token_id"], channel_name=channel_name)
+    for channel_name in await osuToken.get_joined_channels(token["token_id"]):
+        await chat.partChannel(token_id=token["token_id"], channel_name=channel_name)
 
     # Leave all joined streams
-    osuToken.leaveAllStreams(token["token_id"])
+    await osuToken.leaveAllStreams(token["token_id"])
 
     # Enqueue our disconnection to everyone else
-    streamList.broadcast("main", serverPackets.userLogout(token["user_id"]))
+    await streamList.broadcast("main", serverPackets.userLogout(token["user_id"]))
 
     # Disconnect from IRC if needed
-    if token["irc"] and settings.IRC_ENABLE:
+    if settings.IRC_ENABLE and token["irc"]:
         glob.ircServer.forceDisconnection(token["username"])
 
     # Delete token
     if deleteToken:
-        tokenList.deleteToken(token["token_id"])
+        await tokenList.deleteToken(token["token_id"])
     else:
-        osuToken.update_token(
+        await osuToken.update_token(
             token["token_id"],
             kicked=True,
         )
 
     # Change username if needed
-    newUsername = glob.redis.get(
+    newUsername = await glob.redis.get(
         f"ripple:change_username_pending:{token['user_id']}",
     )
     if newUsername:
         log(f"Sending username change request for {token['username']}.")
-        glob.redis.publish(
+        await glob.redis.publish(
             "peppy:change_username",
             orjson.dumps(
                 {
@@ -72,7 +72,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         )
 
     # Expire token in redis
-    glob.redis.expire(
+    await glob.redis.expire(
         f"akatsuki:sessions:{token['token_id']}",
         60 * 60,
     )  # expire in 1 hour (60 minutes)
@@ -98,6 +98,6 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
     # Console output
     log(
         f"{token['username']} ({token['user_id']}) logged out. "
-        f"({len(osuToken.get_token_ids()) - 1} online)",
+        f"({len(await osuToken.get_token_ids()) - 1} online)",
         Ansi.LBLUE,
     )

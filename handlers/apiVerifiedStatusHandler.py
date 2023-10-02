@@ -22,7 +22,7 @@ class handler(AsyncRequestHandler):
             # 0: Not verified (multiacc)
             # 1: Verified
             userID = int(self.get_argument("u"))  # type: ignore
-            data["result"] = verifiedCache.get(userID)
+            data["result"] = await verifiedCache.get(userID)
 
             # Status code and message
             statusCode = 200

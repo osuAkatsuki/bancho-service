@@ -7,7 +7,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
-import redis
+import redis.asyncio as redis
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
@@ -125,18 +125,19 @@ async def main() -> int:
                     apiKey=settings.DATADOG_API_KEY,
                     appKey=settings.DATADOG_APP_KEY,
                     periodicChecks=[
-                        datadogClient.periodicCheck(
-                            "online_users",
-                            lambda: len(osuToken.get_token_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "multiplayer_matches",
-                            lambda: len(match.get_match_ids()),
-                        ),
-                        datadogClient.periodicCheck(
-                            "chat_channels",
-                            lambda: len(channelList.getChannelNames()),
-                        ),
+                        # TODO: compatibility with asyncio
+                        # datadogClient.periodicCheck(
+                        #     "online_users",
+                        #     lambda: len(await osuToken.get_token_ids()),
+                        # ),
+                        # datadogClient.periodicCheck(
+                        #     "multiplayer_matches",
+                        #     lambda: len(await match.get_match_ids()),
+                        # ),
+                        # datadogClient.periodicCheck(
+                        #     "chat_channels",
+                        #     lambda: len(await channelList.getChannelNames()),
+                        # ),
                     ],
                 )
         except:
@@ -156,12 +157,12 @@ async def main() -> int:
         try:
             log("Connecting to redis.", Ansi.LMAGENTA)
             glob.redis = redis.Redis(
-                settings.REDIS_HOST,
-                settings.REDIS_PORT,
-                settings.REDIS_DB,
-                settings.REDIS_PASS,
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                db=settings.REDIS_DB,
+                password=settings.REDIS_PASS,
             )
-            glob.redis.ping()
+            await glob.redis.ping()
         except:
             log(f"Error connecting to redis.", Ansi.LRED)
             raise
@@ -203,8 +204,8 @@ async def main() -> int:
         await channelList.loadChannels()
 
         # Initialize stremas
-        streamList.add("main")
-        streamList.add("lobby")
+        await streamList.add("main")
+        await streamList.add("lobby")
 
         log(f"Connecting {glob.BOT_NAME}", Ansi.LMAGENTA)
         await fokabot.connect()
@@ -220,13 +221,14 @@ async def main() -> int:
 
         glob.application = make_app()
 
-        # start irc server if configured
-        if settings.IRC_ENABLE:
-            log(
-                f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
-                Ansi.LMAGENTA,
-            )
-            glob.pool.submit(ircserver.main, port=settings.IRC_PORT)
+        # # start irc server if configured
+        # TODO: support w/ asyncio
+        # if settings.IRC_ENABLE:
+        #     log(
+        #         f"IRC server listening on 127.0.0.1:{settings.IRC_PORT}.",
+        #         Ansi.LMAGENTA,
+        #     )
+        #     glob.pool.submit(ircserver.main, port=settings.IRC_PORT)
 
         # We only wish to run the service's background jobs and redis pubsubs
         # on a single instance of bancho-service. Ideally, these should likely
@@ -234,16 +236,16 @@ async def main() -> int:
         # the service), but for now we'll just run them all in the same process.
         # TODO:FIXME there is additionally an assumption made here that all
         # bancho-service instances will be run as processes on the same machine.
-        raw_result = glob.redis.get("bancho:primary_instance_pid")
+        raw_result = await glob.redis.get("bancho:primary_instance_pid")
         if raw_result is None or not psutil.pid_exists(int(raw_result)):
             log("Starting background loops.", Ansi.LMAGENTA)
-            glob.redis.set("bancho:primary_instance_pid", os.getpid())
+            await glob.redis.set("bancho:primary_instance_pid", os.getpid())
 
             await tokenList.usersTimeoutCheckLoop()
             await tokenList.spamProtectionResetLoop()
 
             # Connect to pubsub channels
-            pubSub.listener(
+            pubsub_listener = pubSub.listener(
                 glob.redis,
                 {
                     "peppy:ban": banHandler.handler(),
@@ -254,10 +256,13 @@ async def main() -> int:
                     "peppy:change_username": changeUsernameHandler.handler(),
                     "peppy:update_cached_stats": updateStatsHandler.handler(),
                     "peppy:wipe": wipeHandler.handler(),
-                    "peppy:reload_settings": lambda x: x == b"reload"
-                    and glob.banchoConf.reload(),
+                    # TODO: support this?
+                    # "peppy:reload_settings": (
+                    #     lambda x: x == b"reload" and await glob.banchoConf.reload()
+                    # ),
                 },
-            ).start()
+            )
+            asyncio.create_task(pubsub_listener.run())
 
         # Start tornado
         glob.application.listen(settings.APP_PORT)

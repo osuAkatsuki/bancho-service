@@ -14,5 +14,5 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
-        if targetToken := tokenList.getTokenFromUserID(userID):
+        if targetToken := await tokenList.getTokenFromUserID(userID):
             osuToken.silence(targetToken["token_id"])

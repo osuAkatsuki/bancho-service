@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
 
 
@@ -20,13 +22,17 @@ class wrongStructureError(Exception):
     pass
 
 
-class generalPubSubHandler:
+class generalPubSubHandler(ABC):
     __slots__ = ("structure", "type", "strict")
 
     def __init__(self) -> None:
         self.structure = {}
         self.type = "json"
         self.strict = True
+
+    @abstractmethod
+    async def handle(self, userID):
+        ...
 
     def parseData(self, data: bytes) -> Any:
         """

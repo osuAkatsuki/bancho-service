@@ -15,8 +15,8 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (data := super().parseData(data)) is None:
             return
 
-        if targetToken := tokenList.getTokenFromUserID(data["userID"]):
-            osuToken.enqueue(
+        if targetToken := await tokenList.getTokenFromUserID(data["userID"]):
+            await osuToken.enqueue(
                 targetToken["token_id"],
                 serverPackets.notification(data["message"]),
             )

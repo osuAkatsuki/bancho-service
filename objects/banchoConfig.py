@@ -73,17 +73,17 @@ class banchoConfig:
         await channelList.loadChannels()
 
         # Send new channels and new bottom icon to everyone
-        streamList.broadcast(
+        await streamList.broadcast(
             "main",
             serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
         )
-        streamList.broadcast("main", serverPackets.channelInfoEnd)
-        for channel in channelList.getChannels():
+        await streamList.broadcast("main", serverPackets.channelInfoEnd)
+        for channel in await channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
-                client_count = stream.getClientCount(f"chat/{channel['name']}")
+                client_count = await stream.getClientCount(f"chat/{channel['name']}")
                 packet_data = serverPackets.channelInfo(
                     channel["name"],
                     channel["description"],
                     client_count,
                 )
-                streamList.broadcast("main", packet_data)
+                await streamList.broadcast("main", packet_data)

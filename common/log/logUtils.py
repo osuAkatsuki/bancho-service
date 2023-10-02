@@ -201,4 +201,6 @@ async def rap(
         "VALUES (NULL, %s, %s, UNIX_TIMESTAMP(), %s)",
         [userID, message, admin],
     )
-    logMessage(f"{userUtils.getUsername(userID)} {message}", discord=discord)
+
+    username = await userUtils.getUsername(userID)
+    logMessage(f"{username} {message}", discord=discord)

@@ -106,7 +106,7 @@ def shutdownServer() -> NoReturn:  # type: ignore
     kill(getpid(), sig)
 
 
-def getSystemInfo() -> dict[str, Any]:
+async def getSystemInfo() -> dict[str, Any]:
     """
     Get a dictionary with some system/server info
 
@@ -114,8 +114,8 @@ def getSystemInfo() -> dict[str, Any]:
     """
     data = {
         "unix": runningUnderUnix(),
-        "connectedUsers": len(osuToken.get_token_ids()),
-        "matches": len(match.get_match_ids()),
+        "connectedUsers": len(await osuToken.get_token_ids()),
+        "matches": len(await match.get_match_ids()),
     }
 
     # General stats

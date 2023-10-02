@@ -9,17 +9,17 @@ def make_key() -> str:
     return f"bancho:streams"
 
 
-def getStreams() -> set[str]:
+async def getStreams() -> set[str]:
     """
     Returns a list of all streams
 
     :return:
     """
-    raw_streams: set[bytes] = glob.redis.smembers(make_key())
+    raw_streams: set[bytes] = await glob.redis.smembers(make_key())
     return {stream.decode() for stream in raw_streams}
 
 
-def add(name: str) -> None:
+async def add(name: str) -> None:
     """
     Create a new stream list if it doesn't already exist
 
@@ -27,34 +27,34 @@ def add(name: str) -> None:
     :return:
     """
 
-    current_streams = getStreams()
+    current_streams = await getStreams()
     if name not in current_streams:
-        glob.redis.sadd(make_key(), name)
+        await glob.redis.sadd(make_key(), name)
 
 
-def remove(name: str) -> None:
+async def remove(name: str) -> None:
     """
     Removes an existing stream and kick every user in it
 
     :param name: stream name
     :return:
     """
-    current_streams = getStreams()
+    current_streams = await getStreams()
 
     if name in current_streams:
-        current_clients = stream.getClients(name)
+        current_clients = await stream.getClients(name)
         for i in current_clients:
-            if i in osuToken.get_token_ids():
-                osuToken.leaveStream(i, name)
+            if i in await osuToken.get_token_ids():
+                await osuToken.leaveStream(i, name)
 
         # self.streams.pop(name)
-        previous_members = stream.getClients(name)
+        previous_members = await stream.getClients(name)
         for token in previous_members:
-            stream.removeClient(name, token_id=token)
-        glob.redis.srem(make_key(), name)
+            await stream.removeClient(name, token_id=token)
+        await glob.redis.srem(make_key(), name)
 
 
-def join(name: str, token_id: str) -> None:
+async def join(name: str, token_id: str) -> None:
     """
     Add a client to a stream
 
@@ -64,12 +64,12 @@ def join(name: str, token_id: str) -> None:
     :return:
     """
 
-    streams = getStreams()
+    streams = await getStreams()
     if name in streams:
-        stream.addClient(name, token_id)
+        await stream.addClient(name, token_id)
 
 
-def leave(
+async def leave(
     name: str,
     token_id: str,
 ) -> None:
@@ -82,12 +82,12 @@ def leave(
     :return:
     """
 
-    streams = getStreams()
+    streams = await getStreams()
     if name in streams:
-        stream.removeClient(name, token_id)
+        await stream.removeClient(name, token_id)
 
 
-def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
+async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     """
     Send some data to all clients in a stream
 
@@ -97,12 +97,12 @@ def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     :return:
     """
 
-    streams = getStreams()
+    streams = await getStreams()
     if name in streams:
-        stream.broadcast(name, data, but)
+        await stream.broadcast(name, data, but)
 
 
-def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
+async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
     """
     Send some data to specific clients in a stream
 
@@ -112,12 +112,12 @@ def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
     :return:
     """
 
-    streams = getStreams()
+    streams = await getStreams()
     if name in streams:
-        stream.broadcast_limited(name, data, users)
+        await stream.broadcast_limited(name, data, users)
 
 
-def dispose(name: str, *args, **kwargs) -> None:
+async def dispose(name: str, *args, **kwargs) -> None:
     """
     Call `dispose` on `name`
 
@@ -127,6 +127,6 @@ def dispose(name: str, *args, **kwargs) -> None:
     :return:
     """
 
-    streams = getStreams()
+    streams = await getStreams()
     if name in streams:
-        stream.dispose(name, *args, **kwargs)
+        await stream.dispose(name, *args, **kwargs)

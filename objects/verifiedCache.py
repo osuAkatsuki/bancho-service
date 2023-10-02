@@ -15,8 +15,8 @@ class VerificationStatus:
     VERIFIED = 1
 
 
-def get(user_id: int) -> Literal[0, 1, -1]:
-    raw_response = glob.redis.get(make_key(user_id))
+async def get(user_id: int) -> Literal[0, 1, -1]:
+    raw_response = await glob.redis.get(make_key(user_id))
     if raw_response is None:
         return VerificationStatus.NON_EXISTENT
 
@@ -26,5 +26,5 @@ def get(user_id: int) -> Literal[0, 1, -1]:
         return VerificationStatus.NOT_VERIFIED
 
 
-def set(user_id: int, status: bool) -> None:
-    glob.redis.set(make_key(user_id), str(1 if status else 0))
+async def set(user_id: int, status: bool) -> None:
+    await glob.redis.set(make_key(user_id), str(1 if status else 0))
