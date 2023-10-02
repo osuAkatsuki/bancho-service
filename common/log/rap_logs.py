@@ -4,8 +4,7 @@ import asyncio
 import logging
 from os import name
 from typing import Optional
-
-from requests import RequestException
+import httpx
 
 import settings
 from common.ripple import userUtils
@@ -32,6 +31,12 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
         if discord_webhook_url is None:
             logging.error(
                 "Attempted to send webhook to an unknown discord channel",
+                extra={"discord_channel": discord_channel},
+            )
+            return
+        elif discord_webhook_url is "":
+            logging.warning(
+                f"No discord webhook embed is configurated for discord channel",
                 extra={"discord_channel": discord_channel},
             )
             return
@@ -70,7 +75,7 @@ async def send_rap_log(
         [user_id, message, admin],
     )
     if discord_channel is not None:
-        await asyncio.create_task(
+        asyncio.create_task(
             send_rap_log_as_discord_webhook(
                 message=f"{userUtils.getUsername(user_id)} {message}",
                 discord_channel=discord_channel,
