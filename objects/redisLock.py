@@ -6,20 +6,24 @@ from typing import Optional
 
 from objects import glob
 
-LOCK_EXPIRY = 10  # in seconds
-RETRY_DELAY = 0.05  # in seconds
+DEFAULT_LOCK_EXPIRY = 10  # in seconds
+DEFAULT_RETRY_DELAY = 0.05  # in seconds
 
 
 class redisLock:
     def __init__(self, key: str) -> None:
         self.key = key
 
-    async def try_acquire(self) -> Optional[bool]:
-        return await glob.redis.set(self.key, "1", ex=LOCK_EXPIRY, nx=True)
+    async def _try_acquire(self, expiry: int) -> Optional[bool]:
+        return await glob.redis.set(self.key, "1", ex=expiry, nx=True)
 
-    async def acquire(self) -> None:
-        while not await self.try_acquire():
-            await asyncio.sleep(RETRY_DELAY)
+    async def acquire(
+        self,
+        expiry: int = DEFAULT_LOCK_EXPIRY,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> None:
+        while not await self._try_acquire(expiry):
+            await asyncio.sleep(retry_delay)
 
     async def release(self) -> None:
         await glob.redis.delete(self.key)
