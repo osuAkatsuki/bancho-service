@@ -76,7 +76,7 @@ class Webhook:
         Formats the data into a payload
         """
 
-        data = {}
+        data: dict[str, Any] = {}
 
         data["embeds"] = []
         embed: dict[str, Any] = defaultdict(dict)
@@ -127,7 +127,7 @@ class Webhook:
 
         return data
 
-    async def post(self):
+    async def post(self) -> None:
         """
         Send the JSON formated object to the specified `self.url`.
         """

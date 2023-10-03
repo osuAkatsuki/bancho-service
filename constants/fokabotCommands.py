@@ -2445,11 +2445,12 @@ async def reload(fro: str, chan: str, message: list[str]) -> str:
     except ModuleNotFoundError:
         return "Module not found."
 
+    child = None
     try:
         for child in children:
             mod = getattr(mod, child)
     except AttributeError:
-        return f"Failed at {child}."  # type: ignore
+        return f"Failed at {child}."
 
     import importlib
 

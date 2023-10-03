@@ -21,7 +21,7 @@ class handler(AsyncRequestHandler):
             # -1: Not in cache
             # 0: Not verified (multiacc)
             # 1: Verified
-            userID = int(self.get_argument("u"))  # type: ignore
+            userID = int(self.get_argument("u"))
             data["result"] = await verifiedCache.get(userID)
 
             # Status code and message
