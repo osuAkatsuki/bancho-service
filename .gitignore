@@ -11,3 +11,4 @@ build.date
 /akacerts/
 logging.yaml
 logs.log
+newrelic.ini
