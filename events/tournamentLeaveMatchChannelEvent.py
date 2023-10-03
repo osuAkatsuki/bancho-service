@@ -10,7 +10,7 @@ from objects.osuToken import Token
 async def handle(userToken: Token, rawPacketData: bytes):
     packetData = clientPackets.tournamentLeaveMatchChannel(rawPacketData)
     if (
-        packetData["matchID"] not in match.get_match_ids()
+        packetData["matchID"] not in await match.get_match_ids()
         or not userToken["tournament"]
     ):
         return

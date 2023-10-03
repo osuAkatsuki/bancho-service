@@ -15,4 +15,4 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             return
 
         if targetToken := await tokenList.getTokenFromUserID(userID):
-            osuToken.silence(targetToken["token_id"])
+            await osuToken.silence(targetToken["token_id"])

@@ -34,7 +34,9 @@ class handler(AsyncRequestHandler):
             else:
                 if username:
                     data["result"] = (
-                        True if tokenList.getTokenFromUsername(username) else False
+                        True
+                        if await tokenList.getTokenFromUsername(username)
+                        else False
                     )
                 else:
                     data["result"] = (
