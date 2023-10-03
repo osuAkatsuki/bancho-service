@@ -909,7 +909,6 @@ async def userChangeSlot(match_id: int, user_id: int, new_slot_id: int) -> bool:
 
     # Get old slot data
     # TODO: do we need to deepcopy this after the stateless refactor?
-    # old_data = dill.copy(self.slots[oldSlotID])
     old_data = deepcopy(slots[old_slot_id])
 
     # Free old slot

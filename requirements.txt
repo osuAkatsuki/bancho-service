@@ -2,7 +2,6 @@ aiomysql
 amplitude-analytics
 bcrypt
 certifi
-dill
 httpx
 orjson
 psutil

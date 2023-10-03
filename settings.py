@@ -41,10 +41,6 @@ DISCORD_ENABLE = os.environ["DISCORD_ENABLE"] == "1"
 DISCORD_BOT_URL = os.environ["DISCORD_BOT_URL"]
 DISCORD_DEV_GROUP = os.environ["DISCORD_DEV_GROUP"]
 
-DATADOG_ENABLE = os.environ["DATADOG_ENABLE"] == "1"
-DATADOG_API_KEY = os.environ["DATADOG_API_KEY"]
-DATADOG_APP_KEY = os.environ["DATADOG_APP_KEY"]
-
 IRC_ENABLE = os.environ["IRC_ENABLE"] == "1"
 IRC_PORT = int(os.environ["IRC_PORT"])
 IRC_HOSTNAME = os.environ["IRC_HOSTNAME"]
