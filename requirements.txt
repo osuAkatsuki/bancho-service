@@ -1,6 +1,7 @@
 aiomysql
 amplitude-analytics
 bcrypt
+certifi
 datadog
 dill
 httpx
