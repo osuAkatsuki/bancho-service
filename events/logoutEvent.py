@@ -102,7 +102,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
 
     # Console output
     logging.info(
-        "User signed out of bancho session",
+        "User signed out",
         extra={
             "user_id": token["user_id"],
             "username": token["username"],
