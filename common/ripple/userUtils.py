@@ -886,7 +886,6 @@ async def appendNotes(
     """
 
     if trackDate:
-        strftime("%Y-%m-%d %H:%M:%S", localtime())
         notes = f"[{strftime('%Y-%m-%d %H:%M:%S', localtime())}] {notes}"
 
     if addNl:
