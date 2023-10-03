@@ -1,13 +1,6 @@
 from __future__ import annotations
 
-from string import ascii_uppercase
-from string import digits
-from time import localtime
-from time import strftime
-
 from common.constants import mods
-
-possible_chars = ascii_uppercase + digits
 
 
 def secondsToReadable(seconds: int) -> str:
@@ -116,14 +109,3 @@ def getRank(
         return "D"
 
     return "A"
-
-
-def getTimestamp(full: bool = False) -> str:
-    """
-    Return current time in YYYY-MM-DD HH:MM:SS format.
-    Used in logs.
-
-    :param full: Whether to include date
-    :return: readable timestamp
-    """
-    return strftime("%Y-%m-%d %H:%M:%S" if full else "%H:%M:%S", localtime())

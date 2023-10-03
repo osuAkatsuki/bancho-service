@@ -33,13 +33,8 @@ APP_API_KEY = os.environ["APP_API_KEY"]
 SHUTDOWN_HTTP_CONNECTION_TIMEOUT = int(os.environ["SHUTDOWN_HTTP_CONNECTION_TIMEOUT"])
 
 MIRROR_URL = os.environ["MIRROR_URL"]
-MIRROR_API_KEY = os.environ["MIRROR_API_KEY"]
 
 DEBUG = os.environ["DEBUG"] == "1"
-
-DISCORD_ENABLE = os.environ["DISCORD_ENABLE"] == "1"
-DISCORD_BOT_URL = os.environ["DISCORD_BOT_URL"]
-DISCORD_DEV_GROUP = os.environ["DISCORD_DEV_GROUP"]
 
 IRC_ENABLE = os.environ["IRC_ENABLE"] == "1"
 IRC_PORT = int(os.environ["IRC_PORT"])

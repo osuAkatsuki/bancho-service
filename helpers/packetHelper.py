@@ -69,17 +69,6 @@ _default_packs = {
 }
 
 
-def unpackData(data: bytes, dataType: int):
-    """
-    Unpacks a single section of a packet.
-
-    :param data: bytes to unpack
-    :param dataType: data type
-    :return: unpacked bytes
-    """
-    return _default_packs[dataType].unpack(data)[0]
-
-
 def packData(__data: Any, dataType: int) -> bytes:
     """
     Packs a single section of a packet.

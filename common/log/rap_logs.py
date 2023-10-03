@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from os import name
 from typing import Optional
 
 import httpx
@@ -11,8 +10,6 @@ import settings
 from common.ripple import userUtils
 from common.web.discord import Webhook
 from objects import glob
-
-ENDL = "\n" if name == "posix" else "\r\n"
 
 RETRY_INTERVAL = 8
 MAX_RETRIES = 10

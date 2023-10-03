@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Optional
-from typing import Union
 
 from common.constants import mods
 from objects import glob
@@ -95,49 +94,6 @@ async def overwritePreviousScore(
 
     # Return song_name for the command to send back to the user
     return result["song_name"]
-
-
-async def getPPLimit(gameMode: int, mods_used: int) -> str:
-    """
-    Get PP Limit from DB based on gameMode
-
-    :param gameMode: gamemode
-    :param mods: mods used
-    """
-
-    s: Union[list[str], str] = ["pp"]
-    if mods_used & mods.FLASHLIGHT:
-        s.insert(0, "flashlight")
-    if mods_used & mods.RELAX:
-        s.insert(0, "relax")
-    s = "_".join(s)
-
-    pp_limit = await glob.db.fetch(
-        f"SELECT {s} FROM pp_limits WHERE gamemode = %s",
-        [gameMode],
-    )
-    return pp_limit[s]
-
-
-def isRankable(m: int, maxCombo: int) -> bool:
-    """
-    Checks if `m` contains unranked mods
-
-    :param m: mods enum
-    :param maxCombo: the map's max combo
-    :return: True if there are no unranked mods in `m`, else False
-    """  # Allow scorev2 for long maps
-    if (m & mods.AUTOPLAY) != 0:
-        # has unranked mods
-        return False
-
-    if (m & mods.SCOREV2) != 0 and maxCombo < 5000:
-        # has scorev2 with less than 5k combo
-        # TODO: do this properly by calculating max score on the map,
-        #       and checking if it's still in int32 space.
-        return False
-
-    return True
 
 
 def readableMods(m: int) -> str:

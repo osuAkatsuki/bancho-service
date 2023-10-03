@@ -1,9 +1,10 @@
 # TODO: seriously nuke this
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
+from time import localtime
+from time import strftime
 from typing import Any
 from typing import List
 from typing import Optional
@@ -11,165 +12,13 @@ from typing import Tuple
 from typing import Union
 
 import bcrypt
-from orjson import loads
 
-import settings
-from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
 from common.log import rap_logs
-from common.ripple import passwordUtils
-from common.web.discord import Webhook
 from objects import glob
 from objects import tokenList
-
-
-async def getBeatmapTime(beatmapID: int) -> Any:
-    """
-    Get the total length of a beatmap from the mirror.
-    """
-
-    # First try to grab locally before using mirror.
-    res = await glob.db.fetch(
-        "SELECT hit_length FROM beatmaps " "WHERE beatmap_id = %s",
-        [beatmapID],
-    )
-
-    if res:
-        return res["hit_length"]
-
-    # Failed to find in db, use mirror.
-    response = await glob.http_client.get(
-        f"{settings.MIRROR_URL}/b/{beatmapID}",
-        timeout=2,
-    )
-    response_data = await response.aread()
-    if response_data and response_data != "null\n":
-        return loads(response_data)["TotalLength"]
-
-    logging.warning(
-        "Failed to retrieve beatmap time",
-        extra={"beatmap_id": beatmapID},
-    )
-    return 0
-
-
-async def submitBeatmapRequest(
-    userID: int,
-    beatmapID: int,
-    mapType: str,
-    gameMode: str,
-) -> bool:
-    """
-    Submit a beatmap nomination request to the discord.
-
-    :param username: the user's ign
-    :param beatmapID: the beatmap id of the nominated beatmap
-    :param mapType: either s or b, s being for set, b for map
-    :param gameMode: gamemode for the maps nomination
-    """
-    b = await glob.db.fetch(
-        "SELECT song_name, beatmapset_id FROM beatmaps " "WHERE beatmap_id = %s",
-        [beatmapID],
-    )
-
-    if not b:
-        return False
-
-    username: Optional[str] = await getUsername(userID)
-
-    embed = Webhook(settings.WEBHOOK_RANK_REQUESTS, color=5516472)
-    embed.set_author(
-        name=username,
-        icon=f"http://a.akatsuki.gg/{userID}",
-        url=f"http://akatsuki.gg/u/{userID}",
-    )
-    embed.set_image(
-        f"https://assets.ppy.sh/beatmaps/{b['beatmapset_id']}/covers/cover.jpg?1522396856",
-    )
-    embed.set_title(title=b["song_name"], url=f"http://akatsuki.gg/b/{beatmapID}")
-    embed.set_footer(
-        text="Akatsuki's beatmap nomination system v1.1",
-        icon="https://nanahira.life/f821Qc.png",
-        ts=True,
-    )
-    embed.add_field(
-        name=f'This **beatmap{" set" if mapType == "s" else ""}** has been nominated by {username} for gamemode **{gameMode}**.',
-        value="** **",
-    )
-    asyncio.create_task(embed.post())
-
-    return True
-
-
-async def getMaxCombo(userID: int, gameMode: int) -> int:
-    """
-    Get user max combo relative to `gameMode`.
-
-    :param userID:
-    :param gameMode: game mode number
-    :return: dictionary with result
-    """
-    result = await glob.db.fetch(
-        "SELECT max_combo FROM scores "
-        "WHERE userid = %s AND play_mode = %s "
-        "AND completed = 3 "  # best score
-        "ORDER BY max_combo DESC LIMIT 1",
-        [userID, gameMode],
-    )
-
-    if not result:
-        return 0
-
-    return result["max_combo"]
-
-
-async def incrementPlaytime(userID: int, gameMode: int = 0, length: int = 0) -> None:
-    """
-    Increment a users playtime.
-
-    :param userID:
-    """
-
-    modeForDB = gameModes.getGameModeForDB(gameMode)
-    result = await glob.db.fetch(
-        "SELECT playtime_{gm} AS playtime FROM users_stats "
-        "WHERE id = %s".format(gm=modeForDB),
-        [userID],
-    )
-
-    if not result:
-        return
-
-    await glob.db.execute(
-        "UPDATE users_stats SET playtime_{gm} = %s "
-        "WHERE id = %s".format(gm=modeForDB),
-        [int(result["playtime"] + length), userID],
-    )
-
-
-async def updateBeatmapPlaycount(
-    userID: int,
-    beatmapHash: str,
-    gameMode: int,
-    relax: bool,
-):
-    """
-    Inserts a playcount into the beatmap specific playcount per user table
-    or increments if duplicate composite key
-
-    :param userID:
-    :param beatmapHash:
-    :param gameMode: game mode Munber
-    :param relax:
-    """
-    await glob.db.execute(
-        "INSERT INTO beatmaps_playcounts "
-        "VALUES (%s, %s, %s, %s, DEFAULT) "
-        "ON DUPLICATE KEY UPDATE COUNT = COUNT + 1",
-        [userID, beatmapHash, gameMode, relax],
-    )
 
 
 async def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
@@ -426,28 +275,17 @@ async def checkLogin(userID: int, password: str, ip: str = "") -> bool:
         return False
 
     # Return valid/invalid based on the password version.
-    if passwordData["password_version"] == 2:
-        pw_md5 = password.encode()
-        db_pw_bcrypt = passwordData["password_md5"].encode()  # why is it called md5 LOL
+    # XXX: Akatsuki has only ever supported v2
+    assert passwordData["password_version"] == 2
 
-        if db_pw_bcrypt in glob.bcrypt_cache:  # ~0.01ms
-            return pw_md5 == glob.bcrypt_cache[db_pw_bcrypt]
-        elif bcrypt.checkpw(pw_md5, db_pw_bcrypt):  # ~200ms
-            glob.bcrypt_cache[db_pw_bcrypt] = pw_md5
-            return True
-    elif passwordData["password_version"] == 1:
-        ok = passwordUtils.checkOldPassword(
-            password,
-            passwordData["salt"],
-            passwordData["password_md5"],
-        )
-        if not ok:
-            return False
-        newpass = passwordUtils.genBcrypt(password)
-        await glob.db.execute(
-            "UPDATE users SET password_md5=%s, salt='', password_version='2' WHERE id = %s LIMIT 1",
-            [newpass, userID],
-        )
+    pw_md5 = password.encode()
+    db_pw_bcrypt = passwordData["password_md5"].encode()  # why is it called md5 LOL
+
+    if db_pw_bcrypt in glob.bcrypt_cache:  # ~0.01ms
+        return pw_md5 == glob.bcrypt_cache[db_pw_bcrypt]
+    elif bcrypt.checkpw(pw_md5, db_pw_bcrypt):  # ~200ms
+        glob.bcrypt_cache[db_pw_bcrypt] = pw_md5
+        return True
 
     return False
 
@@ -1048,7 +886,8 @@ async def appendNotes(
     """
 
     if trackDate:
-        notes = f"[{generalUtils.getTimestamp(full=True)}] {notes}"
+        strftime("%Y-%m-%d %H:%M:%S", localtime())
+        notes = f"[{strftime('%Y-%m-%d %H:%M:%S', localtime())}] {notes}"
 
     if addNl:
         notes = f"\n{notes}"
@@ -1860,37 +1699,6 @@ async def removeFromLeaderboard(userID: int) -> None:
             await glob.redis.zrem(f"ripple:{board}:{mode}", str(userID))
             if country and country != "xx":
                 await glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(userID))
-
-
-async def getClan(userID: int) -> str:
-    """
-    Get userID's clan
-
-    :param userID: user id
-    :return: username or None
-    """
-
-    username = await getUsername(userID)
-    assert username is not None
-
-    clan = await glob.db.fetch(
-        "SELECT tag FROM clans "
-        "LEFT JOIN users ON clans.id = users.clan_id "
-        "WHERE users.id = %s",
-        [userID],
-    )
-
-    return f'[{clan["tag"]}] {username}' if clan else username
-
-
-async def getClanTag(userID: int) -> Optional[str]:
-    clan = await glob.db.fetch(
-        "SELECT tag FROM clans "
-        "LEFT JOIN users ON clans.id = users.clan_id "
-        "WHERE users.id = %s",
-        [userID],
-    )
-    return clan["tag"] if clan else ""
 
 
 async def getOverwriteWaitRemainder(userID: int) -> int:

@@ -3,3 +3,4 @@ black
 reorder-python-imports
 types-psutil
 types-PyYAML
+vulture
