@@ -390,6 +390,17 @@ async def sendMessage(
                     to,
                     message,
                 )
+                if fokaMessage:
+                    logging.info(
+                        "Chatbot interaction",
+                        extra={
+                            "username": userToken["username"],
+                            "user_id": userToken["user_id"],
+                            "channel_name": to,
+                            "user_message": message,
+                            "bot_response": fokaMessage,
+                        },
+                    )
             else:
                 fokaMessage = None
 
@@ -432,6 +443,17 @@ async def sendMessage(
             )
 
             if fokaMessage:
+                logging.info(
+                    "Chatbot interaction",
+                    extra={
+                        "username": userToken["username"],
+                        "user_id": userToken["user_id"],
+                        "channel_name": to,
+                        "user_message": message,
+                        "bot_response": fokaMessage,
+                    },
+                )
+
                 if fokaMessage["hidden"]:  # Send to user & gmt+
                     send_to = {
                         t["token_id"]
