@@ -82,23 +82,24 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         60 * 60,
     )  # expire in 1 hour (60 minutes)
 
-    glob.amplitude.track(
-        BaseEvent(
-            event_type="osu_logout",
-            user_id=str(token["user_id"]),
-            device_id=token["amplitude_device_id"],
-            event_properties={
-                "username": token["username"],
-                "session_duration": time.time() - token["login_time"],
-                "login_time": token["login_time"],
-                "source": "bancho-service",
-            },
-            location_lat=token["latitude"],
-            location_lng=token["longitude"],
-            ip=token["ip"],
-            country=countryHelper.getCountryLetters(token["country"]),
-        ),
-    )
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="osu_logout",
+                user_id=str(token["user_id"]),
+                device_id=token["amplitude_device_id"],
+                event_properties={
+                    "username": token["username"],
+                    "session_duration": time.time() - token["login_time"],
+                    "login_time": token["login_time"],
+                    "source": "bancho-service",
+                },
+                location_lat=token["latitude"],
+                location_lng=token["longitude"],
+                ip=token["ip"],
+                country=countryHelper.getCountryLetters(token["country"]),
+            ),
+        )
 
     # Console output
     logging.info(

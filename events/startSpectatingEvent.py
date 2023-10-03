@@ -34,20 +34,21 @@ async def handle(userToken: Token, rawPacketData: bytes):
         # Start spectating new user
         await osuToken.startSpectating(userToken["token_id"], targetToken["token_id"])
 
-        glob.amplitude.track(
-            BaseEvent(
-                event_type="start_spectating",
-                user_id=str(userToken["user_id"]),
-                device_id=userToken["amplitude_device_id"],
-                event_properties={
-                    "host_user_id": targetToken["user_id"],
-                    "host_username": targetToken["username"],
-                    "host_country": targetToken["country"],
-                    "host_game_mode": targetToken["game_mode"],
-                    "source": "bancho-service",
-                },
-            ),
-        )
+        if glob.amplitude is not None:
+            glob.amplitude.track(
+                BaseEvent(
+                    event_type="start_spectating",
+                    user_id=str(userToken["user_id"]),
+                    device_id=userToken["amplitude_device_id"],
+                    event_properties={
+                        "host_user_id": targetToken["user_id"],
+                        "host_username": targetToken["username"],
+                        "host_country": targetToken["country"],
+                        "host_game_mode": targetToken["game_mode"],
+                        "source": "bancho-service",
+                    },
+                ),
+            )
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found

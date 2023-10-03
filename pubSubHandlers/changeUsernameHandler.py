@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from amplitude import BaseEvent
 from amplitude import EventOptions
 from amplitude import Identify
 
@@ -28,23 +29,22 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "username_change",
             )
 
-        # XXX: disabled this 2023-07-28 as it seems strange - this is not necessarily
-        # an action triggered by the user themselves; feels weird to attribute it to them
-        # glob.amplitude.track(
-        #     BaseEvent(
-        #         event_type="username_change",
-        #         user_id=str(userID),
-        #         event_properties={
-        #             "old_username": oldUsername,
-        #             "new_username": newUsername,
-        #             "source": "bancho-service",
-        #         },
-        #     )
-        # )
+        if glob.amplitude is not None:
+            glob.amplitude.track(
+                BaseEvent(
+                    event_type="username_change",
+                    user_id=str(userID),
+                    event_properties={
+                        "old_username": oldUsername,
+                        "new_username": newUsername,
+                        "source": "bancho-service",
+                    },
+                ),
+            )
 
-        identify_obj = Identify()
-        identify_obj.set("username", newUsername)
-        glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
+            identify_obj = Identify()
+            identify_obj.set("username", newUsername)
+            glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
 
         logging.info(
             "Job successfully updated username",

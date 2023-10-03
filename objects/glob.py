@@ -34,8 +34,10 @@ latestBuild = 0
 groupPrivileges: dict[str, int] = {}
 bcrypt_cache: dict[bytes, bytes] = {}
 
-amplitude = Amplitude(
-    settings.AMPLITUDE_API_KEY,
-    # our user ids start from 1000
-    AmplitudeConfig(min_id_length=4),
-)
+amplitude: Optional[Amplitude] = None
+if settings.AMPLITUDE_API_KEY:
+    amplitude = Amplitude(
+        settings.AMPLITUDE_API_KEY,
+        # our user ids start from 1000
+        AmplitudeConfig(min_id_length=4),
+    )

@@ -477,28 +477,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not osuToken.is_restricted(userToken["privileges"]):
             await streamList.broadcast("main", await serverPackets.userPanel(userID))
 
-        glob.amplitude.track(
-            BaseEvent(
-                event_type="osu_login",
-                user_id=str(userID),
-                device_id=userToken["amplitude_device_id"],
-                event_properties={
-                    "username": userToken["username"],
-                    "privileges": userToken["privileges"],
-                    "login_time": userToken["login_time"],
-                    "source": "bancho-service",
-                },
-                location_lat=latitude,
-                location_lng=longitude,
-                ip=requestIP,
-                country=countryLetters,
-            ),
-        )
-
-        if firstLogin:
+        if glob.amplitude is not None:
             glob.amplitude.track(
                 BaseEvent(
-                    event_type="osu_verification",
+                    event_type="osu_login",
                     user_id=str(userID),
                     device_id=userToken["amplitude_device_id"],
                     event_properties={
@@ -514,19 +496,40 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 ),
             )
 
-        identify_obj = Identify()
-        identify_obj.set("username", userToken["username"])
-        identify_obj.set("location_lat", latitude)
-        identify_obj.set("location_lng", longitude)
-        identify_obj.set("ip", requestIP)
-        identify_obj.set("country", countryLetters)
-        glob.amplitude.identify(
-            identify_obj,
-            EventOptions(
-                user_id=str(userID),
-                device_id=userToken["amplitude_device_id"],
-            ),
-        )
+        if firstLogin:
+            if glob.amplitude is not None:
+                glob.amplitude.track(
+                    BaseEvent(
+                        event_type="osu_verification",
+                        user_id=str(userID),
+                        device_id=userToken["amplitude_device_id"],
+                        event_properties={
+                            "username": userToken["username"],
+                            "privileges": userToken["privileges"],
+                            "login_time": userToken["login_time"],
+                            "source": "bancho-service",
+                        },
+                        location_lat=latitude,
+                        location_lng=longitude,
+                        ip=requestIP,
+                        country=countryLetters,
+                    ),
+                )
+
+        if glob.amplitude is not None:
+            identify_obj = Identify()
+            identify_obj.set("username", userToken["username"])
+            identify_obj.set("location_lat", latitude)
+            identify_obj.set("location_lng", longitude)
+            identify_obj.set("ip", requestIP)
+            identify_obj.set("country", countryLetters)
+            glob.amplitude.identify(
+                identify_obj,
+                EventOptions(
+                    user_id=str(userID),
+                    device_id=userToken["amplitude_device_id"],
+                ),
+            )
 
         # Set reponse data to right value and reset our queue
         responseData = await osuToken.dequeue(userToken["token_id"])
