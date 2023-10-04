@@ -41,10 +41,6 @@ class stopSpectating(Exception):
     pass
 
 
-class matchWrongPasswordException(Exception):
-    pass
-
-
 class matchNotFoundException(Exception):
     pass
 
@@ -66,10 +62,6 @@ class userSilencedException(Exception):
 
 
 class userBlockingDMsException(Exception):
-    pass
-
-
-class need2FAException(Exception):
     pass
 
 

@@ -19,7 +19,6 @@ import tornado.web
 import yaml
 
 import settings
-from common.ddog import datadogClient
 from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
 from handlers import apiIsOnlineHandler
@@ -73,33 +72,6 @@ async def main() -> int:
         # TODO: do we need this anymore now with stateless design?
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
-        # set up datadog
-        logging.info("Setting up datadog clients")
-        try:
-            if settings.DATADOG_ENABLE:
-                glob.dog = datadogClient.datadogClient(
-                    apiKey=settings.DATADOG_API_KEY,
-                    appKey=settings.DATADOG_APP_KEY,
-                    periodicChecks=[
-                        # TODO: compatibility with asyncio
-                        # datadogClient.periodicCheck(
-                        #     "online_users",
-                        #     lambda: len(await osuToken.get_token_ids()),
-                        # ),
-                        # datadogClient.periodicCheck(
-                        #     "multiplayer_matches",
-                        #     lambda: len(await match.get_match_ids()),
-                        # ),
-                        # datadogClient.periodicCheck(
-                        #     "chat_channels",
-                        #     lambda: len(await channelList.getChannelNames()),
-                        # ),
-                    ],
-                )
-        except:
-            logging.exception("Error creating datadog client")
-            raise
 
         # Connect to db
         logging.info("Connecting to SQL")

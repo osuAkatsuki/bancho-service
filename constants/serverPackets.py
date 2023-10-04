@@ -529,4 +529,4 @@ def invalidChatMessage(username: str) -> bytes:
     )
 
 
-popChat = packetHelper.buildPacket(packetIDs.server_popChat)
+getAttention = packetHelper.buildPacket(packetIDs.server_getAttention)

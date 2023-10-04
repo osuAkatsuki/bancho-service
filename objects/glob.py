@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
 from typing import TYPE_CHECKING
 
 import httpx
@@ -15,19 +14,16 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
 
     from objects.dbPool import DBPool
-    from common.ddog.datadogClient import datadogClient
     from irc.ircserver import Server as IRCServer
     from objects.banchoConfig import banchoConfig
 
 
-DATADOG_PREFIX = "peppy"
 BOT_NAME = "Aika"
 http_client = httpx.AsyncClient()
 application = None
 db: DBPool
 redis: Redis
 banchoConf: banchoConfig
-dog: Optional[datadogClient] = None
 ircServer: IRCServer
 
 restarting = False
