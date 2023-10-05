@@ -12,14 +12,15 @@ async def handle(userToken: Token, rawPacketData: bytes):
     channel_name = clientPackets.channelJoin(rawPacketData)["channel"]
     await chat.partChannel(token_id=userToken["token_id"], channel_name=channel_name)
 
-    glob.amplitude.track(
-        BaseEvent(
-            event_type="osu_channel_leave",
-            user_id=str(userToken["user_id"]),
-            device_id=userToken["amplitude_device_id"],
-            event_properties={
-                "channel_name": channel_name,
-                "source": "bancho-service",
-            },
-        ),
-    )
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="osu_channel_leave",
+                user_id=str(userToken["user_id"]),
+                device_id=userToken["amplitude_device_id"],
+                event_properties={
+                    "channel_name": channel_name,
+                    "source": "bancho-service",
+                },
+            ),
+        )

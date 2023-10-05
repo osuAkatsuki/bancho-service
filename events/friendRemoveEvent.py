@@ -12,14 +12,15 @@ async def handle(userToken: Token, rawPacketData: bytes):  # Friend remove packe
     friend_user_id = clientPackets.addRemoveFriend(rawPacketData)["friendID"]
     await userUtils.removeFriend(userToken["user_id"], friend_user_id)
 
-    glob.amplitude.track(
-        BaseEvent(
-            event_type="remove_friend",
-            user_id=str(userToken["user_id"]),
-            device_id=userToken["amplitude_device_id"],
-            event_properties={
-                "friend_user_id": friend_user_id,
-                "source": "bancho-service",
-            },
-        ),
-    )
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="remove_friend",
+                user_id=str(userToken["user_id"]),
+                device_id=userToken["amplitude_device_id"],
+                event_properties={
+                    "friend_user_id": friend_user_id,
+                    "source": "bancho-service",
+                },
+            ),
+        )

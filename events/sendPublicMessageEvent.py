@@ -17,15 +17,16 @@ async def handle(userToken: Token, rawPacketData: bytes):
         message=packetData["message"],
     )
 
-    glob.amplitude.track(
-        BaseEvent(
-            event_type="osu_public_message",
-            user_id=str(userToken["user_id"]),
-            device_id=userToken["amplitude_device_id"],
-            event_properties={
-                "recipient": packetData["to"],
-                "message": packetData["message"],
-                "source": "bancho-service",
-            },
-        ),
-    )
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="osu_public_message",
+                user_id=str(userToken["user_id"]),
+                device_id=userToken["amplitude_device_id"],
+                event_properties={
+                    "recipient": packetData["to"],
+                    "message": packetData["message"],
+                    "source": "bancho-service",
+                },
+            ),
+        )
