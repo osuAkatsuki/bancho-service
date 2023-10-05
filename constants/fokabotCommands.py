@@ -1499,7 +1499,7 @@ async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     if ratelimit > _time - 10:
         return f"This command can only be run every 10 seconds (Cooldown: {10 - (_time - ratelimit)}s)."
 
-    if not (overwrite := scoreUtils.overwritePreviousScore(userID)):
+    if not (overwrite := await scoreUtils.overwritePreviousScore(userID)):
         return "It seems you don't have any scores.. Did you purchase supporter before setting a score? owo.."
 
     return f"Your score on {overwrite} has been overwritten."
