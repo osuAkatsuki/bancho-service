@@ -55,18 +55,15 @@ async def getPlaytimeTotal(userID: int) -> int:
     return sum(res.values()) if res else 0
 
 
-async def getWhitelist(userID: int) -> int:
+async def getWhitelist(userID: int) -> Optional[int]:
     """
     Return a user's whitelist status from database.
     """
-    res = await glob.db.fetch("SELECT whitelist FROM users " "WHERE id = %s", [userID])
-    return res["whitelist"]
+    rec = await glob.db.fetch("SELECT whitelist FROM users " "WHERE id = %s", [userID])
+    return rec["whitelist"] if rec else None
 
 
-async def checkWhitelist(
-    userID: int,
-    requirement: int,
-) -> int:  # TODO: redo this? it's bad
+async def checkWhitelist(userID: int, requirement: int) -> int:
     """
     Return whether the user has whitelist access to the corresponding bit.
 
@@ -77,6 +74,13 @@ async def checkWhitelist(
     """
 
     whitelist = await getWhitelist(userID)
+    if whitelist is None:
+        logging.warning(
+            "Couldn't get whitelist status for user",
+            extra={"user_id": userID},
+        )
+        return 0
+
     return whitelist & requirement
 
 
@@ -102,7 +106,11 @@ async def editWhitelist(userID: int, bit: int) -> None:
         userToken["whitelist"] = bit
 
 
-async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
+async def getUserStats(
+    userID: int,
+    gameMode: int,
+    relax_ap: int,
+) -> Optional[dict[str, Any]]:
     """
     Get all user stats relative to `gameMode`.
 
@@ -129,6 +137,16 @@ async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
         "FROM {table} WHERE id = %s LIMIT 1".format(gm=modeForDB, table=table),
         [userID],
     )
+    if stats is None:
+        logging.warning(
+            "Couldn't get stats for user",
+            extra={
+                "user_id": userID,
+                "game_mode": gameMode,
+                "relax_ap": relax_ap,
+            },
+        )
+        return None
 
     # Get game rank
     stats["gameRank"] = await getGameRank(userID, gameMode, relax_ap)
@@ -660,7 +678,7 @@ async def IPLog(userID: int, ip: int) -> None:
     )
 
 
-async def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
+async def checkBanchoSessionIpLookup(userID: int, ip: str = "") -> bool:
     """
     Return True if there is a bancho session for `userID` from `ip`
     If `ip` is an empty string, check if there's a bancho session for that user, from any IP.
@@ -934,7 +952,11 @@ async def getFreezeReason(userID: int) -> Optional[str]:
         "SELECT freeze_reason FROM users WHERE id = %s",
         [userID],
     )
-    return result["freeze_reason"] if result["freeze_reason"] else None
+    return (
+        result["freeze_reason"]
+        if result is not None and result["freeze_reason"]
+        else None
+    )
 
 
 async def freeze(userID: int, author: int = 999) -> None:
@@ -995,7 +1017,7 @@ async def unfreeze(userID: int, author: int = 999, _log=True) -> None:
         )
 
 
-async def getSilenceEnd(userID: int) -> int:
+async def getSilenceEnd(userID: int) -> Optional[int]:
     """
     Get userID's **ABSOLUTE** silence end UNIX time
     Remember to subtract time.time() if you want to get the actual silence time
@@ -1008,7 +1030,7 @@ async def getSilenceEnd(userID: int) -> int:
         "SELECT silence_end " "FROM users " "WHERE id = %s",
         [userID],
     )
-    return rec["silence_end"]
+    return rec["silence_end"] if rec is not None else None
 
 
 async def silence(
@@ -1042,7 +1064,7 @@ async def silence(
     )
 
 
-async def getTotalScore(userID: int, gameMode: int) -> int:
+async def getTotalScore(userID: int, gameMode: int) -> Optional[int]:
     """
     Get `userID`'s total score relative to `gameMode`
 
@@ -1057,10 +1079,10 @@ async def getTotalScore(userID: int, gameMode: int) -> int:
         f"SELECT total_score_{modeForDB} " "FROM users_stats " "WHERE id = %s",
         [userID],
     )
-    return rec[f"total_score_{modeForDB}"]
+    return rec[f"total_score_{modeForDB}"] if rec is not None else None
 
 
-async def getAccuracy(userID: int, gameMode: int) -> float:
+async def getAccuracy(userID: int, gameMode: int) -> Optional[float]:
     """
     Get `userID`'s average accuracy relative to `gameMode`
 
@@ -1075,7 +1097,7 @@ async def getAccuracy(userID: int, gameMode: int) -> float:
         f"SELECT avg_accuracy_{modeForDB} " "FROM users_stats " "WHERE id = %s",
         [userID],
     )
-    return rec[f"avg_accuracy_{modeForDB}"]
+    return rec[f"avg_accuracy_{modeForDB}"] if rec is not None else None
 
 
 async def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
@@ -1101,7 +1123,7 @@ async def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
     return int(position) + 1 if position is not None else 0
 
 
-async def getPlaycount(userID: int, gameMode: int) -> int:
+async def getPlaycount(userID: int, gameMode: int) -> Optional[int]:
     """
     Get `userID`'s playcount relative to `gameMode`
 
@@ -1116,7 +1138,7 @@ async def getPlaycount(userID: int, gameMode: int) -> int:
         f"SELECT playcount_{modeForDB} " "FROM users_stats " "WHERE id = %s",
         [userID],
     )
-    return rec[f"playcount_{modeForDB}"]
+    return rec[f"playcount_{modeForDB}"] if rec is not None else None
 
 
 async def getFriendList(userID: int):
@@ -1189,7 +1211,7 @@ async def removeFriend(userID: int, friendID: int) -> None:
     )
 
 
-async def getCountry(userID: int) -> str:
+async def getCountry(userID: int) -> Optional[str]:
     """
     Get `userID`'s country **(two letters)**.
 
@@ -1201,7 +1223,7 @@ async def getCountry(userID: int) -> str:
         "SELECT country " "FROM users_stats " "WHERE id = %s",
         [userID],
     )
-    return rec["country"]
+    return rec["country"] if rec is not None else None
 
 
 async def setCountry(userID: int, country: str) -> None:
@@ -1692,7 +1714,16 @@ async def removeFromLeaderboard(userID: int) -> None:
     """
 
     # Remove the user from global and country leaderboards, for every mode
-    country: str = (await getCountry(userID)).lower()
+    country = await getCountry(userID)
+    if country is None:
+        logging.warning(
+            "Couldn't get country for user",
+            extra={"user_id": userID},
+        )
+        return None
+
+    country = country.lower()
+
     for board in ("leaderboard", "relaxboard"):
         for mode in ("std", "taiko", "ctb", "mania"):
             await glob.redis.zrem(f"ripple:{board}:{mode}", str(userID))

@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Optional
 
 from common.constants import privileges
-from common.ripple import userUtils
 from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
@@ -273,7 +272,7 @@ def sendMessage(fro: str, to: str, message: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             (message, dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.getID(fro), dataTypes.SINT32),
+            (fro_id, dataTypes.SINT32),
         ),
     )
 
@@ -285,7 +284,7 @@ def targetBlockingDMs(to: str, fro: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.getID(fro), dataTypes.SINT32),
+            (fro_id, dataTypes.SINT32),
         ),
     )
 
@@ -297,7 +296,7 @@ def targetSilenced(to: str, fro: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.getID(fro), dataTypes.SINT32),
+            (fro_id, dataTypes.SINT32),
         ),
     )
 

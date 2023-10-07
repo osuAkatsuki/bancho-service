@@ -7,6 +7,7 @@ from time import strftime
 from time import time
 from typing import Optional
 from typing import TypedDict
+from typing import Union
 from uuid import uuid4
 
 from common import channel_utils
@@ -105,10 +106,10 @@ class Token(TypedDict):
 
     # processing_lock: Lock
 
-    # self.updateCachedStats()
+    # await self.updateCachedStats()
     # if ip != "":
-    #     userUtils.saveBanchoSession(self.userID, self.ip)
-    # self.joinStream("main")
+    #     await userUtils.saveBanchoSession(self.userID, self.ip)
+    # await self.joinStream("main")
 
 
 def safeUsername(username: str) -> str:
@@ -242,8 +243,6 @@ async def get_token_by_username(username: str) -> Optional[Token]:
 class MissingType:
     pass
 
-
-from typing import Union
 
 MISSING = MissingType()
 
@@ -914,7 +913,10 @@ async def silence(
 
     if seconds is None:
         # Get silence expire from db if needed
-        seconds = max(0, await userUtils.getSilenceEnd(token["user_id"]) - int(time()))
+        silence_end = await userUtils.getSilenceEnd(token["user_id"])
+        if silence_end is None:
+            return
+        seconds = max(0, silence_end - int(time()))
     else:
         # Silence in db and token
         await userUtils.silence(token["user_id"], seconds, reason, author)
