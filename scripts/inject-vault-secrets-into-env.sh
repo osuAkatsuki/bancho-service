@@ -7,3 +7,5 @@ akatsuki vault get bancho-service ${APP_ENV} -o .env
 set -a
 source .env
 set +a
+
+rm .env

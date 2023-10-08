@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+cd /srv/root
+
 if [[ -n "$PULL_SECRETS_FROM_VAULT" ]]; then
   /scripts/inject-vault-secrets-into-env.sh
 fi
-
-cd /srv/root
 
 # await database availability
 /scripts/await-service.sh $DB_HOST $DB_PORT $SERVICE_READINESS_TIMEOUT
