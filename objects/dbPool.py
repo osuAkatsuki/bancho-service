@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from typing import cast
 from typing import Optional
 
@@ -12,7 +13,7 @@ class DBPool:
     def __init__(self) -> None:
         self._pool: Optional[aiomysql.Pool] = None
 
-    async def start(self):
+    async def start(self) -> None:
         self._pool = cast(
             aiomysql.Pool,
             await aiomysql.create_pool(
@@ -25,12 +26,12 @@ class DBPool:
             ),
         )
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self._pool is not None:
             self._pool.close()
             await self._pool.wait_closed()
 
-    async def fetchAll(self, *args, **kwargs):
+    async def fetchAll(self, *args, **kwargs) -> list[dict[str, Any]]:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:
@@ -38,7 +39,7 @@ class DBPool:
                 await cur.execute(*args, **kwargs)
                 return await cur.fetchall()
 
-    async def fetch(self, *args, **kwargs):
+    async def fetch(self, *args, **kwargs) -> Optional[dict[str, Any]]:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:
@@ -46,7 +47,7 @@ class DBPool:
                 await cur.execute(*args, **kwargs)
                 return await cur.fetchone()
 
-    async def execute(self, *args, **kwargs):
+    async def execute(self, *args, **kwargs) -> None:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:
