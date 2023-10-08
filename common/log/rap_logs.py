@@ -18,7 +18,7 @@ DISCORD_CHANNELS = {
     "ac_general": settings.WEBHOOK_AC_GENERAL,
     "ac_confidential": settings.WEBHOOK_AC_CONFIDENTIAL,
 }
-DISCORD_WEBHOOK_EMBED_COLOR = 0x542CB8
+DISCORD_WEBHOOK_EMBED_COLOR = 0x7352C4
 
 
 async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) -> None:
@@ -40,9 +40,9 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
             return
 
         embed = Webhook(discord_webhook_url, color=DISCORD_WEBHOOK_EMBED_COLOR)
-        embed.add_field(name="** **", value=message)
+        embed.add_field(name="New moderation action! :tools:", value=message)
         embed.set_footer(text="Akatsuki bancho-service")
-        embed.set_thumbnail("https://akatsuki.gg/static/logos/logo.png")
+        embed.set_thumbnail("https://akatsuki.gg/static/images/logos/logo.png")
 
         for _ in range(MAX_RETRIES):
             try:

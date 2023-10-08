@@ -328,8 +328,8 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n\n".join(
             [
-                f"{fro} has banned [{target}](https://akatsuki.gg/u/{targetID}).",
-                f"**Reason**: {reason}",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) banned [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
+                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -362,7 +362,12 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
 
     await rap_logs.send_rap_log(userID, f"has unbanned {target}")
     await rap_logs.send_rap_log_as_discord_webhook(
-        message=f"{fro} has unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
+        message="\n\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unbanned [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
+                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
         discord_channel="ac_general",
     )
 
@@ -409,8 +414,8 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n\n".join(
             [
-                f"{fro} has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
-                f"**Reason**: {reason}",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) restricted [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
+                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -445,7 +450,12 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
     await rap_logs.send_rap_log(userID, f"has unrestricted {target}")
     await rap_logs.send_rap_log_as_discord_webhook(
-        message=f"{fro} has unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
+        message="\n\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unrestricted [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
+                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
         discord_channel="ac_general",
     )
 
@@ -1031,6 +1041,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         # Get username, report reason and report info
         target, reason, additionalInfo = result.groups()
         target = await chat.fixUsernameForBancho(target)
+        userID = await userUtils.getID(fro)
         targetID = await userUtils.getID(target)
 
         # Make sure the user exists
@@ -1064,11 +1075,14 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
 
         msg = f"You've reported {target} for {reason}{f'({additionalInfo})' if additionalInfo else ''}. An Administrator will check your report as soon as possible. Every !report message you may see in chat wasn't sent to anyone, so nobody in chat, but admins, know about your report. Thank you for reporting!"
 
-        adminMsg = f"{fro} has reported {target} for {reason} ({additionalInfo})"
-
         # Log report to discord
         await rap_logs.send_rap_log_as_discord_webhook(
-            message=adminMsg,
+            message="\n\n".join(
+                [
+                    f"[{fro}](https://akatsuki.gg/u/{userID}) reported [{target}](https://akatsuki.gg/u/{targetID}) ({targetID}) for {reason} ({additionalInfo}).",
+                    f"> :gear: [View all reports](https://old.akatsuki.gg/index.php?p=126) on **Admin Panel**.",
+                ],
+            ),
             discord_channel="ac_general",
         )
     except exceptions.invalidUserException:
@@ -1421,11 +1435,27 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
     if bit not in range(4):
         return "Invalid bit."
-
-    if not (userID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return "That user does not exist."
 
-    await userUtils.editWhitelist(userID, bit)
+    # Get command executioner's ID
+    userID = await userUtils.getID(fro)
+
+    await userUtils.editWhitelist(targetID, bit)
+    await rap_logs.send_rap_log(userID, f"has set {target}'s whitelist status to {bit}")
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message="\n\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has set [{target}](https://akatsuki.gg/u/{targetID})'s whitelist status to {bit}.",
+                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
+        discord_channel="ac_general",
+    )
+    await userUtils.appendNotes(
+        targetID,
+        f"{fro} ({userID}) has set {target}'s whitelist status to {bit}",
+    )
     return f"{target}'s whitelist status has been set to {bit}."
 
 
