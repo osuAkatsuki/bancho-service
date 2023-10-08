@@ -8,6 +8,7 @@ if [ -z "$APP_ENV" ]; then
   exit 1
 fi
 
+if [[ -z "$PULL_SECRETS_FROM_VAULT" ]]; then
   pip install -i $PYPI_INDEX_URL akatsuki-cli
   akatsuki vault get bancho-service $APP_ENV -o .env
   source .env
