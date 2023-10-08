@@ -834,7 +834,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
         "DT": mods.DOUBLETIME,
         "RX": mods.RELAX,
         "HT": mods.HALFTIME,
-        "NC": mods.NIGHTCORE,
+        "NC": mods.NIGHTCORE | mods.DOUBLETIME,
         "FL": mods.FLASHLIGHT,
         "SO": mods.SPUNOUT,
         "AP": mods.AUTOPILOT,
