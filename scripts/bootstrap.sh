@@ -4,7 +4,9 @@ set -eo pipefail
 cd /srv/root
 
 if [[ -z "$PULL_SECRETS_FROM_VAULT" ]]; then
-  /scripts/inject-vault-secrets-into-env.sh
+  pip install -i $PYPI_INDEX_URL akatsuki-cli
+  akatsuki vault get bancho-service production -o .env
+  source .env
 fi
 
 # await database availability
