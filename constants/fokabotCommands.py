@@ -1077,12 +1077,12 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
 
         # Log report to discord
         await rap_logs.send_rap_log_as_discord_webhook(
-        message="\n\n".join(
-            [
-                f"[{fro}](https://akatsuki.gg/u/{userID}) reported [{target}](https://akatsuki.gg/u/{targetID}) ({targetID}) for {reason} ({additionalInfo}).",
-                f"> :gear: [View all reports](https://old.akatsuki.gg/index.php?p=126) on **Admin Panel**.",
-            ],
-        ),
+            message="\n\n".join(
+                [
+                    f"[{fro}](https://akatsuki.gg/u/{userID}) reported [{target}](https://akatsuki.gg/u/{targetID}) ({targetID}) for {reason} ({additionalInfo}).",
+                    f"> :gear: [View all reports](https://old.akatsuki.gg/index.php?p=126) on **Admin Panel**.",
+                ],
+            ),
             discord_channel="ac_general",
         )
     except exceptions.invalidUserException:
