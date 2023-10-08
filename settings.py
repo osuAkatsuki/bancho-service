@@ -34,7 +34,6 @@ APP_GZIP = read_bool(os.environ["APP_GZIP"])
 APP_GZIP_LEVEL = int(os.environ["APP_GZIP_LEVEL"])
 APP_CI_KEY = os.environ["APP_CI_KEY"]
 APP_API_KEY = os.environ["APP_API_KEY"]
-CODE_HOTRELOAD = read_bool(os.environ["CODE_HOTRELOAD"])
 
 SHUTDOWN_HTTP_CONNECTION_TIMEOUT = int(os.environ["SHUTDOWN_HTTP_CONNECTION_TIMEOUT"])
 

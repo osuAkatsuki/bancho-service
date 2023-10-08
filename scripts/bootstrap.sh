@@ -3,7 +3,7 @@ set -eo pipefail
 
 cd /srv/root
 
-if [[ -n "$PULL_SECRETS_FROM_VAULT" ]]; then
+if [[ -z "$PULL_SECRETS_FROM_VAULT" ]]; then
   /scripts/inject-vault-secrets-into-env.sh
 fi
 
