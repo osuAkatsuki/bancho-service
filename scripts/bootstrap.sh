@@ -3,9 +3,13 @@ set -eo pipefail
 
 cd /srv/root
 
-if [[ -z "$PULL_SECRETS_FROM_VAULT" ]]; then
+if [ -z "$APP_ENV" ]; then
+  echo "Please set APP_ENV"
+  exit 1
+fi
+
   pip install -i $PYPI_INDEX_URL akatsuki-cli
-  akatsuki vault get bancho-service production -o .env
+  akatsuki vault get bancho-service $APP_ENV -o .env
   source .env
 fi
 
