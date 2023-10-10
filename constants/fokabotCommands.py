@@ -354,7 +354,8 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
         )
 
     await userUtils.appendNotes(
-        targetID, f"{fro} ({userID}) unsilenced {target} for {reason}",
+        targetID,
+        f"{fro} ({userID}) unsilenced {target} for {reason}",
     )
     return f"{target}'s silence reset."
 
@@ -1560,7 +1561,8 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
     await userUtils.editWhitelist(targetID, bit)
     await rap_logs.send_rap_log(
-        userID, f"has set {target}'s whitelist status to {bit} for {reason}",
+        userID,
+        f"has set {target}'s whitelist status to {bit} for {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n".join(
