@@ -12,7 +12,7 @@ OSU_MAX_PING_INTERVAL = 300  # seconds
 CHATBOT_USER_ID = 999
 
 
-async def _maybe_timeout_inactive_user(token: osuToken.Token) -> None:
+async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
     timeout_limit = int(time.time()) - OSU_MAX_PING_INTERVAL
 
     if (
@@ -45,7 +45,7 @@ async def timeout_inactive_users() -> None:
                     if token is None:
                         continue
 
-                    await _maybe_timeout_inactive_user(token)
+                    await _revoke_token_if_inactive(token)
 
             except Exception:
                 logging.exception(
