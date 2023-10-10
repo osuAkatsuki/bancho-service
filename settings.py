@@ -7,6 +7,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def read_bool(val: str) -> bool:
+    return val.lower() in ("true", "1")
+
+
 DB_HOST = os.environ["DB_HOST"]
 DB_PORT = int(os.environ["DB_PORT"])
 DB_USER = os.environ["DB_USER"]
@@ -25,7 +30,7 @@ if "--port" in sys.argv:
 else:
     APP_PORT = int(os.environ["APP_PORT"])
 
-APP_GZIP = os.environ["APP_GZIP"] == "1"
+APP_GZIP = read_bool(os.environ["APP_GZIP"])
 APP_GZIP_LEVEL = int(os.environ["APP_GZIP_LEVEL"])
 APP_CI_KEY = os.environ["APP_CI_KEY"]
 APP_API_KEY = os.environ["APP_API_KEY"]
