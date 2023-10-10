@@ -9,10 +9,6 @@ import time
 OSU_MAX_PING_INTERVAL = 300  # seconds
 CHATBOT_USER_ID = 999
 
-# TODO: this should be used in other places in the code
-# and potentially abstracted into a more appropriate place
-CHAT_SPAM_SAMPLE_INTERVAL = 10  # seconds
-
 
 async def timeout_inactive_users() -> None:
     logging.info("Starting user timeout loop")
