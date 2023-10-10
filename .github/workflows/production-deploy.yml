@@ -2,7 +2,7 @@ name: production-deploy
 on:
   push:
     branches:
-      - master
+      - main
       - AKAT-427-prod-deploy-in-ci
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
           script_stop: true
           script: |
             cd /home/akatsuki/pep.py
-            git pull origin master
+            git pull origin main
             docker build -t bancho-service:latest .
             cd /home/akatsuki/workbench
             docker-compose restart bancho-service
