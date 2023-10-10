@@ -8,6 +8,11 @@ if [ -z "$APP_ENV" ]; then
   exit 1
 fi
 
+if [ -z "$APP_COMPONENT" ]; then
+  echo "Please set APP_COMPONENT"
+  exit 1
+fi
+
 if [[ $PULL_SECRETS_FROM_VAULT -eq 1 ]]; then
   pip install -i $PYPI_INDEX_URL akatsuki-cli
   akatsuki vault get bancho-service $APP_ENV -o .env
@@ -20,5 +25,15 @@ fi
 # await redis availability
 /scripts/await-service.sh $REDIS_HOST $REDIS_PORT $SERVICE_READINESS_TIMEOUT
 
-# run the service
-exec /scripts/run-service.sh
+if [[ $APP_COMPONENT == "api" ]]; then
+  exec /scripts/run-api.sh
+elif [[ $APP_COMPONENT == "reset-all-users-spam-rate" ]]; then
+  exec /scripts/run-reset-all-users-spam-rate.sh
+elif [[ $APP_COMPONENT == "timeout-inactive-users" ]]; then
+  exec /scripts/run-timeout-inactive-users.sh
+elif [[ $APP_COMPONENT == "consume-pubsub-events" ]]; then
+  exec /scripts/run-consume-pubsub-events.sh
+else
+  echo "Unknown APP_COMPONENT: $APP_COMPONENT"
+  exit 1
+fi
