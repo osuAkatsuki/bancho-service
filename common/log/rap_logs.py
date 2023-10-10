@@ -40,7 +40,10 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
             return
 
         embed = Webhook(discord_webhook_url, color=DISCORD_WEBHOOK_EMBED_COLOR)
-        embed.set_author(name="Akatsuki Webhook Logging", icon="https://cdn.discordapp.com/emojis/1160855094712078368.png")
+        embed.set_author(
+            name="Akatsuki Webhook Logging",
+            icon="https://cdn.discordapp.com/emojis/1160855094712078368.png",
+        )
         embed.add_field(name="New moderation action logged! :tools:", value=message)
         embed.set_footer(text="bancho-service ⚓")
 

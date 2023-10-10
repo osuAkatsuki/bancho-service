@@ -131,7 +131,8 @@ async def alert(fro: str, chan: str, message: list[str]) -> None:
     )
     await rap_logs.send_rap_log_as_discord_webhook(
         message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has sent an alert to all users:```{msg}```",
-        discord_channel="ac_general",)
+        discord_channel="ac_general",
+    )
     return "Sent an alert to every online player."
 
 
@@ -176,19 +177,20 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         await channelList.updateChannel(channel_name, moderated=enable)
         userID = userUtils.getID(fro)
         await rap_logs.send_rap_log(
-            userID,
-            f"has toggled moderated mode in {channel_name}."
-        )   
+            userID, f"has toggled moderated mode in {channel_name}.",
+        )
         await rap_logs.send_rap_log_as_discord_webhook(
             message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has toggled moderated mode in {channel_name}.",
             discord_channel="ac_general",
         )
-        response = f'This channel is {"now" if enable else "no longer"} in moderated mode!'
+        response = (
+            f'This channel is {"now" if enable else "no longer"} in moderated mode!'
+        )
     except exceptions.channelUnknownException:
         response = "Channel doesn't exist. (??? contact cmyui/tsunyoku)"
     except exceptions.moderatedPMException:
         response = "You are trying to put a private chat in moderated mode.. Let that sink in for a second.."
-    
+
     return response
 
 
@@ -222,7 +224,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
                 ],
             ),
             discord_channel="ac_general",
-    )
+        )
     return f"{target} has been kicked from the server."
 
 
@@ -294,11 +296,13 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
                 f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
-            discord_channel="ac_general",
+        discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) silenced {target} for {reason}.")    
-    
+    await userUtils.appendNotes(
+        targetID, f"{fro} ({userID}) silenced {target} for {reason}.",
+    )
+
     return msg
 
 
@@ -335,9 +339,9 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
                 ],
             ),
             discord_channel="ac_general",
-    )
+        )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unsilenced {target}")    
+    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unsilenced {target}")
     return f"{target}'s silence reset."
 
 
