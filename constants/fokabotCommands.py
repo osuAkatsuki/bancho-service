@@ -216,7 +216,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
 
     if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
         return "Target not online."
-    
+
     if not reason:
         return "Please specify a reason for the kick!"
 
@@ -353,7 +353,9 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
             discord_channel="ac_general",
         )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unsilenced {target} for {reason}")
+    await userUtils.appendNotes(
+        targetID, f"{fro} ({userID}) unsilenced {target} for {reason}",
+    )
     return f"{target}'s silence reset."
 
 
@@ -1233,7 +1235,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 # async def freeze(fro: str, chan: str, message: list[str]) -> str:
 #    """Freeze a specified player."""
 #    target = message[0].lower()
-#    reason = " ".join(message[1:])  
+#    reason = " ".join(message[1:])
 
 #    if not (targetID := await userUtils.getID(target)):
 #        return "That user does not exist"
@@ -1278,7 +1280,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
 
     if not await userUtils.getFreezeTime(targetID):
         return "That user is not frozen."
-    
+
     if not reason:
         return f"Please specify a reason to unfreeze {target}."
 
@@ -1546,10 +1548,10 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
     if bit not in range(4):
         return "Invalid bit."
-    
+
     if not (targetID := await userUtils.getID(target)):
         return "That user does not exist."
-    
+
     if not reason:
         return "Please specify the reason for your whitelist request."
 
@@ -1557,7 +1559,9 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     userID = await userUtils.getID(fro)
 
     await userUtils.editWhitelist(targetID, bit)
-    await rap_logs.send_rap_log(userID, f"has set {target}'s whitelist status to {bit} for {reason}")
+    await rap_logs.send_rap_log(
+        userID, f"has set {target}'s whitelist status to {bit} for {reason}",
+    )
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n".join(
             [
