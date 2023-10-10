@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from events import logoutEvent
+import time
 
+from events import logoutEvent
 from objects import osuToken
 from objects.redisLock import redisLock
-import time
 
 OSU_MAX_PING_INTERVAL = 300  # seconds
 CHATBOT_USER_ID = 999
@@ -43,7 +45,7 @@ async def timeout_inactive_users() -> None:
                     #     pass  # lol
                     except Exception:
                         logging.exception(
-                            "An error occurred while disconnecting a timed out client"
+                            "An error occurred while disconnecting a timed out client",
                         )
 
         await asyncio.sleep(OSU_MAX_PING_INTERVAL)

@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import logging
 
+from common.redis import pubSub
+from objects import glob
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
 from pubSubHandlers import disconnectHandler
@@ -8,8 +12,6 @@ from pubSubHandlers import unbanHandler
 from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
-from common.redis import pubSub
-from objects import glob
 
 
 async def consume_pubsub_events() -> None:
