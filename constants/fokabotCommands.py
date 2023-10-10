@@ -177,7 +177,8 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         await channelList.updateChannel(channel_name, moderated=enable)
         userID = userUtils.getID(fro)
         await rap_logs.send_rap_log(
-            userID, f"has toggled moderated mode in {channel_name}.",
+            userID,
+            f"has toggled moderated mode in {channel_name}.",
         )
         await rap_logs.send_rap_log_as_discord_webhook(
             message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has toggled moderated mode in {channel_name}.",
@@ -300,7 +301,8 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
     )
 
     await userUtils.appendNotes(
-        targetID, f"{fro} ({userID}) silenced {target} for {reason}.",
+        targetID,
+        f"{fro} ({userID}) silenced {target} for {reason}.",
     )
 
     return msg
