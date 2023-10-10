@@ -10,6 +10,7 @@ from events import logoutEvent
 from objects import glob
 from objects import osuToken
 
+
 async def addToken(
     user_id: int,
     ip: str = "",
