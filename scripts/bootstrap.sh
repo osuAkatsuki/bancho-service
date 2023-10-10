@@ -29,8 +29,8 @@ if [[ $APP_COMPONENT == "api" ]]; then
   exec /scripts/run-api.sh
 elif [[ $APP_COMPONENT == "reset-all-users-spam-rate" ]]; then
   exec /scripts/run-reset-all-users-spam-rate.sh
-elif [[ $APP_COMPONENT == "timeout-inactive-users" ]]; then
-  exec /scripts/run-timeout-inactive-users.sh
+elif [[ $APP_COMPONENT == "timeout-inactive-tokens" ]]; then
+  exec /scripts/run-timeout-inactive-tokens.sh
 elif [[ $APP_COMPONENT == "consume-pubsub-events" ]]; then
   exec /scripts/run-consume-pubsub-events.sh
 else
