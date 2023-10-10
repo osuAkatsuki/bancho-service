@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - AKAT-427-prod-deploy-in-ci
 
 jobs:
   build:
