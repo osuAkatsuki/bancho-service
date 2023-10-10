@@ -10,7 +10,6 @@ import traceback
 from datetime import datetime
 from typing import Optional
 
-import psutil
 import redis.asyncio as redis
 import tornado.gen
 import tornado.httpserver
@@ -19,7 +18,6 @@ import tornado.web
 import yaml
 
 import settings
-from common.redis import pubSub
 from handlers import apiFokabotMessageHandler
 from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
@@ -32,16 +30,7 @@ from objects import channelList
 from objects import fokabot
 from objects import glob
 from objects import streamList
-from objects import tokenList
 from objects.dbPool import DBPool
-from pubSubHandlers import banHandler
-from pubSubHandlers import changeUsernameHandler
-from pubSubHandlers import disconnectHandler
-from pubSubHandlers import notificationHandler
-from pubSubHandlers import unbanHandler
-from pubSubHandlers import updateSilenceHandler
-from pubSubHandlers import updateStatsHandler
-from pubSubHandlers import wipeHandler
 
 
 def dump_thread_stacks():
@@ -147,53 +136,6 @@ async def main() -> int:
                 extra={"port": settings.IRC_PORT},
             )
             asyncio.create_task(ircserver.main(port=settings.IRC_PORT))
-
-        # We only wish to run the service's background jobs and redis pubsubs
-        # on a single instance of bancho-service. Ideally, these should likely
-        # be split into processes of their own (multiple app components within
-        # the service), but for now we'll just run them all in the same process.
-        # TODO:FIXME there is additionally an assumption made here that all
-        # bancho-service instances will be run as processes on the same machine.
-        raw_result = await glob.redis.get("bancho:primary_instance_pid")
-        if raw_result is None or not psutil.pid_exists(int(raw_result)):
-            logging.info("Starting background loops")
-            await glob.redis.set("bancho:primary_instance_pid", os.getpid())
-
-            logging.info("Starting user timeout loop")
-            await tokenList.usersTimeoutCheckLoop()
-            logging.info("Started user timeout loop")
-            logging.info("Starting spam protection loop")
-            await tokenList.spamProtectionResetLoop()
-            logging.info("Started spam protection loop")
-
-            # Connect to pubsub channels
-            PUBSUB_HANDLERS = {
-                "peppy:ban": banHandler.handler(),
-                "peppy:unban": unbanHandler.handler(),
-                "peppy:silence": updateSilenceHandler.handler(),
-                "peppy:disconnect": disconnectHandler.handler(),
-                "peppy:notification": notificationHandler.handler(),
-                "peppy:change_username": changeUsernameHandler.handler(),
-                "peppy:update_cached_stats": updateStatsHandler.handler(),
-                "peppy:wipe": wipeHandler.handler(),
-                # TODO: support this?
-                # "peppy:reload_settings": (
-                #     lambda x: x == b"reload" and await glob.banchoConf.reload()
-                # ),
-            }
-            logging.info(
-                "Starting pubsub listeners",
-                extra={"handlers": list(PUBSUB_HANDLERS)},
-            )
-            pubsub_listener = pubSub.listener(
-                redis_connection=glob.redis,
-                handlers=PUBSUB_HANDLERS,
-            )
-            asyncio.create_task(pubsub_listener.run())
-            logging.info(
-                "Started pubsub listeners",
-                extra={"handlers": list(PUBSUB_HANDLERS)},
-            )
 
         # Start the HTTP server
         API_ENDPOINTS = [

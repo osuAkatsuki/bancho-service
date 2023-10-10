@@ -1,20 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 from typing import Literal
 from typing import Optional
 from typing import overload
 
 from common.ripple import userUtils
-from constants.exceptions import periodicLoopException
-from constants.exceptions import tokenNotFoundException
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
-from objects.redisLock import redisLock
-
 
 async def addToken(
     user_id: int,
@@ -248,91 +242,6 @@ async def enqueueAll(packet: bytes) -> None:
     """
     for token_id in await osuToken.get_token_ids():
         await osuToken.enqueue(token_id, packet)
-
-
-# NOTE: this number is defined by the osu! client
-OSU_MAX_PING_DELTA = 300  # seconds
-
-
-async def usersTimeoutCheckLoop() -> None:
-    """
-    Start timed out users disconnect loop.
-    This function will be called every `checkTime` seconds and so on, forever.
-    CALL THIS FUNCTION ONLY ONCE!
-    :return:
-    """
-    try:
-        logging.debug("Checking timed out clients")
-        exceptions: list[Exception] = []
-        timeoutLimit = int(time.time()) - OSU_MAX_PING_DELTA
-
-        for token_id in await osuToken.get_token_ids():
-            async with redisLock(
-                f"{osuToken.make_key(token_id)}:processing_lock",
-            ):
-                token = await osuToken.get_token(token_id)
-                if token is None:
-                    continue
-
-                # Check timeout (fokabot is ignored)
-                if (
-                    token["ping_time"] < timeoutLimit
-                    and token["user_id"] != 999
-                    and not token["irc"]
-                    and not token["tournament"]
-                ):
-                    logging.warning(
-                        "Timing out inactive bancho session",
-                        extra={
-                            "username": token["username"],
-                            "seconds_inactive": time.time() - token["ping_time"],
-                        },
-                    )
-
-                    try:
-                        await logoutEvent.handle(token, _=None)
-                    except tokenNotFoundException as e:
-                        pass  # lol
-                    except Exception as exc:
-                        exceptions.append(exc)
-                        logging.exception(
-                            "An error occurred while disconnecting a timed out client",
-                        )
-
-        # Re-raise exceptions if needed
-        if exceptions:
-            raise periodicLoopException(exceptions)
-    finally:
-        # Schedule a new check (endless loop)
-        loop = asyncio.get_running_loop()
-        loop.call_later(
-            OSU_MAX_PING_DELTA // 2,
-            lambda: asyncio.create_task(usersTimeoutCheckLoop()),
-        )
-
-
-async def spamProtectionResetLoop() -> None:
-    """
-    Start spam protection reset loop.
-    Called every 10 seconds.
-    CALL THIS FUNCTION ONLY ONCE!
-
-    :return:
-    """
-    try:
-        # Reset spamRate for every token
-        for token_id in await osuToken.get_token_ids():
-            async with redisLock(
-                f"{osuToken.make_key(token_id)}:processing_lock",
-            ):
-                await osuToken.update_token(token_id, spam_rate=0)
-    finally:
-        # Schedule a new check (endless loop)
-        loop = asyncio.get_running_loop()
-        loop.call_later(
-            10,
-            lambda: asyncio.create_task(spamProtectionResetLoop()),
-        )
 
 
 def tokenExists(
