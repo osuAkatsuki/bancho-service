@@ -600,7 +600,7 @@ async def sendMessage(
         if isChannel:
             if webhook_channel:
                 await rap_logs.send_rap_log_as_discord_webhook(
-                    message=f"{osuToken.getMessagesBufferString(token_id)}",
+                    message=f"{await osuToken.getMessagesBufferString(token_id)}",
                     discord_channel=webhook_channel,
                 )
             else:
