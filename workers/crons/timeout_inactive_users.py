@@ -32,8 +32,8 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
         await logoutEvent.handle(token, _=None)
 
 
-async def timeout_inactive_users() -> None:
-    logging.info("Starting user timeout loop")
+async def timeout_inactive_tokens() -> None:
+    logging.info("Starting inactive token timeout loop")
     while True:
         for token_id in await osuToken.get_token_ids():
             token = None

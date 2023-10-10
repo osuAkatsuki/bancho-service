@@ -11,7 +11,7 @@ from objects.redisLock import redisLock
 CHAT_SPAM_SAMPLE_INTERVAL = 10  # seconds
 
 
-async def reset_all_users_spam_rate() -> None:
+async def reset_all_tokens_spam_rate() -> None:
     """bancho-service silences users by tracking how"""
     logging.info("Starting spam protection loop")
     while True:
