@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from common.redis import pubSub
+from common.redis.generalPubSubHandler import generalPubSubHandler
 from objects import glob
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
@@ -16,7 +17,7 @@ from pubSubHandlers import wipeHandler
 
 async def consume_pubsub_events() -> None:
     # Connect to pubsub channels
-    PUBSUB_HANDLERS = {
+    PUBSUB_HANDLERS: dict[str, generalPubSubHandler] = {
         "peppy:ban": banHandler.handler(),
         "peppy:unban": unbanHandler.handler(),
         "peppy:silence": updateSilenceHandler.handler(),
