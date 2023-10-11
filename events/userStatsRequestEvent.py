@@ -17,15 +17,19 @@ async def handle(userToken: Token, rawPacketData: bytes):
         logging.warning("Received userStatsRequest with length > 32.")
         return
 
-    for userID in packetData["users"]:
-        logging.debug("Sending stats for user", extra={"user_id": userID})
+    for other_id in packetData["users"]:
+        logging.debug("Sending stats for user", extra={"user_id": other_id})
 
         # Skip our stats
-        if userID == userToken["user_id"]:
+        if other_id == userToken["user_id"]:
+            continue
+
+        other_token = await osuToken.get_token_by_user_id(user_id=other_id)
+        if other_token is None:
             continue
 
         # Enqueue stats packets relative to this user
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userStats(userID),
+            await serverPackets.userStats(other_token),
         )

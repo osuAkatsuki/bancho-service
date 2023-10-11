@@ -12,8 +12,11 @@ from constants import userRanks
 from helpers import packetHelper
 from objects import glob
 from objects import match
-from objects import osuToken
-from objects import tokenList
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from objects.osuToken import Token
 
 
 # TODO: any packet using async/await should likely
@@ -125,20 +128,6 @@ def friendList(userID: int, friends_list: list[int]) -> bytes:
     )
 
 
-async def onlineUsers() -> bytes:
-    userIDs = []
-
-    # Create list with all connected (and not restricted) users
-    for value in await osuToken.get_tokens():
-        if not osuToken.is_restricted(value["privileges"]):
-            userIDs.append(value["user_id"])
-
-    return packetHelper.buildPacket(
-        packetIDs.server_userPresenceBundle,
-        ((userIDs, dataTypes.INT_LIST),),
-    )
-
-
 """ Users packets """
 
 
@@ -157,16 +146,19 @@ BOT_PRESENCE = (
 )
 
 
-async def userPanel(userID: int, force: bool = False) -> bytes:
-    if userID == CHATBOT_USER_ID:
+async def userPanel(userToken: Token, force: bool = False) -> bytes:
+    if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_PRESENCE
 
     # Connected and restricted check
-    userToken = await tokenList.getTokenFromUserID(userID)
-    if not userToken or (osuToken.is_restricted(userToken["privileges"]) and not force):
+    if userToken["privileges"] & privileges.USER_PUBLIC == 0 and not force:
         return b""
 
     # Get user data
+    userID = userToken["user_id"]
+    if userID == 999:
+        return BOT_PRESENCE
+
     username = userToken["username"]
     timezone = 24 + userToken["utc_offset"]
     country = userToken["country"]
@@ -218,18 +210,13 @@ BOT_STATS = (
 )
 
 
-async def userStats(userID: int, force: bool = False) -> bytes:
-    if userID == CHATBOT_USER_ID:
+async def userStats(userToken: Token, force: bool = False) -> bytes:
+    if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_STATS
-
-    # Get userID's token from tokens list
-    userToken = await tokenList.getTokenFromUserID(userID)
-    if userToken is None:
-        return b""
 
     if not force:
         if (
-            osuToken.is_restricted(userToken["privileges"])
+            userToken["privileges"] & privileges.USER_PUBLIC == 0
             or userToken["irc"]
             or userToken["tournament"]
         ):
@@ -393,56 +380,38 @@ def fellowSpectatorLeft(userID: int) -> bytes:
 """ Multiplayer Packets """
 
 
-async def createMatch(match_id: int) -> bytes:
-    # Get match binary data and build packet
-    multiplayer_match = await match.get_match(match_id)
-    if multiplayer_match is None:
-        return b""
-
-    matchData = await match.getMatchData(match_id, censored=True)
+async def createMatch(multiplayer_match: match.Match) -> bytes:
+    matchData = await match.getMatchData(multiplayer_match["match_id"], censored=True)
     return packetHelper.buildPacket(packetIDs.server_newMatch, matchData)
 
 
-async def updateMatch(match_id: int, censored: bool = False) -> Optional[bytes]:
-    # Get match binary data and build packet
-    multiplayer_match = await match.get_match(match_id)
-    if multiplayer_match is None:
-        return None
-
+async def updateMatch(
+    multiplayer_match: match.Match, censored: bool = False
+) -> Optional[bytes]:
     return packetHelper.buildPacket(
         packetIDs.server_updateMatch,
-        await match.getMatchData(match_id, censored=censored),
+        await match.getMatchData(multiplayer_match["match_id"], censored=censored),
     )
 
 
-async def matchStart(match_id: int) -> bytes:
-    # Get match binary data and build packet
-    multiplayer_match = await match.get_match(match_id)
-    if multiplayer_match is None:
-        return b""
-
+async def matchStart(multiplayer_match: match.Match) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_matchStart,
-        await match.getMatchData(match_id, censored=False),
+        await match.getMatchData(multiplayer_match["match_id"], censored=False),
     )
 
 
-def disposeMatch(match_id: int) -> bytes:
+def disposeMatch(multiplayer_match: match.Match) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_disposeMatch,
-        ((match_id, dataTypes.UINT32),),
+        ((multiplayer_match["match_id"], dataTypes.UINT32),),
     )
 
 
-async def matchJoinSuccess(match_id: int) -> bytes:
-    # Get match binary data and build packet
-    multiplayer_match = await match.get_match(match_id)
-    if multiplayer_match is None:
-        return b""
-
+async def matchJoinSuccess(multiplayer_match: match.Match) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_matchJoinSuccess,
-        await match.getMatchData(match_id, censored=False),
+        await match.getMatchData(multiplayer_match["match_id"], censored=False),
     )
 
 

@@ -23,7 +23,21 @@ async def handle(userToken: Token, rawPacketData: bytes):
         )
         return
 
-    for i in packetData["users"]:
+    for other_id in packetData["users"]:
+        other_token = await osuToken.get_token_by_user_id(user_id=i)
+        if other_token is None:
+            logging.info(
+                "Failed to find requested user when sending panel",
+                extra={"user_id": other_id},
+            )
+            continue
+
         # Enqueue userpanel packets relative to this user
-        logging.debug("Sending panel for user", extra={"user_slot_num": i})
-        await osuToken.enqueue(userToken["token_id"], await serverPackets.userPanel(i))
+        logging.debug(
+            "Sending panel for user",
+            extra={"user_id": other_token["user_id"]},
+        )
+        await osuToken.enqueue(
+            userToken["token_id"],
+            await serverPackets.userPanel(other_token),
+        )
