@@ -117,8 +117,8 @@ async def roll(fro: str, chan: str, message: list[str]) -> str:
     return f"{fro} rolls {points} points!"
 
 
-@command(trigger="!alert", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
-async def alert(fro: str, chan: str, message: list[str]) -> str:
+@command(trigger="!alertall", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
+async def alertall(fro: str, chan: str, message: list[str]) -> str:
     """Send a notification message to all users."""
     if not (msg := " ".join(message).strip()):
         return "Guy was going to say @everyone and leave..."
@@ -1226,7 +1226,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
     return "Your discord account has been successfully linked."
 
 
-# XXX: disabled for now - was being overused (Mistral: i added logging because hehe more messages in admin logs)
+# XXX: disabled for now - was being overused
 # @command(
 #    trigger="!freeze",
 #    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
