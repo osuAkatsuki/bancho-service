@@ -206,7 +206,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
-    userID = userUtils.getID(fro)
+    userID = await userUtils.getID(fro)
 
     if targetID <= 1001 and userID > 1001:
         return "Nope."
