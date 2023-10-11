@@ -118,10 +118,10 @@ async def roll(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!alert", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
-async def alert(fro: str, chan: str, message: list[str]) -> None:
+async def alert(fro: str, chan: str, message: list[str]) -> str:
     """Send a notification message to all users."""
     if not (msg := " ".join(message).strip()):
-        return
+        return "Guy was going to say @everyone and leave..."
 
     userID = await userUtils.getID(fro)
     await streamList.broadcast("main", serverPackets.notification(msg))
