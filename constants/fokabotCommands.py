@@ -130,7 +130,7 @@ async def alert(fro: str, chan: str, message: list[str]) -> None:
         f"has sent an alert to all users: '{msg}'",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
-        message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has sent an alert to all users:```{msg}```",
+        message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has sent an alert to all users:```\n{msg}```",
         discord_channel="ac_general",
     )
     return "Sent an alert to every online player."
