@@ -175,7 +175,7 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         # Turn on/off moderated mode
         # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
         await channelList.updateChannel(channel_name, moderated=enable)
-        userID = userUtils.getID(fro)
+        userID = await userUtils.getID(fro)
         await rap_logs.send_rap_log(
             userID,
             f"has toggled moderated mode in {channel_name}.",
@@ -188,7 +188,7 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
             f'This channel is {"now" if enable else "no longer"} in moderated mode!'
         )
     except exceptions.channelUnknownException:
-        response = "Channel doesn't exist. (??? contact cmyui/tsunyoku)"
+        response = "Channel doesn't exist."
     except exceptions.moderatedPMException:
         response = "You are trying to put a private chat in moderated mode.. Let that sink in for a second.."
 
@@ -208,11 +208,11 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
     userID = await userUtils.getID(fro)
 
-    if targetID <= 1001 and userID > 1001:
-        return "Nope."
-
     if not (targetID := await userUtils.getID(target)):
         return "Could not find user"
+    
+    if targetID <= 1001 and userID > 1001:
+        return "Nope."
 
     if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
         return "Target not online."
@@ -1285,8 +1285,8 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     if not reason:
         return f"Please specify a reason to unfreeze {target}."
 
-    await userUtils.unfreeze(targetID, await userUtils.getID(fro))
     userID = await userUtils.getID(fro)
+    await userUtils.unfreeze(targetID, userID)
     await rap_logs.send_rap_log(userID, f"has unfroze {target}")
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n".join(
