@@ -18,10 +18,10 @@ CHATBOT_USER_ID = 999
 
 
 async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
-    timeout_limit = int(time.time()) - OSU_MAX_PING_INTERVAL
+    oldest_ping_time = int(time.time()) - OSU_MAX_PING_INTERVAL
 
     if (
-        token["ping_time"] < timeout_limit
+        token["ping_time"] < oldest_ping_time
         and token["user_id"] != CHATBOT_USER_ID
         and not token["irc"]
         and not token["tournament"]
