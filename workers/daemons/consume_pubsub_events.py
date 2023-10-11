@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-sys.path.insert(1, os.path.join(sys.path[0], "../../.."))
+sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 from common.redis import pubSub
 from common.redis.generalPubSubHandler import generalPubSubHandler
