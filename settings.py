@@ -12,6 +12,9 @@ def read_bool(val: str) -> bool:
     return val.lower() in ("true", "1")
 
 
+APP_ENV = os.environ["APP_ENV"]
+APP_COMPONENT = os.environ["APP_COMPONENT"]
+
 DB_HOST = os.environ["DB_HOST"]
 DB_PORT = int(os.environ["DB_PORT"])
 DB_USER = os.environ["DB_USER"]
