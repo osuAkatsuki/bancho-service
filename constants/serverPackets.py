@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from typing import TYPE_CHECKING
 
 from common.constants import privileges
 from common.ripple import userUtils
@@ -12,8 +13,6 @@ from constants import userRanks
 from helpers import packetHelper
 from objects import glob
 from objects import match
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from objects.osuToken import Token
@@ -386,7 +385,7 @@ async def createMatch(multiplayer_match: match.Match) -> bytes:
 
 
 async def updateMatch(
-    multiplayer_match: match.Match, censored: bool = False
+    multiplayer_match: match.Match, censored: bool = False,
 ) -> Optional[bytes]:
     return packetHelper.buildPacket(
         packetIDs.server_updateMatch,
