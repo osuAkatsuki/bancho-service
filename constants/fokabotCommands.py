@@ -1537,15 +1537,15 @@ async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
 @command(
     trigger="!whitelist",
     privs=privileges.ADMIN_MANAGE_USERS,
-    syntax="<target_name> <reason> <bit>",
+    syntax="<target_name> <bit> <reason>",
     hidden=True,
 )
 async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     """Edit the whitelisted status of a specified user."""
     message = [m.lower() for m in message]
     target = message[0]
-    reason = " ".join(message[1:])
-    bit = int(message[2]) if message[1].isnumeric() else -1
+    bit = int(message[1]) if message[1].isnumeric() else -1
+    reason = " ".join(message[2:])
 
     if bit not in range(4):
         return "Invalid bit."
