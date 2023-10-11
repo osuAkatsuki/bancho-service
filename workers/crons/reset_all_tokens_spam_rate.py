@@ -15,7 +15,7 @@ from objects.redisLock import redisLock
 CHAT_SPAM_SAMPLE_INTERVAL = 10  # seconds
 
 
-async def reset_all_tokens_spam_rate() -> None:
+async def main() -> int:
     """bancho-service silences users by tracking how"""
     logging.info("Starting spam protection loop")
     while True:
@@ -26,3 +26,9 @@ async def reset_all_tokens_spam_rate() -> None:
                 await osuToken.update_token(token_id, spam_rate=0)
 
         await asyncio.sleep(CHAT_SPAM_SAMPLE_INTERVAL)
+
+    return 0
+
+if __name__ == "__main__":
+    exit_code = asyncio.run(main())
+    exit(exit_code)

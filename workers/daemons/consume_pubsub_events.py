@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 
 import logging
 import os
@@ -19,7 +20,7 @@ from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
 
-async def consume_pubsub_events() -> None:
+async def main() -> int:
     # Connect to pubsub channels
     PUBSUB_HANDLERS: dict[str, generalPubSubHandler] = {
         "peppy:ban": banHandler.handler(),
@@ -44,3 +45,9 @@ async def consume_pubsub_events() -> None:
         handlers=PUBSUB_HANDLERS,
     )
     await pubsub_listener.run()
+    return 0
+
+
+if __name__ == "__main__":
+    exit_code = asyncio.run(main())
+    exit(exit_code)

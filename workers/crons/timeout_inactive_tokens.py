@@ -37,7 +37,7 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
         await logoutEvent.handle(token, _=None)
 
 
-async def timeout_inactive_tokens() -> None:
+async def main() -> int:
     logging.info("Starting inactive token timeout loop")
     while True:
         for token_id in await osuToken.get_token_ids():
@@ -68,3 +68,10 @@ async def timeout_inactive_tokens() -> None:
                 )
 
         await asyncio.sleep(OSU_MAX_PING_INTERVAL)
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit_code = asyncio.run(main())
+    exit(exit_code)
