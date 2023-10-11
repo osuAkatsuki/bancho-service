@@ -8,7 +8,7 @@ import time
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
-
+import lifecycle
 from events import logoutEvent
 from objects import osuToken
 from objects.redisLock import redisLock
@@ -37,37 +37,44 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
         await logoutEvent.handle(token, _=None)
 
 
+async def _timeout_inactive_users() -> None:
+    for token_id in await osuToken.get_token_ids():
+        token = None
+        try:
+            async with redisLock(
+                f"{osuToken.make_key(token_id)}:processing_lock",
+            ):
+                token = await osuToken.get_token(token_id)
+                if token is None:
+                    continue
+
+                await _revoke_token_if_inactive(token)
+
+        except Exception:
+            logging.exception(
+                "An error occurred while disconnecting a timed out client",
+                extra={
+                    "token_id": token_id,
+                    "user_id": token["user_id"] if token else None,
+                    "ping_time": token["ping_time"] if token else None,
+                    "time_since_last_ping": (
+                        time.time() - token["ping_time"] if token else None
+                    ),
+                    "irc": token["irc"] if token else None,
+                    "tournament": token["tournament"] if token else None,
+                },
+            )
+
+
 async def main() -> int:
     logging.info("Starting inactive token timeout loop")
-    while True:
-        for token_id in await osuToken.get_token_ids():
-            token = None
-            try:
-                async with redisLock(
-                    f"{osuToken.make_key(token_id)}:processing_lock",
-                ):
-                    token = await osuToken.get_token(token_id)
-                    if token is None:
-                        continue
-
-                    await _revoke_token_if_inactive(token)
-
-            except Exception:
-                logging.exception(
-                    "An error occurred while disconnecting a timed out client",
-                    extra={
-                        "token_id": token_id,
-                        "user_id": token["user_id"] if token else None,
-                        "ping_time": token["ping_time"] if token else None,
-                        "time_since_last_ping": (
-                            time.time() - token["ping_time"] if token else None
-                        ),
-                        "irc": token["irc"] if token else None,
-                        "tournament": token["tournament"] if token else None,
-                    },
-                )
-
-        await asyncio.sleep(OSU_MAX_PING_INTERVAL)
+    try:
+        await lifecycle.startup()
+        while True:
+            await _timeout_inactive_users()
+            await asyncio.sleep(OSU_MAX_PING_INTERVAL)
+    finally:
+        await lifecycle.shutdown()
 
     return 0
 
