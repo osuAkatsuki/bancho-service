@@ -228,7 +228,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
                 [
                     f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has kicked [{target}](https://akatsuki.gg/u/{targetID}) from the server.",
                     f"**Reason**: {reason}",
-                    f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                    f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
                 ],
             ),
             discord_channel="ac_general",
@@ -302,7 +302,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) silenced [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -347,7 +347,7 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
                 [
                     f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unsilenced [{target}](https://akatsuki.gg/u/{targetID}).",
                     f"**Reason**: {reason}",
-                    f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                    f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
                 ],
             ),
             discord_channel="ac_general",
@@ -402,7 +402,7 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) banned [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -439,7 +439,7 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -490,7 +490,7 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -529,7 +529,7 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -1255,7 +1255,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 #            [
 #                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) froze [{target}](https://akatsuki.gg/u/{targetID}).",
 #                f"**Reason**: {reason}",
-#                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+#                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
 #            ],
 #        ),
 #        discord_channel="ac_general",
@@ -1293,7 +1293,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unfroze [{target}](https://akatsuki.gg/u/{targetID}).",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -1578,7 +1578,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has set [{target}](https://akatsuki.gg/u/{targetID})'s whitelist status to {bit}.",
                 f"**Reason**: {reason}",
-                f"\n> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
