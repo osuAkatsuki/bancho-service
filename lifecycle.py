@@ -103,7 +103,6 @@ async def shutdown() -> None:
         extra={"component": settings.APP_COMPONENT},
     )
 
-    # TODO: we can be more graceful with this one, but p3
     if settings.IRC_ENABLE:
         logging.info("Closing IRC server")
         glob.ircServer.close()
