@@ -1559,7 +1559,16 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     # Get command executioner's ID
     userID = await userUtils.getID(fro)
 
-    await userUtils.editWhitelist(targetID, bit)
+    # If user is online, update their token's whitelist bit
+    # (not a toctou if user ids never change)
+    userToken = await tokenList.getTokenFromUserID(userID)
+    if userToken is not None:
+        userToken = await osuToken.update_token(
+            token_id=userToken["token_id"],
+            whitelist=bit,
+        )
+        await userUtils.editWhitelist(userID, bit)
+
     await rap_logs.send_rap_log(
         userID,
         f"has set {target}'s whitelist status to {bit} for {reason}",

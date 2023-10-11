@@ -22,4 +22,8 @@ jobs:
             git pull origin main
             docker build -t bancho-service:latest .
             cd /home/akatsuki/workbench
-            docker-compose restart bancho-service
+            docker-compose restart \
+              bancho-service-api \
+              bancho-service-spam-protection-cronjob \
+              bancho-service-inactivity-timeout-cronjob \
+              bancho-service-consume-pubsub-events-daemon

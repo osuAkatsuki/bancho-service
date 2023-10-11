@@ -16,7 +16,6 @@ from common.constants import privileges
 from common.ripple import userUtils
 from constants import exceptions
 from constants import serverPackets
-from events import logoutEvent
 from helpers import chatHelper as chat
 from objects import channelList
 from objects import glob
@@ -882,6 +881,8 @@ async def kick(
     await enqueue(token_id, serverPackets.loginFailed)
 
     # Logout event
+    from events import logoutEvent  # TODO: fix circular import
+
     await logoutEvent.handle(token, deleteToken=token["irc"])
 
     logging.info(
@@ -954,8 +955,8 @@ async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     # Silence the user if needed
     acceptable_rate = 10
 
-    if token["spam_rate"] > acceptable_rate:
-        await silence(token_id, 600, "Spamming (auto spam protection)")
+    # if token["spam_rate"] > acceptable_rate:
+    # await silence(token_id, 600, "Spamming (auto spam protection)")
 
 
 async def isSilenced(token_id: str) -> bool:
@@ -1053,6 +1054,8 @@ async def checkBanned(token_id: str) -> None:
 
     if await userUtils.isBanned(token["user_id"]):
         await enqueue(token_id, serverPackets.loginBanned)
+        from events import logoutEvent  # TODO: fix circular import
+
         await logoutEvent.handle(token, deleteToken=False)
 
 

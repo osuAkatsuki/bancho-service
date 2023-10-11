@@ -8,8 +8,6 @@ from time import strftime
 from typing import Any
 from typing import List
 from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import bcrypt
 
@@ -18,7 +16,6 @@ from common.constants import mods
 from common.constants import privileges
 from common.log import rap_logs
 from objects import glob
-from objects import tokenList
 
 
 async def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
@@ -55,31 +52,6 @@ async def getPlaytimeTotal(userID: int) -> int:
     return sum(res.values()) if res else 0
 
 
-async def getWhitelist(userID: int) -> int:
-    """
-    Return a user's whitelist status from database.
-    """
-    res = await glob.db.fetch("SELECT whitelist FROM users " "WHERE id = %s", [userID])
-    return res["whitelist"]
-
-
-async def checkWhitelist(
-    userID: int,
-    requirement: int,
-) -> int:  # TODO: redo this? it's bad
-    """
-    Return whether the user has whitelist access to the corresponding bit.
-
-    0:  no whitelist
-    1:  regular whitelist
-    2:  relax whitelist
-    3:  both whitelist
-    """
-
-    whitelist = await getWhitelist(userID)
-    return whitelist & requirement
-
-
 # whitelistUserPPLimit
 async def editWhitelist(userID: int, bit: int) -> None:
     """
@@ -95,11 +67,6 @@ async def editWhitelist(userID: int, bit: int) -> None:
         "UPDATE users SET whitelist = %s " "WHERE id = %s",
         [bit, userID],
     )
-
-    # User is online, update their token's whitelist.
-    userToken = await tokenList.getTokenFromUserID(userID)
-    if userToken:
-        userToken["whitelist"] = bit
 
 
 async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
@@ -1273,51 +1240,6 @@ async def getGroupPrivileges(groupName: str) -> Optional[int]:
     )
 
     return result["privileges"] if result else None
-
-
-async def isInPrivilegeGroup(userID: int, groupName: str) -> bool:
-    """
-    Check if `userID` is in a privilege group.
-    Donor privilege is ignored while checking for groups.
-
-    :param userID: user id
-    :param groupName: privilege group name
-    :return: True if `userID` is in `groupName`, else False
-    """
-
-    groupPrivileges = await glob.db.fetch(
-        "SELECT privileges " "FROM privileges_groups " "WHERE name = %s",
-        [groupName],
-    )
-
-    if not groupPrivileges:
-        return False
-
-    groupPrivileges = groupPrivileges["privileges"]
-    userToken = await tokenList.getTokenFromUserID(userID)
-    if userToken:
-        userPrivileges = userToken["privileges"]
-    else:
-        userPrivileges = await getPrivileges(userID)
-    return userPrivileges & groupPrivileges == groupPrivileges
-
-
-async def isInAnyPrivilegeGroup(
-    userID: int,
-    groups: Union[List[str], Tuple[str]],
-) -> bool:
-    """
-    Checks if a user is in at least one of the specified groups
-
-    :param userID: id of the user
-    :param groups: groups list or tuple
-    :return: `True` if `userID` is in at least one of the specified groups, otherwise `False`
-    """
-
-    privileges = await getPrivileges(userID)
-    return privileges in [
-        glob.groupPrivileges[v] for v in groups if v in glob.groupPrivileges
-    ]
 
 
 async def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
