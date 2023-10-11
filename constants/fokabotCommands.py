@@ -1287,7 +1287,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
 
     userID = await userUtils.getID(fro)
     await userUtils.unfreeze(targetID, userID)
-    await rap_logs.send_rap_log(userID, f"has unfroze {target}")
+    await rap_logs.send_rap_log(userID, f"unfroze {target}")
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n".join(
             [
