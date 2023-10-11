@@ -210,7 +210,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
 
     if not (targetID := await userUtils.getID(target)):
         return "Could not find user"
-    
+
     if targetID <= 1001 and userID > 1001:
         return "Nope."
 
