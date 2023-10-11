@@ -16,6 +16,11 @@ from objects.dbPool import DBPool
 
 
 async def startup() -> None:
+    logging.info(
+        "Starting up all services for selected component",
+        extra={"component": settings.APP_COMPONENT},
+    )
+
     # Connect to db
     logging.info("Connecting to SQL")
     try:
@@ -93,6 +98,11 @@ async def startup() -> None:
 
 
 async def shutdown() -> None:
+    logging.info(
+        "Shutting down all services for selected component",
+        extra={"component": settings.APP_COMPONENT},
+    )
+
     # TODO: we can be more graceful with this one, but p3
     if settings.IRC_ENABLE:
         logging.info("Closing IRC server")

@@ -56,10 +56,6 @@ async def main() -> int:
         # (not using filesystem anymore for things like .data/)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-        logging.info(
-            "Starting up all services for selected component",
-            extra={"component": settings.APP_COMPONENT},
-        )
         await lifecycle.startup()
 
         # Start the HTTP server
