@@ -28,7 +28,6 @@ from objects import channelList
 from objects import fokabot
 from objects import glob
 from objects import streamList
-from objects import glob
 
 
 def dump_thread_stacks():
