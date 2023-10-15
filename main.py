@@ -24,7 +24,10 @@ from handlers import apiOnlineUsersHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
 from handlers import mainHandler
+from objects import channelList
+from objects import fokabot
 from objects import glob
+from objects import streamList
 
 
 def dump_thread_stacks():
@@ -57,6 +60,18 @@ async def main() -> int:
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
         await lifecycle.startup()
+
+        await channelList.loadChannels()
+
+        # Initialize stremas
+        await streamList.add("main")
+        await streamList.add("lobby")
+
+        logging.info(
+            "Connecting the in-game chat bot",
+            extra={"bot_name": glob.BOT_NAME},
+        )
+        await fokabot.connect()
 
         # Start the HTTP server
         API_ENDPOINTS = [
@@ -95,6 +110,10 @@ async def main() -> int:
                 timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
             )
             logging.info("Closed HTTP connections")
+
+        logging.info("Disconnecting from IRC")
+        await fokabot.disconnect()
+        logging.info("Disconnected from IRC")
 
         await lifecycle.shutdown()
 
