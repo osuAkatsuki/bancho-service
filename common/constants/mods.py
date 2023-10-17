@@ -45,7 +45,7 @@ NP_MAPPING_TO_INTS = {
     "+DoubleTime": DOUBLETIME,
     "~Relax~": RELAX,
     "-HalfTime": HALFTIME,
-    "+Nightcore": NIGHTCORE,
+    "+Nightcore": NIGHTCORE | DOUBLETIME,
     "+Flashlight": FLASHLIGHT,
     "|Autoplay|": AUTOPLAY,
     "-SpunOut": SPUNOUT,
