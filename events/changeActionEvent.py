@@ -63,6 +63,11 @@ async def handle(userToken: Token, rawPacketData: bytes):
         userToken["game_mode"] = packetData["gameMode"]
         should_update_cached_stats = True
 
+    # prevents possible crashes on getUserStats where AP is enabled and game_mode != 0
+    if autopilot_in_mods:
+        userToken["game_mode"] = 0
+        should_update_cached_stats = True
+
     await osuToken.update_token(
         userToken["token_id"],
         relax=userToken["relax"],
