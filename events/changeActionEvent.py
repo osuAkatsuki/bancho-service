@@ -64,7 +64,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         should_update_cached_stats = True
 
     # prevents possible crashes on getUserStats where AP is enabled and game_mode != 0
-    if autopilot_in_mods:
+    if autopilot_in_mods and userToken["game_mode"] != 0:
         packetData["actionMods"] &= ~mods.AUTOPILOT
         should_update_cached_stats = True
 
