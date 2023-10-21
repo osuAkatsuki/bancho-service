@@ -8,10 +8,7 @@ import redis.asyncio as redis
 import settings
 from irc import ircserver
 from objects import banchoConfig
-from objects import channelList
-from objects import fokabot
 from objects import glob
-from objects import streamList
 from objects.dbPool import DBPool
 
 
@@ -67,18 +64,6 @@ async def startup() -> None:
         )
     }
 
-    await channelList.loadChannels()
-
-    # Initialize stremas
-    await streamList.add("main")
-    await streamList.add("lobby")
-
-    logging.info(
-        "Connecting the in-game chat bot",
-        extra={"bot_name": glob.BOT_NAME},
-    )
-    await fokabot.connect()
-
     if not settings.LOCALIZE_ENABLE:
         logging.info("User localization is disabled")
 
@@ -88,7 +73,7 @@ async def startup() -> None:
     if settings.DEBUG:
         logging.info("Server running in debug mode")
 
-    # # start irc server if configured
+    # start irc server if configured
     if settings.IRC_ENABLE:
         logging.info(
             "IRC server listening on tcp port",
@@ -115,7 +100,3 @@ async def shutdown() -> None:
     logging.info("Closing connection(s) to MySQL")
     await glob.db.stop()
     logging.info("Closed connection(s) to MySQL")
-
-    logging.info("Disconnecting from IRC")
-    await fokabot.disconnect()
-    logging.info("Disconnected from IRC")
