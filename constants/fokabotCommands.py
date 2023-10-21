@@ -1465,23 +1465,26 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
 
+    # Get the nominator profile URL just once
+    nominator_profile_url = userUtils.getProfile(token['user_id'])
+
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
-        title=f"This {message[1]} has recieved a status update.",
+        title=res["song_name"],
         colour=status_to_colour(status),
-        author=res["song_name"],
-        author_url=f'https://akatsuki.gg/d/{res["beatmapset_id"]}',
-        author_icon="https://akatsuki.gg/static/logos/logo.png",
+        author=f"This {message[1]} has recieved a status update. :pencil:",
+        author_url=f'https://chimu.moe/d/{res["beatmapset_id"]}',
+        author_icon="https://cdn.discordapp.com/emojis/1160855094712078368.png",
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         fields=[
             {"name": k, "value": v}
             for k, v in {
-                "New status": status_readable,
-                "Previous status": status_to_readable(res["ranked"]),
-                "Nominator": f"[{fro}]({userUtils.getProfile(token['user_id'])})",
-                "Beatmap Listing": f"[Click here](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
-                "Download link": f'[Click here](https://akatsuki.gg/d/{res["beatmapset_id"]})',
-                "Beatmap Length": generalUtils.secondsToReadable(res["hit_length"]),
+                "New Status": status_readable,
+                "Previous Status": status_to_readable(res["ranked"]),
+                "Nominator": f"[{fro}]({nominator_profile_url})",
+                "Listing": f"[Bancho](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})",
+                "Download": f'[chimu.moe](https://chimu.moe/d/{res["beatmapset_id"]})',
+                "Length": generalUtils.secondsToReadable(res["hit_length"]),
             }.items()
         ],
     )
@@ -1501,7 +1504,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     await chat.sendMessage(
         token_id=aika_token["token_id"],
         to="#announce",
-        message=f"{fro} has {status_readable} {beatmap_url}",
+        message=f"[{nominator_profile_url} {fro}] has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
 
