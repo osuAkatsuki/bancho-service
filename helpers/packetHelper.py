@@ -127,7 +127,7 @@ def buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
 
 
 class PacketData(TypedDict):
-    data: Mapping[str, Any]
+    data: dict[str, Any]
     end: int
 
 
