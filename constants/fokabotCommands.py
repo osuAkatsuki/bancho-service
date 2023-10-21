@@ -1466,7 +1466,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
 
     # Get the nominator profile URL just once
-    nominator_profile_url = userUtils.getProfile(token['user_id'])
+    nominator_profile_url = userUtils.getProfile(token["user_id"])
 
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
