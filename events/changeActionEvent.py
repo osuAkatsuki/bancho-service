@@ -31,8 +31,8 @@ async def handle(userToken: Token, rawPacketData: bytes):
         userToken.partMatch()
     """
 
-    relax_in_mods: bool = packetData["actionMods"] & mods.RELAX != 0
-    autopilot_in_mods: bool = packetData["actionMods"] & mods.AUTOPILOT != 0
+    relax_in_mods = packetData["actionMods"] & mods.RELAX != 0
+    autopilot_in_mods = packetData["actionMods"] & mods.AUTOPILOT != 0
 
     # Update cached stats if relax/autopilot status changed
     should_update_cached_stats = False
