@@ -85,4 +85,10 @@ class listener:
         )
 
         async for item in pubsub.listen():
-            await self.processItem(item)
+            try:
+                await self.processItem(item)
+            except Exception:
+                logging.exception(
+                    "An error occurred while processing a pubsub item",
+                    extra={"item": item},
+                )
