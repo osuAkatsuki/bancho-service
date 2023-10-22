@@ -155,8 +155,6 @@ async def userPanel(userToken: Token, force: bool = False) -> bytes:
 
     # Get user data
     userID = userToken["user_id"]
-    if userID == 999:
-        return BOT_PRESENCE
 
     username = userToken["username"]
     timezone = 24 + userToken["utc_offset"]
