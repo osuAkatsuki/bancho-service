@@ -16,6 +16,7 @@ import tornado.ioloop
 import tornado.web
 import yaml
 
+from common.log import config as logging_config
 import lifecycle
 import settings
 from handlers import apiFokabotMessageHandler
@@ -122,14 +123,8 @@ async def main() -> int:
     return 0
 
 
-def configure_logging() -> None:
-    with open("logging.yaml") as f:
-        config = yaml.safe_load(f.read())
-        logging.config.dictConfig(config)
-
-
 if __name__ == "__main__":
-    configure_logging()
+    logging_config.configure_logging()
     try:
         exit_code = asyncio.run(main())
     except KeyboardInterrupt:
