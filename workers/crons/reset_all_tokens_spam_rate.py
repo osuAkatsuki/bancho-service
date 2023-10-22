@@ -9,6 +9,7 @@ import sys
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
+from common.log import logging_config
 from objects import osuToken
 from objects.redisLock import redisLock
 
@@ -37,6 +38,7 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
+    logging_config.configure_logging()
     try:
         exit_code = asyncio.run(main())
     except KeyboardInterrupt:

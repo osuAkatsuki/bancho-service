@@ -9,6 +9,7 @@ import sys
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
+from common.log import logging_config
 from common.redis import pubSub
 from common.redis.generalPubSubHandler import generalPubSubHandler
 from objects import glob

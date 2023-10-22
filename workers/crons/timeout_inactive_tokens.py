@@ -10,6 +10,7 @@ import time
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
+from common.log import logging_config
 from events import logoutEvent
 from objects import osuToken
 from objects.redisLock import redisLock
