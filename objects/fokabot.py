@@ -7,6 +7,7 @@ from typing import TypedDict
 
 from common.constants import actions
 from common.ripple import userUtils
+from constants import CHATBOT_USER_ID
 from constants import fokabotCommands
 from constants import serverPackets
 from objects import channelList
@@ -31,16 +32,22 @@ NOW_PLAYING_REGEX = re.compile(
 
 async def connect() -> None:
     async with redisLock(f"bancho:locks:aika"):
-        token = await tokenList.getTokenFromUserID(999)
+        token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
         if token is not None:
             return
 
-        token = await tokenList.addToken(999)
+        token = await tokenList.addToken(CHATBOT_USER_ID)
         assert token is not None
 
         await osuToken.update_token(token["token_id"], action_id=actions.IDLE)
-        await streamList.broadcast("main", await serverPackets.userPanel(999))
-        await streamList.broadcast("main", await serverPackets.userStats(999))
+        await streamList.broadcast(
+            "main",
+            await serverPackets.userPanel(CHATBOT_USER_ID),
+        )
+        await streamList.broadcast(
+            "main",
+            await serverPackets.userStats(CHATBOT_USER_ID),
+        )
 
         for channel_name in await channelList.getChannelNames():
             await osuToken.joinChannel(token["token_id"], channel_name)
@@ -48,7 +55,7 @@ async def connect() -> None:
 
 async def disconnect() -> None:
     async with redisLock(f"bancho:locks:aika"):
-        token = await tokenList.getTokenFromUserID(999)
+        token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
         assert token is not None
 
         await tokenList.deleteToken(token["token_id"])

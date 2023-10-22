@@ -8,6 +8,7 @@ from common.constants import mods
 from common.constants import privileges
 from common.log import rap_logs
 from common.ripple import userUtils
+from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
@@ -379,7 +380,7 @@ async def sendMessage(
                 and not (to.startswith("#multi_") or to.startswith("#spect_"))
             ) and not (
                 osuToken.is_staff(userToken["privileges"])
-                or userToken["user_id"] == 999
+                or userToken["user_id"] == CHATBOT_USER_ID
             ):
                 raise exceptions.channelNoPermissionsException()
 
@@ -461,7 +462,7 @@ async def sendMessage(
                         if (
                             t["token_id"] != token_id
                             and osuToken.is_staff(t["privileges"])
-                            and t["user_id"] != 999
+                            and t["user_id"] != CHATBOT_USER_ID
                         )
                     }
 
@@ -478,7 +479,7 @@ async def sendMessage(
                         fro=glob.BOT_NAME,
                         to=toClient,
                         message=fokaMessage["response"],
-                        fro_id=999,
+                        fro_id=CHATBOT_USER_ID,
                     )
                     await streamList.broadcast_limited(
                         f"chat/{to}",
@@ -493,7 +494,7 @@ async def sendMessage(
                         but=[userToken["token_id"]],
                     )
 
-                    aika_token = await tokenList.getTokenFromUserID(999)
+                    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
                     await sendMessage(
                         token_id=aika_token["token_id"],
@@ -568,7 +569,7 @@ async def sendMessage(
                 )
 
                 if fokaMessage:
-                    aika_token = await tokenList.getTokenFromUserID(999)
+                    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
                     await sendMessage(
                         token_id=aika_token["token_id"],

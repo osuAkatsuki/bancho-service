@@ -14,9 +14,9 @@ from common.log import logging_config
 from events import logoutEvent
 from objects import osuToken
 from objects.redisLock import redisLock
+from constants import CHATBOT_USER_ID
 
 OSU_MAX_PING_INTERVAL = 300  # seconds
-CHATBOT_USER_ID = 999
 
 
 async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
