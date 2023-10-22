@@ -68,8 +68,8 @@ async def main() -> int:
         await streamList.add("lobby")
 
         logging.info(
-            "Connecting the in-game chat bot",
-            extra={"bot_name": glob.BOT_NAME},
+            "Starting up all services for selected component",
+            extra={"component": settings.APP_COMPONENT},
         )
         await chatbot.connect()
 

@@ -12,7 +12,11 @@ async def handle(userToken: Token, _):
 
     # Send matches data
     for match_id in await match.get_match_ids():
+        multiplayer_match = await match.get_match(match_id)
+        if multiplayer_match is None:
+            continue
+
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.createMatch(match_id),
+            await serverPackets.createMatch(multiplayer_match),
         )

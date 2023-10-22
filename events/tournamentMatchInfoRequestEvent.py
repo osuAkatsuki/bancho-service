@@ -18,7 +18,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         if multiplayer_match is None or not userToken["tournament"]:
             return
 
-        packet_data = await serverPackets.updateMatch(match_id)
+        packet_data = await serverPackets.updateMatch(multiplayer_match)
         if packet_data is None:
             # TODO: is this correct behaviour?
             # ripple was doing this before the stateless refactor,

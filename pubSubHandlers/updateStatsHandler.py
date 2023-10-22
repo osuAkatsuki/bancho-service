@@ -32,7 +32,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         await osuToken.updateCachedStats(targetToken["token_id"])
         await osuToken.enqueue(
             targetToken["token_id"],
-            await serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(targetToken, force=True),
         )
 
         logging.info(

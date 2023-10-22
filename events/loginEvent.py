@@ -384,11 +384,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userPanel(userID, force=True),
+            await serverPackets.userPanel(userToken, force=True),
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(userToken, force=True),
         )
 
         # Default opened channels.
@@ -453,7 +453,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             if not osuToken.is_restricted(token["privileges"]):
                 await osuToken.enqueue(
                     userToken["token_id"],
-                    await serverPackets.userPanel(token["user_id"]),
+                    await serverPackets.userPanel(token),
                 )
 
         # Get location and country from ip.zxq.co or database.
@@ -476,7 +476,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
-            await streamList.broadcast("main", await serverPackets.userPanel(userID))
+            await streamList.broadcast("main", await serverPackets.userPanel(userToken))
 
         if glob.amplitude is not None:
             glob.amplitude.track(

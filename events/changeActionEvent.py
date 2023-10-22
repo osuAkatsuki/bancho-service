@@ -102,9 +102,9 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
         await osuToken.enqueue(
             spectator["token_id"],
-            await serverPackets.userPanel(userToken["user_id"], force),
+            await serverPackets.userPanel(userToken, force),
         )
         await osuToken.enqueue(
             spectator["token_id"],
-            await serverPackets.userStats(userToken["user_id"], force),
+            await serverPackets.userStats(userToken, force),
         )
