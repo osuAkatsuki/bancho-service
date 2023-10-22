@@ -385,7 +385,8 @@ async def createMatch(multiplayer_match: match.Match) -> bytes:
 
 
 async def updateMatch(
-    multiplayer_match: match.Match, censored: bool = False,
+    multiplayer_match: match.Match,
+    censored: bool = False,
 ) -> Optional[bytes]:
     return packetHelper.buildPacket(
         packetIDs.server_updateMatch,
