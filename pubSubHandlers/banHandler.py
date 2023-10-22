@@ -18,7 +18,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
 
         if (userID := super().parseData(userID)) is None:
             logging.error(
-                "User id not found for ban event pubsub handler",
+                "Failed to find user by id in ban pubsub handler",
                 extra={"user_id": userID},
             )
             return

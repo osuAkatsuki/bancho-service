@@ -23,6 +23,10 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             return
 
         if not (targetToken := await tokenList.getTokenFromUserID(userID)):
+            logging.error(
+                "Failed to find user by id in update stats pubsub handler",
+                extra={"user_id": userID},
+            )
             return
 
         await osuToken.updateCachedStats(targetToken["token_id"])

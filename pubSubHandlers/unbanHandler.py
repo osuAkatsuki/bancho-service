@@ -25,6 +25,10 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         await userUtils.updateFirstPlaces(userID)
 
         if not (targetToken := await tokenList.getTokenFromUserID(userID)):
+            logging.error(
+                "Failed to find user by id in update stats pubsub handler",
+                extra={"user_id": userID},
+            )
             return
 
         targetToken["privileges"] = await userUtils.getPrivileges(userID)
