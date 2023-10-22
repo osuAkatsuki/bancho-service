@@ -35,5 +35,6 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         await osuToken.checkRestricted(targetToken["token_id"])
 
         logging.info(
-            "Successfully handled ban event for user", extra={"user_id": userID},
+            "Successfully handled ban event for user",
+            extra={"user_id": userID},
         )
