@@ -32,7 +32,7 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
 from objects import channelList
-from objects import fokabot
+from objects import chatbot
 from objects import glob
 from objects import match
 from objects import matchList
@@ -868,7 +868,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     npmsg = " ".join(message[1:])
 
-    match = fokabot.NOW_PLAYING_REGEX.fullmatch(npmsg)
+    match = chatbot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
         logging.error(
             "Error parsing /np message",
@@ -1112,7 +1112,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
     msg = ""
     try:  # TODO: Rate limit
         # Make sure the message matches the regex
-        if not (result := fokabot.REPORT_REGEX.search(" ".join(message))):
+        if not (result := chatbot.REPORT_REGEX.search(" ".join(message))):
             raise exceptions.invalidArgumentsException()
 
         # Get username, report reason and report info
@@ -1125,8 +1125,8 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         if not targetID:
             raise exceptions.userNotFoundException()
 
-        # Make sure the target is not foka
-        if targetID <= 1001:
+        # Make sure the target is not chatbot
+        if targetID != CHATBOT_USER_ID:
             raise exceptions.invalidUserException()
 
         # Make sure that the user has specified additional info if report reason is 'Other'
@@ -1351,7 +1351,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     newUsername = " ".join(message)
     userID = await userUtils.getID(fro)
 
-    if not fokabot.USERNAME_REGEX.match(newUsername) or (
+    if not chatbot.USERNAME_REGEX.match(newUsername) or (
         " " in newUsername and "_" in newUsername
     ):
         return "Invalid username."
@@ -2628,9 +2628,3 @@ async def reload(fro: str, chan: str, message: list[str]) -> str:
 
     mod = importlib.reload(mod)
     return f"Reloaded {mod.__name__}"
-
-
-# used in fokabot.py, here so we can !reload constants.fokabotCommands
-_commands = {
-    re.compile(f"^{cmd['trigger']}( (.+)?)?$"): cmd for cmd in commands
-}.items()

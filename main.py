@@ -18,14 +18,14 @@ import tornado.web
 import lifecycle
 import settings
 from common.log import logging_config
-from handlers import apiFokabotMessageHandler
+from handlers import apiChatbotMessageHandler
 from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
 from handlers import mainHandler
 from objects import channelList
-from objects import fokabot
+from objects import chatbot
 from objects import glob
 from objects import streamList
 
@@ -71,7 +71,7 @@ async def main() -> int:
             "Connecting the in-game chat bot",
             extra={"bot_name": glob.BOT_NAME},
         )
-        await fokabot.connect()
+        await chatbot.connect()
 
         # Start the HTTP server
         API_ENDPOINTS = [
@@ -80,7 +80,8 @@ async def main() -> int:
             (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
             (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
             (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
-            (r"/api/v1/fokabotMessage", apiFokabotMessageHandler.handler),
+            # XXX: "fokabot" for legacy reasons
+            (r"/api/v1/fokabotMessage", apiChatbotMessageHandler.handler),
         ]
         logging.info("Starting HTTP server")
         glob.application = tornado.web.Application(API_ENDPOINTS)
@@ -112,7 +113,7 @@ async def main() -> int:
             logging.info("Closed HTTP connections")
 
         logging.info("Disconnecting from IRC")
-        await fokabot.disconnect()
+        await chatbot.disconnect()
         logging.info("Disconnected from IRC")
 
         await lifecycle.shutdown()

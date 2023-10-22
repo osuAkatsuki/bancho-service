@@ -13,7 +13,7 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from objects import channelList
-from objects import fokabot
+from objects import chatbot
 from objects import glob
 from objects import osuToken
 from objects import stream
@@ -308,7 +308,7 @@ async def sendMessage(
         if await osuToken.isSilenced(userToken["token_id"]):
             raise exceptions.userSilencedException()
 
-        # Redirect !report to FokaBot
+        # Redirect !report to chatbot
         if message.startswith("!report"):
             to = glob.BOT_NAME
 
@@ -386,12 +386,12 @@ async def sendMessage(
 
             # Check message for commands
             if not action_msg:
-                fokaMessage = await fokabot.fokabotResponse(
+                chatbot_response = await chatbot.query(
                     userToken["username"],
                     to,
                     message,
                 )
-                if fokaMessage:
+                if chatbot_response:
                     logging.info(
                         "Chatbot interaction",
                         extra={
@@ -399,16 +399,16 @@ async def sendMessage(
                             "user_id": userToken["user_id"],
                             "channel_name": to,
                             "user_message": message,
-                            "bot_response": fokaMessage,
+                            "chatbot_response": chatbot_response,
                         },
                     )
             else:
-                fokaMessage = None
+                chatbot_response = None
 
                 # check for /np (rly bad lol)
                 npmsg = " ".join(message.split(" ")[2:])
 
-                match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
+                match = chatbot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
                     logging.error(
@@ -443,7 +443,7 @@ async def sendMessage(
                 fro_id=userToken["user_id"],
             )
 
-            if fokaMessage:
+            if chatbot_response:
                 logging.info(
                     "Chatbot interaction",
                     extra={
@@ -451,11 +451,11 @@ async def sendMessage(
                         "user_id": userToken["user_id"],
                         "channel_name": to,
                         "user_message": message,
-                        "bot_response": fokaMessage,
+                        "chatbot_response": chatbot_response,
                     },
                 )
 
-                if fokaMessage["hidden"]:  # Send to user & gmt+
+                if chatbot_response["hidden"]:  # Send to user & gmt+
                     send_to = {
                         t["token_id"]
                         for t in await osuToken.get_tokens()  # TODO: use redis
@@ -478,7 +478,7 @@ async def sendMessage(
                     response_packet = serverPackets.sendMessage(
                         fro=glob.BOT_NAME,
                         to=toClient,
-                        message=fokaMessage["response"],
+                        message=chatbot_response["response"],
                         fro_id=CHATBOT_USER_ID,
                     )
                     await streamList.broadcast_limited(
@@ -499,7 +499,7 @@ async def sendMessage(
                     await sendMessage(
                         token_id=aika_token["token_id"],
                         to=to,
-                        message=fokaMessage["response"],
+                        message=chatbot_response["response"],
                     )
             else:
                 await osuToken.addMessageInBuffer(token_id, to, message)
@@ -562,19 +562,19 @@ async def sendMessage(
 
             if to == glob.BOT_NAME:
                 # Check message for commands
-                fokaMessage = await fokabot.fokabotResponse(
+                chatbot_response = await chatbot.query(
                     userToken["username"],
                     to,
                     message,
                 )
 
-                if fokaMessage:
+                if chatbot_response:
                     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
                     await sendMessage(
                         token_id=aika_token["token_id"],
                         to=fro,
-                        message=fokaMessage["response"],
+                        message=chatbot_response["response"],
                     )
             else:
                 packet = serverPackets.sendMessage(

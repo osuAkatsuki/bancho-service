@@ -20,16 +20,16 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     # Send private message from Aika
     if packetData["awayMessage"] == "":
-        fokaMessage = "Your away message has been reset."
+        chatbot_response = "Your away message has been reset."
     else:
-        fokaMessage = f"Your away message is now: {packetData['awayMessage']}."
+        chatbot_response = f"Your away message is now: {packetData['awayMessage']}."
 
     await osuToken.enqueue(
         userToken["token_id"],
         serverPackets.sendMessage(
             fro=glob.BOT_NAME,
             to=userToken["username"],
-            message=fokaMessage,
+            message=chatbot_response,
             fro_id=CHATBOT_USER_ID,
         ),
     )
