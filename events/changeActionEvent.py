@@ -68,7 +68,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         packetData["actionMods"] &= ~mods.AUTOPILOT
         should_update_cached_stats = True
 
-    # prevents possible crashes on getUserStats where AP is enabled and game_mode is mania
+    # prevents possible crashes on getUserStats where RX is enabled and game_mode is mania
     if relax_in_mods and userToken["game_mode"] == 3:
         packetData["actionMods"] &= ~mods.RELAX
         should_update_cached_stats = True
