@@ -16,9 +16,9 @@ import tornado.ioloop
 import tornado.web
 import yaml
 
-from common.log import config as logging_config
 import lifecycle
 import settings
+from common.log import config as logging_config
 from handlers import apiFokabotMessageHandler
 from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
