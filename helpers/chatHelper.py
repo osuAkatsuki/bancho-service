@@ -13,7 +13,7 @@ from constants import exceptions
 from constants import serverPackets
 from events import logoutEvent
 from objects import channelList
-from objects import fokabot
+from objects import chatbot
 from objects import glob
 from objects import osuToken
 from objects import stream
@@ -308,7 +308,7 @@ async def sendMessage(
         if await osuToken.isSilenced(userToken["token_id"]):
             raise exceptions.userSilencedException()
 
-        # Redirect !report to FokaBot
+        # Redirect !report to chatbot
         if message.startswith("!report"):
             to = glob.BOT_NAME
 
@@ -386,7 +386,7 @@ async def sendMessage(
 
             # Check message for commands
             if not action_msg:
-                fokaMessage = await fokabot.fokabotResponse(
+                fokaMessage = await chatbot.query(
                     userToken["username"],
                     to,
                     message,
@@ -408,7 +408,7 @@ async def sendMessage(
                 # check for /np (rly bad lol)
                 npmsg = " ".join(message.split(" ")[2:])
 
-                match = fokabot.NOW_PLAYING_REGEX.match(npmsg)
+                match = chatbot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
                     logging.error(
@@ -562,7 +562,7 @@ async def sendMessage(
 
             if to == glob.BOT_NAME:
                 # Check message for commands
-                fokaMessage = await fokabot.fokabotResponse(
+                fokaMessage = await chatbot.query(
                     userToken["username"],
                     to,
                     message,

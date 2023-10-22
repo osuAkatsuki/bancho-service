@@ -8,7 +8,7 @@ from typing import TypedDict
 from common.constants import actions
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
-from constants import fokabotCommands
+from constants import chatbotCommands
 from constants import serverPackets
 from objects import channelList
 from objects import osuToken
@@ -61,35 +61,34 @@ async def disconnect() -> None:
         await tokenList.deleteToken(token["token_id"])
 
 
-# def reload_commands():
-# 	"""Reloads the Fokabot commands module."""
-#     # NOTE: this is not safe, will break references
-# 	reload(fokabotCommands)
-
-
 class CommandResponse(TypedDict):
     response: str
     hidden: bool
 
 
-async def fokabotResponse(
+COMMANDS_MAP = {
+    re.compile(f"^{cmd['trigger']}( (.+)?)?$"): cmd for cmd in chatbotCommands.commands
+}.items()
+
+
+async def query(
     fro: str,
     chan: str,
     message: str,
 ) -> Optional[CommandResponse]:
     """
-    Check if a message has triggered FokaBot
+    Check if a message has triggered chatbot
 
     :param fro: sender username
     :param chan: channel name (or receiver username)
     :param message: chat mesage (recieved to this function as a string, but we split into list[str] for commands)
-    :return: FokaBot's response or False if no response
+    :return: chatbot's response or False if no response
     """
 
     start_time = time()
     message = message.strip()
 
-    for rgx, cmd in fokabotCommands._commands:
+    for rgx, cmd in COMMANDS_MAP:
         if not rgx.match(message):
             continue
 
