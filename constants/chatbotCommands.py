@@ -212,9 +212,6 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await userUtils.getID(target)):
         return "Could not find user"
 
-    if targetID <= 1001 and userID > 1001:
-        return "Nope."
-
     if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
         return "Target not online."
 
@@ -263,10 +260,6 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
         return f"{target}: user not found."
 
     userID = await userUtils.getID(fro)
-
-    # Make sure target is not the bot / super admin
-    if targetID <= 1001 and userID > 1001:
-        return "No."
 
     # Calculate silence seconds
     if unit == "s":
@@ -380,10 +373,6 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     username = await chat.fixUsernameForBancho(fro)
     userID = await userUtils.getID(fro)
 
-    # Make sure target is not the bot / super admin.
-    if targetID <= 1001 and userID > 1001:
-        return "Yea uhhhhhhhhhhhhh"
-
     if not reason:
         return "Please specify a reason for the ban!"
 
@@ -467,10 +456,6 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
         return f"{target}: user not found."
 
     userID = await userUtils.getID(fro)
-
-    # Make sure target is not the bot / super admin.
-    if targetID <= 1001 and userID > 1001:
-        return "Yea uhhhhhhhhhhhhh"
 
     if not reason:
         return "Please specify a reason for the restriction!"
@@ -821,7 +806,7 @@ async def chimu(fro: str, chan: str, message: list[str]) -> str:
             ignoreIRC=True,
         )
         if not spectatorHostToken:
-            return "The spectator host is offline. If this makes no sense, please report it to [https://akatsuki.gg/u/1001 cmyui]."
+            return "The spectator host is offline."
 
         beatmap_id = spectatorHostToken["beatmap_id"]
 

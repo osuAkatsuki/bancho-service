@@ -6,6 +6,7 @@ from typing import Optional
 from typing import TypedDict
 
 from common.constants import actions
+from common.constants import privileges
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
 from constants import chatbotCommands
@@ -93,13 +94,11 @@ async def query(
             continue
 
         # message has triggered a command
-        userID = await userUtils.getID(fro)
+        user_id = await userUtils.getID(fro)
+        user_privileges = await userUtils.getPrivileges(user_id)
 
         # Make sure the user has right permissions
-        if (
-            cmd["privileges"]
-            and not await userUtils.getPrivileges(userID) & cmd["privileges"]
-        ):
+        if cmd["privileges"] and not user_privileges & cmd["privileges"]:
             return None
 
         # Check argument number
@@ -120,7 +119,6 @@ async def query(
 
         if cmd["callback"]:
             resp = await handle_command(cmd, fro, chan, message_split[1:])
-
             if isinstance(resp, Exception):
                 raise resp
         else:
@@ -130,7 +128,7 @@ async def query(
             return None
 
         resp = [resp]
-        if userID == 1001:
+        if user_privileges & privileges.ADMIN_CAKER:
             resp.append(f"Elapsed: {(time() - start_time) * 1000:.3f}ms")
 
         return {"response": " | ".join(resp), "hidden": cmd["hidden"]}
