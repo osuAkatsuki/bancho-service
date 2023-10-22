@@ -87,7 +87,7 @@ async def main() -> int:
         http_server = tornado.httpserver.HTTPServer(glob.application)
         http_server.listen(settings.APP_PORT)
         logging.info(
-            "HTTP server listening for clients",
+            f"HTTP server listening for clients on port {settings.APP_PORT}",
             extra={
                 "port": settings.APP_PORT,
                 "endpoints": [e[0] for e in API_ENDPOINTS],
