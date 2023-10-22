@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import asyncio
@@ -80,5 +81,9 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    exit_code = asyncio.run(main())
+    logging_config.configure_logging()
+    try:
+        exit_code = asyncio.run(main())
+    except KeyboardInterrupt:
+        exit_code = 0
     exit(exit_code)
