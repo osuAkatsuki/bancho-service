@@ -335,7 +335,7 @@ async def sendMessage(
             raise exceptions.invalidArgumentsException()
 
         # Truncate really long messages
-        if len(message) > 1024:
+        if len(message) > 1024 and userToken["user_id"] != CHATBOT_USER_ID:
             message = f"{message[:1024]}... (truncated)"
 
         action_msg = message.startswith("\x01ACTION")
