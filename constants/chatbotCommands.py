@@ -1125,8 +1125,8 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         if not targetID:
             raise exceptions.userNotFoundException()
 
-        # Make sure the target is not foka
-        if targetID <= 1001:
+        # Make sure the target is not chatbot
+        if targetID != CHATBOT_USER_ID:
             raise exceptions.invalidUserException()
 
         # Make sure that the user has specified additional info if report reason is 'Other'

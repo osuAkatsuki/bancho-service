@@ -129,11 +129,11 @@ async def addChannel(
             },
         ),
     )
-    # Make Foka join the channel
-    fokaToken = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-    if fokaToken:
+    # Make the chatbot join the channel
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    if chatbot_token:
         try:
-            await osuToken.joinChannel(fokaToken["token_id"], name)
+            await osuToken.joinChannel(chatbot_token["token_id"], name)
         except exceptions.userAlreadyInChannelException:
             logging.warning(
                 "User already in public chat channel",
