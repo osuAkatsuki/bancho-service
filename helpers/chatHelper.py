@@ -451,7 +451,7 @@ async def sendMessage(
                         "user_id": userToken["user_id"],
                         "channel_name": to,
                         "user_message": message,
-                        "bot_response": chatbot_response,
+                        "chatbot_response": chatbot_response,
                     },
                 )
 
