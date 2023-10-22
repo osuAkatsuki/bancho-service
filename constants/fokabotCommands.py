@@ -117,13 +117,23 @@ async def roll(fro: str, chan: str, message: list[str]) -> str:
     return f"{fro} rolls {points} points!"
 
 
-@command(trigger="!alert", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
-async def alert(fro: str, chan: str, message: list[str]) -> None:
+@command(trigger="!alertall", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
+async def alertall(fro: str, chan: str, message: list[str]) -> str:
     """Send a notification message to all users."""
     if not (msg := " ".join(message).strip()):
-        return
+        return "Guy was going to say @everyone and leave..."
 
+    userID = await userUtils.getID(fro)
     await streamList.broadcast("main", serverPackets.notification(msg))
+    await rap_logs.send_rap_log(
+        userID,
+        f"has sent an alert to all users: '{msg}'",
+    )
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has sent an alert to all users:```\n{msg}```",
+        discord_channel="ac_general",
+    )
+    return "Sent an alert to every online player."
 
 
 @command(
@@ -145,7 +155,7 @@ async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return "User offline"
 
     await osuToken.enqueue(targetToken["token_id"], serverPackets.notification(msg))
-    return "Alerted user."
+    return f"Sent an alert to {target} ({targetID})."
 
 
 @command(trigger="!moderated", privs=privileges.ADMIN_CHAT_MOD, hidden=True)
@@ -165,35 +175,64 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         # Turn on/off moderated mode
         # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
         await channelList.updateChannel(channel_name, moderated=enable)
-
-        return f'This channel is {"now" if enable else "no longer"} in moderated mode!'
+        userID = await userUtils.getID(fro)
+        await rap_logs.send_rap_log(
+            userID,
+            f"has toggled moderated mode in {channel_name}.",
+        )
+        await rap_logs.send_rap_log_as_discord_webhook(
+            message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has toggled moderated mode in {channel_name}.",
+            discord_channel="ac_general",
+        )
+        response = (
+            f'This channel is {"now" if enable else "no longer"} in moderated mode!'
+        )
     except exceptions.channelUnknownException:
-        return "Channel doesn't exist. (??? contact cmyui(#0425))"
+        response = "Channel doesn't exist."
     except exceptions.moderatedPMException:
-        return "You are trying to put a private chat in moderated mode.. Let that sink in for a second.."
+        response = "You are trying to put a private chat in moderated mode.. Let that sink in for a second.."
+
+    return response
 
 
 @command(
     trigger="!kick",
     privs=privileges.ADMIN_KICK_USERS,
-    syntax="<target_name>",
+    syntax="<target_name> <reason>",
     hidden=True,
 )
 async def kick(fro: str, chan: str, message: list[str]) -> str:
     """Kick a specified player from the server."""
-    target = message[0].lower()
-    if target == glob.BOT_NAME.lower():
-        return "Nope."
+    message = [m.lower() for m in message]
+    target = message[0]
+    reason = " ".join(message[1:])
+    userID = await userUtils.getID(fro)
 
     if not (targetID := await userUtils.getID(target)):
         return "Could not find user"
 
+    if targetID <= 1001 and userID > 1001:
+        return "Nope."
+
     if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
         return "Target not online."
 
+    if not reason:
+        return "Please specify a reason for the kick!"
+
     for token in tokens:
         await osuToken.kick(token["token_id"])
-
+        await rap_logs.send_rap_log(userID, f"has kicked {target}")
+        await rap_logs.send_rap_log_as_discord_webhook(
+            message="\n".join(
+                [
+                    f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has kicked [{target}](https://akatsuki.gg/u/{targetID}) from the server.",
+                    f"**Reason**: {reason}",
+                    f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                ],
+            ),
+            discord_channel="ac_general",
+        )
     return f"{target} has been kicked from the server."
 
 
@@ -257,19 +296,37 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
 
     # Log message
     msg = f"{target} has been silenced for: {reason}."
+    await rap_logs.send_rap_log(userID, f"has silenced {target}")
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message="\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) silenced [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
+        discord_channel="ac_general",
+    )
+
+    await userUtils.appendNotes(
+        targetID,
+        f"{fro} ({userID}) silenced {target} for {reason}.",
+    )
+
     return msg
 
 
 @command(
     trigger="!unsilence",
     privs=privileges.ADMIN_SILENCE_USERS,
-    syntax="<target_name>",
+    syntax="<target_name> <reason>",
     hidden=True,
 )
 async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     """Unsilence a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
+    reason = " ".join(message[1:])
 
     # Make sure the user exists
     userID = await userUtils.getID(fro)
@@ -284,7 +341,22 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     else:
         # Target offline, remove silence in db
         await userUtils.silence(targetID, 0, "", userID)
+        await rap_logs.send_rap_log(userID, f"has unsilenced {target}")
+        await rap_logs.send_rap_log_as_discord_webhook(
+            message="\n".join(
+                [
+                    f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unsilenced [{target}](https://akatsuki.gg/u/{targetID}).",
+                    f"**Reason**: {reason}",
+                    f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                ],
+            ),
+            discord_channel="ac_general",
+        )
 
+    await userUtils.appendNotes(
+        targetID,
+        f"{fro} ({userID}) unsilenced {target} for {reason}",
+    )
     return f"{target}'s silence reset."
 
 
@@ -326,16 +398,17 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
         f"has banned {target} ({targetID}) for {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
-        message="\n\n".join(
+        message="\n".join(
             [
-                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) banned [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
-                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) banned [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{username} banned for: {reason}")
+    await userUtils.appendNotes(targetID, f"{username} ({userID}) banned for: {reason}")
     return f"{target} has been banned."
 
 
@@ -362,10 +435,11 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
 
     await rap_logs.send_rap_log(userID, f"has unbanned {target}")
     await rap_logs.send_rap_log_as_discord_webhook(
-        message="\n\n".join(
+        message="\n".join(
             [
-                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unbanned [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
-                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -412,10 +486,11 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
         f"has restricted {target} ({targetID}) for: {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
-        message="\n\n".join(
+        message="\n".join(
             [
-                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) restricted [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
-                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -444,16 +519,17 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
     userID = await userUtils.getID(fro)
 
     if not reason:
-        return "Please specify a reason for the restriction!"
+        return "Please specify a reason for the unrestriction!"
 
     await userUtils.unrestrict(targetID)
 
     await rap_logs.send_rap_log(userID, f"has unrestricted {target}")
     await rap_logs.send_rap_log_as_discord_webhook(
-        message="\n\n".join(
+        message="\n".join(
             [
-                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unrestricted [{target}](https://akatsuki.gg/u/{targetID}) for {reason}.",
-                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
@@ -1077,10 +1153,11 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
 
         # Log report to discord
         await rap_logs.send_rap_log_as_discord_webhook(
-            message="\n\n".join(
+            message="\n".join(
                 [
-                    f"[{fro}](https://akatsuki.gg/u/{userID}) reported [{target}](https://akatsuki.gg/u/{targetID}) ({targetID}) for {reason} ({additionalInfo}).",
-                    f"> :gear: [View all reports](https://old.akatsuki.gg/index.php?p=126) on **Admin Panel**.",
+                    f"[{fro}](https://akatsuki.gg/u/{userID}) reported [{target}](https://akatsuki.gg/u/{targetID}) ({targetID}) for {reason}.",
+                    f"**Additional Info**: ({additionalInfo})",
+                    f"\n> :gear: [View all reports](https://old.akatsuki.gg/index.php?p=126) on **Admin Panel**.",
                 ],
             ),
             discord_channel="ac_general",
@@ -1151,42 +1228,78 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 
 # XXX: disabled for now - was being overused
 # @command(
-# async     trigger="!freeze",
-#     privs=privileges.ADMIN_MANAGE_PRIVILEGES,
-#     syntax="<target_name>",
-#     hidden=True,
+#    trigger="!freeze",
+#    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+#    syntax="<target_name> <reason>",
+#    hidden=True,
 # )
-# def freeze(fro: str, chan: str, message: list[str]) -> str:
-#     """Freeze a specified player."""
-#     target = message[0].lower()
+# async def freeze(fro: str, chan: str, message: list[str]) -> str:
+#    """Freeze a specified player."""
+#    target = message[0].lower()
+#    reason = " ".join(message[1:])
 
-#     if not (target_id := await userUtils.getID(target)):
-#         return "That user does not exist"
+#    if not (targetID := await userUtils.getID(target)):
+#        return "That user does not exist"
 
-#     if await await userUtils.getFreezeTime(target_id):
-#         return "That user is already frozen."
+#    if not await userUtils.getFreezeTime(targetID):
+#        return "That user is already frozen."
 
-#     await userUtils.freeze(target_id, await userUtils.getID(fro))
-#     return f"Froze {target}."
+#    if not reason:
+#        return f"Please specify your reason to freeze {target}."
+
+#    await userUtils.freeze(targetID, await userUtils.getID(fro))
+#    userID = await userUtils.getID(fro)
+#    await rap_logs.send_rap_log(userID, f"has froze {target}")
+#    await rap_logs.send_rap_log_as_discord_webhook(
+#        message="\n".join(
+#            [
+#                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) froze [{target}](https://akatsuki.gg/u/{targetID}).",
+#                f"**Reason**: {reason}",
+#                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+#            ],
+#        ),
+#        discord_channel="ac_general",
+#    )
+
+#    await userUtils.appendNotes(targetID, f"{fro} ({userID}) froze {target}")
+#    return f"Froze {target}."
 
 
 @command(
     trigger="!unfreeze",
     privs=privileges.ADMIN_MANAGE_PRIVILEGES,
-    syntax="<target_name>",
+    syntax="<target_name> <reason>",
     hidden=True,
 )
 async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     """Unfreeze a specified player."""
     target = message[0].lower()
+    reason = " ".join(message[1:])
 
-    if not (target_id := await userUtils.getID(target)):
+    if not (targetID := await userUtils.getID(target)):
         return "That user does not exist"
 
-    if not await userUtils.getFreezeTime(target_id):
+    if not await userUtils.getFreezeTime(targetID):
         return "That user is not frozen."
 
-    await userUtils.unfreeze(target_id, await userUtils.getID(fro))
+    if not reason:
+        return f"Please specify a reason to unfreeze {target}."
+
+    userID = await userUtils.getID(fro)
+    await userUtils.unfreeze(targetID, userID)
+    await rap_logs.send_rap_log(userID, f"unfroze {target}")
+    await rap_logs.send_rap_log_as_discord_webhook(
+        message="\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unfroze [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
+        discord_channel="ac_general",
+    )
+
+    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unfroze {target}")
     return f"Unfroze {target}."
 
 
@@ -1267,7 +1380,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
 
     await userUtils.appendNotes(
         userID,
-        f"Changed username: '{fro}' -> '{newUsername}'.",
+        f"Username changed (self): '{fro}' -> '{newUsername}'.",
     )
     await rap_logs.send_rap_log(
         userID,
@@ -1352,23 +1465,26 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
 
+    # Get the nominator profile URL just once
+    nominator_profile_url = userUtils.getProfile(token["user_id"])
+
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
-        title=f"This {message[1]} has recieved a status update.",
+        title=res["song_name"],
         colour=status_to_colour(status),
-        author=res["song_name"],
-        author_url=f'https://akatsuki.gg/d/{res["beatmapset_id"]}',
-        author_icon="https://akatsuki.gg/static/logos/logo.png",
+        author=f"This {message[1]} has recieved a status update. :pencil:",
+        author_url=f'https://chimu.moe/d/{res["beatmapset_id"]}',
+        author_icon="https://cdn.discordapp.com/emojis/1160855094712078368.png",
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         fields=[
             {"name": k, "value": v}
             for k, v in {
-                "New status": status_readable,
-                "Previous status": status_to_readable(res["ranked"]),
-                "Nominator": f"[{fro}]({userUtils.getProfile(token['user_id'])})",
-                "Beatmap Listing": f"[Click here](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
-                "Download link": f'[Click here](https://akatsuki.gg/d/{res["beatmapset_id"]})',
-                "Beatmap Length": generalUtils.secondsToReadable(res["hit_length"]),
+                "New Status": status_readable,
+                "Previous Status": status_to_readable(res["ranked"]),
+                "Nominator": f"[{fro}]({nominator_profile_url})",
+                "Listing": f"[Bancho](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})",
+                "Download": f'[chimu.moe](https://chimu.moe/d/{res["beatmapset_id"]})',
+                "Length": generalUtils.secondsToReadable(res["hit_length"]),
             }.items()
         ],
     )
@@ -1388,7 +1504,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     await chat.sendMessage(
         token_id=aika_token["token_id"],
         to="#announce",
-        message=f"{fro} has {status_readable} {beatmap_url}",
+        message=f"[{nominator_profile_url} {fro}] has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
 
@@ -1424,7 +1540,7 @@ async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
 @command(
     trigger="!whitelist",
     privs=privileges.ADMIN_MANAGE_USERS,
-    syntax="<target_name> <bit>",
+    syntax="<target_name> <bit> <reason>",
     hidden=True,
 )
 async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
@@ -1432,11 +1548,16 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     message = [m.lower() for m in message]
     target = message[0]
     bit = int(message[1]) if message[1].isnumeric() else -1
+    reason = " ".join(message[2:])
 
     if bit not in range(4):
         return "Invalid bit."
+
     if not (targetID := await userUtils.getID(target)):
         return "That user does not exist."
+
+    if not reason:
+        return "Please specify the reason for your whitelist request."
 
     # Get command executioner's ID
     userID = await userUtils.getID(fro)
@@ -1451,19 +1572,23 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
         )
         await userUtils.editWhitelist(userID, bit)
 
-    await rap_logs.send_rap_log(userID, f"has set {target}'s whitelist status to {bit}")
+    await rap_logs.send_rap_log(
+        userID,
+        f"has set {target}'s whitelist status to {bit} for {reason}",
+    )
     await rap_logs.send_rap_log_as_discord_webhook(
-        message="\n\n".join(
+        message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has set [{target}](https://akatsuki.gg/u/{targetID})'s whitelist status to {bit}.",
-                f"> :gear: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
         ),
         discord_channel="ac_general",
     )
     await userUtils.appendNotes(
         targetID,
-        f"{fro} ({userID}) has set {target}'s whitelist status to {bit}",
+        f"{fro} ({userID}) has set {target}'s whitelist status to {bit}. Reason: {reason}",
     )
     return f"{target}'s whitelist status has been set to {bit}."
 
