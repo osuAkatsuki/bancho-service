@@ -757,26 +757,17 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
     return " ".join(msg)
 
 
-async def chimuMessage(beatmapID: int) -> str:
+async def _get_beatmap_download_embed(beatmapID: int) -> str:
     if not (
         beatmap := await glob.db.fetch(
-            "SELECT song_name sn, beatmapset_id bsid "
+            "SELECT song_name, beatmapset_id "
             "FROM beatmaps WHERE beatmap_id = %s LIMIT 1",
             [beatmapID],
         )
     ):
         return "Sorry, I'm not able to provide a download link for this map :("
 
-    ret: list[str] = []
-
-    ret.append(
-        "[Chimu] [https://chimu.moe/d/{bsid} {sn}]".format(
-            bsid=beatmap["bsid"],
-            sn=beatmap["sn"],
-        ),
-    )
-
-    return "\n".join(ret)
+    return "[https://chimu.moe/d/{beatmapset_id} {song_name}]".format(**beatmap)
 
 
 @command(
@@ -810,7 +801,7 @@ async def chimu(fro: str, chan: str, message: list[str]) -> str:
 
         beatmap_id = spectatorHostToken["beatmap_id"]
 
-    return await chimuMessage(beatmap_id)
+    return f"[Chimu] {await _get_beatmap_download_embed(beatmap_id)}"
 
 
 @command(
@@ -842,7 +833,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
             ignoreIRC=True,
         )
         return (
-            await chimuMessage(spectatorHostToken["beatmap_id"])
+            await _get_beatmap_download_embed(spectatorHostToken["beatmap_id"])
             if spectatorHostToken
             else None
         )
