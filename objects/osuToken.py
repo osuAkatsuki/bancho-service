@@ -14,6 +14,7 @@ from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
 from common.ripple import userUtils
+from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -488,7 +489,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
         return
 
     # Never enqueue for IRC clients or Aika
-    if token["irc"] or token["user_id"] == 999:
+    if token["irc"] or token["user_id"] == CHATBOT_USER_ID:
         return
 
     if len(data) >= 10 * 10**6:
@@ -550,7 +551,7 @@ async def joinChannel(token_id: str, channel_name: str) -> None:
 
     # non-public channels require staff or bot
     if (not channel["public_read"]) and not (
-        is_staff(token["privileges"]) or token["user_id"] == 999
+        is_staff(token["privileges"]) or token["user_id"] == CHATBOT_USER_ID
     ):
         raise exceptions.channelNoPermissionsException()
 
@@ -899,14 +900,14 @@ async def silence(
     token_id: str,
     seconds: Optional[int] = None,
     reason: str = "",
-    author: int = 999,
+    author: int = CHATBOT_USER_ID,
 ) -> None:
     """
     Silences this user (db, packet and token)
 
     :param seconds: silence length in seconds. If None, get it from db. Default: None
     :param reason: silence reason. Default: empty string
-    :param author: userID of who has silenced the user. Default: 999 (Aika)
+    :param author: userID of who has silenced the user. Default: CHATBOT_USER_ID (Aika)
     :return:
     """
     token = await get_token(token_id)
@@ -1070,7 +1071,7 @@ async def setRestricted(token_id: str) -> None:
     if token is None:
         return
 
-    aika_token = await get_token_by_user_id(999)
+    aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.sendMessage(
         token_id=aika_token["token_id"],
@@ -1090,7 +1091,7 @@ async def resetRestricted(token_id: str) -> None:
     if token is None:
         return
 
-    aika_token = await get_token_by_user_id(999)
+    aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.sendMessage(
         token_id=aika_token["token_id"],

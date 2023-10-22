@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Optional
 from typing import TypedDict
 
+from constants import CHATBOT_USER_ID
 from constants import dataTypes
 from constants import matchModModes
 from constants import matchTeams
@@ -680,7 +681,7 @@ async def allPlayersCompleted(match_id: int) -> None:
         multiplayer_match["is_tourney"]
         and channel_name in await channelList.getChannelNames()
     ):
-        aika_token = await tokenList.getTokenFromUserID(999)
+        aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
         assert aika_token is not None
         await chat.sendMessage(
             token_id=aika_token["token_id"],
@@ -1068,7 +1069,7 @@ async def invite(match_id: int, fro: int, to: int) -> None:
         return
 
     # Aika is too busy
-    if to == 999:
+    if to == CHATBOT_USER_ID:
         await chat.sendMessage(
             token_id=toToken["token_id"],
             to=froToken["username"],
@@ -1374,7 +1375,7 @@ async def sendReadyStatus(match_id: int) -> None:
 
         message = " ".join(message)
 
-    aika_token = await tokenList.getTokenFromUserID(999)
+    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.sendMessage(
         token_id=aika_token["token_id"],

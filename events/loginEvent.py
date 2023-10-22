@@ -17,6 +17,7 @@ from common.constants import privileges
 from common.log import rap_logs
 from common.ripple import userUtils
 from common.web.requestsManager import AsyncRequestHandler
+from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -75,7 +76,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not userID:
             # Invalid username
             raise exceptions.loginFailedException()
-        elif userID == 999:
+        elif userID == CHATBOT_USER_ID:
             raise exceptions.invalidArgumentsException()
 
         if not await userUtils.checkLogin(userID, loginData[1]):
@@ -215,7 +216,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
-                aika_token = await tokenList.getTokenFromUserID(999)
+                aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                 assert aika_token is not None
 
                 await chat.sendMessage(

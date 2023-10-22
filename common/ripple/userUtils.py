@@ -15,6 +15,7 @@ from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
 from common.log import rap_logs
+from constants import CHATBOT_USER_ID
 from objects import glob
 
 
@@ -904,7 +905,7 @@ async def getFreezeReason(userID: int) -> Optional[str]:
     return result["freeze_reason"] if result["freeze_reason"] else None
 
 
-async def freeze(userID: int, author: int = 999) -> None:
+async def freeze(userID: int, author: int = CHATBOT_USER_ID) -> None:
     """
     Enqueue a 'pending' restriction on a user. (7 days)
     Used for getting liveplays from users already suspected of cheating.
@@ -937,7 +938,7 @@ async def beginFreezeTimer(userID) -> int:
     return restriction_time  # Return so we can update the time
 
 
-async def unfreeze(userID: int, author: int = 999, _log=True) -> None:
+async def unfreeze(userID: int, author: int = CHATBOT_USER_ID, _log=True) -> None:
     """
     Dequeue a 'pending' restriction on a user.
 
@@ -982,7 +983,7 @@ async def silence(
     userID: int,
     seconds: int,
     silenceReason: str,
-    author: int = 999,
+    author: int = CHATBOT_USER_ID,
 ) -> None:
     """
     Silence `userID` for `seconds` for `silenceReason`.
@@ -990,7 +991,7 @@ async def silence(
     :param userID: user id
     :param seconds: silence length in seconds
     :param silenceReason: silence reason shown on website
-    :param author: userID of who silenced the user. Default: 999
+    :param author: userID of who silenced the user. Default: CHATBOT_USER_ID
     :return:
     """
 

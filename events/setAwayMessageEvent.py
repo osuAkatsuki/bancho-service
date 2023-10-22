@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from constants import CHATBOT_USER_ID
 from constants import clientPackets
 from constants import serverPackets
 from objects import glob
@@ -29,6 +30,6 @@ async def handle(userToken: Token, rawPacketData: bytes):
             fro=glob.BOT_NAME,
             to=userToken["username"],
             message=fokaMessage,
-            fro_id=999,
+            fro_id=CHATBOT_USER_ID,
         ),
     )

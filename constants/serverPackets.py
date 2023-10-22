@@ -5,6 +5,7 @@ from typing import Optional
 
 from common.constants import privileges
 from common.ripple import userUtils
+from constants import CHATBOT_USER_ID
 from constants import dataTypes
 from constants import packetIDs
 from constants import userRanks
@@ -157,7 +158,7 @@ BOT_PRESENCE = (
 
 
 async def userPanel(userID: int, force: bool = False) -> bytes:
-    if userID == 999:
+    if userID == CHATBOT_USER_ID:
         return BOT_PRESENCE
 
     # Connected and restricted check
@@ -218,7 +219,7 @@ BOT_STATS = (
 
 
 async def userStats(userID: int, force: bool = False) -> bytes:
-    if userID == 999:
+    if userID == CHATBOT_USER_ID:
         return BOT_STATS
 
     # Get userID's token from tokens list
@@ -524,7 +525,7 @@ def invalidChatMessage(username: str) -> bytes:
             ("", dataTypes.STRING),
             ("", dataTypes.STRING),
             (username, dataTypes.STRING),
-            (999, dataTypes.SINT32),
+            (CHATBOT_USER_ID, dataTypes.SINT32),
         ),
     )
 

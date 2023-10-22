@@ -5,6 +5,7 @@ import logging
 from typing import Optional
 from typing import TypedDict
 
+from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -129,7 +130,7 @@ async def addChannel(
         ),
     )
     # Make Foka join the channel
-    fokaToken = await tokenList.getTokenFromUserID(999)
+    fokaToken = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     if fokaToken:
         try:
             await osuToken.joinChannel(fokaToken["token_id"], name)

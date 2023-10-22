@@ -5,6 +5,7 @@ from typing import Union
 
 import settings
 from common.web.requestsManager import AsyncRequestHandler
+from constants import CHATBOT_USER_ID
 from constants import exceptions
 from helpers import chatHelper
 from objects import tokenList
@@ -24,7 +25,7 @@ class handler(AsyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
-            aika_token = await tokenList.getTokenFromUserID(999)
+            aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
             assert aika_token is not None
 
             await chatHelper.sendMessage(
