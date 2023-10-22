@@ -83,6 +83,14 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
             )
+    else:
+        logging.info(
+            "Successfully handled username change event for user",
+            extra={
+                "user_id": userID,
+                "new_username": newUsername,
+            },
+        )
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):
@@ -93,6 +101,14 @@ class handler(generalPubSubHandler.generalPubSubHandler):
     async def handle(self, data):
         if not (data := super().parseData(data)):
             return
+
+        logging.info(
+            "Handling change username for user",
+            extra={
+                "user_id": data["userID"],
+                "new_username": data["newUsername"],
+            },
+        )
 
         # Get the user's token
         if (targetToken := await tokenList.getTokenFromUserID(data["userID"])) is None:
@@ -120,3 +136,11 @@ class handler(generalPubSubHandler.generalPubSubHandler):
                     f'ripple:change_username_pending:{data["userID"]}',
                     data["newUsername"],
                 )
+
+        logging.info(
+            "Successfully handled change username event for user",
+            extra={
+                "user_id": data["userID"],
+                "new_username": data["newUsername"],
+            },
+        )
