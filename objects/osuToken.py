@@ -1027,19 +1027,6 @@ async def updateCachedStats(token_id: str) -> None:
         pp=stats["pp"],
     )
 
-    import settings
-
-    logging.warning(
-        "Debugging cached stats update",
-        extra={
-            "token_id": token_id,
-            "stats": stats,
-            "relax": token["relax"],
-            "autopilot": token["autopilot"],
-            "app_component": settings.APP_COMPONENT,
-        },
-    )
-
 
 async def checkRestricted(token_id: str) -> None:
     """
