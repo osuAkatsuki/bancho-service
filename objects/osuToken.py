@@ -1027,6 +1027,8 @@ async def updateCachedStats(token_id: str) -> None:
         pp=stats["pp"],
     )
 
+    import settings
+
     logging.warning(
         "Debugging cached stats update",
         extra={
@@ -1034,6 +1036,7 @@ async def updateCachedStats(token_id: str) -> None:
             "stats": stats,
             "relax": token["relax"],
             "autopilot": token["autopilot"],
+            "app_component": settings.APP_COMPONENT,
         },
     )
 
