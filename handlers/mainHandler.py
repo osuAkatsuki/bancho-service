@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import gzip
 import logging
+import random
 import struct
 from uuid import UUID
 
@@ -148,6 +150,13 @@ class handler(AsyncRequestHandler):
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")
         requestData = self.request.body
+
+        # XXX: temporarily doing some performance monitoring
+        if random.randint(0, 20) == 20:
+            logging.info(
+                "Concurrent tasks report",
+                extra={"concurrent_tasks_count": len(asyncio.all_tasks())},
+            )
 
         # Server's token string and request data
         responseTokenString = "ayy"

@@ -995,6 +995,10 @@ async def updateCachedStats(token_id: str) -> None:
     """
     token = await get_token(token_id)
     if token is None:
+        logging.warning(
+            "Token not found when updating cached stats",
+            extra={"token_id": token_id},
+        )
         return
 
     if token["relax"]:
@@ -1009,8 +1013,7 @@ async def updateCachedStats(token_id: str) -> None:
         token["game_mode"],
         relax_int,
     )
-
-    if not stats:
+    if stats is None:
         logging.warning("Stats query returned None")
         return
 
