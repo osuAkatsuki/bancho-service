@@ -70,7 +70,11 @@ async def editWhitelist(userID: int, bit: int) -> None:
     )
 
 
-async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
+async def getUserStats(
+    userID: int,
+    gameMode: int,
+    relax_ap: int,
+) -> Optional[dict[str, Any]]:
     """
     Get all user stats relative to `gameMode`.
 
@@ -97,6 +101,18 @@ async def getUserStats(userID: int, gameMode: int, relax_ap: int) -> Any:
         "FROM {table} WHERE id = %s LIMIT 1".format(gm=modeForDB, table=table),
         [userID],
     )
+    if stats is None:
+        logging.warning(
+            "Stats row missing for user",
+            extra={
+                "user_id": userID,
+                "game_mode": gameMode,
+                "game_mode_for_db": modeForDB,
+                "relax_ap": relax_ap,
+                "table": table,
+            },
+        )
+        return None
 
     # Get game rank
     stats["gameRank"] = await getGameRank(userID, gameMode, relax_ap)

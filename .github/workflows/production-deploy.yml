@@ -24,7 +24,6 @@ jobs:
           script_stop: true
           script: |
             cd /home/akatsuki/pep.py
-            echo "branch is ${{ steps.extract_branch.outputs.branch }}"
             git fetch origin
             git checkout origin/${{ steps.extract_branch.outputs.branch }}
             git pull origin ${{ steps.extract_branch.outputs.branch }}

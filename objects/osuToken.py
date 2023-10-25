@@ -1013,8 +1013,7 @@ async def updateCachedStats(token_id: str) -> None:
         token["game_mode"],
         relax_int,
     )
-
-    if not stats:
+    if stats is None:
         logging.warning("Stats query returned None")
         return
 
