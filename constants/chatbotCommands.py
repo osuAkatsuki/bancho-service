@@ -1823,8 +1823,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             raise exceptions.userNotFoundException("No such user")
 
         froToken = await tokenList.getTokenFromUsername(fro, ignoreIRC=True)
+        if froToken is None:
+            return
 
-        if not froToken or not froToken["privileges"] & privileges.ADMIN_CAKER:
+        if not froToken["privileges"] & privileges.ADMIN_CAKER:
             return
 
         if len(message) != 3 or not message[2].isnumeric():
@@ -1833,15 +1835,13 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         matchID = int(message[2])
 
-        if userID not in await match.get_referees(matchID):
-            return None
-
         userToken = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
         if not userToken:
             return
 
         if not await osuToken.joinMatch(userToken["token_id"], matchID):
             return "Failed to join match."
+
         return "Joined match."
 
     async def mpMove() -> Optional[str]:
