@@ -2,16 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging.config
 import os
-import atexit
 import signal
 import sys
 import traceback
 from datetime import datetime
 from typing import Optional
 
-from common import exception_handling
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
@@ -19,6 +18,7 @@ import tornado.web
 
 import lifecycle
 import settings
+from common import exception_handling
 from common.log import logging_config
 from handlers import apiChatbotMessageHandler
 from handlers import apiIsOnlineHandler
