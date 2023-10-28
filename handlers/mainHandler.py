@@ -153,10 +153,16 @@ class handler(AsyncRequestHandler):
 
         # XXX: temporarily doing some performance monitoring
         if random.randint(0, 20) == 20:
+            tasks = asyncio.all_tasks()
             logging.info(
                 "Concurrent tasks report",
-                extra={"concurrent_tasks_count": len(asyncio.all_tasks())},
+                extra={"concurrent_tasks_count": len(tasks)},
             )
+            if len(tasks) > 100:
+                logging.warning(
+                    "Too many concurrent tasks",
+                    extra={"concurrent_tasks": [x.get_name() for x in tasks]},
+                )
 
         # Server's token string and request data
         responseTokenString = "ayy"
