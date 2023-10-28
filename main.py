@@ -4,12 +4,14 @@ from __future__ import annotations
 import asyncio
 import logging.config
 import os
+import atexit
 import signal
 import sys
 import traceback
 from datetime import datetime
 from typing import Optional
 
+from common import exception_handling
 import tornado.gen
 import tornado.httpserver
 import tornado.ioloop
@@ -125,6 +127,8 @@ async def main() -> int:
 
 if __name__ == "__main__":
     logging_config.configure_logging()
+    exception_handling.hook_exception_handlers()
+    atexit.register(exception_handling.unhook_exception_handlers)
     try:
         exit_code = asyncio.run(main())
     except KeyboardInterrupt:
