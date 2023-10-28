@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging.config
 import os
 import signal
@@ -17,6 +18,7 @@ import tornado.web
 
 import lifecycle
 import settings
+from common import exception_handling
 from common.log import logging_config
 from handlers import apiChatbotMessageHandler
 from handlers import apiIsOnlineHandler
@@ -125,6 +127,8 @@ async def main() -> int:
 
 if __name__ == "__main__":
     logging_config.configure_logging()
+    exception_handling.hook_exception_handlers()
+    atexit.register(exception_handling.unhook_exception_handlers)
     try:
         exit_code = asyncio.run(main())
     except KeyboardInterrupt:
