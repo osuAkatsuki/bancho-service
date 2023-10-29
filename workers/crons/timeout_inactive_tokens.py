@@ -21,15 +21,16 @@ from constants import CHATBOT_USER_ID
 OSU_MAX_PING_INTERVAL = 300  # seconds
 
 
-async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
+async def _revoke_token_if_inactive(token: osuToken.Token) -> bool:
     oldest_ping_time = int(time.time()) - OSU_MAX_PING_INTERVAL
 
-    if (
+    inactive = (
         token["ping_time"] < oldest_ping_time
         and token["user_id"] != CHATBOT_USER_ID
         and not token["irc"]
         and not token["tournament"]
-    ):
+    )
+    if inactive:
         logging.warning(
             "Timing out inactive bancho session",
             extra={
@@ -40,8 +41,12 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
 
         await logoutEvent.handle(token, _=None)
 
+    return inactive
+
 
 async def _timeout_inactive_users() -> None:
+    logging.info("Timing out inactive users")
+    tokens_revoked = 0
     for token_id in await osuToken.get_token_ids():
         token = None
         try:
@@ -52,7 +57,8 @@ async def _timeout_inactive_users() -> None:
                 if token is None:
                     continue
 
-                await _revoke_token_if_inactive(token)
+                revoked = await _revoke_token_if_inactive(token)
+                tokens_revoked += revoked
 
         except Exception:
             logging.exception(
@@ -68,6 +74,11 @@ async def _timeout_inactive_users() -> None:
                     "tournament": token["tournament"] if token else None,
                 },
             )
+
+    logging.info(
+        "Finished timing out inactive users",
+        extra={"tokens_revoked": tokens_revoked},
+    )
 
 
 async def main() -> int:
