@@ -161,7 +161,7 @@ class handler(AsyncRequestHandler):
             if len(tasks) > 100:
                 logging.warning(
                     "Too many concurrent tasks",
-                    extra={"concurrent_tasks": [x.get_name() for x in tasks]},
+                    extra={"concurrent_tasks": [x._repr_info() for x in tasks]},
                 )
 
         # Server's token string and request data
