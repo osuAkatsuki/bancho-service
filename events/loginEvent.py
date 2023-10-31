@@ -170,20 +170,19 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         else:
             amplitude_device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
 
-        async with redisLock("bancho:locks:tokens"):
-            if not isTournament:
-                await tokenList.deleteOldTokens(userID)
+        if not isTournament:
+            await tokenList.deleteOldTokens(userID)
 
-            userToken = await tokenList.addToken(
-                userID,
-                ip=requestIP,
-                irc=False,
-                utc_offset=utc_offset,
-                tournament=isTournament,
-                block_non_friends_dm=block_non_friends_dm,
-                amplitude_device_id=amplitude_device_id,
-            )
-            username = userToken["username"]  # trust the one from the db
+        userToken = await tokenList.addToken(
+            userID,
+            ip=requestIP,
+            irc=False,
+            utc_offset=utc_offset,
+            tournament=isTournament,
+            block_non_friends_dm=block_non_friends_dm,
+            amplitude_device_id=amplitude_device_id,
+        )
+        username = userToken["username"]  # trust the one from the db
 
         responseTokenString = userToken["token_id"]
 

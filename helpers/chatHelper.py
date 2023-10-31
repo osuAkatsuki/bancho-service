@@ -773,9 +773,8 @@ async def IRCConnect(username: str) -> None:
     if not user_id:
         return
 
-    async with redisLock("bancho:locks:tokens"):
-        await tokenList.deleteOldTokens(user_id)
-        await tokenList.addToken(user_id, irc=True)
+    await tokenList.deleteOldTokens(user_id)
+    await tokenList.addToken(user_id, irc=True)
 
     await streamList.broadcast("main", await serverPackets.userPanel(user_id))
     logging.info("User logged into IRC", extra={"username": username})
