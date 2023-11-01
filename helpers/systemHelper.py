@@ -110,7 +110,7 @@ async def getSystemInfo() -> dict[str, Any]:
     """
     data = {
         "unix": runningUnderUnix(),
-        "connectedUsers": len(await osuToken.get_token_ids()),
+        "connectedUsers": await osuToken.get_online_players_count(),
         "matches": len(await match.get_match_ids()),
     }
 

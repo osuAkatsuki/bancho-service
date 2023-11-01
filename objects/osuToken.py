@@ -203,6 +203,10 @@ async def get_token_ids() -> set[str]:
     return {token_id.decode() for token_id in raw_token_ids}
 
 
+async def get_online_players_count() -> int:
+    return await glob.redis.hlen("bancho:tokens:json")
+
+
 async def get_token(token_id: str) -> Optional[Token]:
     token = await glob.redis.get(make_key(token_id))
     if token is None:
