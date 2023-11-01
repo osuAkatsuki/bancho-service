@@ -8,5 +8,5 @@ app:
       repository: registry.digitalocean.com/akatsuki/bancho-service
       tag: latest
     imagePullSecrets:
-      - name: akatsuki
+      - name: registry-akatsuki
     port: 80
