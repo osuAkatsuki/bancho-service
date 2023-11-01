@@ -58,7 +58,10 @@ async def addToken(
     token = await osuToken.get_token(token["token_id"])
     assert token is not None
 
-    await glob.redis.incr("ripple:online_users")
+    await glob.redis.set(
+        "ripple:online_users",
+        await osuToken.get_online_players_count(),
+    )
     return token
 
 
@@ -82,7 +85,10 @@ async def deleteToken(token_id: str) -> None:
         await userUtils.deleteBanchoSessionIpLookup(token["user_id"], token["ip"])
 
     await osuToken.delete_token(token_id)
-    await glob.redis.decr("ripple:online_users")
+    await glob.redis.set(
+        "ripple:online_users",
+        await osuToken.get_online_players_count(),
+    )
 
 
 async def getUserIDFromToken(token_id: str) -> Optional[int]:

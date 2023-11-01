@@ -277,7 +277,7 @@ class Client:
         """
         self.replyCode(
             251,
-            f"There are {len(await osuToken.get_token_ids())} users and 0 services on 1 server",
+            f"There are {await osuToken.get_online_players_count()} users and 0 services on 1 server",
         )
 
     async def sendMotd(self) -> None:
