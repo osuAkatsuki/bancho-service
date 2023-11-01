@@ -43,6 +43,7 @@ jobs:
 
       - name: Get kubeconfig from github secrets
         run: |
+            mkdir -p $HOME/.kube
             echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
             sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
