@@ -1,6 +1,6 @@
 app:
   name: bancho-service
-  environment: staging
+  environment: production # TODO: move this out of values.yaml
   group: backend
   replicaCount: 1
   container:
