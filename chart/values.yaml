@@ -1,0 +1,12 @@
+app:
+  name: bancho-service
+  environment: staging
+  group: backend
+  replicaCount: 1
+  container:
+    image:
+      repository: registry.digitalocean.com/akatsuki/bancho-service
+      tag: latest
+    imagePullSecrets:
+      - name: akatsuki
+    port: 80
