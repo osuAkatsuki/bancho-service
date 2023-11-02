@@ -5,7 +5,7 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: osuakatsuki/bancho-service:latest
+        repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
       env:
@@ -24,7 +24,7 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: osuakatsuki/bancho-service:latest
+        repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
       env:
@@ -43,7 +43,7 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: osuakatsuki/bancho-service:latest
+        repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
       env:
@@ -62,7 +62,7 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: osuakatsuki/bancho-service:latest
+        repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
       env:
