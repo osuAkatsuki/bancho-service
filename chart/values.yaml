@@ -5,14 +5,15 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: registry.digitalocean.com/akatsuki/bancho-service
+        repository: osuakatsuki/bancho-service:latest
         tag: latest
       port: 80
       env:
         - name: APP_COMPONENT
           value: api
       imagePullSecrets:
-        - name: registry-akatsuki
+        - name: osuakatsuki-registry-secret
+        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
@@ -23,14 +24,15 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: registry.digitalocean.com/akatsuki/bancho-service
+        repository: osuakatsuki/bancho-service:latest
         tag: latest
       port: 80
       env:
         - name: APP_COMPONENT
           value: reset-all-tokens-spam-rate
       imagePullSecrets:
-        - name: registry-akatsuki
+        - name: osuakatsuki-registry-secret
+        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
@@ -41,14 +43,15 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: registry.digitalocean.com/akatsuki/bancho-service
+        repository: osuakatsuki/bancho-service:latest
         tag: latest
       port: 80
       env:
         - name: APP_COMPONENT
           value: timeout-inactive-tokens
       imagePullSecrets:
-        - name: registry-akatsuki
+        - name: osuakatsuki-registry-secret
+        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
@@ -59,14 +62,15 @@ apps:
     replicaCount: 1
     container:
       image:
-        repository: registry.digitalocean.com/akatsuki/bancho-service
+        repository: osuakatsuki/bancho-service:latest
         tag: latest
       port: 80
       env:
         - name: APP_COMPONENT
           value: consume-pubsub-events
       imagePullSecrets:
-        - name: registry-akatsuki
+        - name: osuakatsuki-registry-secret
+        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
