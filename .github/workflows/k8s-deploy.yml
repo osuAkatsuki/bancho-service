@@ -26,20 +26,20 @@ jobs:
       - name: Log-in to digitalocean container registry
         run: doctl registry login --expiry-seconds 600
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v2
 
-      - name: Build and push
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: registry.digitalocean.com/akatsuki/bancho-service:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # - name: Build and push
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     context: .
+      #     push: true
+      #     tags: registry.digitalocean.com/akatsuki/bancho-service:latest
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
 
       - name: Get kubeconfig from github secrets
         run: |
