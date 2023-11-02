@@ -1,7 +1,7 @@
 apps:
   - name: bancho-service-api
     environment: production
-    group: bancho-service-api
+    codebase: bancho-service
     replicaCount: 1
     container:
       image:
@@ -19,7 +19,7 @@ apps:
 
   - name: bancho-service-spam-protection-cronjob
     environment: production
-    group: bancho-service-spam-protection-cronjob
+    codebase: bancho-service
     replicaCount: 1
     container:
       image:
@@ -37,7 +37,7 @@ apps:
 
   - name: bancho-service-inactivity-timeout-cronjob
     environment: production
-    group: bancho-service-inactivity-timeout-cronjob
+    codebase: bancho-service
     replicaCount: 1
     container:
       image:
@@ -55,7 +55,7 @@ apps:
 
   - name: bancho-service-consume-pubsub-events-daemon
     environment: production
-    group: bancho-service-consume-pubsub-events-daemon
+    codebase: bancho-service
     replicaCount: 1
     container:
       image:
