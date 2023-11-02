@@ -1,12 +1,68 @@
-app:
-  name: bancho-service
-  environment: production # TODO: move this out of values.yaml
-  group: backend
-  replicaCount: 1
-  container:
-    image:
-      repository: registry.digitalocean.com/akatsuki/bancho-service
-      tag: latest
-    imagePullSecrets:
-      - name: registry-akatsuki
-    port: 80
+apps:
+  - name: bancho-service-api
+    environment: production
+    group: bancho-service-api
+    replicaCount: 1
+    container:
+      image:
+        repository: registry.digitalocean.com/akatsuki/bancho-service
+        tag: latest
+      port: 80
+      env:
+        - APP_COMPONENT: api
+      imagePullSecrets:
+        - name: registry-akatsuki
+    service:
+      type: ClusterIP
+      port: 80
+
+  - name: bancho-service-spam-protection-cronjob
+    environment: production
+    group: bancho-service-spam-protection-cronjob
+    replicaCount: 1
+    container:
+      image:
+        repository: registry.digitalocean.com/akatsuki/bancho-service
+        tag: latest
+      port: 80
+      env:
+        - APP_COMPONENT: reset-all-tokens-spam-rate
+      imagePullSecrets:
+        - name: registry-akatsuki
+    service:
+      type: ClusterIP
+      port: 80
+
+  - name: bancho-service-inactivity-timeout-cronjob
+    environment: production
+    group: bancho-service-inactivity-timeout-cronjob
+    replicaCount: 1
+    container:
+      image:
+        repository: registry.digitalocean.com/akatsuki/bancho-service
+        tag: latest
+      port: 80
+      env:
+        - APP_COMPONENT: timeout-inactive-tokens
+      imagePullSecrets:
+        - name: registry-akatsuki
+    service:
+      type: ClusterIP
+      port: 80
+
+  - name: bancho-service-consume-pubsub-events-daemon
+    environment: production
+    group: bancho-service-consume-pubsub-events-daemon
+    replicaCount: 1
+    container:
+      image:
+        repository: registry.digitalocean.com/akatsuki/bancho-service
+        tag: latest
+      port: 80
+      env:
+        - APP_COMPONENT: consume-pubsub-events
+      imagePullSecrets:
+        - name: registry-akatsuki
+    service:
+      type: ClusterIP
+      port: 80
