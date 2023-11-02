@@ -9,7 +9,8 @@ apps:
         tag: latest
       port: 80
       env:
-        - APP_COMPONENT: api
+        - name: APP_COMPONENT
+          value: api
       imagePullSecrets:
         - name: registry-akatsuki
     service:
@@ -26,7 +27,8 @@ apps:
         tag: latest
       port: 80
       env:
-        - APP_COMPONENT: reset-all-tokens-spam-rate
+        - name: APP_COMPONENT
+          value: reset-all-tokens-spam-rate
       imagePullSecrets:
         - name: registry-akatsuki
     service:
@@ -43,7 +45,8 @@ apps:
         tag: latest
       port: 80
       env:
-        - APP_COMPONENT: timeout-inactive-tokens
+        - name: APP_COMPONENT
+          value: timeout-inactive-tokens
       imagePullSecrets:
         - name: registry-akatsuki
     service:
@@ -60,7 +63,8 @@ apps:
         tag: latest
       port: 80
       env:
-        - APP_COMPONENT: consume-pubsub-events
+        - name: APP_COMPONENT
+          value: consume-pubsub-events
       imagePullSecrets:
         - name: registry-akatsuki
     service:
