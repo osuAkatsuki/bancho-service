@@ -9,6 +9,5 @@ build.date
 .DS_Store
 /stacktraces/
 /akacerts/
-logging.yaml
 logs.log
 newrelic.ini
