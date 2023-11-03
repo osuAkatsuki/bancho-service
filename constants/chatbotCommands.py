@@ -1539,24 +1539,23 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     # Get command executioner's ID
     userID = await userUtils.getID(fro)
 
-    # If user is online, update their token's whitelist bit
-    # (not a toctou if user ids never change)
-    userToken = await tokenList.getTokenFromUserID(userID)
-    if userToken is not None:
-        userToken = await osuToken.update_token(
-            token_id=userToken["token_id"],
+    # If target user is online, update their token's whitelist bit
+    targetToken = await tokenList.getTokenFromUserID(targetID)
+    if targetToken is not None:
+        targetToken = await osuToken.update_token(
+            token_id=targetToken["token_id"],
             whitelist=bit,
         )
-        await userUtils.editWhitelist(userID, bit)
+        await userUtils.editWhitelist(targetID, bit)
 
     await rap_logs.send_rap_log(
         userID,
-        f"has set {target}'s whitelist status to {bit} for {reason}",
+        f"has set {target}'s Whitelist Status to {bit} for {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n".join(
             [
-                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has set [{target}](https://akatsuki.gg/u/{targetID})'s whitelist status to {bit}.",
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has set [{target}](https://akatsuki.gg/u/{targetID})'s **Whitelist Status** to **{bit}**.",
                 f"**Reason**: {reason}",
                 f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
             ],
@@ -1565,9 +1564,9 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     )
     await userUtils.appendNotes(
         targetID,
-        f"{fro} ({userID}) has set {target}'s whitelist status to {bit}. Reason: {reason}",
+        f"{fro} ({userID}) has set {target}'s Whitelist Status to {bit}. Reason: {reason}",
     )
-    return f"{target}'s whitelist status has been set to {bit}."
+    return f"{target}'s Whitelist Status has been set to {bit}."
 
 
 @command(trigger="!whoranked", hidden=True)
