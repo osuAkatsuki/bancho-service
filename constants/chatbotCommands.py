@@ -1439,14 +1439,22 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     for md5 in beatmap_md5s:
         await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
-    
+
     # osu! game mode emoji dictionary
-    mode_to_emoji = lambda s: {3: "<:modemania:1087863868782547014>", 2:"<:modefruits:1087863938982612994>", 1: "<:modetaiko:1087863916278853662>", 0: "<:modeosu:1087863892308410398>"}[s]
+    mode_to_emoji = lambda s: {
+        3: "<:modemania:1087863868782547014>",
+        2: "<:modefruits:1087863938982612994>",
+        1: "<:modetaiko:1087863916278853662>",
+        0: "<:modeosu:1087863892308410398>",
+    }[s]
 
     # Colour & icons used in stable client
     status_to_colour = lambda s: {5: 0xFF66AA, 2: 0x6BCEFF, 0: 0x696969}[s]
-    status_to_emoji_id = lambda s: {5: "1166976753869279272", 2: "1166976760424964126", 0: "1166976756230651934"}[s]
-    
+    status_to_emoji_id = lambda s: {
+        5: "1166976753869279272",
+        2: "1166976760424964126",
+        0: "1166976756230651934",
+    }[s]
 
     # Get previous status (for emojis too, pretty icons...)
     prev_status_readable = status_to_readable(res["ranked"])
@@ -1459,7 +1467,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
         url=settings.WEBHOOK_NOW_RANKED,
         colour=status_to_colour(status),
         author=f"{fro} has nominated a {message[1]}!",
-        author_url=f'{nominator_profile_url}',
+        author_url=f"{nominator_profile_url}",
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
         title_url=f'https://chimu.moe/d/{res["beatmapset_id"]}',
@@ -1473,8 +1481,8 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
-        thumbnail=f'https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png',
-        footer=f'Click on the song title to download the beatmap! 🎶',
+        thumbnail=f"https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png",
+        footer=f"Click on the song title to download the beatmap! 🎶",
     )
     asyncio.create_task(webhook.post())
 
