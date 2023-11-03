@@ -1550,7 +1550,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
     await rap_logs.send_rap_log(
         userID,
-        f"has set {target}'s whitelist status to {bit} for {reason}",
+        f"has set {target}'s Whitelist Status to {bit} for {reason}",
     )
     await rap_logs.send_rap_log_as_discord_webhook(
         message="\n".join(
