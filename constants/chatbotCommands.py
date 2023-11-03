@@ -1402,8 +1402,8 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     if not (
         res := await glob.db.fetch(  # bsid is needed for dl link so we need it either way
-            "SELECT ranked, beatmapset_id, song_name, hit_length "
-            "FROM beatmaps WHERE beatmap_id = %s",
+            "SELECT `ranked`, `beatmapset_id`, `song_name`, `mode`, `max_combo`, `hit_length`, `ar`, `od`, `bpm`"
+            "FROM `beatmaps` WHERE `beatmap_id` = %s",
             [token["last_np"]["beatmap_id"]],
         )
     ):
@@ -1439,31 +1439,42 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     for md5 in beatmap_md5s:
         await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+    
+    # osu! game mode emoji dictionary
+    mode_to_emoji = lambda s: {3: "<:modemania:1087863868782547014>", 2:"<:modefruits:1087863938982612994>", 1: "<:modetaiko:1087863916278853662>", 0: "<:modeosu:1087863892308410398>"}[s]
 
-    status_to_colour = lambda s: {5: 0xFF90EB, 2: 0x66E6FF, 0: 0x696969}[s]
+    # Colour & icons used in stable client
+    status_to_colour = lambda s: {5: 0xFF66AA, 2: 0x6BCEFF, 0: 0x696969}[s]
+    status_to_emoji_id = lambda s: {5: "1166976753869279272", 2: "1166976760424964126", 0: "1166976756230651934"}[s]
+    
+
+    # Get previous status (for emojis too, pretty icons...)
+    prev_status_readable = status_to_readable(res["ranked"])
+    prev_status_emoji_id = status_to_emoji_id(res["ranked"])
 
     # Get the nominator profile URL just once
     nominator_profile_url = userUtils.getProfile(token["user_id"])
 
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
-        title=res["song_name"],
         colour=status_to_colour(status),
-        author=f"This {message[1]} has recieved a status update. :pencil:",
-        author_url=f'https://chimu.moe/d/{res["beatmapset_id"]}',
-        author_icon="https://cdn.discordapp.com/emojis/1160855094712078368.png",
-        image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
+        author=f"{fro} has nominated a {message[1]}!",
+        author_url=f'{nominator_profile_url}',
+        author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
+        title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
+        title_url=f'https://chimu.moe/d/{res["beatmapset_id"]}',
+        desc=f'<:length:1170104078181871626> `{generalUtils.secondsToReadable(res["hit_length"])}` <:bpm:1170099864114315294> `{res["bpm"]}` <:approachrate:1170099867864006676> `{res["ar"]}` <:overalldifficulty:1170103298875998289> `{res["od"]}` <:combo:1170101455609409656> `{res["max_combo"]}x`',
         fields=[
             {"name": k, "value": v}
             for k, v in {
-                "New Status": status_readable,
-                "Previous Status": status_to_readable(res["ranked"]),
-                "Nominator": f"[{fro}]({nominator_profile_url})",
-                "Listing": f"[Bancho](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})",
-                "Download": f'[chimu.moe](https://chimu.moe/d/{res["beatmapset_id"]})',
-                "Length": generalUtils.secondsToReadable(res["hit_length"]),
+                "Beatmap Listing": f":ship:・[Official](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})",
+                "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}",
+                "Leaderboard": f"<:akatsuki:1160855094712078368>・[Akatsuki](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
             }.items()
         ],
+        image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
+        thumbnail=f'https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png',
+        footer=f'Click on the song title to download the beatmap! 🎶',
     )
     asyncio.create_task(webhook.post())
 
