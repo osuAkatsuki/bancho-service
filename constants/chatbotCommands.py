@@ -1440,6 +1440,17 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     for md5 in beatmap_md5s:
         await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
 
+    # Map icons & misc
+    icon_akatsuki = "<:akatsuki:1160855094712078368>"
+    icon_chimu = "<:chimu:824401502830460958>"
+    icon_beatconnect = "<:beatconnect:1170350492967243899>"
+
+    icon_length = "<:length:1170104078181871626>"
+    icon_bpm = "<:bpm:1170099864114315294>"
+    icon_ar = "<:approachrate:1170099867864006676>"
+    icon_od = "<:overalldifficulty:1170103298875998289>"
+    icon_combo = "<:combo:1170101455609409656>"
+
     # osu! game mode emoji dictionary
     mode_to_emoji = lambda s: {
         3: "<:modemania:1087863868782547014>",
@@ -1466,23 +1477,22 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
         colour=status_to_colour(status),
-        author=f"{fro} has nominated a {message[1]}!",
+        author=f"{fro} ({token['user_id']})",
         author_url=f"{nominator_profile_url}",
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
-        title_url=f'https://chimu.moe/d/{res["beatmapset_id"]}',
-        desc=f'<:length:1170104078181871626> `{generalUtils.secondsToReadable(res["hit_length"])}` <:bpm:1170099864114315294> `{res["bpm"]}` <:approachrate:1170099867864006676> `{res["ar"]}` <:overalldifficulty:1170103298875998289> `{res["od"]}` <:combo:1170101455609409656> `{res["max_combo"]}x`',
+        title_url=f'https://bathbot.de/osudirect/{res["beatmapset_id"]}',
+        desc=f'This map has received a status update. 📝\n{icon_length} `{generalUtils.secondsToReadable(res["hit_length"])}` {icon_bpm} `{res["bpm"]}` {icon_combo} `{res["max_combo"]}x` {icon_ar} `{res["ar"]}` {icon_od} `{res["od"]}`',
         fields=[
             {"name": k, "value": v}
             for k, v in {
-                "Beatmap Listing": f":ship:・[Official](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})",
                 "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}",
-                "Leaderboard": f"<:akatsuki:1160855094712078368>・[Akatsuki](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
+                f"{message[1].capitalize()} Listing": f":ship:・[Official](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
+                "Download": f"{icon_chimu}・[Chimu](https://chimu.moe/d/{res['beatmapset_id']})\n{icon_beatconnect}・[Beatconnect](https://beatconnect.io/b/{res['beatmapset_id']})",
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         thumbnail=f"https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png",
-        footer=f"Click on the song title to download the beatmap! 🎶",
     )
     asyncio.create_task(webhook.post())
 
