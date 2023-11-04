@@ -1546,7 +1546,8 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
             token_id=targetToken["token_id"],
             whitelist=bit,
         )
-        await userUtils.editWhitelist(targetID, bit)
+
+    await userUtils.editWhitelist(targetID, bit)
 
     await rap_logs.send_rap_log(
         userID,
