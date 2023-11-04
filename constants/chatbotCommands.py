@@ -1476,7 +1476,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
         title_url=f'https://bathbot.de/osudirect/{res["beatmapset_id"]}',
-        desc=f'This map has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Max Combo**: `{res["max_combo"]}x`',
+        desc=f'This {message[1]} has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Max Combo**: `{res["max_combo"]}x`',
         fields=[
             {"name": k, "value": v}
             for k, v in {
