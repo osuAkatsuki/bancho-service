@@ -1440,10 +1440,10 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     for md5 in beatmap_md5s:
         await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
 
-    # Map icons & misc
+    # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"
     icon_chimu = "<:chimu:824401502830460958>"
-    icon_beatconnect = "<:beatconnect:1170350492967243899>"
+    icon_beatconnect = "<:beatconnect:1170497747548381184>"
 
     # osu! game mode emoji dictionary
     mode_to_emoji = lambda s: {
