@@ -14,6 +14,11 @@ def read_bool(val: str) -> bool:
 
 APP_ENV = os.environ["APP_ENV"]
 APP_COMPONENT = os.environ["APP_COMPONENT"]
+APP_PORT = int(os.environ["APP_PORT"])
+APP_GZIP = read_bool(os.environ["APP_GZIP"])
+APP_GZIP_LEVEL = int(os.environ["APP_GZIP_LEVEL"])
+APP_CI_KEY = os.environ["APP_CI_KEY"]
+APP_API_KEY = os.environ["APP_API_KEY"]
 
 DB_HOST = os.environ["DB_HOST"]
 DB_PORT = int(os.environ["DB_PORT"])
@@ -29,16 +34,7 @@ REDIS_USER = os.getenv("REDIS_USER") or None
 REDIS_PASS = os.environ["REDIS_PASS"]
 REDIS_USE_SSL = read_bool(os.environ["REDIS_USE_SSL"])
 
-# stupid temporary hack for load balancing
-if "--port" in sys.argv:
-    APP_PORT = int(sys.argv[sys.argv.index("--port") + 1])
-else:
-    APP_PORT = int(os.environ["APP_PORT"])
-
-APP_GZIP = read_bool(os.environ["APP_GZIP"])
-APP_GZIP_LEVEL = int(os.environ["APP_GZIP_LEVEL"])
-APP_CI_KEY = os.environ["APP_CI_KEY"]
-APP_API_KEY = os.environ["APP_API_KEY"]
+SCORE_SERVICE_BASE_URL = os.environ["SCORE_SERVICE_BASE_URL"]
 
 SHUTDOWN_HTTP_CONNECTION_TIMEOUT = int(os.environ["SHUTDOWN_HTTP_CONNECTION_TIMEOUT"])
 
