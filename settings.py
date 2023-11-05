@@ -25,7 +25,9 @@ DB_WORKERS = int(os.environ["DB_WORKERS"])
 REDIS_HOST = os.environ["REDIS_HOST"]
 REDIS_PORT = int(os.environ["REDIS_PORT"])
 REDIS_DB = int(os.environ["REDIS_DB"])
+REDIS_USER = os.getenv("REDIS_USER") or None
 REDIS_PASS = os.environ["REDIS_PASS"]
+REDIS_USE_SSL = read_bool(os.environ["REDIS_USE_SSL"])
 
 # stupid temporary hack for load balancing
 if "--port" in sys.argv:

@@ -35,6 +35,8 @@ async def startup() -> None:
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
             password=settings.REDIS_PASS,
+            username=settings.REDIS_USER,
+            ssl=settings.REDIS_USE_SSL,
         )
         await glob.redis.ping()
     except:
