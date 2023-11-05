@@ -64,6 +64,10 @@ jobs:
           token: ${{ secrets.COMMON_HELM_CHARTS_PAT }}
           path: common-helm-charts
 
+      - name: Clear pending deployments
+        run: |
+          kubectl get secret -lname=bancho-service-production -lstatus=pending-upgrade -oname | xargs --no-run-if-empty kubectl delete
+
       - name: Show manifest diff since previous release
         run: |
           helm diff upgrade \
