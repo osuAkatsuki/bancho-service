@@ -26,6 +26,7 @@ from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
+from handlers import healthHandler
 from handlers import mainHandler
 from objects import channelList
 from objects import chatbot
@@ -81,6 +82,7 @@ async def main() -> int:
         # Start the HTTP server
         API_ENDPOINTS = [
             (r"/", mainHandler.handler),
+            (r"/_health", healthHandler.handler),
             (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
             (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
             (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
