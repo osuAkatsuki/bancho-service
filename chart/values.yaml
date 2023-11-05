@@ -11,7 +11,7 @@ apps:
       readinessProbe:
         httpGet:
           path: /_health
-          port: http
+          port: 80
         initialDelaySeconds: 5
         periodSeconds: 10
         timeoutSeconds: 1
