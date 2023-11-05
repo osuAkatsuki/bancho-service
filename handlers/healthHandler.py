@@ -1,7 +1,9 @@
-from common.web.requestsManager import AsyncRequestHandler
+from __future__ import annotations
 
-from objects import glob
 import logging
+
+from common.web.requestsManager import AsyncRequestHandler
+from objects import glob
 
 
 class handler(AsyncRequestHandler):
