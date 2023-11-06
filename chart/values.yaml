@@ -12,7 +12,7 @@ apps:
         httpGet:
           path: /_health
           port: 80
-        initialDelaySeconds: 5
+        initialDelaySeconds: 10
         periodSeconds: 10
         timeoutSeconds: 1
         successThreshold: 1
