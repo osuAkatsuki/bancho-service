@@ -684,7 +684,7 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
     # Send request to LESS api
     try:
         response = await glob.http_client.get(
-            "http://127.0.0.1:7000/api/v1/pp",
+            url=f"{settings.SCORE_SERVICE_BASE_URL}/api/v1/pp",
             params={"b": currentMap, "m": currentMods},
             timeout=2,
         )
