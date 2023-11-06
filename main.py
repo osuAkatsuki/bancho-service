@@ -6,9 +6,7 @@ import atexit
 import logging.config
 import os
 import signal
-import sys
-import traceback
-from datetime import datetime
+from types import FrameType
 from typing import Optional
 
 import tornado.gen
@@ -33,29 +31,20 @@ from objects import glob
 from objects import streamList
 
 
-def dump_thread_stacks():
-    try:
-        os.mkdir("stacktraces")
-    except FileExistsError:
-        pass
-    filename = f"{settings.APP_PORT}-{datetime.now().isoformat()}.txt"
-    with open(f"stacktraces/{filename}", "w") as f:
-        for thread_id, stack in sys._current_frames().items():
-            print(f"Thread ID: {thread_id}", file=f)
-            traceback.print_stack(stack, file=f)
-            print("\n", file=f)
+SHUTDOWN_EVENT: asyncio.Event | None = None
 
 
-def signal_handler(signum, frame):
-    dump_thread_stacks()
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    signal.default_int_handler(signum, frame)
+def handle_shutdown_event(signum: int, frame: FrameType | None) -> None:
+    logging.info("Received shutdown signal", extra={"signum": signal.strsignal(signum)})
+    if SHUTDOWN_EVENT is not None:
+        SHUTDOWN_EVENT.set()
 
 
-signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, handle_shutdown_event)
 
 
 async def main() -> int:
+    SHUTDOWN_EVENT = asyncio.Event()
     http_server: Optional[tornado.httpserver.HTTPServer] = None
     try:
         # TODO: do we need this anymore now with stateless design?
@@ -98,8 +87,7 @@ async def main() -> int:
                 "endpoints": [e[0] for e in API_ENDPOINTS],
             },
         )
-        shutdown_event = asyncio.Event()
-        await shutdown_event.wait()
+        await SHUTDOWN_EVENT.wait()
     finally:
         logging.info("Shutting down all services")
 
