@@ -1442,8 +1442,10 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"
+    icon_osudirect = "<:osudirect:1171181168847241299>"
     icon_chimu = "<:chimu:824401502830460958>"
     icon_beatconnect = "<:beatconnect:1170497747548381184>"
+    icon_nerinyan = ":cat2:" # placeholder - they don't have a logo
 
     # osu! game mode emoji dictionary
     mode_to_emoji = lambda s: {
@@ -1468,6 +1470,9 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # Get the nominator profile URL just once
     nominator_profile_url = userUtils.getProfile(token["user_id"])
 
+    # Get the last /np'd Beatmap ID
+    last_np_map_id = token['last_np']['beatmap_id']
+
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
         colour=status_to_colour(status),
@@ -1475,14 +1480,13 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
         author_url=f"{nominator_profile_url}",
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
-        title_url=f'https://bathbot.de/osudirect/{res["beatmapset_id"]}',
-        desc=f'This {message[1]} has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Max Combo**: `{res["max_combo"]}x`',
+        title_url=f'https://osu.ppy.sh/b/{last_np_map_id}',
+        desc=f'This {message[1]} has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Combo**: `{res["max_combo"]}x`',
         fields=[
             {"name": k, "value": v}
             for k, v in {
-                "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}",
-                f"{message[1].capitalize()} Listing": f":ship:・[Official](https://osu.ppy.sh/b/{token['last_np']['beatmap_id']})\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{token['last_np']['beatmap_id']})",
-                "Download": f"{icon_chimu}・[Chimu](https://chimu.moe/d/{res['beatmapset_id']})\n{icon_beatconnect}・[Beatconnect](https://beatconnect.io/b/{res['beatmapset_id']})",
+                "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}\n\n**Leaderboard**\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{last_np_map_id})",
+                "Download": f"{icon_osudirect}・[`osu.direct`](https://api.osu.direct/d/{res['beatmapset_id']})\n{icon_chimu}・[`chimu.moe`](https://chimu.moe/d/{res['beatmapset_id']})\n{icon_nerinyan}・[`nerinyan.moe`](https://api.nerinyan.moe/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`beatconnect.io`](https://beatconnect.io/b/{res['beatmapset_id']})",
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
