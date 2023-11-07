@@ -684,7 +684,7 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
     # Send request to LESS api
     try:
         response = await glob.http_client.get(
-            "http://127.0.0.1:7000/api/v1/pp",
+            url=f"{settings.SCORE_SERVICE_BASE_URL}/api/v1/pp",
             params={"b": currentMap, "m": currentMods},
             timeout=2,
         )
@@ -1445,7 +1445,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     icon_osudirect = "<:osudirect:1171396293948612689>"
     icon_chimu = "<:chimu:824401502830460958>"
     icon_beatconnect = "<:beatconnect:1170497747548381184>"
-    icon_nerinyan = ":cat2:" # placeholder - they don't have a logo
+    icon_nerinyan = ":cat2:"  # placeholder - they don't have a logo
 
     # osu! game mode emoji dictionary
     mode_to_emoji = lambda s: {
@@ -1471,7 +1471,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     nominator_profile_url = userUtils.getProfile(token["user_id"])
 
     # Get the last /np'd Beatmap ID
-    last_np_map_id = token['last_np']['beatmap_id']
+    last_np_map_id = token["last_np"]["beatmap_id"]
 
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
@@ -1480,7 +1480,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
         author_url=f"{nominator_profile_url}",
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
-        title_url=f'https://osu.ppy.sh/b/{last_np_map_id}',
+        title_url=f"https://osu.ppy.sh/b/{last_np_map_id}",
         desc=f'This {message[1]} has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Combo**: `{res["max_combo"]}x`',
         fields=[
             {"name": k, "value": v}
