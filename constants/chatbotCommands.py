@@ -1442,7 +1442,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"
-    icon_osudirect = "<:osudirect:1171181168847241299>"
+    icon_osudirect = "<:osudirect:1171396293948612689>"
     icon_chimu = "<:chimu:824401502830460958>"
     icon_beatconnect = "<:beatconnect:1170497747548381184>"
     icon_nerinyan = ":cat2:" # placeholder - they don't have a logo
