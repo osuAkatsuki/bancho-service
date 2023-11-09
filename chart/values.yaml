@@ -17,6 +17,13 @@ apps:
         timeoutSeconds: 1
         successThreshold: 1
         failureThreshold: 3
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 500Mi
+        requests:
+          cpu: 250m
+          memory: 200Mi
       env:
         - name: APP_COMPONENT
           value: api
