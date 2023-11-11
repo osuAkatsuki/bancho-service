@@ -19,11 +19,11 @@ apps:
         failureThreshold: 3
       resources:
         limits:
-          cpu: 1000m
-          memory: 500Mi
+          cpu: 300m
+          memory: 250Mi
         requests:
-          cpu: 250m
-          memory: 200Mi
+          cpu: 150m
+          memory: 150Mi
       env:
         - name: APP_COMPONENT
           value: api
@@ -43,6 +43,13 @@ apps:
         repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
+      resources:
+        limits:
+          cpu: 300m
+          memory: 250Mi
+        requests:
+          cpu: 150m
+          memory: 150Mi
       env:
         - name: APP_COMPONENT
           value: reset-all-tokens-spam-rate
@@ -62,6 +69,13 @@ apps:
         repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
+      resources:
+        limits:
+          cpu: 300m
+          memory: 250Mi
+        requests:
+          cpu: 150m
+          memory: 150Mi
       env:
         - name: APP_COMPONENT
           value: timeout-inactive-tokens
@@ -81,6 +95,13 @@ apps:
         repository: osuakatsuki/bancho-service
         tag: latest
       port: 80
+      resources:
+        limits:
+          cpu: 300m
+          memory: 250Mi
+        requests:
+          cpu: 150m
+          memory: 150Mi
       env:
         - name: APP_COMPONENT
           value: consume-pubsub-events
