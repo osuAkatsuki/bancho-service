@@ -46,6 +46,7 @@ jobs:
             mkdir -p $HOME/.kube
             echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
             sudo chown $(id -u):$(id -g) $HOME/.kube/config
+            chmod 600 $HOME/.kube/config
 
       - name: Install helm
         uses: azure/setup-helm@v3
@@ -72,6 +73,7 @@ jobs:
         run: |
           helm diff upgrade \
           --allow-unreleased \
+          --color=true \
           --values chart/values.yaml \
           bancho-service-production \
           common-helm-charts/microservice-base/
@@ -81,7 +83,8 @@ jobs:
           helm upgrade \
             --install \
             --atomic \
-            --wait --timeout 480s \
+            --wait --timeout 10m \
+            --cleanup-on-fail \
             --values chart/values.yaml \
             bancho-service-production \
             common-helm-charts/microservice-base/
