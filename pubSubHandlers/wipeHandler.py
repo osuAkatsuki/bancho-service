@@ -21,8 +21,8 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if any(i is None for i in (userID, rx, gm)):
             return
 
-        # TODO: update flame's cache and send gamemode on wipe.
         await userUtils.removeFirstPlaces(userID, rx, gm)
+        await userUtils.remove_from_specified_leaderboard(userID, gm, rx)
 
         logging.info(
             "Successfully handled wipe event for user",
