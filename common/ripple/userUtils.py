@@ -1639,6 +1639,32 @@ async def removeFromLeaderboard(userID: int) -> None:
                 await glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(userID))
 
 
+async def remove_from_specified_leaderboard(
+    user_id: int,
+    mode: int,
+    relax: int,
+) -> None:
+    country: str = (await getCountry(user_id)).lower()
+
+    board = {
+        0: "leaderboard",
+        1: "relaxboard",
+        2: "autoboard",
+    }[relax]
+    mode_str = {
+        0: "std",
+        1: "taiko",
+        2: "ctb",
+        3: "mania",
+    }[mode]
+
+    redis_board = f"ripple:{board}:{mode_str}"
+
+    await glob.redis.zrem(redis_board, str(user_id))
+    if country and country != "xx":
+        await glob.redis.zrem(f"{redis_board}:{country}", str(user_id))
+
+
 async def getOverwriteWaitRemainder(userID: int) -> int:
     """
     There is a forced 60s wait between overwrites (to save server from spam to lag).
