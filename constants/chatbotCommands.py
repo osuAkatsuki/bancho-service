@@ -1102,7 +1102,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
             raise exceptions.userNotFoundException()
 
         # Make sure the target is not chatbot
-        if targetID != CHATBOT_USER_ID:
+        if targetID == CHATBOT_USER_ID:
             raise exceptions.invalidUserException()
 
         # Make sure that the user has specified additional info if report reason is 'Other'
@@ -1140,7 +1140,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
             discord_channel="ac_general",
         )
     except exceptions.invalidUserException:
-        msg = "This user is immune to reports. They are either an Akatsuki developer, or the bot."
+        msg = "Aika would never upset you like that - maybe you had the wrong person?"
     except exceptions.invalidArgumentsException:
         msg = "Invalid report command syntax. To report an user, click on it and select 'Report user'."
     except exceptions.userNotFoundException:
