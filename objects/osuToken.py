@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import orjson
 import logging
 from time import localtime
 from time import strftime
@@ -188,13 +188,13 @@ async def create_token(
     }
 
     await glob.redis.sadd("bancho:tokens", token_id)
-    await glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
+    await glob.redis.hset("bancho:tokens:json", token_id, orjson.dumps(token))
     await glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
     await glob.redis.set(
         f"bancho:tokens:names:{safeUsername(token['username'])}",
         token_id,
     )
-    await glob.redis.set(make_key(token_id), json.dumps(token))
+    await glob.redis.set(make_key(token_id), orjson.dumps(token))
     return token
 
 
@@ -211,12 +211,12 @@ async def get_token(token_id: str) -> Optional[Token]:
     token = await glob.redis.get(make_key(token_id))
     if token is None:
         return None
-    return json.loads(token)
+    return orjson.loads(token)
 
 
 async def get_tokens() -> list[Token]:
     return [
-        json.loads(token)
+        orjson.loads(token)
         for token in (await glob.redis.hgetall("bancho:tokens:json")).values()
     ]
 
@@ -366,8 +366,8 @@ async def update_token(
         token["pp"] = pp
     if amplitude_device_id is not None:
         token["amplitude_device_id"] = amplitude_device_id
-    await glob.redis.set(make_key(token_id), json.dumps(token))
-    await glob.redis.hset("bancho:tokens:json", token_id, json.dumps(token))
+    await glob.redis.set(make_key(token_id), orjson.dumps(token))
+    await glob.redis.hset("bancho:tokens:json", token_id, orjson.dumps(token))
     return token
 
 
@@ -499,7 +499,9 @@ async def enqueue(token_id: str, data: bytes) -> None:
     if len(data) >= 10 * 10**6:
         logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
-    await glob.redis.lpush(f"{make_key(token_id)}:packet_queue", json.dumps(list(data)))
+    await glob.redis.lpush(
+        f"{make_key(token_id)}:packet_queue", orjson.dumps(list(data))
+    )
 
 
 async def dequeue(token_id: str) -> bytes:
@@ -513,7 +515,7 @@ async def dequeue(token_id: str) -> bytes:
     # clear the packets we read
     await glob.redis.delete(f"{make_key(token_id)}:packet_queue")
 
-    return b"".join([bytes(json.loads(raw_packet)) for raw_packet in raw_packets])
+    return b"".join([bytes(orjson.loads(raw_packet)) for raw_packet in raw_packets])
 
 
 async def joinChannel(token_id: str, channel_name: str) -> None:

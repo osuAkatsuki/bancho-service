@@ -102,7 +102,7 @@ async def create_match(
         "is_in_progress": is_in_progress,
         "creation_time": creation_time,
     }
-    await glob.redis.set(make_key(match_id), json.dumps(match))
+    await glob.redis.set(make_key(match_id), orjson.dumps(match))
     return match
 
 
@@ -116,7 +116,7 @@ async def get_match(match_id: int) -> Optional[Match]:
     if raw_match is None:
         return None
 
-    return json.loads(raw_match)
+    return orjson.loads(raw_match)
 
 
 async def update_match(
@@ -178,7 +178,7 @@ async def update_match(
     if creation_time is not None:
         match["creation_time"] = creation_time
 
-    await glob.redis.set(make_key(match_id), json.dumps(match))
+    await glob.redis.set(make_key(match_id), orjson.dumps(match))
     return match
 
 
@@ -648,7 +648,7 @@ async def allPlayersCompleted(match_id: int) -> None:
     # Send the info to the api
     await glob.redis.publish(
         "api:mp_complete_match",
-        json.dumps(infoToSend),
+        orjson.dumps(infoToSend),
     )  # cant use orjson
 
     # Reset inProgress
