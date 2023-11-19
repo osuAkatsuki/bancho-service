@@ -501,7 +501,8 @@ async def enqueue(token_id: str, data: bytes) -> None:
         logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
     await glob.redis.lpush(
-        f"{make_key(token_id)}:packet_queue", orjson.dumps(list(data)),
+        f"{make_key(token_id)}:packet_queue",
+        orjson.dumps(list(data)),
     )
 
 
