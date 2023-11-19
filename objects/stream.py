@@ -68,9 +68,10 @@ async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     :return:
     """
     current_tokens = await getClients(stream_name)
+    token_ids = await osuToken.get_token_ids()
 
     for i in current_tokens:
-        if i in await osuToken.get_token_ids():
+        if i in token_ids:
             if i not in but:
                 await osuToken.enqueue(i, data)
         else:
