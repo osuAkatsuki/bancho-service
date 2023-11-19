@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import orjson
 from typing import Literal
 from typing import Optional
 from typing import TypedDict
 from typing import Union
+
+import orjson
 
 from constants import matchTeams
 from constants import slotStatuses

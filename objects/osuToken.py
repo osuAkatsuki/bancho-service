@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import orjson
 import logging
 from time import localtime
 from time import strftime
@@ -8,6 +7,8 @@ from time import time
 from typing import Optional
 from typing import TypedDict
 from uuid import uuid4
+
+import orjson
 
 from common import channel_utils
 from common.constants import actions
@@ -500,7 +501,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
         logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
     await glob.redis.lpush(
-        f"{make_key(token_id)}:packet_queue", orjson.dumps(list(data))
+        f"{make_key(token_id)}:packet_queue", orjson.dumps(list(data)),
     )
 
 

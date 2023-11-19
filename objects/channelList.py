@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import orjson
 import logging
 from typing import Optional
 from typing import TypedDict
+
+import orjson
 
 from constants import CHATBOT_USER_ID
 from constants import exceptions
