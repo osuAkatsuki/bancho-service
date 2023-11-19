@@ -189,10 +189,10 @@ class handler(AsyncRequestHandler):
                 pos = 0
 
                 # Lock token to prevent multiple requests from being processed at once
-                token_processing_lock = redisLock(
-                    f"{osuToken.make_key(requestTokenString)}:processing_lock",
-                )
-                await token_processing_lock.acquire()
+                # token_processing_lock = redisLock(
+                #     f"{osuToken.make_key(requestTokenString)}:processing_lock",
+                # )
+                # await token_processing_lock.acquire()
 
                 # Make sure the token exists
                 userToken = await osuToken.get_token(requestTokenString)
@@ -249,8 +249,8 @@ class handler(AsyncRequestHandler):
                             await tokenList.deleteToken(userToken["token_id"])
 
                 # Release processing lock
-                if token_processing_lock is not None:
-                    await token_processing_lock.release()
+                # if token_processing_lock is not None:
+                #     await token_processing_lock.release()
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)
