@@ -14,6 +14,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
     await streamList.broadcast(
         streamName,
         serverPackets.spectatorFrames(rawPacketData[7:]),
+        but=[userToken["token_id"]],
     )
 
     logging.debug(
