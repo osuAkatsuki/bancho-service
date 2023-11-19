@@ -681,12 +681,12 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
     currentMods = current_info["mods"]
     currentAcc = current_info["accuracy"]
 
-    # Send request to LESS api
+    # Send request to score-service to calculate pp
     try:
         response = await glob.http_client.get(
             url=f"{settings.SCORE_SERVICE_BASE_URL}/api/v1/pp",
             params={"b": currentMap, "m": currentMods},
-            timeout=2,
+            timeout=5,
         )
     except:
         logging.exception(
