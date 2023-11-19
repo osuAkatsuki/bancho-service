@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import orjson
 import json
 import logging
 from copy import deepcopy
 from typing import Optional
 from typing import TypedDict
+
+import orjson
 
 from constants import CHATBOT_USER_ID
 from constants import dataTypes
