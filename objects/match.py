@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import orjson
 import json
 import logging
 from copy import deepcopy
@@ -648,8 +649,10 @@ async def allPlayersCompleted(match_id: int) -> None:
     # Send the info to the api
     await glob.redis.publish(
         "api:mp_complete_match",
-        orjson.dumps(infoToSend),
-    )  # cant use orjson
+        # XXX: can't use orjson here because it only supports string
+        # dict keys and we are using an int with the userid above.
+        json.dumps(infoToSend),
+    )
 
     # Reset inProgress
     multiplayer_match = await update_match(match_id, is_in_progress=False)
