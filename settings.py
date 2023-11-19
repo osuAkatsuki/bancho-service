@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 
 from dotenv import load_dotenv
 
@@ -55,3 +54,6 @@ WEBHOOK_AC_GENERAL = os.environ["WEBHOOK_AC_GENERAL"]
 WEBHOOK_AC_CONFIDENTIAL = os.environ["WEBHOOK_AC_CONFIDENTIAL"]
 
 AMPLITUDE_API_KEY = os.environ["AMPLITUDE_API_KEY"]
+
+_master_process = os.getenv("MASTER_PROCESS")
+MASTER_PROCESS = read_bool(_master_process) if _master_process else True

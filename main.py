@@ -63,17 +63,19 @@ async def main() -> int:
 
         await lifecycle.startup()
 
-        await channelList.loadChannels()
+        if settings.MASTER_PROCESS:
+            await channelList.loadChannels()
 
-        # Initialize stremas
-        await streamList.add("main")
-        await streamList.add("lobby")
+            # Initialize stremas
+            await streamList.add("main")
+            await streamList.add("lobby")
 
-        logging.info(
-            "Connecting the in-game chat bot",
-            extra={"bot_name": glob.BOT_NAME},
-        )
-        await chatbot.connect()
+            logging.info(
+                "Connecting the in-game chat bot",
+                extra={"bot_name": glob.BOT_NAME},
+            )
+
+            await chatbot.connect()
 
         # Start the HTTP server
         API_ENDPOINTS = [
@@ -114,9 +116,10 @@ async def main() -> int:
             )
             logging.info("Closed HTTP connections")
 
-        logging.info("Disconnecting from IRC")
-        await chatbot.disconnect()
-        logging.info("Disconnected from IRC")
+        if settings.MASTER_PROCESS:
+            logging.info("Disconnecting from IRC")
+            await chatbot.disconnect()
+            logging.info("Disconnected from IRC")
 
         await lifecycle.shutdown()
 
