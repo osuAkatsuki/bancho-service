@@ -17,7 +17,7 @@ from common import generalUtils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-from common.log import rap_logs
+from common.log import audit_logs
 from common.ripple import scoreUtils
 from common.ripple import userUtils
 from common.web import discord
@@ -126,11 +126,11 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
 
     userID = await userUtils.getID(fro)
     await streamList.broadcast("main", serverPackets.notification(msg))
-    await rap_logs.send_rap_log(
+    await audit_logs.send_log(
         userID,
         f"has sent an alert to all users: '{msg}'",
     )
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log_as_discord_webhook(
         message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has sent an alert to all users:```\n{msg}```",
         discord_channel="ac_general",
     )
@@ -177,11 +177,11 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
         await channelList.updateChannel(channel_name, moderated=enable)
         userID = await userUtils.getID(fro)
-        await rap_logs.send_rap_log(
+        await audit_logs.send_log(
             userID,
             f"has toggled moderated mode in {channel_name}.",
         )
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log_as_discord_webhook(
             message=f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has toggled moderated mode in {channel_name}.",
             discord_channel="ac_general",
         )
@@ -220,8 +220,8 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
 
     for token in tokens:
         await osuToken.kick(token["token_id"])
-        await rap_logs.send_rap_log(userID, f"has kicked {target}")
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log(userID, f"has kicked {target}")
+        await audit_logs.send_log_as_discord_webhook(
             message="\n".join(
                 [
                     f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has kicked [{target}](https://akatsuki.gg/u/{targetID}) from the server.",
@@ -290,8 +290,8 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
 
     # Log message
     msg = f"{target} has been silenced for: {reason}."
-    await rap_logs.send_rap_log(userID, f"has silenced {target}")
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log(userID, f"has silenced {target}")
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) silenced [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -335,8 +335,8 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     else:
         # Target offline, remove silence in db
         await userUtils.silence(targetID, 0, "", userID)
-        await rap_logs.send_rap_log(userID, f"has unsilenced {target}")
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log(userID, f"has unsilenced {target}")
+        await audit_logs.send_log_as_discord_webhook(
             message="\n".join(
                 [
                     f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unsilenced [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -383,11 +383,11 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     if targetToken := await osuToken.get_token_by_user_id(targetID):
         await osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
-    await rap_logs.send_rap_log(
+    await audit_logs.send_log(
         userID,
         f"has banned {target} ({targetID}) for {reason}",
     )
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) banned [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -423,8 +423,8 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
     # Set allowed to 1
     await userUtils.unban(targetID)
 
-    await rap_logs.send_rap_log(userID, f"has unbanned {target}")
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log(userID, f"has unbanned {target}")
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unbanned [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -467,11 +467,11 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     if targetToken := await osuToken.get_token_by_user_id(targetID):
         await osuToken.setRestricted(targetToken["token_id"])
 
-    await rap_logs.send_rap_log(
+    await audit_logs.send_log(
         userID,
         f"has restricted {target} ({targetID}) for: {reason}",
     )
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has restricted [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -509,8 +509,8 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
 
     await userUtils.unrestrict(targetID)
 
-    await rap_logs.send_rap_log(userID, f"has unrestricted {target}")
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log(userID, f"has unrestricted {target}")
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unrestricted [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -1129,7 +1129,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         msg = f"You've reported {target} for {reason}{f'({additionalInfo})' if additionalInfo else ''}. An Administrator will check your report as soon as possible. Every !report message you may see in chat wasn't sent to anyone, so nobody in chat, but admins, know about your report. Thank you for reporting!"
 
         # Log report to discord
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log_as_discord_webhook(
             message="\n".join(
                 [
                     f"[{fro}](https://akatsuki.gg/u/{userID}) reported [{target}](https://akatsuki.gg/u/{targetID}) ({targetID}) for {reason}.",
@@ -1226,8 +1226,8 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 
 #    await userUtils.freeze(targetID, await userUtils.getID(fro))
 #    userID = await userUtils.getID(fro)
-#    await rap_logs.send_rap_log(userID, f"has froze {target}")
-#    await rap_logs.send_rap_log_as_discord_webhook(
+#    await audit_logs.send_log(userID, f"has froze {target}")
+#    await audit_logs.send_log_as_discord_webhook(
 #        message="\n".join(
 #            [
 #                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) froze [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -1264,8 +1264,8 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
 
     userID = await userUtils.getID(fro)
     await userUtils.unfreeze(targetID, userID)
-    await rap_logs.send_rap_log(userID, f"unfroze {target}")
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log(userID, f"unfroze {target}")
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unfroze [{target}](https://akatsuki.gg/u/{targetID}).",
@@ -1359,7 +1359,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         userID,
         f"Username changed (self): '{fro}' -> '{newUsername}'.",
     )
-    await rap_logs.send_rap_log(
+    await audit_logs.send_log(
         userID,
         f"changed their name from '{fro}' to '{newUsername}'.",
     )
@@ -1576,11 +1576,11 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
     await userUtils.editWhitelist(targetID, bit)
 
-    await rap_logs.send_rap_log(
+    await audit_logs.send_log(
         userID,
         f"has set {target}'s Whitelist Status to {bit} for {reason}",
     )
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
             [
                 f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) has set [{target}](https://akatsuki.gg/u/{targetID})'s **Whitelist Status** to **{bit}**.",

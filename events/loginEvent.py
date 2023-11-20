@@ -14,7 +14,7 @@ from amplitude.event import Identify
 import settings
 from common import generalUtils
 from common.constants import privileges
-from common.log import rap_logs
+from common.log import audit_logs
 from common.ripple import userUtils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import CHATBOT_USER_ID
@@ -249,11 +249,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                         ),
                     ),
                 )
-                await rap_logs.send_rap_log(
+                await audit_logs.send_log(
                     userID,
                     "has been automatically restricted due to a pending freeze.",
                 )
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
                     discord_channel="ac_general",
                 )
@@ -292,8 +292,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     [userID],
                 )
 
-                await rap_logs.send_rap_log(userID, f"{rolename} subscription expired.")
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log(userID, f"{rolename} subscription expired.")
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
                     discord_channel="ac_confidential",
                 )
@@ -590,7 +590,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not restricted and (
             v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
         ):
-            await rap_logs.send_rap_log_as_discord_webhook(
+            await audit_logs.send_log_as_discord_webhook(
                 message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
                 discord_channel="ac_general",
             )
@@ -607,7 +607,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 },
             )
 
-            await rap_logs.send_rap_log_as_discord_webhook(
+            await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
                 discord_channel="ac_confidential",
             )

@@ -21,7 +21,7 @@ DISCORD_CHANNELS = {
 DISCORD_WEBHOOK_EMBED_COLOR = 0x7352C4
 
 
-async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) -> None:
+async def send_log_as_discord_webhook(message: str, discord_channel: str) -> None:
     """Log a message to the provided discord channel, if configured."""
 
     if discord_channel is not None:
@@ -62,7 +62,7 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
                     raise
 
 
-async def send_rap_log(
+async def send_log(
     user_id: int,
     message: str,
     discord_channel: Optional[str] = None,
@@ -83,7 +83,7 @@ async def send_rap_log(
     )
     if discord_channel is not None:
         asyncio.create_task(
-            send_rap_log_as_discord_webhook(
+            send_log_as_discord_webhook(
                 message=f"{userUtils.getUsername(user_id)} {message}",
                 discord_channel=discord_channel,
             ),

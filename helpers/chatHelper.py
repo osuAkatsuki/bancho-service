@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import settings
 from common.constants import mods
 from common.constants import privileges
-from common.log import rap_logs
+from common.log import audit_logs
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
 from constants import exceptions
@@ -600,7 +600,7 @@ async def sendMessage(
 
         if isChannel:
             if webhook_channel:
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"{await osuToken.getMessagesBufferString(token_id)}",
                     discord_channel=webhook_channel,
                 )
@@ -615,7 +615,7 @@ async def sendMessage(
                 )
         else:
             if webhook_channel:
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"{fro} @ {to}: {message}",
                     discord_channel=webhook_channel,
                 )
