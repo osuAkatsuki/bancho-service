@@ -8,6 +8,16 @@ def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
 
 
+async def exists(stream_name: str, value: str) -> bool:
+    """
+    Check if a value exists in this stream
+
+    :param value: value to check
+    :return: True if exists, False otherwise
+    """
+    return await glob.redis.sismember(make_key(stream_name), value)
+
+
 async def getClients(stream_name: str) -> set[str]:
     """
     Get all clients in this stream

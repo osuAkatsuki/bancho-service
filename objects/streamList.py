@@ -27,8 +27,7 @@ async def add(name: str) -> None:
     :return:
     """
 
-    current_streams = await getStreams()
-    if name not in current_streams:
+    if not stream.exists(make_key(), name):
         await glob.redis.sadd(make_key(), name)
 
 
@@ -39,9 +38,7 @@ async def remove(name: str) -> None:
     :param name: stream name
     :return:
     """
-    current_streams = await getStreams()
-
-    if name in current_streams:
+    if not stream.exists(make_key(), name):
         current_clients = await stream.getClients(name)
         for i in current_clients:
             if i in await osuToken.get_token_ids():
@@ -64,8 +61,7 @@ async def join(name: str, token_id: str) -> None:
     :return:
     """
 
-    streams = await getStreams()
-    if name in streams:
+    if stream.exists(make_key(), name):
         await stream.addClient(name, token_id)
 
 
@@ -82,8 +78,7 @@ async def leave(
     :return:
     """
 
-    streams = await getStreams()
-    if name in streams:
+    if stream.exists(make_key(), name):
         await stream.removeClient(name, token_id)
 
 
@@ -97,8 +92,7 @@ async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     :return:
     """
 
-    streams = await getStreams()
-    if name in streams:
+    if stream.exists(make_key(), name):
         await stream.broadcast(name, data, but)
 
 
@@ -112,8 +106,7 @@ async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
     :return:
     """
 
-    streams = await getStreams()
-    if name in streams:
+    if stream.exists(make_key(), name):
         await stream.broadcast_limited(name, data, users)
 
 
@@ -127,6 +120,5 @@ async def dispose(name: str, *args, **kwargs) -> None:
     :return:
     """
 
-    streams = await getStreams()
-    if name in streams:
+    if stream.exists(make_key(), name):
         await stream.dispose(name, *args, **kwargs)
