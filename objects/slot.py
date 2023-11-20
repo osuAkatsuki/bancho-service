@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import json
 from typing import Literal
 from typing import Optional
 from typing import TypedDict
 from typing import Union
+
+import orjson
 
 from constants import matchTeams
 from constants import slotStatuses
@@ -43,7 +44,7 @@ async def create_slot(match_id: int, slot_id: int) -> Slot:
         "failed": False,
         "passed": True,
     }
-    await glob.redis.set(make_key(match_id, slot_id), json.dumps(slot))
+    await glob.redis.set(make_key(match_id, slot_id), orjson.dumps(slot))
     return slot
 
 
@@ -51,7 +52,7 @@ async def get_slot(match_id: int, slot_id: int) -> Optional[Slot]:
     slot = await glob.redis.get(make_key(match_id, slot_id))
     if slot is None:
         return None
-    return json.loads(slot)
+    return orjson.loads(slot)
 
 
 async def get_slots(match_id: int) -> list[Slot]:
@@ -60,7 +61,7 @@ async def get_slots(match_id: int) -> list[Slot]:
     slots = []
     for raw_slot in raw_slots:
         assert raw_slot is not None
-        slots.append(json.loads(raw_slot))
+        slots.append(orjson.loads(raw_slot))
     return slots
 
 
@@ -106,7 +107,7 @@ async def update_slot(
     if passed is not None:
         slot["passed"] = passed
 
-    await glob.redis.set(make_key(match_id, slot_id), json.dumps(slot))
+    await glob.redis.set(make_key(match_id, slot_id), orjson.dumps(slot))
     return slot
 
 

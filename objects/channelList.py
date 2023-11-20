@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import json
 import logging
 from typing import Optional
 from typing import TypedDict
+
+import orjson
 
 from constants import CHATBOT_USER_ID
 from constants import exceptions
@@ -73,7 +74,7 @@ async def getChannel(channel_name: str) -> Optional[Channel]:
     raw_channel = await glob.redis.get(f"bancho:channels:{channel_name}")
     if raw_channel is None:
         return None
-    return json.loads(raw_channel)
+    return orjson.loads(raw_channel)
 
 
 async def getChannels() -> list[Channel]:
@@ -118,7 +119,7 @@ async def addChannel(
     await glob.redis.sadd("bancho:channels", name)
     await glob.redis.set(
         make_key(name),
-        json.dumps(
+        orjson.dumps(
             {
                 "name": name,
                 "description": description,
@@ -204,7 +205,7 @@ async def updateChannel(
     if moderated is not None:
         channel["moderated"] = moderated
 
-    await glob.redis.set(make_key(name), json.dumps(channel))
+    await glob.redis.set(make_key(name), orjson.dumps(channel))
     logging.info("Updated channel in redis", extra={"channel_name": name})
 
 

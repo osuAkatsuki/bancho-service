@@ -219,6 +219,9 @@ class handler(AsyncRequestHandler):
                                 await bancho_packets[packetID](userToken, packetData)
                         # else:
                         # 	#log.warning(f"Unhandled: {packetID}")
+                    else:
+                        # This is a ping packet (4) - update ping time for timeout
+                        await osuToken.updatePingTime(userToken["token_id"])
 
                     # Update pos so we can read the next stacked packet
                     # +7 because we add packet ID bytes, unused byte and data length bytes
@@ -241,9 +244,6 @@ class handler(AsyncRequestHandler):
                     # we have the latest state in-memory
                     userToken = await osuToken.get_token(requestTokenString)
                     if userToken is not None:
-                        # Update ping time for timeout
-                        await osuToken.updatePingTime(userToken["token_id"])
-
                         # Delete token if kicked
                         if userToken["kicked"]:
                             await tokenList.deleteToken(userToken["token_id"])

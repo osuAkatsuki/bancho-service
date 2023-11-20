@@ -42,7 +42,7 @@ class generalPubSubHandler(ABC):
         :return: parsed data or None if it's invalid
         """
         if self.type == "json":
-            data = json.loads(data.decode("utf-8"))
+            data = orjson.loads(data.decode("utf-8"))
             if shape(data) != shape(self.structure) and self.strict:
                 raise wrongStructureError()
         elif self.type == "int":
