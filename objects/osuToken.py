@@ -497,7 +497,8 @@ async def dequeue(token_id: str) -> bytes:
         return b""
 
     raw_packets = await glob.redis.lpop(
-        f"{make_key(token_id)}:packet_queue", 2**63 - 1,
+        f"{make_key(token_id)}:packet_queue",
+        2**63 - 1,
     )
     if not raw_packets:
         return b""
