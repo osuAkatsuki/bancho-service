@@ -8,7 +8,7 @@ def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
 
 
-async def exists(stream_name: str, value: str) -> bool:
+async def has_member(stream_name: str, value: str) -> bool:
     """
     Check if a value exists in this stream
 
