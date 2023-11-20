@@ -499,6 +499,9 @@ async def dequeue(token_id: str) -> bytes:
     raw_packets = await glob.redis.lpop(
         f"{make_key(token_id)}:packet_queue", 2**63 - 1,
     )
+    if not raw_packets:
+        return b""
+
     return b"".join([bytes(orjson.loads(raw_packet)) for raw_packet in raw_packets])
 
 
