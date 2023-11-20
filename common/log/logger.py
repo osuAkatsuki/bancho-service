@@ -23,6 +23,14 @@ _SysExcInfoType: TypeAlias = Union[
 ExcInfoType: TypeAlias = Optional[Union[bool, _SysExcInfoType, BaseException]]
 
 
+def add_context(**kwargs: Any) -> None:
+    log_context = LOG_CONTEXT.get()
+    if log_context is None:
+        log_context = {}
+        LOG_CONTEXT.set(log_context)
+    log_context.update(kwargs)
+
+
 def _log(
     levelname: str,
     msg: object,
