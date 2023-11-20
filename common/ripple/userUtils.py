@@ -1,7 +1,6 @@
 # TODO: seriously nuke this
 from __future__ import annotations
 
-import logging
 import time
 from time import localtime
 from time import strftime
@@ -14,7 +13,8 @@ import bcrypt
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
-from common.log import rap_logs
+from common.log import audit_logs
+from common.log import logger
 from constants import CHATBOT_USER_ID
 from objects import glob
 
@@ -102,7 +102,7 @@ async def getUserStats(
         [userID],
     )
     if stats is None:
-        logging.warning(
+        logger.warning(
             "Stats row missing for user",
             extra={
                 "user_id": userID,
@@ -936,8 +936,8 @@ async def freeze(userID: int, author: int = CHATBOT_USER_ID) -> None:
     target_name = await getUsername(userID)
 
     await appendNotes(userID, f"{author_name} ({author}) froze this user.")
-    await rap_logs.send_rap_log(author, f"froze {target_name} ({userID}).")
-    await rap_logs.send_rap_log_as_discord_webhook(
+    await audit_logs.send_log(author, f"froze {target_name} ({userID}).")
+    await audit_logs.send_log_as_discord_webhook(
         message=f"{author_name} has frozen [{target_name}](https://akatsuki.gg/u/{userID}).",
         discord_channel="ac_general",
     )
@@ -972,8 +972,8 @@ async def unfreeze(userID: int, author: int = CHATBOT_USER_ID, _log=True) -> Non
         target_name = await getUsername(userID)
 
         await appendNotes(userID, f"{author_name} ({author}) unfroze this user.")
-        await rap_logs.send_rap_log(author, f"unfroze {target_name} ({userID}).")
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log(author, f"unfroze {target_name} ({userID}).")
+        await audit_logs.send_log_as_discord_webhook(
             message=f"{author_name} has unfrozen [{target_name}](https://akatsuki.gg/u/{userID}).",
             discord_channel="ac_general",
         )
@@ -1018,7 +1018,7 @@ async def silence(
         [silence_time, silenceReason, userID],
     )
 
-    await rap_logs.send_rap_log(
+    await audit_logs.send_log(
         author,
         f'has silenced {await getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
         if seconds
@@ -1306,7 +1306,7 @@ async def logHardware(userID: int, hashes: List[str], activation: bool = False) 
     # Make sure the strings are not empty
     for i in hashes[2:5]:
         if not i:
-            await rap_logs.send_rap_log_as_discord_webhook(
+            await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid hash set ({hashes}) for user [{username}](https://akatsuki.gg/u/{userID}) in HWID check",
                 discord_channel="ac_confidential",
             )
@@ -1325,7 +1325,7 @@ async def logHardware(userID: int, hashes: List[str], activation: bool = False) 
         # Get the list of banned or restricted users that have logged in from this or similar HWID hash set
         if hashes[2] == "b4ec3c4334a0249dae95c284ec5983df":
             # Running under wine, check by unique id
-            logging.debug("Logging Linux/Mac hardware")
+            logger.debug("Logging Linux/Mac hardware")
             banned = await glob.db.fetchAll(
                 """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
                 LEFT JOIN users ON users.id = hw_user.userid
@@ -1339,7 +1339,7 @@ async def logHardware(userID: int, hashes: List[str], activation: bool = False) 
             )
         else:
             # Running under windows, do all checks
-            logging.debug("Logging Windows hardware")
+            logger.debug("Logging Windows hardware")
             banned = await glob.db.fetchAll(
                 """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
                 LEFT JOIN users ON users.id = hw_user.userid
@@ -1379,7 +1379,7 @@ async def logHardware(userID: int, hashes: List[str], activation: bool = False) 
                     userID,
                     f'Logged in from HWID set used more than 10% from user {i["username"],} ({i["userid"]}), who is banned/restricted.',
                 )
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f'[{username}](https://akatsuki.gg/u/{userID}) has been restricted because he has logged in from HWID set used more than 10% from banned/restricted user [{i["username"]}](https://akatsuki.gg/u/{i["userid"]}), **possible multiaccount**.',
                     discord_channel="ac_general",
                 )
@@ -1447,7 +1447,7 @@ async def verifyUser(userID: int, hashes: list[str]) -> bool:
     # Check for valid hash set
     for i in hashes[2:5]:
         if i == "":
-            await rap_logs.send_rap_log_as_discord_webhook(
+            await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid hash set ({' | '.join(hashes)}) for user [{username}](https://akatsuki.gg/u/{userID}) while verifying the account",
                 discord_channel="ac_confidential",
             )
@@ -1459,18 +1459,18 @@ async def verifyUser(userID: int, hashes: list[str]) -> bool:
         or hashes[4] == "ffae06fb022871fe9beb58b005c5e21d"
     ):
         # Running under wine, check only by uniqueid
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log_as_discord_webhook(
             message=f"[{username}](https://akatsuki.gg/u/{userID}) running under wine:\n**Full data:** {hashes}\n**Usual wine mac address hash:** b4ec3c4334a0249dae95c284ec5983df\n**Usual wine disk id:** ffae06fb022871fe9beb58b005c5e21d",
             discord_channel="ac_confidential",
         )
-        logging.debug("Veryfing with Linux/Mac hardware")
+        logger.debug("Veryfing with Linux/Mac hardware")
         match = await glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE unique_id = %(uid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"uid": hashes[3], "userid": userID},
         )
     else:
         # Running under windows, full check
-        logging.debug("Veryfing with Windows hardware")
+        logger.debug("Veryfing with Windows hardware")
         match = await glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE mac = %(mac)s AND unique_id = %(uid)s AND disk_id = %(diskid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"mac": hashes[2], "uid": hashes[3], "diskid": hashes[4], "userid": userID},
@@ -1498,7 +1498,7 @@ async def verifyUser(userID: int, hashes: list[str]) -> bool:
         await restrict(originalUserID)
 
         # Discord message
-        await rap_logs.send_rap_log_as_discord_webhook(
+        await audit_logs.send_log_as_discord_webhook(
             message=f"[{originalUsername}](https://akatsuki.gg/u/{originalUserID}) has been restricted because they have created the multiaccount [{username}](https://akatsuki.gg/u/{userID}). The multiaccount has been banned.",
             discord_channel="ac_general",
         )

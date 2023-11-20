@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 import settings
 from common.constants import mods
 from common.constants import privileges
-from common.log import rap_logs
+from common.log import audit_logs
+from common.log import logger
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
 from constants import exceptions
@@ -77,7 +77,7 @@ async def joinChannel(
             glob.ircServer.banchoJoinChannel(token["username"], channel_name)
 
         # Console output
-        # logging.info(
+        # logger.info(
         #     "User joined public chat channel",
         #     extra={
         #         "username": token["username"],
@@ -90,7 +90,7 @@ async def joinChannel(
         return 0
     except exceptions.channelNoPermissionsException:
         assert token is not None
-        logging.warning(
+        logger.warning(
             "User attempted to join a channel they have no read permissions",
             extra={
                 "username": token["username"],
@@ -101,7 +101,7 @@ async def joinChannel(
         return 403
     except exceptions.channelUnknownException:
         assert token is not None
-        logging.warning(
+        logger.warning(
             "User attempted to join an unknown channel",
             extra={
                 "username": token["username"],
@@ -112,7 +112,7 @@ async def joinChannel(
         return 403
     except exceptions.userAlreadyInChannelException:
         assert token is not None
-        logging.warning(
+        logger.warning(
             "User attempted to join a channel they are already in",
             extra={
                 "username": token["username"],
@@ -122,7 +122,7 @@ async def joinChannel(
         )
         return 403
     except exceptions.userNotFoundException:
-        logging.warning("User not connected to IRC/Bancho.")
+        logger.warning("User not connected to IRC/Bancho.")
         return 403  # idk
 
 
@@ -213,7 +213,7 @@ async def partChannel(
             glob.ircServer.banchoPartChannel(token["username"], channel_name)
 
         # Console output
-        # logging.info(
+        # logger.info(
         #     "User left public chat channel",
         #     extra={
         #         "username": token["username"],
@@ -226,7 +226,7 @@ async def partChannel(
         return 0
     except exceptions.channelUnknownException:
         assert token is not None
-        logging.warning(
+        logger.warning(
             "User attempted to leave a channel that does not exist",
             extra={
                 "username": token["username"],
@@ -237,7 +237,7 @@ async def partChannel(
         return 403
     except exceptions.userNotInChannelException:
         assert token is not None
-        logging.warning(
+        logger.warning(
             "User attempted to leave a channel they are not in",
             extra={
                 "username": token["username"],
@@ -247,7 +247,7 @@ async def partChannel(
         )
         return 442
     except exceptions.userNotFoundException:
-        logging.warning("User not connected to IRC/Bancho.")
+        logger.warning("User not connected to IRC/Bancho.")
         return 442  # idk
 
 
@@ -392,7 +392,7 @@ async def sendMessage(
                     message,
                 )
                 if chatbot_response:
-                    logging.info(
+                    logger.info(
                         "Chatbot interaction",
                         extra={
                             "username": userToken["username"],
@@ -411,7 +411,7 @@ async def sendMessage(
                 match = chatbot.NOW_PLAYING_REGEX.match(npmsg)
 
                 if match is None:  # should always match?
-                    logging.error(
+                    logger.error(
                         "Error parsing /np message",
                         extra={"chat_message": npmsg},
                     )
@@ -444,7 +444,7 @@ async def sendMessage(
             )
 
             if chatbot_response:
-                logging.info(
+                logger.info(
                     "Chatbot interaction",
                     extra={
                         "username": userToken["username"],
@@ -600,12 +600,12 @@ async def sendMessage(
 
         if isChannel:
             if webhook_channel:
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"{await osuToken.getMessagesBufferString(token_id)}",
                     discord_channel=webhook_channel,
                 )
             else:
-                logging.info(
+                logger.info(
                     "User sent a chat message",
                     extra={
                         "sender": userToken["username"],
@@ -615,7 +615,7 @@ async def sendMessage(
                 )
         else:
             if webhook_channel:
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"{fro} @ {to}: {message}",
                     discord_channel=webhook_channel,
                 )
@@ -627,7 +627,7 @@ async def sendMessage(
             token_id,
             serverPackets.silenceEndTime(silence_time_left),
         )
-        logging.warning(
+        logger.warning(
             "User tried to send a message during silence",
             extra={
                 "username": userToken["username"],
@@ -636,7 +636,7 @@ async def sendMessage(
         )
         return 404
     except exceptions.userNotInChannelException:
-        logging.warning(
+        logger.warning(
             "User tried to send a message to a channel they are not in",
             extra={
                 "username": userToken["username"],
@@ -646,7 +646,7 @@ async def sendMessage(
         )
         return 404
     except exceptions.channelModeratedException:
-        logging.warning(
+        logger.warning(
             "User tried to send a message to a moderated channel",
             extra={
                 "username": userToken["username"],
@@ -656,7 +656,7 @@ async def sendMessage(
         )
         return 404
     except exceptions.channelUnknownException:
-        logging.warning(
+        logger.warning(
             "User tried to send a message to an unknown channel",
             extra={
                 "username": userToken["username"],
@@ -666,7 +666,7 @@ async def sendMessage(
         )
         return 403
     except exceptions.channelNoPermissionsException:
-        logging.warning(
+        logger.warning(
             "User tried to send a message to a channel they have no write permissions",
             extra={
                 "username": userToken["username"],
@@ -678,7 +678,7 @@ async def sendMessage(
     except exceptions.userRestrictedException:
         # TODO: this is kinda weird that we can't differentiate
         # between sender and recipient restricted here..
-        logging.warning(
+        logger.warning(
             "Sender or recipient in messaging interaction were restricted",
             extra={
                 "username": userToken["username"],
@@ -688,7 +688,7 @@ async def sendMessage(
         )
         return 404
     except exceptions.userTournamentException:
-        logging.warning(
+        logger.warning(
             "User tried to send a message to a tournament client",
             extra={
                 "username": userToken["username"],
@@ -698,10 +698,10 @@ async def sendMessage(
         )
         return 404
     except exceptions.userNotFoundException:
-        logging.warning("User not connected to IRC/Bancho.")
+        logger.warning("User not connected to IRC/Bancho.")
         return 401
     except exceptions.userBlockingDMsException:
-        logging.warning(
+        logger.warning(
             "User tried to send a message to a user that is blocking non-friends dms",
             extra={
                 "username": userToken["username"],
@@ -711,7 +711,7 @@ async def sendMessage(
         )
         return 404
     except exceptions.invalidArgumentsException:
-        logging.warning(
+        logger.warning(
             "User tried to send an invalid message",
             extra={
                 "username": userToken["username"],
@@ -721,7 +721,7 @@ async def sendMessage(
         )
         return 404
     except:
-        logging.exception("An unhandled exception occurred whle sending a chat message")
+        logger.exception("An unhandled exception occurred whle sending a chat message")
 
 
 """ IRC-Bancho Connect/Disconnect/Join/Part interfaces"""
@@ -777,7 +777,7 @@ async def IRCConnect(username: str) -> None:
     await tokenList.addToken(user_id, irc=True)
 
     await streamList.broadcast("main", await serverPackets.userPanel(user_id))
-    logging.info("User logged into IRC", extra={"username": username})
+    logger.info("User logged into IRC", extra={"username": username})
 
 
 async def IRCDisconnect(username: str) -> None:
@@ -793,7 +793,7 @@ async def IRCDisconnect(username: str) -> None:
         return
 
     await logoutEvent.handle(token)  # TODO
-    logging.info("User logged out of IRC", extra={"username": username})
+    logger.info("User logged out of IRC", extra={"username": username})
 
 
 async def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
@@ -806,7 +806,7 @@ async def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
     """
     userID = await userUtils.getID(username)
     if not userID:
-        logging.warning(
+        logger.warning(
             "User not found by name when attempting to join channel",
             extra={"username": username},
         )
@@ -828,7 +828,7 @@ async def IRCPartChannel(username: str, channel: str) -> Optional[int]:
     """
     userID = await userUtils.getID(username)
     if not userID:
-        logging.warning(
+        logger.warning(
             "User not found by name when attempting to leave channel",
             extra={"username": username},
         )
@@ -847,7 +847,7 @@ async def IRCAway(username: str, message: str) -> Optional[int]:
     """
     userID = await userUtils.getID(username)
     if not userID:
-        logging.warning(
+        logger.warning(
             "User not found by name when attempting to handle the AWAY command",
             extra={"username": username},
         )
@@ -855,7 +855,7 @@ async def IRCAway(username: str, message: str) -> Optional[int]:
 
     token = await osuToken.get_token_by_user_id(userID)
     if token is None:
-        logging.warning(
+        logger.warning(
             "User session not found by name when attempting to handle the AWAY command",
             extra={"username": username, "user_id": userID},
         )

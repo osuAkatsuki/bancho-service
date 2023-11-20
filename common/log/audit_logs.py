@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import Optional
 
 import httpx
 
 import settings
+from common.log import logger
 from common.ripple import userUtils
 from common.web.discord import Webhook
 from objects import glob
@@ -21,19 +21,19 @@ DISCORD_CHANNELS = {
 DISCORD_WEBHOOK_EMBED_COLOR = 0x7352C4
 
 
-async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) -> None:
+async def send_log_as_discord_webhook(message: str, discord_channel: str) -> None:
     """Log a message to the provided discord channel, if configured."""
 
     if discord_channel is not None:
         discord_webhook_url = DISCORD_CHANNELS.get(discord_channel)
         if discord_webhook_url is None:
-            logging.error(
+            logger.error(
                 "Attempted to send webhook to an unknown discord channel",
                 extra={"discord_channel": discord_channel},
             )
             return
         elif discord_webhook_url == "":
-            logging.warning(
+            logger.warning(
                 f"No discord webhook embed is configurated for discord channel",
                 extra={"discord_channel": discord_channel},
             )
@@ -62,7 +62,7 @@ async def send_rap_log_as_discord_webhook(message: str, discord_channel: str) ->
                     raise
 
 
-async def send_rap_log(
+async def send_log(
     user_id: int,
     message: str,
     discord_channel: Optional[str] = None,
@@ -83,7 +83,7 @@ async def send_rap_log(
     )
     if discord_channel is not None:
         asyncio.create_task(
-            send_rap_log_as_discord_webhook(
+            send_log_as_discord_webhook(
                 message=f"{userUtils.getUsername(user_id)} {message}",
                 discord_channel=discord_channel,
             ),

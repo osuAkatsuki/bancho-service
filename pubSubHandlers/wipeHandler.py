@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
 
@@ -12,7 +11,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         self.type = "int_list"
 
     async def handle(self, userID):
-        logging.info(
+        logger.info(
             "Handling wipe event for user",
             extra={"user_id": userID},
         )
@@ -24,7 +23,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         await userUtils.removeFirstPlaces(userID, rx, gm)
         await userUtils.remove_from_specified_leaderboard(userID, gm, rx)
 
-        logging.info(
+        logger.info(
             "Successfully handled wipe event for user",
             extra={"user_id": userID},
         )

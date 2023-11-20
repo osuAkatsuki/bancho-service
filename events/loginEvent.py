@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 import re
 import time
 from datetime import datetime as dt
@@ -14,7 +13,8 @@ from amplitude.event import Identify
 import settings
 from common import generalUtils
 from common.constants import privileges
-from common.log import rap_logs
+from common.log import audit_logs
+from common.log import logger
 from common.ripple import userUtils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import CHATBOT_USER_ID
@@ -112,7 +112,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # disallow clients older than 1 year
         if osuVersion < (dt.now() - td(365)):
-            logging.warning(
+            logger.warning(
                 "Denied login from client too old",
                 extra={"version": osuVersionStr},
             )
@@ -126,7 +126,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if pending_verification or not await userUtils.hasVerifiedHardware(userID):
             if await userUtils.verifyUser(userID, clientData):
                 # Valid account
-                logging.info(
+                logger.info(
                     "User verified their account",
                     extra={"user_id": userID, "username": username},
                 )
@@ -134,7 +134,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 firstLogin = True
             else:
                 # Multiaccount detected
-                logging.warning(
+                logger.warning(
                     "User tried to create another account",
                     extra={"user_id": userID, "username": username},
                 )
@@ -187,7 +187,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         responseTokenString = userToken["token_id"]
 
         # Console output
-        logging.info(
+        logger.info(
             "User logged in",
             extra={
                 "user_id": userID,
@@ -249,11 +249,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                         ),
                     ),
                 )
-                await rap_logs.send_rap_log(
+                await audit_logs.send_log(
                     userID,
                     "has been automatically restricted due to a pending freeze.",
                 )
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID}) has been automatically restricted due to a pending freeze.",
                     discord_channel="ac_general",
                 )
@@ -292,8 +292,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     [userID],
                 )
 
-                await rap_logs.send_rap_log(userID, f"{rolename} subscription expired.")
-                await rap_logs.send_rap_log_as_discord_webhook(
+                await audit_logs.send_log(userID, f"{rolename} subscription expired.")
+                await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
                     discord_channel="ac_confidential",
                 )
@@ -590,16 +590,16 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not restricted and (
             v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
         ):
-            await rap_logs.send_rap_log_as_discord_webhook(
+            await audit_logs.send_log_as_discord_webhook(
                 message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",
                 discord_channel="ac_general",
             )
     except:
-        logging.exception("An unhandled exception occurred during login")
+        logger.exception("An unhandled exception occurred during login")
     finally:
         # Console and discord log
         if len(loginData) < 3:
-            logging.warning(
+            logger.warning(
                 "Invalid bancho login request",
                 extra={
                     "reason": "insufficient_post_data",
@@ -607,7 +607,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 },
             )
 
-            await rap_logs.send_rap_log_as_discord_webhook(
+            await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
                 discord_channel="ac_confidential",
             )

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import logging
-
 from amplitude import BaseEvent
 
+from common.log import logger
 from constants import clientPackets
 from constants import exceptions
 from objects import glob
@@ -17,7 +16,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         # Start spectating packet
         packetData = clientPackets.startSpectating(rawPacketData)
     except:
-        logging.warning("Failed to parse start spectating packet.")
+        logger.warning("Failed to parse start spectating packet.")
         return
 
     try:
@@ -52,7 +51,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        logging.warning(
+        logger.warning(
             "Spectator start: token not found.",
             extra={
                 "user_id": userToken["user_id"],

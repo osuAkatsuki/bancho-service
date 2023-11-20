@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from constants import clientPackets
 from constants import serverPackets
 from objects import osuToken
@@ -14,7 +13,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     # Process lists with length <= 32
     if len(packetData) > 256:
-        logging.warning(
+        logger.warning(
             "Received userPanelRequest with length > 256",
             extra={
                 "length": len(packetData),
@@ -25,5 +24,5 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     for i in packetData["users"]:
         # Enqueue userpanel packets relative to this user
-        logging.debug("Sending panel for user", extra={"user_slot_num": i})
+        logger.debug("Sending panel for user", extra={"user_slot_num": i})
         await osuToken.enqueue(userToken["token_id"], await serverPackets.userPanel(i))

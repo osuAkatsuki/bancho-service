@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from constants import serverPackets
 from objects import streamList
 from objects.osuToken import Token
@@ -16,7 +15,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         but=[userToken["token_id"]],
     )
 
-    logging.debug(
+    logger.debug(
         "Broadcasting osu! spectator frames",
         extra={"host_user_id": userToken["user_id"]},
     )

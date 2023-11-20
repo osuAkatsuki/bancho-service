@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import logging
-
 from amplitude import BaseEvent
 
+from common.log import logger
 from constants import exceptions
 from objects import glob
 from objects import osuToken
@@ -42,4 +41,4 @@ async def handle(userToken: osuToken.Token, _=None):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        logging.warning("Spectator stop: host token not found")
+        logger.warning("Spectator stop: host token not found")

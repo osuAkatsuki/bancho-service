@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from math import floor
 from os import _exit
 from os import getloadavg
@@ -15,6 +14,7 @@ from typing import NoReturn
 
 import psutil
 
+from common.log import logger
 from constants import serverPackets
 from objects import glob
 from objects import match
@@ -47,7 +47,7 @@ async def scheduleShutdown(
     :return:
     """
     # Console output
-    logging.info(
+    logger.info(
         "Service shutdown scheduled",
         extra={
             "type": "restart" if restart else "shutdown",
@@ -85,7 +85,7 @@ def restartServer() -> NoReturn:
 
     :return:
     """
-    logging.info("Restarting bancho-service...")
+    logger.info("Restarting bancho-service...")
 
     # TODO: publish to redis to restart and update lets
     _exit(0)  # restart handled by script now
@@ -97,7 +97,7 @@ def shutdownServer() -> NoReturn:  # type: ignore
 
     :return:
     """
-    logging.info("Shutting down bancho-service...")
+    logger.info("Shutting down bancho-service...")
     sig = SIGKILL  # if runningUnderUnix() else CTRL_C_EVENT
     kill(getpid(), sig)
 

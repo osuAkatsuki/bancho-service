@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from constants import clientPackets
 from objects import osuToken
 
@@ -17,7 +16,7 @@ async def handle(userToken: osuToken.Token, packetData):
         protocol_version=userToken["protocol_version"],
     )
 
-    logging.info(
+    logger.info(
         "An osu! session upgraded their protocol version",
         extra={
             "user_id": userToken["user_id"],

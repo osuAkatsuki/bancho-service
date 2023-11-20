@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
 from datetime import datetime as dt
 from time import time
 from typing import Any
 
+from common.log import logger
 from objects import glob
 
 
@@ -121,7 +121,7 @@ class Webhook:
         empty = all(not d for d in data["embeds"])
 
         if empty and "content" not in data:
-            logging.error("Attempted to post an empty payload in a discord webhook")
+            logger.error("Attempted to post an empty payload in a discord webhook")
         if empty:
             data["embeds"] = []
 
@@ -138,7 +138,7 @@ class Webhook:
         )
 
         if response.status_code not in range(200, 300):
-            logging.error(
+            logger.error(
                 "Failed to post discord webhook.",
                 extra={
                     "status_code": response.status_code,
@@ -146,4 +146,4 @@ class Webhook:
                 },
             )
         else:
-            logging.info("Posted webhook to Discord.")
+            logger.info("Posted webhook to Discord.")

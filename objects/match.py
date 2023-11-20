@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import logging
 from copy import deepcopy
 from typing import Optional
 from typing import TypedDict
 
 import orjson
 
+from common.log import logger
 from constants import CHATBOT_USER_ID
 from constants import dataTypes
 from constants import matchModModes
@@ -1169,7 +1169,7 @@ async def sendUpdates(match_id: int) -> None:
     if censored_data is not None:
         await streamList.broadcast("lobby", censored_data)
     else:
-        logging.error(
+        logger.error(
             f"Failed to send updates to a multiplayer match",
             extra={"match_id": match_id},
         )
@@ -1205,7 +1205,7 @@ async def checkTeams(match_id: int) -> bool:
             elif firstTeam != _slot["team"]:
                 return True
 
-    logging.warning(
+    logger.warning(
         "Invalid teams detected for multiplayer match",
         extra={"match_id": match_id},
     )

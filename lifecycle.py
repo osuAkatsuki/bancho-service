@@ -1,34 +1,31 @@
 from __future__ import annotations
 
-import asyncio
-import logging.config
-
 import redis.asyncio as redis
 
 import settings
-from irc import ircserver
+from common.log import logger
 from objects import banchoConfig
 from objects import glob
 from objects.dbPool import DBPool
 
 
 async def startup() -> None:
-    logging.info(
+    logger.info(
         "Starting up all services for selected component",
         extra={"component": settings.APP_COMPONENT},
     )
 
     # Connect to db
-    logging.info("Connecting to SQL")
+    logger.info("Connecting to SQL")
     try:
         glob.db = DBPool()
         await glob.db.start()
     except:
-        logging.exception("Error connecting to sql")
+        logger.exception("Error connecting to sql")
         raise
 
     # Connect to redis
-    logging.info("Connecting to redis")
+    logger.info("Connecting to redis")
     try:
         glob.redis = redis.Redis(
             host=settings.REDIS_HOST,
@@ -40,16 +37,16 @@ async def startup() -> None:
         )
         await glob.redis.ping()
     except:
-        logging.exception("Error connecting to redis")
+        logger.exception("Error connecting to redis")
         raise
 
     # Load bancho_settings
-    logging.info("Loading bancho settings")
+    logger.info("Loading bancho settings")
     try:
         glob.banchoConf = banchoConfig.banchoConfig()
         await glob.banchoConf.loadSettings()
     except:
-        logging.exception("Error loading bancho settings")
+        logger.exception("Error loading bancho settings")
         raise
 
     # fetch privilege groups into memory
@@ -67,19 +64,19 @@ async def startup() -> None:
     }
 
     if not settings.LOCALIZE_ENABLE:
-        logging.info("User localization is disabled")
+        logger.info("User localization is disabled")
 
     if not settings.APP_GZIP:
-        logging.info("Gzip compression is disabled")
+        logger.info("Gzip compression is disabled")
 
     if settings.DEBUG:
-        logging.info("Server running in debug mode")
+        logger.info("Server running in debug mode")
 
     # start irc server if configured
     # XXX: the irc server is currently not functional.
     # Ticket: https://osuakatsuki.atlassian.net/browse/AKAT-451
     # if settings.IRC_ENABLE:
-    #     logging.info(
+    #     logger.info(
     #         "IRC server listening on tcp port",
     #         extra={"port": settings.IRC_PORT},
     #     )
@@ -87,21 +84,21 @@ async def startup() -> None:
 
 
 async def shutdown() -> None:
-    logging.info(
+    logger.info(
         "Shutting down all services for selected component",
         extra={"component": settings.APP_COMPONENT},
     )
     # XXX: the irc server is currently not functional.
     # Ticket: https://osuakatsuki.atlassian.net/browse/AKAT-451
     # if settings.IRC_ENABLE:
-    #     logging.info("Closing IRC server")
+    #     logger.info("Closing IRC server")
     #     glob.ircServer.close()
-    #     logging.info("Closed IRC server")
+    #     logger.info("Closed IRC server")
 
-    logging.info("Closing connection to redis")
+    logger.info("Closing connection to redis")
     await glob.redis.aclose()
-    logging.info("Closed connection to redis")
+    logger.info("Closed connection to redis")
 
-    logging.info("Closing connection(s) to MySQL")
+    logger.info("Closing connection(s) to MySQL")
     await glob.db.stop()
-    logging.info("Closed connection(s) to MySQL")
+    logger.info("Closed connection(s) to MySQL")
