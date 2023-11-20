@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import random
 import re
 import secrets
@@ -18,6 +17,7 @@ from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
 from common.log import audit_logs
+from common.log import logger
 from common.ripple import scoreUtils
 from common.ripple import userUtils
 from common.web import discord
@@ -689,7 +689,7 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
             timeout=5,
         )
     except:
-        logging.exception(
+        logger.exception(
             "Failed to retrieve PP from LESS API",
             extra={
                 "user_id": userID,
@@ -846,7 +846,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     match = chatbot.NOW_PLAYING_REGEX.fullmatch(npmsg)
     if match is None:
-        logging.error(
+        logger.error(
             "Error parsing /np message",
             extra={"chat_message": npmsg},
         )

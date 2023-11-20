@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from constants import clientPackets
 from constants import serverPackets
 from objects import osuToken
@@ -14,11 +13,11 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     # Process lists with length <= 32
     if len(packetData) > 32:
-        logging.warning("Received userStatsRequest with length > 32.")
+        logger.warning("Received userStatsRequest with length > 32.")
         return
 
     for userID in packetData["users"]:
-        logging.debug("Sending stats for user", extra={"user_id": userID})
+        logger.debug("Sending stats for user", extra={"user_id": userID})
 
         # Skip our stats
         if userID == userToken["user_id"]:

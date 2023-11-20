@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from time import localtime
 from time import strftime
 from time import time
@@ -14,6 +13,7 @@ from common import channel_utils
 from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
+from common.log import logger
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
 from constants import exceptions
@@ -498,7 +498,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
         return
 
     if len(data) >= 10 * 10**6:
-        logging.warning(f"Enqueuing {len(data)} bytes for {token_id}")
+        logger.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
     await glob.redis.lpush(
         f"{make_key(token_id)}:packet_queue",
@@ -894,7 +894,7 @@ async def kick(
 
     await logoutEvent.handle(token, deleteToken=token["irc"])
 
-    logging.info(
+    logger.info(
         "Invalidated a user's bancho session",
         extra={
             "username": token["username"],
@@ -1003,7 +1003,7 @@ async def updateCachedStats(token_id: str) -> None:
     """
     token = await get_token(token_id)
     if token is None:
-        logging.warning(
+        logger.warning(
             "Token not found when updating cached stats",
             extra={"token_id": token_id},
         )
@@ -1022,7 +1022,7 @@ async def updateCachedStats(token_id: str) -> None:
         relax_int,
     )
     if stats is None:
-        logging.warning("Stats query returned None")
+        logger.warning("Stats query returned None")
         return
 
     await update_token(

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import atexit
-import logging
 import os
 import sys
+
+from common.log import logger
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -43,7 +44,7 @@ PUBSUB_HANDLERS: dict[str, generalPubSubHandler] = {
 async def main() -> int:
     try:
         await lifecycle.startup()
-        logging.info(
+        logger.info(
             "Starting pubsub listener",
             extra={"handlers": list(PUBSUB_HANDLERS)},
         )

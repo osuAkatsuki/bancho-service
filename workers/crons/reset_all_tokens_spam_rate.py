@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import atexit
-import logging
 import os
 import sys
+
+from common.log import logger
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -22,7 +23,7 @@ CHAT_SPAM_SAMPLE_INTERVAL = 10  # seconds
 
 async def main() -> int:
     """bancho-service silences users by tracking how"""
-    logging.info("Starting spam protection loop")
+    logger.info("Starting spam protection loop")
     try:
         await lifecycle.startup()
         while True:

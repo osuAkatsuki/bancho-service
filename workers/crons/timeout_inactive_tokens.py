@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import atexit
-import logging
 import os
 import sys
 import time
+
+from common.log import logger
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -30,7 +31,7 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
         and not token["irc"]
         and not token["tournament"]
     ):
-        logging.warning(
+        logger.warning(
             "Timing out inactive bancho session",
             extra={
                 "username": token["username"],
@@ -55,7 +56,7 @@ async def _timeout_inactive_users() -> None:
                 await _revoke_token_if_inactive(token)
 
         except Exception:
-            logging.exception(
+            logger.exception(
                 "An error occurred while disconnecting a timed out client",
                 extra={
                     "token_id": token_id,
@@ -71,7 +72,7 @@ async def _timeout_inactive_users() -> None:
 
 
 async def main() -> int:
-    logging.info("Starting inactive token timeout loop")
+    logger.info("Starting inactive token timeout loop")
     try:
         await lifecycle.startup()
         while True:

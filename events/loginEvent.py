@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 import re
 import time
 from datetime import datetime as dt
@@ -15,6 +14,7 @@ import settings
 from common import generalUtils
 from common.constants import privileges
 from common.log import audit_logs
+from common.log import logger
 from common.ripple import userUtils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import CHATBOT_USER_ID
@@ -112,7 +112,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # disallow clients older than 1 year
         if osuVersion < (dt.now() - td(365)):
-            logging.warning(
+            logger.warning(
                 "Denied login from client too old",
                 extra={"version": osuVersionStr},
             )
@@ -126,7 +126,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if pending_verification or not await userUtils.hasVerifiedHardware(userID):
             if await userUtils.verifyUser(userID, clientData):
                 # Valid account
-                logging.info(
+                logger.info(
                     "User verified their account",
                     extra={"user_id": userID, "username": username},
                 )
@@ -134,7 +134,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 firstLogin = True
             else:
                 # Multiaccount detected
-                logging.warning(
+                logger.warning(
                     "User tried to create another account",
                     extra={"user_id": userID, "username": username},
                 )
@@ -187,7 +187,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         responseTokenString = userToken["token_id"]
 
         # Console output
-        logging.info(
+        logger.info(
             "User logged in",
             extra={
                 "user_id": userID,
@@ -595,11 +595,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 discord_channel="ac_general",
             )
     except:
-        logging.exception("An unhandled exception occurred during login")
+        logger.exception("An unhandled exception occurred during login")
     finally:
         # Console and discord log
         if len(loginData) < 3:
-            logging.warning(
+            logger.warning(
                 "Invalid bancho login request",
                 extra={
                     "reason": "insufficient_post_data",

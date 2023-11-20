@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from common.redis import generalPubSubHandler
 from objects import osuToken
 from objects import tokenList
@@ -16,7 +15,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (data := super().parseData(data)) is None:
             return
 
-        logging.info(
+        logger.info(
             "Handling disconnect event for user",
             extra={
                 "user_id": data["userID"],
@@ -27,7 +26,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if targetToken := await tokenList.getTokenFromUserID(data["userID"]):
             await osuToken.kick(targetToken["token_id"], data["reason"], "pubsub_kick")
 
-        logging.info(
+        logger.info(
             "Successfully handled disconnect event for user",
             extra={
                 "user_id": data["userID"],

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
 import time
 
 import orjson
 from amplitude import BaseEvent
 
 import settings
+from common.log import logger
 from constants import serverPackets
 from helpers import chatHelper as chat
 from helpers import countryHelper
@@ -59,7 +59,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         f"ripple:change_username_pending:{token['user_id']}",
     )
     if newUsername:
-        logging.info(
+        logger.info(
             "Sending username change request",
             {
                 "old_username": token["username"],
@@ -102,7 +102,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         )
 
     # Console output
-    logging.info(
+    logger.info(
         "User signed out",
         extra={
             "user_id": token["user_id"],

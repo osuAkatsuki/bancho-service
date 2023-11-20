@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import logging
 from typing import Literal
 from typing import Optional
 from typing import overload
 
+from common.log import logger
 from common.ripple import userUtils
 from events import logoutEvent
 from objects import glob
@@ -75,7 +75,7 @@ async def deleteToken(token_id: str) -> None:
 
     token = await osuToken.get_token(token_id)
     if token is None:
-        logging.warning(
+        logger.warning(
             "Token not found while attempting to delete it",
             extra={"token_id": token_id},
         )

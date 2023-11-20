@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import Optional
 
 import httpx
 
 import settings
+from common.log import logger
 from common.ripple import userUtils
 from common.web.discord import Webhook
 from objects import glob
@@ -27,13 +27,13 @@ async def send_log_as_discord_webhook(message: str, discord_channel: str) -> Non
     if discord_channel is not None:
         discord_webhook_url = DISCORD_CHANNELS.get(discord_channel)
         if discord_webhook_url is None:
-            logging.error(
+            logger.error(
                 "Attempted to send webhook to an unknown discord channel",
                 extra={"discord_channel": discord_channel},
             )
             return
         elif discord_webhook_url == "":
-            logging.warning(
+            logger.warning(
                 f"No discord webhook embed is configurated for discord channel",
                 extra={"discord_channel": discord_channel},
             )

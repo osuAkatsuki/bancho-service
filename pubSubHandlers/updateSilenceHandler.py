@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-
+from common.log import logger
 from common.redis import generalPubSubHandler
 from objects import osuToken
 from objects import tokenList
@@ -13,7 +12,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         self.type = "int"
 
     async def handle(self, userID):
-        logging.info(
+        logger.info(
             "Handling update silence event for user",
             extra={"user_id": userID},
         )
@@ -24,7 +23,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if targetToken := await tokenList.getTokenFromUserID(userID):
             await osuToken.silence(targetToken["token_id"])
 
-        logging.info(
+        logger.info(
             "Successfully handled update silence event for user",
             extra={"user_id": userID},
         )

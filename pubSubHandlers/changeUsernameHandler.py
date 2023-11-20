@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import logging
-
 from amplitude import BaseEvent
 from amplitude import EventOptions
 from amplitude import Identify
 
 from common.constants import actions
+from common.log import logger
 from common.redis import generalPubSubHandler
 from common.ripple import userUtils
 from objects import glob
@@ -46,7 +45,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
             identify_obj.set("username", newUsername)
             glob.amplitude.identify(identify_obj, EventOptions(user_id=str(userID)))
 
-        logging.info(
+        logger.info(
             "Job successfully updated username",
             extra={
                 "user_id": userID,
@@ -54,7 +53,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
             },
         )
     except userUtils.usernameAlreadyInUseError:
-        logging.error(
+        logger.error(
             "Job failed to update username",
             extra={
                 "reason": "username_exists",
@@ -69,7 +68,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "username_change",
             )
     except userUtils.invalidUsernameError:
-        logging.error(
+        logger.error(
             "Job failed to update username",
             extra={
                 "reason": "username_invalid",
@@ -84,7 +83,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "username_change",
             )
     else:
-        logging.info(
+        logger.info(
             "Successfully handled username change event for user",
             extra={
                 "user_id": userID,
@@ -102,7 +101,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if not (data := super().parseData(data)):
             return
 
-        logging.info(
+        logger.info(
             "Handling change username for user",
             extra={
                 "user_id": data["userID"],
@@ -137,7 +136,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
                     data["newUsername"],
                 )
 
-        logging.info(
+        logger.info(
             "Successfully handled change username event for user",
             extra={
                 "user_id": data["userID"],

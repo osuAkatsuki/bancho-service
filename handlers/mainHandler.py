@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import gzip
-import logging
 import random
 import struct
 from uuid import UUID
 
 import settings
+from common.log import logger
 from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from constants import packetIDs
@@ -154,12 +154,12 @@ class handler(AsyncRequestHandler):
         # XXX: temporarily doing some performance monitoring
         if random.randint(0, 20) == 20:
             tasks = asyncio.all_tasks()
-            logging.info(
+            logger.info(
                 "Concurrent tasks report",
                 extra={"concurrent_tasks_count": len(tasks)},
             )
             if len(tasks) > 100:
-                logging.warning(
+                logger.warning(
                     "Too many concurrent tasks",
                     extra={"concurrent_tasks": [x.get_name() for x in tasks]},
                 )
@@ -278,7 +278,7 @@ class handler(AsyncRequestHandler):
         try:
             await self._post()
         except Exception:
-            logging.exception("An unhandled error occurred")
+            logger.exception("An unhandled error occurred")
 
     async def get(self) -> None:
         self.write(HTML_PAGE)

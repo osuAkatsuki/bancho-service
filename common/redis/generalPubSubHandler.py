@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import json
 from abc import ABC
 from abc import abstractmethod
 from typing import Any
+
+import orjson
 
 
 def shape(d: dict) -> dict:

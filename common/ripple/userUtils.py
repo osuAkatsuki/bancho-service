@@ -1,7 +1,6 @@
 # TODO: seriously nuke this
 from __future__ import annotations
 
-import logging
 import time
 from time import localtime
 from time import strftime
@@ -15,6 +14,7 @@ from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
 from common.log import audit_logs
+from common.log import logger
 from constants import CHATBOT_USER_ID
 from objects import glob
 
@@ -102,7 +102,7 @@ async def getUserStats(
         [userID],
     )
     if stats is None:
-        logging.warning(
+        logger.warning(
             "Stats row missing for user",
             extra={
                 "user_id": userID,
@@ -1325,7 +1325,7 @@ async def logHardware(userID: int, hashes: List[str], activation: bool = False) 
         # Get the list of banned or restricted users that have logged in from this or similar HWID hash set
         if hashes[2] == "b4ec3c4334a0249dae95c284ec5983df":
             # Running under wine, check by unique id
-            logging.debug("Logging Linux/Mac hardware")
+            logger.debug("Logging Linux/Mac hardware")
             banned = await glob.db.fetchAll(
                 """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
                 LEFT JOIN users ON users.id = hw_user.userid
@@ -1339,7 +1339,7 @@ async def logHardware(userID: int, hashes: List[str], activation: bool = False) 
             )
         else:
             # Running under windows, do all checks
-            logging.debug("Logging Windows hardware")
+            logger.debug("Logging Windows hardware")
             banned = await glob.db.fetchAll(
                 """SELECT users.id as userid, hw_user.occurencies, users.username FROM hw_user
                 LEFT JOIN users ON users.id = hw_user.userid
@@ -1463,14 +1463,14 @@ async def verifyUser(userID: int, hashes: list[str]) -> bool:
             message=f"[{username}](https://akatsuki.gg/u/{userID}) running under wine:\n**Full data:** {hashes}\n**Usual wine mac address hash:** b4ec3c4334a0249dae95c284ec5983df\n**Usual wine disk id:** ffae06fb022871fe9beb58b005c5e21d",
             discord_channel="ac_confidential",
         )
-        logging.debug("Veryfing with Linux/Mac hardware")
+        logger.debug("Veryfing with Linux/Mac hardware")
         match = await glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE unique_id = %(uid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"uid": hashes[3], "userid": userID},
         )
     else:
         # Running under windows, full check
-        logging.debug("Veryfing with Windows hardware")
+        logger.debug("Veryfing with Windows hardware")
         match = await glob.db.fetchAll(
             "SELECT userid FROM hw_user WHERE mac = %(mac)s AND unique_id = %(uid)s AND disk_id = %(diskid)s AND userid != %(userid)s AND activated = 1 LIMIT 1",
             {"mac": hashes[2], "uid": hashes[3], "diskid": hashes[4], "userid": userID},
