@@ -485,7 +485,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
     if len(data) >= 10 * 10**6:
         logger.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
-    await glob.redis.lpush(
+    await glob.redis.rpush(
         f"{make_key(token_id)}:packet_queue",
         orjson.dumps(list(data)),
     )
@@ -496,12 +496,7 @@ async def dequeue(token_id: str) -> bytes:
     if token is None:
         return b""
 
-    raw_packets = await glob.redis.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
-    raw_packets.reverse()  # redis returns backwards
-
-    # clear the packets we read
-    await glob.redis.delete(f"{make_key(token_id)}:packet_queue")
-
+    raw_packets = await glob.redis.lpop(f"{make_key(token_id)}:packet_queue", 2**63-1)
     return b"".join([bytes(orjson.loads(raw_packet)) for raw_packet in raw_packets])
 
 
