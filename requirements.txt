@@ -11,3 +11,4 @@ python-json-logger
 PyYAML
 redis
 tornado
+typing_extensions
