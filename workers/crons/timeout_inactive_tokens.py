@@ -7,12 +7,11 @@ import os
 import sys
 import time
 
-from common.log import logger
-
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
 from common import exception_handling
+from common.log import logger
 from common.log import logging_config
 from events import logoutEvent
 from objects import osuToken
