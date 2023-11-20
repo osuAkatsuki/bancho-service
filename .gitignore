@@ -12,3 +12,4 @@ build.date
 logging.yaml
 logs.log
 newrelic.ini
+*.lprof
