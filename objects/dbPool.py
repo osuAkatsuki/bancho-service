@@ -22,6 +22,7 @@ class DBPool:
                 password=settings.DB_PASS,
                 db=settings.DB_NAME,
                 maxsize=settings.DB_WORKERS,
+                autocommit=True,
             ),
         )
 
