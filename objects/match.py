@@ -9,12 +9,12 @@ import orjson
 
 from common.log import logger
 from constants import CHATBOT_USER_ID
-from constants import dataTypes
 from constants import matchModModes
 from constants import matchTeams
 from constants import matchTeamTypes
 from constants import serverPackets
 from constants import slotStatuses
+from constants.dataTypes import DataTypes
 from helpers import chatHelper as chat
 from objects import channelList
 from objects import glob
@@ -221,31 +221,31 @@ async def getMatchData(
     assert len(slots) == 16
 
     struct: list[tuple[object, int]] = [
-        (multiplayer_match["match_id"], dataTypes.UINT16),
-        (int(multiplayer_match["is_in_progress"]), dataTypes.BYTE),
-        (0, dataTypes.BYTE),  # TODO: what is this?
-        (multiplayer_match["mods"], dataTypes.UINT32),
-        (multiplayer_match["match_name"], dataTypes.STRING),
+        (multiplayer_match["match_id"], DataTypes.UINT16),
+        (int(multiplayer_match["is_in_progress"]), DataTypes.BYTE),
+        (0, DataTypes.BYTE),  # TODO: what is this?
+        (multiplayer_match["mods"], DataTypes.UINT32),
+        (multiplayer_match["match_name"], DataTypes.STRING),
     ]
     if censored and multiplayer_match["match_password"]:
-        struct.append(("redacted", dataTypes.STRING))
+        struct.append(("redacted", DataTypes.STRING))
     else:
-        struct.append((multiplayer_match["match_password"], dataTypes.STRING))
+        struct.append((multiplayer_match["match_password"], DataTypes.STRING))
 
     struct.extend(
         [
-            (multiplayer_match["beatmap_name"], dataTypes.STRING),
-            (multiplayer_match["beatmap_id"], dataTypes.UINT32),
-            (multiplayer_match["beatmap_md5"], dataTypes.STRING),
+            (multiplayer_match["beatmap_name"], DataTypes.STRING),
+            (multiplayer_match["beatmap_id"], DataTypes.UINT32),
+            (multiplayer_match["beatmap_md5"], DataTypes.STRING),
         ],
     )
 
-    struct.extend([(slot["status"], dataTypes.BYTE) for slot in slots])
-    struct.extend([(slot["team"], dataTypes.BYTE) for slot in slots])
+    struct.extend([(slot["status"], DataTypes.BYTE) for slot in slots])
+    struct.extend([(slot["team"], DataTypes.BYTE) for slot in slots])
 
     struct.extend(
         [
-            (await tokenList.getUserIDFromToken(slot["user_token"]), dataTypes.UINT32)
+            (await tokenList.getUserIDFromToken(slot["user_token"]), DataTypes.UINT32)
             for slot in slots
             if (
                 slot["user_token"]
@@ -257,21 +257,21 @@ async def getMatchData(
     # Other match data
     struct.extend(
         [
-            (multiplayer_match["host_user_id"], dataTypes.SINT32),
-            (multiplayer_match["game_mode"], dataTypes.BYTE),
-            (multiplayer_match["match_scoring_type"], dataTypes.BYTE),
-            (multiplayer_match["match_team_type"], dataTypes.BYTE),
-            (multiplayer_match["match_mod_mode"], dataTypes.BYTE),
+            (multiplayer_match["host_user_id"], DataTypes.SINT32),
+            (multiplayer_match["game_mode"], DataTypes.BYTE),
+            (multiplayer_match["match_scoring_type"], DataTypes.BYTE),
+            (multiplayer_match["match_team_type"], DataTypes.BYTE),
+            (multiplayer_match["match_mod_mode"], DataTypes.BYTE),
         ],
     )
 
     # Slot mods if free mod is enabled
     if multiplayer_match["match_mod_mode"] == matchModModes.FREE_MOD:
-        struct.extend([(slot["mods"], dataTypes.UINT32) for slot in slots])
+        struct.extend([(slot["mods"], DataTypes.UINT32) for slot in slots])
 
     # Seed idk
     # TODO: Implement this, it should be used for mania "random" mod
-    struct.append((multiplayer_match["seed"], dataTypes.UINT32))
+    struct.append((multiplayer_match["seed"], DataTypes.UINT32))
 
     return tuple(struct)
 

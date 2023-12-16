@@ -3,7 +3,7 @@ from __future__ import annotations
 from time import time
 from typing import Optional
 
-from common.constants import mods
+from common.constants.mods import Mods
 from constants import matchModModes
 from constants import matchScoringTypes
 from constants import matchTeamTypes
@@ -50,7 +50,7 @@ async def createMatch(
         beatmap_md5=beatmap_md5,
         game_mode=game_mode,
         host_user_id=host_user_id,
-        mods=mods.NOMOD,
+        mods=Mods.NOMOD,
         match_scoring_type=matchScoringTypes.SCORE,
         match_team_type=matchTeamTypes.HEAD_TO_HEAD,
         match_mod_mode=matchModModes.FREE_MOD,

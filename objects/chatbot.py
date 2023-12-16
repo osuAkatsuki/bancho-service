@@ -6,7 +6,7 @@ from typing import Optional
 from typing import TypedDict
 
 from common.constants import actions
-from common.constants import privileges
+from common.constants.privileges import Privileges
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
 from constants import chatbotCommands
@@ -128,7 +128,7 @@ async def query(
             return None
 
         resp = [resp]
-        if user_privileges & privileges.ADMIN_CAKER:
+        if user_privileges & Privileges.ADMIN_CAKER:
             resp.append(f"Elapsed: {(time() - start_time) * 1000:.3f}ms")
 
         return {"response": " | ".join(resp), "hidden": cmd["hidden"]}

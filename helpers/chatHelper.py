@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import settings
 from common.constants import mods
-from common.constants import privileges
+from common.constants.privileges import Privileges
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import userUtils
@@ -363,14 +363,14 @@ async def sendMessage(
             # premium requires premium
             if (
                 to == "#premium"
-                and userToken["privileges"] & privileges.USER_PREMIUM == 0
+                and userToken["privileges"] & Privileges.USER_PREMIUM == 0
             ):
                 raise exceptions.channelNoPermissionsException()
 
             # supporter requires supporter
             if (
                 to == "#supporter"
-                and userToken["privileges"] & privileges.USER_DONOR == 0
+                and userToken["privileges"] & Privileges.USER_DONOR == 0
             ):
                 raise exceptions.channelNoPermissionsException()
 

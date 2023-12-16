@@ -14,8 +14,9 @@ from amplitude import BaseEvent
 import settings
 from common import generalUtils
 from common.constants import gameModes
-from common.constants import mods
-from common.constants import privileges
+from common.constants.mods import Mods
+from common.constants.mods import NP_MAPPING_TO_INTS
+from common.constants.privileges import Privileges
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import scoreUtils
@@ -61,7 +62,7 @@ commands = []
 
 def command(
     trigger: str,
-    privs: int = privileges.USER_NORMAL,
+    privs: int = Privileges.USER_NORMAL,
     syntax: Optional[str] = None,
     hidden: bool = False,
 ) -> Callable:
@@ -118,7 +119,7 @@ async def roll(fro: str, chan: str, message: list[str]) -> str:
     return f"{fro} rolls {points} points!"
 
 
-@command(trigger="!alertall", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
+@command(trigger="!alertall", privs=Privileges.ADMIN_SEND_ALERTS, hidden=True)
 async def alertall(fro: str, chan: str, message: list[str]) -> str:
     """Send a notification message to all users."""
     if not (msg := " ".join(message).strip()):
@@ -139,7 +140,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!alertu",
-    privs=privileges.ADMIN_SEND_ALERTS,
+    privs=Privileges.ADMIN_SEND_ALERTS,
     syntax="<username> <message>",
     hidden=True,
 )
@@ -159,7 +160,7 @@ async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
     return f"Sent an alert to {target} ({targetID})."
 
 
-@command(trigger="!moderated", privs=privileges.ADMIN_CHAT_MOD, hidden=True)
+@command(trigger="!moderated", privs=Privileges.ADMIN_CHAT_MOD, hidden=True)
 async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
     """Set moderated mode for the current channel."""
     try:
@@ -198,7 +199,7 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
 
 @command(
     trigger="!kick",
-    privs=privileges.ADMIN_KICK_USERS,
+    privs=Privileges.ADMIN_KICK_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -236,7 +237,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!silence",
-    privs=privileges.ADMIN_SILENCE_USERS,
+    privs=Privileges.ADMIN_SILENCE_USERS,
     syntax="<target_name> <amount> <unit(s/m/h/d/w)> <reason>",
     hidden=True,
 )
@@ -312,7 +313,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unsilence",
-    privs=privileges.ADMIN_SILENCE_USERS,
+    privs=Privileges.ADMIN_SILENCE_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -356,7 +357,7 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!ban",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -404,7 +405,7 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unban",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -441,7 +442,7 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!restrict",
-    privs=privileges.ADMIN_BAN_USERS,
+    privs=Privileges.ADMIN_BAN_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -488,7 +489,7 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unrestrict",
-    privs=privileges.ADMIN_BAN_USERS,
+    privs=Privileges.ADMIN_BAN_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -549,7 +550,7 @@ async def _restartShutdown(restart: bool) -> str:
 
 @command(
     trigger="!system restart",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
+    privs=Privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
 async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
@@ -559,7 +560,7 @@ async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system shutdown",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
+    privs=Privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
 async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
@@ -569,7 +570,7 @@ async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system reload",
-    privs=privileges.ADMIN_MANAGE_SETTINGS,
+    privs=Privileges.ADMIN_MANAGE_SETTINGS,
     hidden=True,
 )
 async def systemReload(fro: str, chan: str, message: list[str]) -> str:
@@ -580,7 +581,7 @@ async def systemReload(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system maintenance",
-    privs=privileges.ADMIN_MANAGE_SETTINGS,
+    privs=Privileges.ADMIN_MANAGE_SETTINGS,
     hidden=True,
 )
 async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
@@ -631,7 +632,7 @@ async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system status",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
+    privs=Privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
 async def systemStatus(fro: str, chan: str, message: list[str]) -> str:
@@ -744,9 +745,9 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
     msg.append(f'| ♪ {data["bpm"]} |')
 
     # AR (with and without mods)
-    if currentMods & mods.HARDROCK:
+    if currentMods & Mods.HARDROCK:
         msg.append(f'AR {min(10, data["ar"] * 1.4):.2f} ({data["ar"]:.2f})')
-    elif currentMods & mods.EASY:
+    elif currentMods & Mods.EASY:
         msg.append(f'AR {max(0, data["ar"] / 2):.2f} ({data["ar"]:.2f})')
     else:
         msg.append(f'AR {data["ar"]}')
@@ -855,7 +856,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     mods_int = 0
     if match["mods"] is not None:
         for _mods in match["mods"][1:].split(" "):
-            mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
+            mods_int |= NP_MAPPING_TO_INTS[_mods]
 
     # Get beatmap id from URL
     beatmap_id = int(match["bid"])
@@ -888,37 +889,37 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 
     # Check passed mods and convert to enum
     modMap = {
-        "NF": mods.NOFAIL,
-        "EZ": mods.EASY,
-        "TS": mods.TOUCHSCREEN,
-        "HD": mods.HIDDEN,
-        "HR": mods.HARDROCK,
-        "SD": mods.SUDDENDEATH,
-        "DT": mods.DOUBLETIME,
-        "RX": mods.RELAX,
-        "HT": mods.HALFTIME,
-        "NC": mods.NIGHTCORE | mods.DOUBLETIME,
-        "FL": mods.FLASHLIGHT,
-        "SO": mods.SPUNOUT,
-        "AP": mods.AUTOPILOT,
-        "PF": mods.PERFECT,
-        "V2": mods.SCOREV2,
+        "NF": Mods.NOFAIL,
+        "EZ": Mods.EASY,
+        "TS": Mods.TOUCHSCREEN,
+        "HD": Mods.HIDDEN,
+        "HR": Mods.HARDROCK,
+        "SD": Mods.SUDDENDEATH,
+        "DT": Mods.DOUBLETIME,
+        "RX": Mods.RELAX,
+        "HT": Mods.HALFTIME,
+        "NC": Mods.NIGHTCORE | Mods.DOUBLETIME,
+        "FL": Mods.FLASHLIGHT,
+        "SO": Mods.SPUNOUT,
+        "AP": Mods.AUTOPILOT,
+        "PF": Mods.PERFECT,
+        "V2": Mods.SCOREV2,
     }
 
     _mods = 0
 
     for m in (message[0][i : i + 2].upper() for i in range(0, len(message[0]), 2)):
         if not (
-            (m in ("DT", "NC") and _mods & mods.HALFTIME)
-            or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
-            or (m == "EZ" and _mods & mods.HARDROCK)
-            or (m == "HR" and _mods & mods.EASY)
-            or (m == "AP" and _mods & mods.RELAX)
-            or (m == "RX" and _mods & mods.AUTOPILOT)
-            or (m == "PF" and _mods & mods.SUDDENDEATH)
-            or (m == "SD" and _mods & mods.PERFECT)
+            (m in ("DT", "NC") and _mods & Mods.HALFTIME)
+            or (m == "HT" and _mods & (Mods.DOUBLETIME | Mods.NIGHTCORE))
+            or (m == "EZ" and _mods & Mods.HARDROCK)
+            or (m == "HR" and _mods & Mods.EASY)
+            or (m == "AP" and _mods & Mods.RELAX)
+            or (m == "RX" and _mods & Mods.AUTOPILOT)
+            or (m == "PF" and _mods & Mods.SUDDENDEATH)
+            or (m == "SD" and _mods & Mods.PERFECT)
         ):
-            _mods |= modMap.get(m, mods.NOMOD)
+            _mods |= modMap.get(m, Mods.NOMOD)
 
     # Set mods
     token["last_np"]["mods"] = _mods
@@ -1206,7 +1207,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 # XXX: disabled for now - was being overused
 # @command(
 #    trigger="!freeze",
-#    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+#    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
 #    syntax="<target_name> <reason>",
 #    hidden=True,
 # )
@@ -1244,7 +1245,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unfreeze",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -1280,7 +1281,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     return f"Unfroze {target}."
 
 
-@command(trigger="!update", privs=privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
+@command(trigger="!update", privs=Privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
 async def updateServer(fro: str, chan: str, message: list[str]) -> None:
     """Broadcast a notification to all online players, and reboot the server after a short delay."""
     await streamList.broadcast(
@@ -1299,13 +1300,13 @@ async def updateServer(fro: str, chan: str, message: list[str]) -> None:
     await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
 
 
-@command(trigger="!ss", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
+@command(trigger="!ss", privs=Privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
     """Silently shutdown the server."""
     await systemHelper.scheduleShutdown(sendRestartTime=0, restart=False)
 
 
-@command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
+@command(trigger="!sr", privs=Privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentRestart(
     fro: str,
     chan: str,
@@ -1317,7 +1318,7 @@ async def silentRestart(
 
 @command(
     trigger="!changename",
-    privs=privileges.USER_DONOR,
+    privs=Privileges.USER_DONOR,
     syntax="<new_username>",
     hidden=True,
 )
@@ -1368,7 +1369,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!map",
-    privs=privileges.ADMIN_MANAGE_BEATMAPS,
+    privs=Privileges.ADMIN_MANAGE_BEATMAPS,
     syntax="<rank/love/unrank> <set/map>",
     hidden=True,
 )
@@ -1515,7 +1516,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 @command(
     trigger="!announce",
-    privs=privileges.ADMIN_SEND_ALERTS,
+    privs=Privileges.ADMIN_SEND_ALERTS,
     syntax="<announcement>",
     hidden=True,
 )
@@ -1543,7 +1544,7 @@ async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!whitelist",
-    privs=privileges.ADMIN_MANAGE_USERS,
+    privs=Privileges.ADMIN_MANAGE_USERS,
     syntax="<target_name> <bit> <reason>",
     hidden=True,
 )
@@ -1644,7 +1645,7 @@ async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     userID = await userUtils.getID(fro)  # TODO: rewrite this command as well..
     user_privs = await userUtils.getPrivileges(userID)
 
-    if not user_privs & privileges.USER_DONOR:
+    if not user_privs & Privileges.USER_DONOR:
         return "The overwrite command is only available to Akatsuki supporters."
 
     if not (ratelimit := await userUtils.getOverwriteWaitRemainder(userID)):
@@ -1853,7 +1854,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if froToken is None:
             return
 
-        if not froToken["privileges"] & privileges.ADMIN_CAKER:
+        if not froToken["privileges"] & Privileges.ADMIN_CAKER:
             return
 
         if len(message) != 3 or not message[2].isnumeric():
@@ -2321,21 +2322,21 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             return None
 
         modMap = {
-            "NF": mods.NOFAIL,
-            "EZ": mods.EASY,
-            "TS": mods.TOUCHSCREEN,
-            "HD": mods.HIDDEN,
-            "HR": mods.HARDROCK,
-            "SD": mods.SUDDENDEATH,
-            "DT": mods.DOUBLETIME,
-            "RX": mods.RELAX,
-            "HT": mods.HALFTIME,
-            "NC": mods.NIGHTCORE,
-            "FL": mods.FLASHLIGHT,
-            "SO": mods.SPUNOUT,
-            "AP": mods.AUTOPILOT,
-            "PF": mods.PERFECT,
-            "V2": mods.SCOREV2,
+            "NF": Mods.NOFAIL,
+            "EZ": Mods.EASY,
+            "TS": Mods.TOUCHSCREEN,
+            "HD": Mods.HIDDEN,
+            "HR": Mods.HARDROCK,
+            "SD": Mods.SUDDENDEATH,
+            "DT": Mods.DOUBLETIME,
+            "RX": Mods.RELAX,
+            "HT": Mods.HALFTIME,
+            "NC": Mods.NIGHTCORE,
+            "FL": Mods.FLASHLIGHT,
+            "SO": Mods.SPUNOUT,
+            "AP": Mods.AUTOPILOT,
+            "PF": Mods.PERFECT,
+            "V2": Mods.SCOREV2,
         }
 
         _mods = 0
@@ -2346,14 +2347,14 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 freemods = True
             else:
                 if not (
-                    (m in {"DT", "NC"} and _mods & mods.HALFTIME)
-                    or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
-                    or (m == "EZ" and _mods & mods.HARDROCK)
-                    or (m == "HR" and _mods & mods.EASY)
-                    or (m == "RX" and _mods & mods.RELAX)
-                    or (m == "AP" and _mods & mods.AUTOPILOT)
-                    or (m == "PF" and _mods & mods.SUDDENDEATH)
-                    or (m == "SD" and _mods & mods.PERFECT)
+                    (m in {"DT", "NC"} and _mods & Mods.HALFTIME)
+                    or (m == "HT" and _mods & (Mods.DOUBLETIME | Mods.NIGHTCORE))
+                    or (m == "EZ" and _mods & Mods.HARDROCK)
+                    or (m == "HR" and _mods & Mods.EASY)
+                    or (m == "RX" and _mods & Mods.RELAX)
+                    or (m == "AP" and _mods & Mods.AUTOPILOT)
+                    or (m == "PF" and _mods & Mods.SUDDENDEATH)
+                    or (m == "SD" and _mods & Mods.PERFECT)
                 ):
                     _mods |= modMap[m]
 
@@ -2563,7 +2564,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 @command(
     trigger="!fetus",
-    privs=privileges.ADMIN_CAKER,
+    privs=Privileges.ADMIN_CAKER,
     syntax="<target_name>",
     hidden=True,
 )
@@ -2587,7 +2588,7 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
     return "deletus"
 
 
-@command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
+@command(trigger="!py", privs=Privileges.ADMIN_CAKER, hidden=False)
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
@@ -2604,7 +2605,7 @@ async def runPython(fro: str, chan: str, message: list[str]) -> str:
 
 # NOTE: this is dangerous, namely because ids of singletons (and other object)
 # will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
-@command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
+@command(trigger="!reload", privs=Privileges.ADMIN_CAKER, hidden=True)
 async def reload(fro: str, chan: str, message: list[str]) -> str:
     """Reload a python module, by name (relative to pep.py)."""
     if fro != "cmyui":

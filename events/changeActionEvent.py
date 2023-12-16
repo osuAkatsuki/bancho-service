@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from common.constants import actions
-from common.constants import mods
+from common.constants.mods import Mods
 from common.ripple import userUtils
 from constants import clientPackets
 from constants import serverPackets
@@ -31,8 +31,8 @@ async def handle(userToken: Token, rawPacketData: bytes):
         userToken.partMatch()
     """
 
-    relax_in_mods = packetData["actionMods"] & mods.RELAX != 0
-    autopilot_in_mods = packetData["actionMods"] & mods.AUTOPILOT != 0
+    relax_in_mods = packetData["actionMods"] & Mods.RELAX != 0
+    autopilot_in_mods = packetData["actionMods"] & Mods.AUTOPILOT != 0
 
     # Update cached stats if relax/autopilot status changed
     should_update_cached_stats = False
@@ -65,12 +65,12 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     # prevents possible crashes on getUserStats where AP is enabled and game_mode != 0
     if autopilot_in_mods and userToken["game_mode"] != 0:
-        packetData["actionMods"] &= ~mods.AUTOPILOT
+        packetData["actionMods"] &= ~Mods.AUTOPILOT
         should_update_cached_stats = True
 
     # prevents possible crashes on getUserStats where RX is enabled and game_mode is mania
     if relax_in_mods and userToken["game_mode"] == 3:
-        packetData["actionMods"] &= ~mods.RELAX
+        packetData["actionMods"] &= ~Mods.RELAX
         should_update_cached_stats = True
 
     await osuToken.update_token(

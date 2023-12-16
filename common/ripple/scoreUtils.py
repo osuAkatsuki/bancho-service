@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from common.constants import mods
+from common.constants.mods import Mods
 from objects import glob
 
 
@@ -109,29 +109,29 @@ def readableMods(m: int) -> str:
         return ""
 
     r: list[str] = []
-    if m & mods.NOFAIL:
+    if m & Mods.NOFAIL:
         r.append("NF")
-    if m & mods.EASY:
+    if m & Mods.EASY:
         r.append("EZ")
-    if m & mods.TOUCHSCREEN:
+    if m & Mods.TOUCHSCREEN:
         r.append("TD")
-    if m & mods.HIDDEN:
+    if m & Mods.HIDDEN:
         r.append("HD")
-    if m & mods.NIGHTCORE:
+    if m & Mods.NIGHTCORE:
         r.append("NC")
-    elif m & mods.DOUBLETIME:
+    elif m & Mods.DOUBLETIME:
         r.append("DT")
-    if m & mods.HARDROCK:
+    if m & Mods.HARDROCK:
         r.append("HR")
-    if m & mods.RELAX:
+    if m & Mods.RELAX:
         r.append("RX")
-    if m & mods.HALFTIME:
+    if m & Mods.HALFTIME:
         r.append("HT")
-    if m & mods.FLASHLIGHT:
+    if m & Mods.FLASHLIGHT:
         r.append("FL")
-    if m & mods.SPUNOUT:
+    if m & Mods.SPUNOUT:
         r.append("SO")
-    if m & mods.SCOREV2:
+    if m & Mods.SCOREV2:
         r.append("V2")
 
     return "".join(r)

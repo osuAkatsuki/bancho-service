@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common.constants import mods
+from common.constants.mods import Mods
 
 
 def secondsToReadable(seconds: int) -> str:
@@ -63,7 +63,7 @@ def getRank(
         )
 
     total = c300 + c100 + c50 + cmiss
-    hdfl = (__mods & (mods.HIDDEN | mods.FLASHLIGHT)) > 0
+    hdfl = (__mods & (Mods.HIDDEN | Mods.FLASHLIGHT)) > 0
 
     if gameMode == 0:
         # osu!
