@@ -140,7 +140,7 @@ def exception(
     extra: Optional[Mapping[str, object]] = None,
 ) -> None:
     return _log(
-        "EXCEPTION",
+        "ERROR",
         msg,
         *args,
         exc_info=exc_info,
