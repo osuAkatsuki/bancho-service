@@ -11,8 +11,8 @@ from typing import Optional
 import bcrypt
 
 from common.constants import gameModes
-from common.constants import mods
 from common.constants import privileges
+from common.constants.mods import Mods
 from common.log import audit_logs
 from common.log import logger
 from constants import CHATBOT_USER_ID
@@ -499,7 +499,7 @@ async def updateStats(userID: int, __score, __old=None) -> None:
     # Get gamemode for db
     mode = gameModes.getGameModeForDB(__score.gameMode)
 
-    relax = __score.mods & mods.RELAX > 0
+    relax = __score.mods & Mods.RELAX > 0
 
     if (
         __score.gameMode == 3 and relax
@@ -620,7 +620,7 @@ async def incrementReplaysWatched(userID: int, gameMode: int, mods_used: int) ->
     """
 
     mode = gameModes.getGameModeForDB(gameMode)
-    table = "rx_stats" if mods_used & mods.RELAX else "users_stats"
+    table = "rx_stats" if mods_used & Mods.RELAX else "users_stats"
     await glob.db.execute(
         f"UPDATE {table} SET replays_watched_{mode} = replays_watched_{mode} + 1 "
         "WHERE id = %s",

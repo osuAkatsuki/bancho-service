@@ -14,8 +14,9 @@ from amplitude import BaseEvent
 import settings
 from common import generalUtils
 from common.constants import gameModes
-from common.constants import mods
 from common.constants import privileges
+from common.constants.mods import Mods
+from common.constants.mods import NP_MAPPING_TO_INTS
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import scoreUtils
@@ -744,9 +745,9 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
     msg.append(f'| ♪ {data["bpm"]} |')
 
     # AR (with and without mods)
-    if currentMods & mods.HARDROCK:
+    if currentMods & Mods.HARDROCK:
         msg.append(f'AR {min(10, data["ar"] * 1.4):.2f} ({data["ar"]:.2f})')
-    elif currentMods & mods.EASY:
+    elif currentMods & Mods.EASY:
         msg.append(f'AR {max(0, data["ar"] / 2):.2f} ({data["ar"]:.2f})')
     else:
         msg.append(f'AR {data["ar"]}')
@@ -855,7 +856,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     mods_int = 0
     if match["mods"] is not None:
         for _mods in match["mods"][1:].split(" "):
-            mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
+            mods_int |= NP_MAPPING_TO_INTS[_mods]
 
     # Get beatmap id from URL
     beatmap_id = int(match["bid"])
@@ -888,37 +889,37 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 
     # Check passed mods and convert to enum
     modMap = {
-        "NF": mods.NOFAIL,
-        "EZ": mods.EASY,
-        "TS": mods.TOUCHSCREEN,
-        "HD": mods.HIDDEN,
-        "HR": mods.HARDROCK,
-        "SD": mods.SUDDENDEATH,
-        "DT": mods.DOUBLETIME,
-        "RX": mods.RELAX,
-        "HT": mods.HALFTIME,
-        "NC": mods.NIGHTCORE | mods.DOUBLETIME,
-        "FL": mods.FLASHLIGHT,
-        "SO": mods.SPUNOUT,
-        "AP": mods.AUTOPILOT,
-        "PF": mods.PERFECT,
-        "V2": mods.SCOREV2,
+        "NF": Mods.NOFAIL,
+        "EZ": Mods.EASY,
+        "TS": Mods.TOUCHSCREEN,
+        "HD": Mods.HIDDEN,
+        "HR": Mods.HARDROCK,
+        "SD": Mods.SUDDENDEATH,
+        "DT": Mods.DOUBLETIME,
+        "RX": Mods.RELAX,
+        "HT": Mods.HALFTIME,
+        "NC": Mods.NIGHTCORE | Mods.DOUBLETIME,
+        "FL": Mods.FLASHLIGHT,
+        "SO": Mods.SPUNOUT,
+        "AP": Mods.AUTOPILOT,
+        "PF": Mods.PERFECT,
+        "V2": Mods.SCOREV2,
     }
 
     _mods = 0
 
     for m in (message[0][i : i + 2].upper() for i in range(0, len(message[0]), 2)):
         if not (
-            (m in ("DT", "NC") and _mods & mods.HALFTIME)
-            or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
-            or (m == "EZ" and _mods & mods.HARDROCK)
-            or (m == "HR" and _mods & mods.EASY)
-            or (m == "AP" and _mods & mods.RELAX)
-            or (m == "RX" and _mods & mods.AUTOPILOT)
-            or (m == "PF" and _mods & mods.SUDDENDEATH)
-            or (m == "SD" and _mods & mods.PERFECT)
+            (m in ("DT", "NC") and _mods & Mods.HALFTIME)
+            or (m == "HT" and _mods & (Mods.DOUBLETIME | Mods.NIGHTCORE))
+            or (m == "EZ" and _mods & Mods.HARDROCK)
+            or (m == "HR" and _mods & Mods.EASY)
+            or (m == "AP" and _mods & Mods.RELAX)
+            or (m == "RX" and _mods & Mods.AUTOPILOT)
+            or (m == "PF" and _mods & Mods.SUDDENDEATH)
+            or (m == "SD" and _mods & Mods.PERFECT)
         ):
-            _mods |= modMap.get(m, mods.NOMOD)
+            _mods |= modMap.get(m, Mods.NOMOD)
 
     # Set mods
     token["last_np"]["mods"] = _mods
@@ -2321,21 +2322,21 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             return None
 
         modMap = {
-            "NF": mods.NOFAIL,
-            "EZ": mods.EASY,
-            "TS": mods.TOUCHSCREEN,
-            "HD": mods.HIDDEN,
-            "HR": mods.HARDROCK,
-            "SD": mods.SUDDENDEATH,
-            "DT": mods.DOUBLETIME,
-            "RX": mods.RELAX,
-            "HT": mods.HALFTIME,
-            "NC": mods.NIGHTCORE,
-            "FL": mods.FLASHLIGHT,
-            "SO": mods.SPUNOUT,
-            "AP": mods.AUTOPILOT,
-            "PF": mods.PERFECT,
-            "V2": mods.SCOREV2,
+            "NF": Mods.NOFAIL,
+            "EZ": Mods.EASY,
+            "TS": Mods.TOUCHSCREEN,
+            "HD": Mods.HIDDEN,
+            "HR": Mods.HARDROCK,
+            "SD": Mods.SUDDENDEATH,
+            "DT": Mods.DOUBLETIME,
+            "RX": Mods.RELAX,
+            "HT": Mods.HALFTIME,
+            "NC": Mods.NIGHTCORE,
+            "FL": Mods.FLASHLIGHT,
+            "SO": Mods.SPUNOUT,
+            "AP": Mods.AUTOPILOT,
+            "PF": Mods.PERFECT,
+            "V2": Mods.SCOREV2,
         }
 
         _mods = 0
@@ -2346,14 +2347,14 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 freemods = True
             else:
                 if not (
-                    (m in {"DT", "NC"} and _mods & mods.HALFTIME)
-                    or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
-                    or (m == "EZ" and _mods & mods.HARDROCK)
-                    or (m == "HR" and _mods & mods.EASY)
-                    or (m == "RX" and _mods & mods.RELAX)
-                    or (m == "AP" and _mods & mods.AUTOPILOT)
-                    or (m == "PF" and _mods & mods.SUDDENDEATH)
-                    or (m == "SD" and _mods & mods.PERFECT)
+                    (m in {"DT", "NC"} and _mods & Mods.HALFTIME)
+                    or (m == "HT" and _mods & (Mods.DOUBLETIME | Mods.NIGHTCORE))
+                    or (m == "EZ" and _mods & Mods.HARDROCK)
+                    or (m == "HR" and _mods & Mods.EASY)
+                    or (m == "RX" and _mods & Mods.RELAX)
+                    or (m == "AP" and _mods & Mods.AUTOPILOT)
+                    or (m == "PF" and _mods & Mods.SUDDENDEATH)
+                    or (m == "SD" and _mods & Mods.PERFECT)
                 ):
                     _mods |= modMap[m]
 

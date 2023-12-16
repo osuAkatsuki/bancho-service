@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common.constants import mods
+from common.constants.mods import Mods
 from constants import clientPackets
 from constants import matchModModes
 from constants import matchTeamTypes
@@ -100,7 +100,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
                 # Only keep speed-changing mods centralized.
                 await match.update_match(
                     multiplayer_match["match_id"],
-                    mods=multiplayer_match["mods"] & mods.SPEED_CHANGING,
+                    mods=multiplayer_match["mods"] & Mods.SPEED_CHANGING,
                 )
 
         """

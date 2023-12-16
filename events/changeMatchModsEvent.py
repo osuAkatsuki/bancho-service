@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common.constants import mods
+from common.constants.mods import Mods
 from constants import clientPackets
 from constants import matchModModes
 from objects import match
@@ -28,7 +28,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
                 # Allow host to apply speed changing mods.
                 await match.changeMods(
                     multiplayer_match["match_id"],
-                    packetData["mods"] & mods.SPEED_CHANGING,
+                    packetData["mods"] & Mods.SPEED_CHANGING,
                 )
 
             # Set slot mods
@@ -40,7 +40,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
                 await match.setSlotMods(
                     multiplayer_match["match_id"],
                     slot_id,
-                    packetData["mods"] & ~mods.SPEED_CHANGING,
+                    packetData["mods"] & ~Mods.SPEED_CHANGING,
                 )
         else:
             # Not freemod, set match mods
