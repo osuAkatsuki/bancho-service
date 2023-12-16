@@ -1,25 +1,25 @@
 from __future__ import annotations
 
-from constants import dataTypes
 from constants import slotStatuses
+from constants.dataTypes import DataTypes
 from helpers import packetHelper
 
 """ Protocol v20 """
 
 
 def changeProtocolVersion(stream):
-    return packetHelper.readPacketData(stream, (("version", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("version", DataTypes.UINT32),))["data"]
 
 
 """ Protocol v19 """
 
 ACTION_CHANGE_FMT = (
-    ("actionID", dataTypes.BYTE),
-    ("actionText", dataTypes.STRING),
-    ("actionMd5", dataTypes.STRING),
-    ("actionMods", dataTypes.UINT32),
-    ("gameMode", dataTypes.BYTE),
-    ("beatmapID", dataTypes.SINT32),
+    ("actionID", DataTypes.BYTE),
+    ("actionText", DataTypes.STRING),
+    ("actionMd5", DataTypes.STRING),
+    ("actionMods", DataTypes.UINT32),
+    ("gameMode", DataTypes.BYTE),
+    ("beatmapID", DataTypes.SINT32),
 )
 """ Users listing packets """
 
@@ -29,18 +29,18 @@ def userActionChange(stream):
 
 
 def userStatsRequest(stream):
-    return packetHelper.readPacketData(stream, (("users", dataTypes.INT_LIST),))["data"]
+    return packetHelper.readPacketData(stream, (("users", DataTypes.INT_LIST),))["data"]
 
 
 def userPanelRequest(stream):
-    return packetHelper.readPacketData(stream, (("users", dataTypes.INT_LIST),))["data"]
+    return packetHelper.readPacketData(stream, (("users", DataTypes.INT_LIST),))["data"]
 
 
 """ Client chat packets """
 PUBLIC_MSG_FMT = (
-    ("unknown", dataTypes.STRING),
-    ("message", dataTypes.STRING),
-    ("to", dataTypes.STRING),
+    ("unknown", DataTypes.STRING),
+    ("message", DataTypes.STRING),
+    ("to", DataTypes.STRING),
 )
 
 
@@ -49,10 +49,10 @@ def sendPublicMessage(stream):
 
 
 PRIVATE_MSG_FMT = (
-    ("unknown", dataTypes.STRING),
-    ("message", dataTypes.STRING),
-    ("to", dataTypes.STRING),
-    ("unknown2", dataTypes.UINT32),
+    ("unknown", DataTypes.STRING),
+    ("message", DataTypes.STRING),
+    ("to", DataTypes.STRING),
+    ("unknown2", DataTypes.UINT32),
 )
 
 
@@ -63,24 +63,24 @@ def sendPrivateMessage(stream):
 def setAwayMessage(stream):
     return packetHelper.readPacketData(
         stream,
-        (("unknown", dataTypes.STRING), ("awayMessage", dataTypes.STRING)),
+        (("unknown", DataTypes.STRING), ("awayMessage", DataTypes.STRING)),
     )["data"]
 
 
 def blockDM(stream):
-    return packetHelper.readPacketData(stream, (("value", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("value", DataTypes.UINT32),))["data"]
 
 
 def channelJoin(stream):
-    return packetHelper.readPacketData(stream, (("channel", dataTypes.STRING),))["data"]
+    return packetHelper.readPacketData(stream, (("channel", DataTypes.STRING),))["data"]
 
 
 def channelPart(stream):
-    return packetHelper.readPacketData(stream, (("channel", dataTypes.STRING),))["data"]
+    return packetHelper.readPacketData(stream, (("channel", DataTypes.STRING),))["data"]
 
 
 def addRemoveFriend(stream):
-    return packetHelper.readPacketData(stream, (("friendID", dataTypes.SINT32),))[
+    return packetHelper.readPacketData(stream, (("friendID", DataTypes.SINT32),))[
         "data"
     ]
 
@@ -89,31 +89,31 @@ def addRemoveFriend(stream):
 
 
 def startSpectating(stream):
-    return packetHelper.readPacketData(stream, (("userID", dataTypes.SINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("userID", DataTypes.SINT32),))["data"]
 
 
 """ Multiplayer packets """
 MATCH_SETTINGS_FMT_FIRST = (
-    ("matchID", dataTypes.UINT16),
-    ("inProgress", dataTypes.BYTE),
-    ("unknown", dataTypes.BYTE),
-    ("mods", dataTypes.UINT32),
-    ("matchName", dataTypes.STRING),
-    ("matchPassword", dataTypes.STRING),
-    ("beatmapName", dataTypes.STRING),
-    ("beatmapID", dataTypes.UINT32),
-    ("beatmapMD5", dataTypes.STRING),
-    *[(f"slot{i}Status", dataTypes.BYTE) for i in range(16)],
-    *[(f"slot{i}Team", dataTypes.BYTE) for i in range(16)],
+    ("matchID", DataTypes.UINT16),
+    ("inProgress", DataTypes.BYTE),
+    ("unknown", DataTypes.BYTE),
+    ("mods", DataTypes.UINT32),
+    ("matchName", DataTypes.STRING),
+    ("matchPassword", DataTypes.STRING),
+    ("beatmapName", DataTypes.STRING),
+    ("beatmapID", DataTypes.UINT32),
+    ("beatmapMD5", DataTypes.STRING),
+    *[(f"slot{i}Status", DataTypes.BYTE) for i in range(16)],
+    *[(f"slot{i}Team", DataTypes.BYTE) for i in range(16)],
 )
 MATCH_SETTINGS_FMT_SECOND = (
-    ("hostUserID", dataTypes.SINT32),
-    ("gameMode", dataTypes.BYTE),
-    ("scoringType", dataTypes.BYTE),
-    ("teamType", dataTypes.BYTE),
-    ("freeMods", dataTypes.BYTE),
+    ("hostUserID", DataTypes.SINT32),
+    ("gameMode", DataTypes.BYTE),
+    ("scoringType", DataTypes.BYTE),
+    ("teamType", DataTypes.BYTE),
+    ("freeMods", DataTypes.BYTE),
 )
-MATCH_SETTINGS_FMT_THIRD = (*[(f"slot{i}Mods", dataTypes.UINT32) for i in range(16)],)
+MATCH_SETTINGS_FMT_THIRD = (*[(f"slot{i}Mods", DataTypes.UINT32) for i in range(16)],)
 
 
 def matchSettings(stream):
@@ -129,7 +129,7 @@ def matchSettings(stream):
 
     # Second part (this one somewhat depends on match state)
     struct: list[tuple[str, int]] = [
-        (f"slot{i}ID", dataTypes.SINT32)
+        (f"slot{i}ID", DataTypes.SINT32)
         for i in range(16)
         if data[f"slot{i}Status"] not in (slotStatuses.FREE, slotStatuses.LOCKED)
     ]
@@ -166,48 +166,48 @@ def changeMatchSettings(stream):
 
 
 def changeSlot(stream):
-    return packetHelper.readPacketData(stream, (("slotID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("slotID", DataTypes.UINT32),))["data"]
 
 
 def joinMatch(stream):
     return packetHelper.readPacketData(
         stream,
-        (("matchID", dataTypes.UINT32), ("password", dataTypes.STRING)),
+        (("matchID", DataTypes.UINT32), ("password", DataTypes.STRING)),
     )["data"]
 
 
 def changeMods(stream):
-    return packetHelper.readPacketData(stream, (("mods", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("mods", DataTypes.UINT32),))["data"]
 
 
 def lockSlot(stream):
-    return packetHelper.readPacketData(stream, (("slotID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("slotID", DataTypes.UINT32),))["data"]
 
 
 def transferHost(stream):
-    return packetHelper.readPacketData(stream, (("slotID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("slotID", DataTypes.UINT32),))["data"]
 
 
 def matchInvite(stream):
-    return packetHelper.readPacketData(stream, (("userID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("userID", DataTypes.UINT32),))["data"]
 
 
 MATCH_FRAMES_FMT = (
-    ("time", dataTypes.SINT32),
-    ("id", dataTypes.BYTE),
-    ("count300", dataTypes.UINT16),
-    ("count100", dataTypes.UINT16),
-    ("count50", dataTypes.UINT16),
-    ("countGeki", dataTypes.UINT16),
-    ("countKatu", dataTypes.UINT16),
-    ("countMiss", dataTypes.UINT16),
-    ("totalScore", dataTypes.SINT32),
-    ("maxCombo", dataTypes.UINT16),
-    ("currentCombo", dataTypes.UINT16),
-    ("perfect", dataTypes.BYTE),
-    ("currentHp", dataTypes.BYTE),
-    ("tagByte", dataTypes.BYTE),
-    ("usingScoreV2", dataTypes.BYTE),
+    ("time", DataTypes.SINT32),
+    ("id", DataTypes.BYTE),
+    ("count300", DataTypes.UINT16),
+    ("count100", DataTypes.UINT16),
+    ("count50", DataTypes.UINT16),
+    ("countGeki", DataTypes.UINT16),
+    ("countKatu", DataTypes.UINT16),
+    ("countMiss", DataTypes.UINT16),
+    ("totalScore", DataTypes.SINT32),
+    ("maxCombo", DataTypes.UINT16),
+    ("currentCombo", DataTypes.UINT16),
+    ("perfect", DataTypes.BYTE),
+    ("currentHp", DataTypes.BYTE),
+    ("tagByte", DataTypes.BYTE),
+    ("usingScoreV2", DataTypes.BYTE),
 )
 
 
@@ -216,12 +216,12 @@ def matchFrames(stream):
 
 
 def tournamentMatchInfoRequest(stream):
-    return packetHelper.readPacketData(stream, (("matchID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("matchID", DataTypes.UINT32),))["data"]
 
 
 def tournamentJoinMatchChannel(stream):
-    return packetHelper.readPacketData(stream, (("matchID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("matchID", DataTypes.UINT32),))["data"]
 
 
 def tournamentLeaveMatchChannel(stream):
-    return packetHelper.readPacketData(stream, (("matchID", dataTypes.UINT32),))["data"]
+    return packetHelper.readPacketData(stream, (("matchID", DataTypes.UINT32),))["data"]

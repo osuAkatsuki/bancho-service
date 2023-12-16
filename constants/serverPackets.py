@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from common.constants import privileges
+from common.constants.privileges import Privileges
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
 from constants import dataTypes
@@ -184,11 +184,11 @@ async def userPanel(userID: int, force: bool = False) -> bytes:
     userRank = 0
     if userToken["privileges"] in dev_groups:
         userRank |= userRanks.ADMIN  # Developers - darker blue
-    elif userToken["privileges"] & privileges.ADMIN_MANAGE_PRIVILEGES:
+    elif userToken["privileges"] & Privileges.ADMIN_MANAGE_PRIVILEGES:
         userRank |= userRanks.PEPPY  # Administrators - lighter blue
-    elif userToken["privileges"] & privileges.ADMIN_CHAT_MOD:
+    elif userToken["privileges"] & Privileges.ADMIN_CHAT_MOD:
         userRank |= userRanks.MOD  # Community Managers - orange red
-    elif userToken["privileges"] & privileges.USER_DONOR:
+    elif userToken["privileges"] & Privileges.USER_DONOR:
         userRank |= userRanks.SUPPORTER  # Supporter & premium - darker yellow
     else:
         userRank |= userRanks.NORMAL  # Regular - lighter yellow

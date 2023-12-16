@@ -11,8 +11,8 @@ from typing import Optional
 import bcrypt
 
 from common.constants import gameModes
-from common.constants import privileges
 from common.constants.mods import Mods
+from common.constants.privileges import Privileges
 from common.log import audit_logs
 from common.log import logger
 from constants import CHATBOT_USER_ID
@@ -785,9 +785,9 @@ async def ban(userID: int) -> None:
         "WHERE id = %s",
         [
             ~(
-                privileges.USER_NORMAL
-                | privileges.USER_PUBLIC
-                | privileges.USER_PENDING_VERIFICATION
+                Privileges.USER_NORMAL
+                | Privileges.USER_PUBLIC
+                | Privileges.USER_PENDING_VERIFICATION
             ),
             userID,
         ],
@@ -813,7 +813,7 @@ async def unban(userID: int) -> None:
         "SET privileges = privileges | %s, "
         "ban_datetime = 0 "
         "WHERE id = %s",
-        [privileges.USER_NORMAL | privileges.USER_PUBLIC, userID],
+        [Privileges.USER_NORMAL | Privileges.USER_PUBLIC, userID],
     )
 
     await glob.redis.publish("peppy:unban", userID)
@@ -831,7 +831,7 @@ async def restrict(userID: int) -> None:
         await glob.db.execute(
             "UPDATE users SET privileges = privileges & %s, "
             "ban_datetime = UNIX_TIMESTAMP() WHERE id = %s",
-            [~privileges.USER_PUBLIC, userID],
+            [~Privileges.USER_PUBLIC, userID],
         )
 
         # Notify bancho about this ban
@@ -1417,13 +1417,13 @@ async def resetPendingFlag(userID: int, success: bool = True) -> None:
 
     await glob.db.execute(
         "UPDATE users " "SET privileges = privileges & %s " "WHERE id = %s",
-        [~privileges.USER_PENDING_VERIFICATION, userID],
+        [~Privileges.USER_PENDING_VERIFICATION, userID],
     )
 
     if success:
         await glob.db.execute(
             "UPDATE users " "SET privileges = privileges | %s " "WHERE id = %s",
-            [privileges.USER_PUBLIC | privileges.USER_NORMAL, userID],
+            [Privileges.USER_PUBLIC | Privileges.USER_NORMAL, userID],
         )
 
 

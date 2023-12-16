@@ -12,7 +12,7 @@ import orjson
 from common import channel_utils
 from common.constants import actions
 from common.constants import gameModes
-from common.constants import privileges
+from common.constants.privileges import Privileges
 from common.log import logger
 from common.ripple import userUtils
 from constants import CHATBOT_USER_ID
@@ -473,11 +473,11 @@ async def add_sent_away_message(token_id: str, user_id: int) -> None:
 
 
 def is_staff(token_privileges: int) -> bool:
-    return token_privileges & privileges.ADMIN_CHAT_MOD != 0
+    return token_privileges & Privileges.ADMIN_CHAT_MOD != 0
 
 
 def is_restricted(token_privileges: int) -> bool:
-    return token_privileges & privileges.USER_PUBLIC == 0
+    return token_privileges & Privileges.USER_PUBLIC == 0
 
 
 #####
@@ -546,14 +546,14 @@ async def joinChannel(token_id: str, channel_name: str) -> None:
     # premium requires premium
     if (
         channel_name == "#premium"
-        and token["privileges"] & privileges.USER_PREMIUM == 0
+        and token["privileges"] & Privileges.USER_PREMIUM == 0
     ):
         raise exceptions.channelNoPermissionsException()
 
     # supporter requires supporter
     if (
         channel_name == "#supporter"
-        and token["privileges"] & privileges.USER_DONOR == 0
+        and token["privileges"] & Privileges.USER_DONOR == 0
     ):
         raise exceptions.channelNoPermissionsException()
 

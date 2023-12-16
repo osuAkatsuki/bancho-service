@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import struct
 from typing import Any
-from typing import Mapping
 from typing import TypedDict
 
-from constants import dataTypes
+from constants.dataTypes import DataTypes
 
 # NOTE: removed cython 2022-06-26
 
@@ -57,15 +56,15 @@ def uleb128Decode(num: bytes) -> list[int]:
 
 
 _default_packs = {
-    dataTypes.UINT16: struct.Struct("<H"),
-    dataTypes.SINT16: struct.Struct("<h"),
-    dataTypes.UINT32: struct.Struct("<L"),
-    dataTypes.SINT32: struct.Struct("<l"),
-    dataTypes.UINT64: struct.Struct("<Q"),
-    dataTypes.SINT64: struct.Struct("<q"),
-    dataTypes.STRING: struct.Struct("<s"),
-    dataTypes.FFLOAT: struct.Struct("<f"),
-    dataTypes.BYTE: struct.Struct("<B"),
+    DataTypes.UINT16: struct.Struct("<H"),
+    DataTypes.SINT16: struct.Struct("<h"),
+    DataTypes.UINT32: struct.Struct("<L"),
+    DataTypes.SINT32: struct.Struct("<l"),
+    DataTypes.UINT64: struct.Struct("<Q"),
+    DataTypes.SINT64: struct.Struct("<q"),
+    DataTypes.STRING: struct.Struct("<s"),
+    DataTypes.FFLOAT: struct.Struct("<f"),
+    DataTypes.BYTE: struct.Struct("<B"),
 }
 
 
@@ -77,18 +76,18 @@ def packData(__data: Any, dataType: int) -> bytes:
     :param dataType: data type
     :return: packed bytes
     """
-    if dataType == dataTypes.BBYTES:  # current mood
+    if dataType == DataTypes.BBYTES:  # current mood
         return __data
 
     data = bytearray()  # data to return
 
     # Get right pack Type
-    if dataType == dataTypes.INT_LIST:
+    if dataType == DataTypes.INT_LIST:
         # 2 bytes length, 4 bytes each element
         data += len(__data).to_bytes(2, "little")
         for i in __data:
             data += i.to_bytes(4, "little", signed=True)
-    elif dataType == dataTypes.STRING:
+    elif dataType == DataTypes.STRING:
         if __data:
             # real string; \x0b[uleb][string]
             encoded = __data.encode()
@@ -153,7 +152,7 @@ def readPacketData(
     # Read packet
     for i in structure:
         start = end
-        if i[1] == dataTypes.INT_LIST:
+        if i[1] == DataTypes.INT_LIST:
             # 2 bytes length, 4 bytes each element
             length = int.from_bytes(stream[start : start + 2], "little")
 
@@ -164,7 +163,7 @@ def readPacketData(
 
             # Update end
             end = start + 2 + (4 * length)
-        elif i[1] == dataTypes.STRING:
+        elif i[1] == DataTypes.STRING:
             # Check empty string
             if stream[start] != 0:
                 # real string; \x0b[uleb][string]

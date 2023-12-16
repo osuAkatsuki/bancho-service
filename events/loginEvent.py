@@ -12,7 +12,7 @@ from amplitude.event import Identify
 
 import settings
 from common import generalUtils
-from common.constants import privileges
+from common.constants.privileges import Privileges
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import userUtils
@@ -85,18 +85,18 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Make sure we are not banned or locked
         priv = await userUtils.getPrivileges(userID)
-        pending_verification = priv & privileges.USER_PENDING_VERIFICATION != 0
+        pending_verification = priv & Privileges.USER_PENDING_VERIFICATION != 0
 
         if not pending_verification:
-            if not priv & (privileges.USER_PUBLIC | privileges.USER_NORMAL):
+            if not priv & (Privileges.USER_PUBLIC | Privileges.USER_NORMAL):
                 raise exceptions.loginBannedException()
             if (
-                priv & privileges.USER_PUBLIC != 0
-                and priv & privileges.USER_NORMAL == 0
+                priv & Privileges.USER_PUBLIC != 0
+                and priv & Privileges.USER_NORMAL == 0
             ):
                 raise exceptions.loginLockedException()
 
-        restricted = priv & privileges.USER_PUBLIC == 0
+        restricted = priv & Privileges.USER_PUBLIC == 0
 
         if v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr:
             raise exceptions.haxException()
@@ -260,16 +260,16 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send message if premium / donor expires soon
         # This should NOT be done at login, but done by the cron
-        if userToken["privileges"] & privileges.USER_DONOR:
+        if userToken["privileges"] & Privileges.USER_DONOR:
             expireDate = await userUtils.getDonorExpire(userID)
-            premium = userToken["privileges"] & privileges.USER_PREMIUM
+            premium = userToken["privileges"] & Privileges.USER_PREMIUM
             rolename = "premium" if premium else "supporter"
 
             if current_time >= expireDate:
                 await userUtils.setPrivileges(
                     userID,
-                    userToken["privileges"] - privileges.USER_DONOR
-                    | (privileges.USER_PREMIUM if premium else 0),
+                    userToken["privileges"] - Privileges.USER_DONOR
+                    | (Privileges.USER_PREMIUM if premium else 0),
                 )
 
                 # 36 = supporter, 59 = premium
@@ -334,7 +334,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Get supporter/GMT
         userGMT = osuToken.is_staff(userToken["privileges"])
-        userTournament = userToken["privileges"] & privileges.USER_TOURNAMENT_STAFF > 0
+        userTournament = userToken["privileges"] & Privileges.USER_TOURNAMENT_STAFF > 0
 
         # userSupporter = not restricted
         userSupporter = True
@@ -395,7 +395,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
 
         # Join role-related channels.
-        if userToken["privileges"] & privileges.ADMIN_CAKER:
+        if userToken["privileges"] & Privileges.ADMIN_CAKER:
             await chat.joinChannel(
                 token_id=userToken["token_id"],
                 channel_name="#devlog",
@@ -405,12 +405,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 token_id=userToken["token_id"],
                 channel_name="#staff",
             )
-        if userToken["privileges"] & privileges.USER_PREMIUM:
+        if userToken["privileges"] & Privileges.USER_PREMIUM:
             await chat.joinChannel(
                 token_id=userToken["token_id"],
                 channel_name="#premium",
             )
-        if userToken["privileges"] & privileges.USER_DONOR:
+        if userToken["privileges"] & Privileges.USER_DONOR:
             await chat.joinChannel(
                 token_id=userToken["token_id"],
                 channel_name="#supporter",

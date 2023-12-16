@@ -14,9 +14,9 @@ from amplitude import BaseEvent
 import settings
 from common import generalUtils
 from common.constants import gameModes
-from common.constants import privileges
 from common.constants.mods import Mods
 from common.constants.mods import NP_MAPPING_TO_INTS
+from common.constants.privileges import Privileges
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import scoreUtils
@@ -62,7 +62,7 @@ commands = []
 
 def command(
     trigger: str,
-    privs: int = privileges.USER_NORMAL,
+    privs: int = Privileges.USER_NORMAL,
     syntax: Optional[str] = None,
     hidden: bool = False,
 ) -> Callable:
@@ -119,7 +119,7 @@ async def roll(fro: str, chan: str, message: list[str]) -> str:
     return f"{fro} rolls {points} points!"
 
 
-@command(trigger="!alertall", privs=privileges.ADMIN_SEND_ALERTS, hidden=True)
+@command(trigger="!alertall", privs=Privileges.ADMIN_SEND_ALERTS, hidden=True)
 async def alertall(fro: str, chan: str, message: list[str]) -> str:
     """Send a notification message to all users."""
     if not (msg := " ".join(message).strip()):
@@ -140,7 +140,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!alertu",
-    privs=privileges.ADMIN_SEND_ALERTS,
+    privs=Privileges.ADMIN_SEND_ALERTS,
     syntax="<username> <message>",
     hidden=True,
 )
@@ -160,7 +160,7 @@ async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
     return f"Sent an alert to {target} ({targetID})."
 
 
-@command(trigger="!moderated", privs=privileges.ADMIN_CHAT_MOD, hidden=True)
+@command(trigger="!moderated", privs=Privileges.ADMIN_CHAT_MOD, hidden=True)
 async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
     """Set moderated mode for the current channel."""
     try:
@@ -199,7 +199,7 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
 
 @command(
     trigger="!kick",
-    privs=privileges.ADMIN_KICK_USERS,
+    privs=Privileges.ADMIN_KICK_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -237,7 +237,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!silence",
-    privs=privileges.ADMIN_SILENCE_USERS,
+    privs=Privileges.ADMIN_SILENCE_USERS,
     syntax="<target_name> <amount> <unit(s/m/h/d/w)> <reason>",
     hidden=True,
 )
@@ -313,7 +313,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unsilence",
-    privs=privileges.ADMIN_SILENCE_USERS,
+    privs=Privileges.ADMIN_SILENCE_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -357,7 +357,7 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!ban",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -405,7 +405,7 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unban",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -442,7 +442,7 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!restrict",
-    privs=privileges.ADMIN_BAN_USERS,
+    privs=Privileges.ADMIN_BAN_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -489,7 +489,7 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unrestrict",
-    privs=privileges.ADMIN_BAN_USERS,
+    privs=Privileges.ADMIN_BAN_USERS,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -550,7 +550,7 @@ async def _restartShutdown(restart: bool) -> str:
 
 @command(
     trigger="!system restart",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
+    privs=Privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
 async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
@@ -560,7 +560,7 @@ async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system shutdown",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
+    privs=Privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
 async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
@@ -570,7 +570,7 @@ async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system reload",
-    privs=privileges.ADMIN_MANAGE_SETTINGS,
+    privs=Privileges.ADMIN_MANAGE_SETTINGS,
     hidden=True,
 )
 async def systemReload(fro: str, chan: str, message: list[str]) -> str:
@@ -581,7 +581,7 @@ async def systemReload(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system maintenance",
-    privs=privileges.ADMIN_MANAGE_SETTINGS,
+    privs=Privileges.ADMIN_MANAGE_SETTINGS,
     hidden=True,
 )
 async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
@@ -632,7 +632,7 @@ async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!system status",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
+    privs=Privileges.ADMIN_MANAGE_SERVERS,
     hidden=True,
 )
 async def systemStatus(fro: str, chan: str, message: list[str]) -> str:
@@ -1207,7 +1207,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 # XXX: disabled for now - was being overused
 # @command(
 #    trigger="!freeze",
-#    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+#    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
 #    syntax="<target_name> <reason>",
 #    hidden=True,
 # )
@@ -1245,7 +1245,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!unfreeze",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=Privileges.ADMIN_MANAGE_PRIVILEGES,
     syntax="<target_name> <reason>",
     hidden=True,
 )
@@ -1281,7 +1281,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     return f"Unfroze {target}."
 
 
-@command(trigger="!update", privs=privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
+@command(trigger="!update", privs=Privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
 async def updateServer(fro: str, chan: str, message: list[str]) -> None:
     """Broadcast a notification to all online players, and reboot the server after a short delay."""
     await streamList.broadcast(
@@ -1300,13 +1300,13 @@ async def updateServer(fro: str, chan: str, message: list[str]) -> None:
     await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
 
 
-@command(trigger="!ss", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
+@command(trigger="!ss", privs=Privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
     """Silently shutdown the server."""
     await systemHelper.scheduleShutdown(sendRestartTime=0, restart=False)
 
 
-@command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
+@command(trigger="!sr", privs=Privileges.ADMIN_MANAGE_SERVERS, hidden=True)
 async def silentRestart(
     fro: str,
     chan: str,
@@ -1318,7 +1318,7 @@ async def silentRestart(
 
 @command(
     trigger="!changename",
-    privs=privileges.USER_DONOR,
+    privs=Privileges.USER_DONOR,
     syntax="<new_username>",
     hidden=True,
 )
@@ -1369,7 +1369,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!map",
-    privs=privileges.ADMIN_MANAGE_BEATMAPS,
+    privs=Privileges.ADMIN_MANAGE_BEATMAPS,
     syntax="<rank/love/unrank> <set/map>",
     hidden=True,
 )
@@ -1516,7 +1516,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 @command(
     trigger="!announce",
-    privs=privileges.ADMIN_SEND_ALERTS,
+    privs=Privileges.ADMIN_SEND_ALERTS,
     syntax="<announcement>",
     hidden=True,
 )
@@ -1544,7 +1544,7 @@ async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
 
 @command(
     trigger="!whitelist",
-    privs=privileges.ADMIN_MANAGE_USERS,
+    privs=Privileges.ADMIN_MANAGE_USERS,
     syntax="<target_name> <bit> <reason>",
     hidden=True,
 )
@@ -1645,7 +1645,7 @@ async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     userID = await userUtils.getID(fro)  # TODO: rewrite this command as well..
     user_privs = await userUtils.getPrivileges(userID)
 
-    if not user_privs & privileges.USER_DONOR:
+    if not user_privs & Privileges.USER_DONOR:
         return "The overwrite command is only available to Akatsuki supporters."
 
     if not (ratelimit := await userUtils.getOverwriteWaitRemainder(userID)):
@@ -1854,7 +1854,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if froToken is None:
             return
 
-        if not froToken["privileges"] & privileges.ADMIN_CAKER:
+        if not froToken["privileges"] & Privileges.ADMIN_CAKER:
             return
 
         if len(message) != 3 or not message[2].isnumeric():
@@ -2564,7 +2564,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 @command(
     trigger="!fetus",
-    privs=privileges.ADMIN_CAKER,
+    privs=Privileges.ADMIN_CAKER,
     syntax="<target_name>",
     hidden=True,
 )
@@ -2588,7 +2588,7 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
     return "deletus"
 
 
-@command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
+@command(trigger="!py", privs=Privileges.ADMIN_CAKER, hidden=False)
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
@@ -2605,7 +2605,7 @@ async def runPython(fro: str, chan: str, message: list[str]) -> str:
 
 # NOTE: this is dangerous, namely because ids of singletons (and other object)
 # will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
-@command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
+@command(trigger="!reload", privs=Privileges.ADMIN_CAKER, hidden=True)
 async def reload(fro: str, chan: str, message: list[str]) -> str:
     """Reload a python module, by name (relative to pep.py)."""
     if fro != "cmyui":
