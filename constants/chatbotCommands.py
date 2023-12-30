@@ -1210,35 +1210,35 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
     hidden=True,
 )
 async def freeze(fro: str, chan: str, message: list[str]) -> str:
-   """Freeze a specified player."""
-   target = message[0].lower()
-   reason = " ".join(message[1:])
+    """Freeze a specified player."""
+    target = message[0].lower()
+    reason = " ".join(message[1:])
 
-   if not (targetID := await userUtils.getID(target)):
-       return "That user does not exist"
+    if not (targetID := await userUtils.getID(target)):
+        return "That user does not exist"
 
-   if not await userUtils.getFreezeTime(targetID):
-       return "That user is already frozen."
+    if not await userUtils.getFreezeTime(targetID):
+        return "That user is already frozen."
 
-   if not reason:
-       return f"Please specify your reason to freeze {target}."
+    if not reason:
+        return f"Please specify your reason to freeze {target}."
 
-   await userUtils.freeze(targetID, await userUtils.getID(fro))
-   userID = await userUtils.getID(fro)
-   await audit_logs.send_log(userID, f"has froze {target}")
-   await audit_logs.send_log_as_discord_webhook(
-       message="\n".join(
-           [
-               f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) froze [{target}](https://akatsuki.gg/u/{targetID}).",
-               f"**Reason**: {reason}",
-               f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
-           ],
-       ),
-       discord_channel="ac_general",
-   )
+    await userUtils.freeze(targetID, await userUtils.getID(fro))
+    userID = await userUtils.getID(fro)
+    await audit_logs.send_log(userID, f"has froze {target}")
+    await audit_logs.send_log_as_discord_webhook(
+        message="\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) froze [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
+        discord_channel="ac_general",
+    )
 
-   await userUtils.appendNotes(targetID, f"{fro} ({userID}) froze {target}")
-   return f"Froze {target}."
+    await userUtils.appendNotes(targetID, f"{fro} ({userID}) froze {target}")
+    return f"Froze {target}."
 
 
 @command(
