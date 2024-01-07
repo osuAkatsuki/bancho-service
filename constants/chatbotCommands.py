@@ -1217,7 +1217,7 @@ async def freeze(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await userUtils.getID(target)):
         return "That user does not exist"
 
-    if not await userUtils.getFreezeTime(targetID):
+    if await userUtils.getFreezeTime(targetID):
         return "That user is already frozen."
 
     if not reason:
