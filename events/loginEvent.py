@@ -225,7 +225,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                         [
                             f"Your account has been frozen",  # "Your account has been frozen{freeze_str}"
                             "This is not a restriction, but will lead to one if ignored.",
-                            "You are required to submit a liveplay using the (specified criteria)[https://bit.ly/Akatsuki-Liveplay]",
+                            "You are required to submit a liveplay using the (specified criteria)[https://bit.ly/liveplay-criteria]",
                             "If you have any questions or are ready to liveplay, please open a ticket on our (Discord)[https://akatsuki.gg/discord].",
                             f"Time left until account restriction: {td(seconds = freeze_timestamp - current_time)}.",
                         ],
