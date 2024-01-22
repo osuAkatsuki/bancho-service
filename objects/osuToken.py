@@ -815,6 +815,24 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         # maybe not all users are ready.
         await match.sendReadyStatus(multiplayer_match["match_id"])
 
+    bot_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    assert bot_token is not None
+
+    message = f"Match history available [https://akatsuki.gg/matches/{match_id} here]."
+    if multiplayer_match["match_history_private"]:
+        message += " This is only visible to participants of this match!"
+
+    # send mp link message to player
+    await enqueue(
+        token_id,
+        serverPackets.sendMessage(
+            fro=bot_token["username"],
+            to="#multiplayer",
+            message=message,
+            fro_id=bot_token["user_id"],
+        ),
+    )
+
     return True
 
 
