@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 from typing import TypedDict
 
 import orjson
@@ -1461,7 +1462,7 @@ async def remove_referee(match_id: int, user_id: int) -> None:
 
 
 async def set_match_frame(
-    match_id: int, slot_id: int, decoded_frame_data: dict[str, Any]
+    match_id: int, slot_id: int, decoded_frame_data: dict[str, Any],
 ) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
