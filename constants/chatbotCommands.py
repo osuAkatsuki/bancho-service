@@ -2498,14 +2498,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Supported multiplayer subcommands: <{' | '.join(subcommands.keys())}>."
 
     async def mp_link() -> Optional[str]:
-        multiplayer_match = await matchList.getMatchFromChannel(chan)
-        assert multiplayer_match is not None
+        match_id = await channelList.getMatchIDFromChannel(chan)
+        mp_message = await match.get_match_history_message(match_id)
 
-        message = f"Match history available [https://akatsuki.gg/matches/{multiplayer_match['match_id']} here]."
-        if multiplayer_match["match_history_private"]:
-            message += " This is only visible to participants of this match!"
-
-        return message
+        return mp_message
 
     try:
         subcommands = {
