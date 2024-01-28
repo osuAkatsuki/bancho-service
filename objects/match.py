@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 from copy import deepcopy
+from datetime import datetime
+from typing import Any
 from typing import Optional
 from typing import TypedDict
 
@@ -15,7 +16,9 @@ from constants import matchTeams
 from constants import matchTeamTypes
 from constants import serverPackets
 from constants import slotStatuses
+from constants.match_events import MatchEvents
 from helpers import chatHelper as chat
+from helpers.scoreHelper import calculate_accuracy
 from objects import channelList
 from objects import glob
 from objects import match
@@ -52,6 +55,9 @@ class Match(TypedDict):
     is_in_progress: bool
     creation_time: float
 
+    match_history_private: bool
+    current_game_id: int
+
     # now separate
     # slots: list[slot.Slot]
     # referees: set[int]
@@ -79,9 +85,17 @@ async def create_match(
     is_starting: bool,
     is_in_progress: bool,
     creation_time: float,
+    current_game_id: int,
 ) -> Match:
-    match_id = await glob.redis.incr("bancho:matches:last_id")
-    await glob.redis.sadd("bancho:matches", match_id)
+    match_history_private = False
+    if match_password.endswith("//private"):
+        match_password = match_password.rstrip("//private")
+        match_history_private = True
+
+    match_id = await insert_match(match_name, match_history_private)
+    await insert_match_event(match_id, MatchEvents.MATCH_CREATION, user_id=host_user_id)
+
+    await glob.redis.sadd("bancho:matches", match_id)  # type: ignore
     for slot_id in range(16):
         await slot.create_slot(match_id, slot_id)
     match: Match = {
@@ -103,13 +117,15 @@ async def create_match(
         "is_starting": is_starting,
         "is_in_progress": is_in_progress,
         "creation_time": creation_time,
+        "match_history_private": match_history_private,
+        "current_game_id": current_game_id,
     }
     await glob.redis.set(make_key(match_id), orjson.dumps(match))
     return match
 
 
 async def get_match_ids() -> set[int]:
-    raw_match_ids = await glob.redis.smembers("bancho:matches")
+    raw_match_ids = await glob.redis.smembers("bancho:matches")  # type: ignore
     return {int(match_id) for match_id in raw_match_ids}
 
 
@@ -140,10 +156,14 @@ async def update_match(
     is_starting: Optional[bool] = None,
     is_in_progress: Optional[bool] = None,
     creation_time: Optional[float] = None,
+    game_id: Optional[int] = None,
 ) -> Optional[Match]:
     match = await get_match(match_id)
     if match is None:
         return
+
+    if match_name is not None and match["match_name"] != match_name:
+        await update_match_name(match_id, match_name)
 
     if match_name is not None:
         match["match_name"] = match_name
@@ -179,6 +199,8 @@ async def update_match(
         match["is_in_progress"] = is_in_progress
     if creation_time is not None:
         match["creation_time"] = creation_time
+    if game_id is not None:
+        match["current_game_id"] = game_id
 
     await glob.redis.set(make_key(match_id), orjson.dumps(match))
     return match
@@ -186,7 +208,7 @@ async def update_match(
 
 async def delete_match(match_id: int) -> None:
     # TODO: should we throw error when no match exists?
-    await glob.redis.srem("bancho:matches", match_id)
+    await glob.redis.srem("bancho:matches", match_id)  # type: ignore
     await glob.redis.delete(make_key(match_id))
 
     # TODO: should devs have to do this separately?
@@ -315,9 +337,25 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
         host_user_id=new_host_id,
     )
 
+    await insert_match_event(
+        match_id,
+        MatchEvents.MATCH_HOST_ASSIGNMENT,
+        user_id=new_host_id,
+    )
     await osuToken.enqueue(user_token["token_id"], serverPackets.matchTransferHost)
     await sendUpdates(match_id)
     return True
+
+
+async def get_match_history_message(match_id: int) -> str:
+    multiplayer_match = await get_match(match_id)
+    assert multiplayer_match is not None
+
+    message = f"Match history available [https://akatsuki.gg/matches/{multiplayer_match['match_id']} here]."
+    if multiplayer_match["match_history_private"]:
+        message += " This is only visible to participants of this match!"
+
+    return message
 
 
 async def removeHost(match_id: int) -> None:
@@ -623,37 +661,8 @@ async def allPlayersCompleted(match_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    # Collect some info about the match that just ended to send to the api
-    infoToSend = {
-        "id": multiplayer_match["match_id"],
-        "name": multiplayer_match["match_name"],
-        "beatmap_id": multiplayer_match["beatmap_id"],
-        "mods": multiplayer_match["mods"],
-        "game_mode": multiplayer_match["game_mode"],
-        "scores": {},
-    }
-
     slots = await slot.get_slots(match_id)
     assert len(slots) == 16
-
-    # Add score info for each player
-    for _slot in slots:
-        if _slot["user_token"] and _slot["status"] == slotStatuses.PLAYING:
-            infoToSend["scores"][_slot["user_id"]] = {
-                "score": _slot["score"],
-                "mods": _slot["mods"],
-                "failed": _slot["failed"],
-                "pass": _slot["passed"],
-                "team": _slot["team"],
-            }
-
-    # Send the info to the api
-    await glob.redis.publish(
-        "api:mp_complete_match",
-        # XXX: can't use orjson here because it only supports string
-        # dict keys and we are using an int with the userid above.
-        json.dumps(infoToSend),
-    )
 
     # Reset inProgress
     multiplayer_match = await update_match(match_id, is_in_progress=False)
@@ -673,6 +682,9 @@ async def allPlayersCompleted(match_id: int) -> None:
     playing_stream_name = create_playing_stream_name(match_id)
     await streamList.dispose(playing_stream_name)
     await streamList.remove(playing_stream_name)
+
+    if multiplayer_match["current_game_id"] != 0:
+        await finish_match_game(multiplayer_match["current_game_id"])
 
     # Console output
     # log.info("MPROOM{}: Match completed".format(self.matchID))
@@ -785,6 +797,12 @@ async def userJoin(match_id: int, token_id: str) -> bool:
             if osuToken.is_staff(token["privileges"]):
                 await add_referee(match_id, token["user_id"])
 
+            await insert_match_event(
+                match_id,
+                MatchEvents.MATCH_USER_JOIN,
+                user_id=token["user_id"],
+            )
+
             # Send updated match data
             await sendUpdates(match_id)
             return True
@@ -809,6 +827,12 @@ async def userJoin(match_id: int, token_id: str) -> bool:
                     team=team,
                     user_token=token["token_id"],
                     mods=0,
+                    user_id=token["user_id"],
+                )
+
+                await insert_match_event(
+                    match_id,
+                    MatchEvents.MATCH_USER_JOIN,
                     user_id=token["user_id"],
                 )
 
@@ -849,6 +873,12 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
         user_id=-1,
     )
 
+    await insert_match_event(
+        match_id,
+        MatchEvents.MATCH_USER_LEFT,
+        user_id=token["user_id"],
+    )
+
     # Check if everyone left
     if (
         await countUsers(match_id) == 0
@@ -856,6 +886,11 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
         and not multiplayer_match["is_tourney"]
     ):
         # Dispose match
+        await insert_match_event(
+            match_id,
+            MatchEvents.MATCH_DISBAND,
+        )
+        await finish_match(match_id)
         await matchList.disposeMatch(multiplayer_match["match_id"])  # TODO
         # log.info("MPROOM{}: Room disposed because all users left.".format(self.matchID))
         return
@@ -1221,6 +1256,10 @@ async def start(match_id: int) -> bool:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
+    # Reset game id
+    multiplayer_match = await update_match(match_id, game_id=0)
+    assert multiplayer_match is not None
+
     # Remove isStarting timer flag thingie
     multiplayer_match = await update_match(match_id, is_starting=False)
     assert multiplayer_match is not None
@@ -1265,8 +1304,24 @@ async def start(match_id: int) -> bool:
         await serverPackets.matchStart(match_id),
     )
 
+    game_id = await insert_match_game(
+        match_id,
+        multiplayer_match["beatmap_id"],
+        multiplayer_match["game_mode"],
+        multiplayer_match["mods"],
+        multiplayer_match["match_scoring_type"],
+        multiplayer_match["match_team_type"],
+    )
+    multiplayer_match = await update_match(match_id, game_id=game_id)
+    assert multiplayer_match is not None
+
     # Send updates
     await sendUpdates(match_id)
+    await insert_match_event(
+        match_id,
+        MatchEvents.MATCH_GAME_PLAYTHROUGH,
+        game_id=game_id,
+    )
     return True
 
 
@@ -1395,14 +1450,14 @@ async def add_referee(match_id: int, user_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    await glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)
+    await glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)  # type: ignore
 
 
 async def get_referees(match_id: int) -> set[int]:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    raw_referees: set[bytes] = await glob.redis.smembers(
+    raw_referees: set[bytes] = await glob.redis.smembers(  # type: ignore
         f"bancho:matches:{match_id}:referees",
     )
     referees = {int(referee) for referee in raw_referees}
@@ -1414,4 +1469,211 @@ async def remove_referee(match_id: int, user_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    await glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)
+    await glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)  # type: ignore
+
+
+async def set_match_frame(
+    match_id: int,
+    slot_id: int,
+    decoded_frame_data: dict[str, Any],
+) -> None:
+    multiplayer_match = await get_match(match_id)
+    assert multiplayer_match is not None
+
+    user_slot = await slot.get_slot(match_id, slot_id)
+    assert user_slot is not None
+
+    match_frame = decoded_frame_data | {
+        "mods": user_slot["mods"] + multiplayer_match["mods"],  # Add shared mods
+        "passed": user_slot["passed"],
+        "team": user_slot["team"],
+        "mode": multiplayer_match["game_mode"],
+    }
+    await glob.redis.set(
+        f"bancho:matches:{match_id}:frames:{user_slot['user_id']}",
+        orjson.dumps(match_frame),
+    )
+
+
+async def insert_match_frame(
+    match_id: int,
+    user_id: int,
+) -> None:
+    multiplayer_match = await get_match(match_id)
+    assert multiplayer_match is not None
+
+    match_frame = await glob.redis.get(
+        f"bancho:matches:{match_id}:frames:{user_id}",
+    )
+    await glob.redis.delete(
+        f"bancho:matches:{match_id}:frames:{user_id}",
+    )
+    assert match_frame is not None
+    match_frame = orjson.loads(match_frame)
+
+    await insert_match_game_score(
+        match_id,
+        multiplayer_match["current_game_id"],
+        user_id,
+        match_frame["mode"],
+        match_frame["count300"],
+        match_frame["count100"],
+        match_frame["count50"],
+        match_frame["countMiss"],
+        match_frame["countGeki"],
+        match_frame["countKatu"],
+        match_frame["totalScore"],
+        match_frame["maxCombo"],
+        match_frame["mods"],
+        match_frame["passed"],
+        match_frame["team"],
+    )
+
+
+async def insert_match_game(
+    match_id: int,
+    beatmap_id: int,
+    play_mode: int,
+    mods: int,
+    scoring_type: int,
+    team_type: int,
+) -> int:
+    return await glob.db.execute(
+        """INSERT INTO match_games
+            (id, match_id, beatmap_id, mode, mods, scoring_type, team_type, start_time, end_time)
+        VALUES
+            (NULL, %s, %s, %s, %s, %s, %s, %s, NULL)
+        """,
+        [
+            match_id,
+            beatmap_id,
+            play_mode,
+            mods,
+            scoring_type,
+            team_type,
+            datetime.now(),
+        ],
+    )
+
+
+async def insert_match_game_score(
+    match_id: int,
+    game_id: int,
+    user_id: int,
+    mode: int,
+    count_300: int,
+    count_100: int,
+    count_50: int,
+    count_miss: int,
+    count_geki: int,
+    count_katu: int,
+    score: int,
+    max_combo: int,
+    mods: int,
+    passed: bool,
+    team: int,
+) -> None:
+    accuracy = calculate_accuracy(
+        mode=mode,
+        n300=count_300,
+        n100=count_100,
+        n50=count_50,
+        ngeki=count_geki,
+        nkatu=count_katu,
+        nmiss=count_miss,
+    )
+
+    await glob.db.execute(
+        """
+        INSERT INTO match_game_scores
+            (id, match_id, game_id, user_id, mode, count_300, count_100, count_50, count_miss, count_geki, count_katu, score, accuracy, max_combo, mods, passed, team, timestamp)
+        VALUES
+            (NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        [
+            match_id,
+            game_id,
+            user_id,
+            mode,
+            count_300,
+            count_100,
+            count_50,
+            count_miss,
+            count_geki,
+            count_katu,
+            score,
+            accuracy,
+            max_combo,
+            mods,
+            passed,
+            team,
+            datetime.now(),
+        ],
+    )
+
+
+async def finish_match_game(game_id: int) -> None:
+    await glob.db.execute(
+        "UPDATE match_games SET end_time = %s WHERE id = %s",
+        [
+            datetime.now(),
+            game_id,
+        ],
+    )
+
+
+async def finish_match(match_id: int) -> None:
+    await glob.db.execute(
+        "UPDATE matches SET end_time = %s WHERE id = %s",
+        [
+            datetime.now(),
+            match_id,
+        ],
+    )
+
+
+async def insert_match(
+    match_name: str,
+    match_history_private: bool,
+) -> int:
+    return await glob.db.execute(
+        "INSERT INTO matches (id, name, private, start_time) VALUES (NULL, %s, %s, %s)",
+        [
+            match_name,
+            int(match_history_private),
+            datetime.now(),
+        ],
+    )
+
+
+async def update_match_name(match_id: int, match_name: str) -> None:
+    await glob.db.execute(
+        "UPDATE matches SET name = %s WHERE id = %s",
+        [
+            match_name,
+            match_id,
+        ],
+    )
+
+
+async def insert_match_event(
+    match_id: int,
+    event_type: MatchEvents,
+    game_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+) -> None:
+    await glob.db.execute(
+        """
+        INSERT INTO match_events
+            (id, match_id, game_id, user_id, event_type, timestamp)
+        VALUES
+            (NULL, %s, %s, %s, %s, %s)
+        """,
+        [
+            match_id,
+            game_id,
+            user_id,
+            event_type.value,
+            datetime.now(),
+        ],
+    )

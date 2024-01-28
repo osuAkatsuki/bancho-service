@@ -2497,6 +2497,12 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     async def mpHelp() -> Optional[str]:
         return f"Supported multiplayer subcommands: <{' | '.join(subcommands.keys())}>."
 
+    async def mp_link() -> Optional[str]:
+        match_id = await channelList.getMatchIDFromChannel(chan)
+        mp_message = await match.get_match_history_message(match_id)
+
+        return mp_message
+
     try:
         subcommands = {
             "addref": mpAddRefer,
@@ -2525,6 +2531,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             "settings": mpSettings,
             "scorev": mpScoreV,
             "help": mpHelp,
+            "link": mp_link,
         }
 
         requestedSubcommand = message[0].lower().strip()

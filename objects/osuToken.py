@@ -815,6 +815,20 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         # maybe not all users are ready.
         await match.sendReadyStatus(multiplayer_match["match_id"])
 
+    bot_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    assert bot_token is not None
+
+    mp_message = await match.get_match_history_message(multiplayer_match["match_id"])
+    await enqueue(
+        token_id,
+        serverPackets.sendMessage(
+            fro=bot_token["username"],
+            to="#multiplayer",
+            message=mp_message,
+            fro_id=bot_token["user_id"],
+        ),
+    )
+
     return True
 
 

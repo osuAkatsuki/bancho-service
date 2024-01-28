@@ -54,3 +54,4 @@ class DBPool:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(*args, **kwargs)
                 await conn.commit()
+                return cur.lastrowid

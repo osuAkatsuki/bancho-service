@@ -29,6 +29,12 @@ async def handle(userToken: Token, rawPacketData: bytes):
         )
         assert slot_id is not None
 
+        await match.set_match_frame(
+            multiplayer_match["match_id"],
+            slot_id,
+            packetData,
+        )
+
         # Update the score
         await match.updateScore(
             multiplayer_match["match_id"],

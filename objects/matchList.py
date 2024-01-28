@@ -60,6 +60,7 @@ async def createMatch(
         is_starting=False,
         is_in_progress=False,
         creation_time=time(),
+        current_game_id=0,
     )
     await streamList.add(match.create_stream_name(multiplayer_match["match_id"]))
     await streamList.add(
