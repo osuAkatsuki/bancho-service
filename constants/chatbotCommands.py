@@ -2444,22 +2444,16 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             assert slot_token is not None
             msg.append(
                 "* [{team}] <{status}> ~ {username}{mods}{nl}".format(
-                    team=(
-                        "red"
-                        if _slot["team"] == matchTeams.RED
-                        else (
-                            "blue"
-                            if _slot["team"] == matchTeams.BLUE
-                            else "!! no team !!"
-                        )
-                    ),
+                    team="red"
+                    if _slot["team"] == matchTeams.RED
+                    else "blue"
+                    if _slot["team"] == matchTeams.BLUE
+                    else "!! no team !!",
                     status=readableStatus,
                     username=slot_token["username"],
-                    mods=(
-                        f" (+ {scoreUtils.readableMods(_slot['mods'])})"
-                        if _slot["mods"] > 0
-                        else ""
-                    ),
+                    mods=f" (+ {scoreUtils.readableMods(_slot['mods'])})"
+                    if _slot["mods"] > 0
+                    else "",
                     nl=" | " if single else "\n",
                 ),
             )
