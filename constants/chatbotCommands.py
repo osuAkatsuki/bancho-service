@@ -1751,7 +1751,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (matchName := " ".join(message[1:]).strip()):
             raise exceptions.invalidArgumentsException("Match name must not be empty!")
 
-        matchID = await matchList.createMatch(
+        multiplayer_match = await matchList.createMatch(
             matchName,
             match_password=secrets.token_hex(16),
             beatmap_id=0,
@@ -1761,11 +1761,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             host_user_id=-1,
             is_tourney=True,
         )
-        multiplayer_match = await matchList.getMatchFromChannel(chan)
-        assert multiplayer_match is not None
 
         await match.sendUpdates(multiplayer_match["match_id"])
-        return f"Tourney match #{matchID} created!"
+        return f"Tourney match #{multiplayer_match['match_id']} created!"
 
     # def mpJoin() -> str:
     #     if len(message) < 2 or not message[1].isnumeric():
@@ -2446,16 +2444,22 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             assert slot_token is not None
             msg.append(
                 "* [{team}] <{status}> ~ {username}{mods}{nl}".format(
-                    team="red"
-                    if _slot["team"] == matchTeams.RED
-                    else "blue"
-                    if _slot["team"] == matchTeams.BLUE
-                    else "!! no team !!",
+                    team=(
+                        "red"
+                        if _slot["team"] == matchTeams.RED
+                        else (
+                            "blue"
+                            if _slot["team"] == matchTeams.BLUE
+                            else "!! no team !!"
+                        )
+                    ),
                     status=readableStatus,
                     username=slot_token["username"],
-                    mods=f" (+ {scoreUtils.readableMods(_slot['mods'])})"
-                    if _slot["mods"] > 0
-                    else "",
+                    mods=(
+                        f" (+ {scoreUtils.readableMods(_slot['mods'])})"
+                        if _slot["mods"] > 0
+                        else ""
+                    ),
                     nl=" | " if single else "\n",
                 ),
             )

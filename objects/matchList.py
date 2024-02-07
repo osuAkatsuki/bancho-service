@@ -28,7 +28,7 @@ async def createMatch(
     game_mode: int,
     host_user_id: int,
     is_tourney: bool = False,
-) -> int:
+) -> match.Match:
     """
     Add a new match to matches list
 
@@ -75,7 +75,7 @@ async def createMatch(
         instance=True,
     )
 
-    return multiplayer_match["match_id"]
+    return multiplayer_match
 
 
 async def disposeMatch(match_id: int) -> None:
