@@ -496,11 +496,14 @@ async def sendMessage(
 
                     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
-                    await sendMessage(
-                        token_id=aika_token["token_id"],
+
+                    msg_packet = serverPackets.sendMessage(
+                        fro=aika_token["username"],
                         to=to,
                         message=chatbot_response["response"],
+                        fro_id=aika_token["user_id"],
                     )
+                    await osuToken.enqueue(userToken["token_id"], msg_packet)
             else:
                 await osuToken.addMessageInBuffer(token_id, to, message)
                 await streamList.broadcast(
@@ -554,11 +557,13 @@ async def sendMessage(
                 recipient_token["token_id"],
                 userToken["user_id"],
             ):
-                await sendMessage(
+                msg_packet = serverPackets.sendMessage(
                     fro=to,
                     to=fro,
                     message=f"\x01ACTION is away: {recipient_token['away_message'] or ''}\x01",
+                    fro_id=recipient_token["user_id"],
                 )
+                await osuToken.enqueue(userToken["token_id"], msg_packet)
 
             if to == glob.BOT_NAME:
                 # Check message for commands
@@ -571,11 +576,14 @@ async def sendMessage(
                 if chatbot_response:
                     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
-                    await sendMessage(
-                        token_id=aika_token["token_id"],
+
+                    msg_packet = serverPackets.sendMessage(
+                        fro=aika_token["username"],
                         to=fro,
                         message=chatbot_response["response"],
+                        fro_id=aika_token["user_id"],
                     )
+                    await osuToken.enqueue(userToken["token_id"], msg_packet)
             else:
                 packet = serverPackets.sendMessage(
                     fro=userToken["username"],
