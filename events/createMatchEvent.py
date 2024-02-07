@@ -44,7 +44,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
             await match.setHost(multiplayer_match["match_id"], token["user_id"])
             await match.sendUpdates(multiplayer_match["match_id"])
             await match.changePassword(
-                multiplayer_match["match_id"], packetData["matchPassword"]
+                multiplayer_match["match_id"], packetData["matchPassword"],
             )
 
         if glob.amplitude is not None:
