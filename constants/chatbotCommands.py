@@ -32,6 +32,7 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
 from objects import channelList
+from objects.redisLock import redisLock
 from objects import chatbot
 from objects import glob
 from objects import match
@@ -1743,6 +1744,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return f"Referees for this match: {refs}"
 
     async def mpMake() -> Optional[str]:
+        if not (user_token := await osuToken.get_token_by_username(fro)):
+            raise exceptions.userNotFoundException("No such user")
+
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp make <name>.",
@@ -1751,7 +1755,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not (matchName := " ".join(message[1:]).strip()):
             raise exceptions.invalidArgumentsException("Match name must not be empty!")
 
-        matchID = await matchList.createMatch(
+        multiplayer_match = await matchList.createMatch(
             matchName,
             match_password=secrets.token_hex(16),
             beatmap_id=0,
@@ -1761,11 +1765,26 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             host_user_id=-1,
             is_tourney=True,
         )
-        multiplayer_match = await matchList.getMatchFromChannel(chan)
-        assert multiplayer_match is not None
 
-        await match.sendUpdates(multiplayer_match["match_id"])
-        return f"Tourney match #{matchID} created!"
+        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+            # Add tourney creator as referee
+            await match.add_referee(
+                multiplayer_match["match_id"], user_token["user_id"]
+            )
+
+            if user_token["irc"]:
+                await chat.joinChannel(  # join channel
+                    token_id=user_token["token_id"],
+                    channel_name=f"#mp_{multiplayer_match['match_id']}",
+                    force=True,
+                )
+            else:
+                await osuToken.joinMatch(
+                    user_token["token_id"], multiplayer_match["match_id"]
+                )
+            await match.sendUpdates(multiplayer_match["match_id"])
+
+        return f"Tourney match #{multiplayer_match['match_id']} created!"
 
     # def mpJoin() -> str:
     #     if len(message) < 2 or not message[1].isnumeric():
@@ -1778,7 +1797,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     #         raise exceptions.invalidArgumentsException(
     #             f"No game clients found for {fro}, can't join the match. "
     #             "If you're a referee and you want to join the chat "
-    #             f"channel from IRC, use /join #multi_{matchID} instead.",
+    #             f"channel from IRC, use /join #mp_{matchID} instead.",
     #         )
 
     #     await osuToken.joinMatch(userToken["token_id"], matchID)
@@ -2446,16 +2465,22 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             assert slot_token is not None
             msg.append(
                 "* [{team}] <{status}> ~ {username}{mods}{nl}".format(
-                    team="red"
-                    if _slot["team"] == matchTeams.RED
-                    else "blue"
-                    if _slot["team"] == matchTeams.BLUE
-                    else "!! no team !!",
+                    team=(
+                        "red"
+                        if _slot["team"] == matchTeams.RED
+                        else (
+                            "blue"
+                            if _slot["team"] == matchTeams.BLUE
+                            else "!! no team !!"
+                        )
+                    ),
                     status=readableStatus,
                     username=slot_token["username"],
-                    mods=f" (+ {scoreUtils.readableMods(_slot['mods'])})"
-                    if _slot["mods"] > 0
-                    else "",
+                    mods=(
+                        f" (+ {scoreUtils.readableMods(_slot['mods'])})"
+                        if _slot["mods"] > 0
+                        else ""
+                    ),
                     nl=" | " if single else "\n",
                 ),
             )
