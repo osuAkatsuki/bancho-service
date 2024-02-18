@@ -39,7 +39,7 @@ async def joinChannel(
     :param token: user token object of user that joins the channel. Optional. userID can be used instead.
     :param channel: channel name
     :param toIRC: if True, send this channel join event to IRC. Must be true if joining from bancho. Default: True
-    :param force: whether to allow game clients to join #spect_ and #multi_ channels
+    :param force: whether to allow game clients to join #spect_ and #mp_ channels
     :return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
     """
     token: Optional[osuToken.Token] = None
@@ -61,7 +61,7 @@ async def joinChannel(
         if channel_name not in await channelList.getChannelNames():
             raise exceptions.channelUnknownException()
 
-        # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
+        # Make sure a game client is not trying to join a #mp_ or #spect_ channel manually
         channel = await channelList.getChannel(channel_name)
         if channel is None:
             raise exceptions.channelUnknownException()
@@ -142,7 +142,7 @@ async def partChannel(
     :param channel: channel name
     :param toIRC: if True, send this channel join event to IRC. Must be true if joining from bancho. Optional. Default: True
     :param kick: if True, channel tab will be closed on client. Used when leaving lobby. Optional. Default: False
-    :param force: whether to allow game clients to part #spect_ and #multi_ channels
+    :param force: whether to allow game clients to part #spect_ and #mp_ channels
     :return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
     """
     token: Optional[osuToken.Token] = None
@@ -173,17 +173,17 @@ async def partChannel(
                 spectating_user_id = token["spectating_user_id"]
             channel_name = f"#spect_{spectating_user_id}"
         elif channel_name == "#multiplayer":
-            channel_name = f"#multi_{token['match_id']}"
+            channel_name = f"#mp_{token['match_id']}"
         elif channel_name.startswith("#spect_"):
             channelClient = "#spectator"
-        elif channel_name.startswith("#multi_"):
+        elif channel_name.startswith("#mp_"):
             channelClient = "#multiplayer"
 
         # Make sure the channel exists
         if channel_name not in await channelList.getChannelNames():
             raise exceptions.channelUnknownException()
 
-        # Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
+        # Make sure a game client is not trying to join a #mp_ or #spect_ channel manually
         channel = await channelList.getChannel(channel_name)
         if channel is None:
             raise exceptions.channelUnknownException()
@@ -322,10 +322,10 @@ async def sendMessage(
                 s = userToken["spectating_user_id"]
             to = f"#spect_{s}"
         elif to == "#multiplayer":
-            to = f"#multi_{userToken['match_id']}"
+            to = f"#mp_{userToken['match_id']}"
         elif to.startswith("#spect_"):
             toClient = "#spectator"
-        elif to.startswith("#multi_"):
+        elif to.startswith("#mp_"):
             toClient = "#multiplayer"
 
         isChannel = to[0] == "#"
@@ -377,7 +377,7 @@ async def sendMessage(
             # non-public channels (except multiplayer) require staff or bot
             if (
                 not channel["public_write"]
-                and not (to.startswith("#multi_") or to.startswith("#spect_"))
+                and not (to.startswith("#mp_") or to.startswith("#spect_"))
             ) and not (
                 osuToken.is_staff(userToken["privileges"])
                 or userToken["user_id"] == CHATBOT_USER_ID

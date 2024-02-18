@@ -689,7 +689,7 @@ async def allPlayersCompleted(match_id: int) -> None:
     # Console output
     # log.info("MPROOM{}: Match completed".format(self.matchID))
 
-    channel_name = f"#multi_{match_id}"
+    channel_name = f"#mp_{match_id}"
 
     # If this is a tournament match, then we send a notification in the chat
     # saying that the match has completed.
@@ -1401,7 +1401,7 @@ async def resetReady(match_id: int) -> None:
 
 
 async def sendReadyStatus(match_id: int) -> None:
-    channel_name = f"#multi_{match_id}"
+    channel_name = f"#mp_{match_id}"
 
     # Make sure match exists before attempting to do anything else
     if channel_name not in await channelList.getChannelNames():
