@@ -32,7 +32,6 @@ from constants import slotStatuses
 from helpers import chatHelper as chat
 from helpers import systemHelper
 from objects import channelList
-from objects.redisLock import redisLock
 from objects import chatbot
 from objects import glob
 from objects import match
@@ -41,6 +40,7 @@ from objects import osuToken
 from objects import slot
 from objects import streamList
 from objects import tokenList
+from objects.redisLock import redisLock
 
 """
 Commands callbacks
@@ -1742,7 +1742,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             raise exceptions.userNotFoundException("No such user")
 
         await match.remove_referee(
-            multiplayer_match["match_id"], target_token["user_id"]
+            multiplayer_match["match_id"], target_token["user_id"],
         )
         return f"Removed {target_token['username']} from referees"
 
@@ -1800,7 +1800,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 )
             else:
                 await osuToken.joinMatch(
-                    user_token["token_id"], multiplayer_match["match_id"]
+                    user_token["token_id"], multiplayer_match["match_id"],
                 )
 
             await match.setHost(multiplayer_match["match_id"], user_token["user_id"])
@@ -1937,7 +1937,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
             success = await match.userChangeSlot(
-                multiplayer_match["match_id"], target_token["user_id"], newSlotID
+                multiplayer_match["match_id"], target_token["user_id"], newSlotID,
             )
 
         return (
@@ -1973,7 +1973,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
             success = match.setHost(
-                multiplayer_match["match_id"], target_token["user_id"]
+                multiplayer_match["match_id"], target_token["user_id"],
             )
 
         return (
@@ -2346,7 +2346,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
             slot_id = await match.getUserSlotID(
-                multiplayer_match["match_id"], target_token["user_id"]
+                multiplayer_match["match_id"], target_token["user_id"],
             )
             if not slot_id:
                 raise exceptions.userNotFoundException(
@@ -2630,7 +2630,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             return
 
         mp_message = await match.get_match_history_message(
-            multiplayer_match["match_id"]
+            multiplayer_match["match_id"],
         )
         return mp_message
 
