@@ -310,11 +310,12 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    old_host = await tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
-    assert old_host is not None
+    if multiplayer_match["host_user_id"] != -1:
+        old_host = await tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
+        assert old_host is not None
 
-    if not osuToken.is_staff(old_host["privileges"]):
-        await remove_referee(match_id, multiplayer_match["host_user_id"])
+        if not osuToken.is_staff(old_host["privileges"]):
+            await remove_referee(match_id, multiplayer_match["host_user_id"])
 
     await add_referee(match_id, new_host_id)
 
@@ -358,7 +359,7 @@ async def get_match_history_message(match_id: int) -> str:
     return message
 
 
-async def removeHost(match_id: int) -> None:
+async def removeHost(match_id: int, rm_referee: bool = True) -> None:
     """
     Removes the host (for tourney matches)
 
@@ -369,7 +370,8 @@ async def removeHost(match_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    await remove_referee(match_id, multiplayer_match["host_user_id"])
+    if rm_referee:
+        await remove_referee(match_id, multiplayer_match["host_user_id"])
 
     await update_match(match_id, host_user_id=-1)
 
@@ -873,6 +875,11 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
         user_id=-1,
     )
 
+    await osuToken.update_token(
+        token_id,
+        match_id=None,
+    )
+
     await insert_match_event(
         match_id,
         MatchEvents.MATCH_USER_LEFT,
@@ -1184,8 +1191,7 @@ async def changeTeam(
         else:
             new_team = matchTeams.RED
 
-        await setSlot(match_id, slot_id, status=None, team=new_team)
-
+    await setSlot(match_id, slot_id, status=None, team=new_team)
     await sendUpdates(match_id)
 
 
