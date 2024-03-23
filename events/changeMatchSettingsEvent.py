@@ -65,7 +65,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
         if old_match_name != multiplayer_match["match_name"]:
             await channelList.updateChannel(
-                f"#multi_{multiplayer_match['match_id']}",
+                f"#mp_{multiplayer_match['match_id']}",
                 description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
             )
 

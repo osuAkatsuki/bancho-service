@@ -210,7 +210,7 @@ async def updateChannel(
 
 
 async def getMatchIDFromChannel(channel_name: str) -> int:
-    if not channel_name.lower().startswith("#multi_"):
+    if not channel_name.lower().startswith("#mp_"):
         raise exceptions.wrongChannelException()
 
     parts = channel_name.lower().split("_")

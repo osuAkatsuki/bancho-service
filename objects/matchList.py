@@ -28,7 +28,7 @@ async def createMatch(
     game_mode: int,
     host_user_id: int,
     is_tourney: bool = False,
-) -> int:
+) -> match.Match:
     """
     Add a new match to matches list
 
@@ -67,7 +67,7 @@ async def createMatch(
         match.create_playing_stream_name(multiplayer_match["match_id"]),
     )
     await channelList.addChannel(
-        f"#multi_{multiplayer_match['match_id']}",
+        f"#mp_{multiplayer_match['match_id']}",
         description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
         public_read=True,
         public_write=False,
@@ -75,7 +75,7 @@ async def createMatch(
         instance=True,
     )
 
-    return multiplayer_match["match_id"]
+    return multiplayer_match
 
 
 async def disposeMatch(match_id: int) -> None:
@@ -107,7 +107,7 @@ async def disposeMatch(match_id: int) -> None:
             )
 
     # Delete chat channel
-    await channelList.removeChannel(f"#multi_{match_id}")
+    await channelList.removeChannel(f"#mp_{match_id}")
 
     stream_name = match.create_stream_name(match_id)
     playing_stream_name = match.create_playing_stream_name(match_id)
