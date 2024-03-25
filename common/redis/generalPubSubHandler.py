@@ -32,8 +32,7 @@ class generalPubSubHandler(ABC):
         self.strict = True
 
     @abstractmethod
-    async def handle(self, userID):
-        ...
+    async def handle(self, userID): ...
 
     def parseData(self, data: bytes) -> Any:
         """
