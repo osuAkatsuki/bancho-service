@@ -1020,9 +1020,11 @@ async def silence(
 
     await audit_logs.send_log(
         author,
-        f'has silenced {await getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
-        if seconds
-        else f"has removed {await getUsername(userID)}'s silence",
+        (
+            f'has silenced {await getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
+            if seconds
+            else f"has removed {await getUsername(userID)}'s silence"
+        ),
     )
 
 
