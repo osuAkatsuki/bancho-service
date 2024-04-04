@@ -2501,13 +2501,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not username:
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
+        colour_dict = {"red": matchTeams.RED, "blue": matchTeams.BLUE}
+
         colour = message[2].lower().strip()
-        if colour not in {"red", "blue"}:
+        colour_const = colour_dict.get(colour)
+
+        if colour_const is None:
             raise exceptions.invalidArgumentsException(
                 "Team colour must be red or blue.",
             )
-
-        colour_const = {"red": matchTeams.RED, "blue": matchTeams.BLUE}[colour]
 
         target_token = await osuToken.get_token_by_username(username)
         if not target_token:
