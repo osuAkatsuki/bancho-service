@@ -22,6 +22,6 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     await chat.joinChannel(
         token_id=userToken["token_id"],
-        channel_name=f'#multi_{packetData["matchID"]}',
+        channel_name=f'#mp_{packetData["matchID"]}',
         force=True,
     )

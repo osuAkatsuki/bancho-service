@@ -17,7 +17,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         return None
 
     # Set slot or match mods according to modType
-    async with redisLock(f"{match.make_key(match_id)}:lock"):
+    async with redisLock(match.make_lock_key(match_id)):
         # Make sure the match exists
         multiplayer_match = await match.get_match(match_id)
         if multiplayer_match is None:

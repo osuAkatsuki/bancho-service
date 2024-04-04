@@ -19,7 +19,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
     if match_id is None:
         return
 
-    async with redisLock(f"{match.make_key(match_id)}:lock"):
+    async with redisLock(match.make_lock_key(match_id)):
         # Make sure the match exists
         multiplayer_match = await match.get_match(match_id)
         if multiplayer_match is None:
@@ -65,7 +65,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
         if old_match_name != multiplayer_match["match_name"]:
             await channelList.updateChannel(
-                f"#multi_{multiplayer_match['match_id']}",
+                f"#mp_{multiplayer_match['match_id']}",
                 description=f"Multiplayer lobby for match {multiplayer_match['match_name']}",
             )
 

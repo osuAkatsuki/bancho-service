@@ -800,7 +800,7 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
     await chat.joinChannel(
         token_id=token_id,
-        channel_name=f"#multi_{match_id}",
+        channel_name=f"#mp_{match_id}",
         force=True,
     )
     await enqueue(token_id, await serverPackets.matchJoinSuccess(match_id))
@@ -849,7 +849,7 @@ async def leaveMatch(token_id: str) -> None:
     # Part #multiplayer channel and streams (/ and /playing)
     await chat.partChannel(
         token_id=token_id,
-        channel_name=f"#multi_{token['match_id']}",
+        channel_name=f"#mp_{token['match_id']}",
         kick=True,
         force=True,
     )

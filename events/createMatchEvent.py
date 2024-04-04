@@ -26,7 +26,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
 
         # Create a match object
         # TODO: Player number check
-        match_id = await matchList.createMatch(
+        multiplayer_match = await matchList.createMatch(
             match_name,
             packetData["matchPassword"].strip(),
             packetData["beatmapID"],
@@ -36,19 +36,17 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
             token["user_id"],
         )
 
-        async with redisLock(f"{match.make_key(match_id)}:lock"):
-            # Make sure the match has been created
-            multiplayer_match = await match.get_match(match_id)
-            if multiplayer_match is None:
-                raise exceptions.matchCreateError()
-
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             # Join that match
-            await osuToken.joinMatch(token["token_id"], match_id)
+            await osuToken.joinMatch(token["token_id"], multiplayer_match["match_id"])
 
             # Give host to match creator
-            await match.setHost(match_id, token["user_id"])
-            await match.sendUpdates(match_id)
-            await match.changePassword(match_id, packetData["matchPassword"])
+            await match.setHost(multiplayer_match["match_id"], token["user_id"])
+            await match.sendUpdates(multiplayer_match["match_id"])
+            await match.changePassword(
+                multiplayer_match["match_id"],
+                packetData["matchPassword"],
+            )
 
         if glob.amplitude is not None:
             amplitude_event_props = {

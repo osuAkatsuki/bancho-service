@@ -67,6 +67,10 @@ def make_key(match_id: int) -> str:
     return f"bancho:matches:{match_id}"
 
 
+def make_lock_key(match_id: int) -> str:
+    return f"bancho:matches:{match_id}:lock"
+
+
 async def create_match(
     match_name: str,
     match_password: str,
@@ -310,11 +314,12 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    old_host = await tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
-    assert old_host is not None
+    if multiplayer_match["host_user_id"] != -1:
+        old_host = await tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
+        assert old_host is not None
 
-    if not osuToken.is_staff(old_host["privileges"]):
-        await remove_referee(match_id, multiplayer_match["host_user_id"])
+        if not osuToken.is_staff(old_host["privileges"]):
+            await remove_referee(match_id, multiplayer_match["host_user_id"])
 
     await add_referee(match_id, new_host_id)
 
@@ -358,7 +363,7 @@ async def get_match_history_message(match_id: int) -> str:
     return message
 
 
-async def removeHost(match_id: int) -> None:
+async def removeHost(match_id: int, rm_referee: bool = True) -> None:
     """
     Removes the host (for tourney matches)
 
@@ -369,7 +374,8 @@ async def removeHost(match_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    await remove_referee(match_id, multiplayer_match["host_user_id"])
+    if rm_referee:
+        await remove_referee(match_id, multiplayer_match["host_user_id"])
 
     await update_match(match_id, host_user_id=-1)
 
@@ -689,7 +695,7 @@ async def allPlayersCompleted(match_id: int) -> None:
     # Console output
     # log.info("MPROOM{}: Match completed".format(self.matchID))
 
-    channel_name = f"#multi_{match_id}"
+    channel_name = f"#mp_{match_id}"
 
     # If this is a tournament match, then we send a notification in the chat
     # saying that the match has completed.
@@ -871,6 +877,11 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
         user_token=None,
         mods=0,
         user_id=-1,
+    )
+
+    await osuToken.update_token(
+        token_id,
+        match_id=None,
     )
 
     await insert_match_event(
@@ -1184,8 +1195,7 @@ async def changeTeam(
         else:
             new_team = matchTeams.RED
 
-        await setSlot(match_id, slot_id, status=None, team=new_team)
-
+    await setSlot(match_id, slot_id, status=None, team=new_team)
     await sendUpdates(match_id)
 
 
@@ -1401,7 +1411,7 @@ async def resetReady(match_id: int) -> None:
 
 
 async def sendReadyStatus(match_id: int) -> None:
-    channel_name = f"#multi_{match_id}"
+    channel_name = f"#mp_{match_id}"
 
     # Make sure match exists before attempting to do anything else
     if channel_name not in await channelList.getChannelNames():
