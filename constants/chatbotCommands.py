@@ -1838,7 +1838,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if user_token["user_id"] not in referees:
             return
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.update_match(multiplayer_match["match_id"], is_locked=True)
 
         return "This match has been locked."
@@ -1855,7 +1855,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if user_token["user_id"] not in referees:
             return
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.update_match(multiplayer_match["match_id"], is_locked=False)
 
         return "This match has been unlocked."
@@ -1882,7 +1882,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             )
         matchSize = int(message[1])
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.forceSize(multiplayer_match["match_id"], matchSize)
 
         return f"Match size changed to {matchSize}."
@@ -1901,7 +1901,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not userToken:
             raise exceptions.userNotFoundException("No such user.")
 
-        async with redisLock(f"{match.make_key(matchID)}:lock"):
+        async with redisLock(match.make_lock_key(matchID)):
             if not await osuToken.joinMatch(userToken["token_id"], matchID):
                 return "Failed to join match."
 
@@ -1936,7 +1936,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             success = await match.userChangeSlot(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
@@ -1974,7 +1974,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             success = match.setHost(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
@@ -1998,7 +1998,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if user_token["user_id"] not in referees:
             return
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.removeHost(multiplayer_match["match_id"], rm_referee=False)
 
         return "Host has been removed from this match."
@@ -2219,7 +2219,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "order to cache it, then try again.",
             )
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             multiplayer_match = await match.update_match(
                 multiplayer_match["match_id"],
                 beatmap_id=beatmapID,
@@ -2274,7 +2274,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         oldMatchTeamType = multiplayer_match["match_team_type"]
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             multiplayer_match = await match.update_match(
                 multiplayer_match["match_id"],
                 match_team_type=match_team_type,
@@ -2318,7 +2318,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if user_token["user_id"] not in referees:
             return
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.abort(multiplayer_match["match_id"])
 
         return "Match aborted!"
@@ -2348,7 +2348,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             slot_id = await match.getUserSlotID(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
@@ -2376,7 +2376,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if user_token["user_id"] not in referees:
             return
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             password = "" if len(message) < 2 or not message[1].strip() else message[1]
             await match.changePassword(multiplayer_match["match_id"], password)
 
@@ -2396,7 +2396,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if user_token["user_id"] not in referees:
             return
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             password = secrets.token_hex(16)
             await match.changePassword(multiplayer_match["match_id"], password)
 
@@ -2460,7 +2460,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             matchModModes.FREE_MOD if freemods else matchModModes.NORMAL
         )
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             multiplayer_match = await match.update_match(
                 multiplayer_match["match_id"],
                 match_mod_mode=new_match_mod_mode,
@@ -2515,7 +2515,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.changeTeam(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
@@ -2614,7 +2614,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         else:
             new_scoring_type = matchScoringTypes.SCORE
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             multiplayer_match = await match.update_match(
                 multiplayer_match["match_id"],
                 match_scoring_type=new_scoring_type,

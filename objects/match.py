@@ -66,6 +66,9 @@ class Match(TypedDict):
 def make_key(match_id: int) -> str:
     return f"bancho:matches:{match_id}"
 
+def make_lock_key(match_id: int) -> str:
+    return f"bancho:matches:{match_id}:lock"
+
 
 async def create_match(
     match_name: str,

@@ -36,7 +36,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes):
             token["user_id"],
         )
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
+        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             # Join that match
             await osuToken.joinMatch(token["token_id"], multiplayer_match["match_id"])
 
