@@ -1792,21 +1792,20 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             is_tourney=True,
         )
 
-        async with redisLock(f"{match.make_key(multiplayer_match['match_id'])}:lock"):
-            if user_token["irc"]:
-                await chat.joinChannel(  # join channel
-                    token_id=user_token["token_id"],
-                    channel_name=f"#mp_{multiplayer_match['match_id']}",
-                    force=True,
-                )
-            else:
-                await osuToken.joinMatch(
-                    user_token["token_id"],
-                    multiplayer_match["match_id"],
-                )
+        if user_token["irc"]:
+            await chat.joinChannel(  # join channel
+                token_id=user_token["token_id"],
+                channel_name=f"#mp_{multiplayer_match['match_id']}",
+                force=True,
+            )
+        else:
+            await osuToken.joinMatch(
+                user_token["token_id"],
+                multiplayer_match["match_id"],
+            )
 
-            await match.setHost(multiplayer_match["match_id"], user_token["user_id"])
-            await match.sendUpdates(multiplayer_match["match_id"])
+        await match.setHost(multiplayer_match["match_id"], user_token["user_id"])
+        await match.sendUpdates(multiplayer_match["match_id"])
 
         return f"Tourney match #{multiplayer_match['match_id']} created!"
 
