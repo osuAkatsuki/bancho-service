@@ -1191,12 +1191,17 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
     except:
         raise
     finally:
-        if msg:
-            if token := await tokenList.getTokenFromUsername(fro):
-                await osuToken.enqueue(
-                    token["token_id"],
-                    serverPackets.notification(msg),
-                )
+        if not msg:
+            return
+
+        token = await osuToken.get_token_by_username(fro)
+        if token is None:
+            return
+
+        await osuToken.enqueue(
+            token["token_id"],
+            serverPackets.notification(msg),
+        )
 
 
 @command(
@@ -1502,9 +1507,9 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.send_message(
-        sender_token_id=aika_token["token_id"],
-        recipient_name="#announce",
+    await chat.sendMessage(
+        token_id=aika_token["token_id"],
+        send_to="#announce",
         message=f"[{nominator_profile_url} {fro}] has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
@@ -1520,9 +1525,9 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.send_message(
-        sender_token_id=aika_token["token_id"],
-        recipient_name="#announce",
+    await chat.sendMessage(
+        token_id=aika_token["token_id"],
+        send_to="#announce",
         message=" ".join(message),
     )
     return "Announcement successfully sent."
@@ -2013,9 +2018,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
             assert aika_token is not None
             if not await match.start(multiplayer_match["match_id"]):
-                await chat.send_message(
-                    sender_token_id=aika_token["token_id"],
-                    recipient_name=chan,
+                await chat.sendMessage(
+                    token_id=aika_token["token_id"],
+                    send_to=chan,
                     message=(
                         "Couldn't start match. Make sure there are enough players and "
                         "teams are valid. The match has been unlocked."
@@ -2023,9 +2028,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 )
                 return True  # Failed to start
             else:
-                await chat.send_message(
-                    sender_token_id=aika_token["token_id"],
-                    recipient_name=chan,
+                await chat.sendMessage(
+                    token_id=aika_token["token_id"],
+                    send_to=chan,
                     message="Have fun!",
                 )
 
@@ -2074,9 +2079,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 if not t % 10 or t <= 5:
                     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
-                    await chat.send_message(
-                        sender_token_id=aika_token["token_id"],
-                        recipient_name=chan,
+                    await chat.sendMessage(
+                        token_id=aika_token["token_id"],
+                        send_to=chan,
                         message=f"Match starts in {t} seconds.",
                     )
 

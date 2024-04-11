@@ -11,9 +11,9 @@ from objects.osuToken import Token
 async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Send private message packet
     packetData = clientPackets.sendPrivateMessage(rawPacketData)
-    await chat.send_message(
-        sender_token_id=userToken["token_id"],
-        recipient_name=packetData["to"],
+    await chat.sendMessage(
+        token_id=userToken["token_id"],
+        send_to=packetData["to"],
         message=packetData["message"],
     )
 
