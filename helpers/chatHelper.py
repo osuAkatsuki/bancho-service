@@ -587,13 +587,15 @@ async def handle_private_message(
         return ...
 
     # TODO: check if user has us blacklisted
-    if (  # type: ignore
+    # fmt: off
+    if (
         recipient_token["block_non_friends_dm"]
         and (
             user_token["user_id"]
             not in await user_utils.get_friend_user_ids(recipient_token["user_id"])
         )
     ):
+    # fmt: on
         await osuToken.enqueue(
             user_token["token_id"],
             serverPackets.targetBlockingDMs(recipient_token["username"]),
