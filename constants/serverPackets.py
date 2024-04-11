@@ -277,26 +277,26 @@ def sendMessage(fro: str, to: str, message: str, fro_id: int = 0) -> bytes:
     )
 
 
-def targetBlockingDMs(to: str, fro: str, fro_id: int = 0) -> bytes:
+def targetBlockingDMs(target: str) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_targetBlockingNonFriendsDM,
         (
-            (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
-            (to, dataTypes.STRING),
-            (fro_id or user_utils.get_id_from_username(fro), dataTypes.SINT32),
+            ("", dataTypes.STRING),
+            (target, dataTypes.STRING),
+            (0, dataTypes.SINT32),
         ),
     )
 
 
-def targetSilenced(to: str, fro: str, fro_id: int = 0) -> bytes:
+def targetSilenced(target: str) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_targetSilenced,
         (
-            (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
-            (to, dataTypes.STRING),
-            (fro_id or user_utils.get_id_from_username(fro), dataTypes.SINT32),
+            ("", dataTypes.STRING),
+            (target, dataTypes.STRING),
+            (0, dataTypes.SINT32),
         ),
     )
 
