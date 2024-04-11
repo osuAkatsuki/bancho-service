@@ -1,5 +1,4 @@
 """ Contains functions used to write specific server packets to byte streams """
-
 from __future__ import annotations
 
 from typing import Optional
