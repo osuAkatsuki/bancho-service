@@ -382,7 +382,6 @@ async def handle_interaction_with_bot(
     send_to: str,
     message: str,
 ) -> Optional[int]:
-
     # This is a special case and we need to redirect it to chatbot's DM's
     if message.startswith("!report"):
         send_to = glob.BOT_NAME
