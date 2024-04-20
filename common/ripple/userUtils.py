@@ -250,17 +250,13 @@ async def checkLogin(userID: int, password: str, ip: str = "") -> bool:
     # Otherwise, check password
     # Get password data
     passwordData = await glob.db.fetch(
-        "SELECT password_md5, salt, password_version FROM users WHERE id = %s LIMIT 1",
+        "SELECT password_md5 FROM users WHERE id = %s LIMIT 1",
         [userID],
     )
 
     # Make sure the query returned something
     if not passwordData:
         return False
-
-    # Return valid/invalid based on the password version.
-    # XXX: Akatsuki has only ever supported v2
-    assert passwordData["password_version"] == 2
 
     pw_md5 = password.encode()
     db_pw_bcrypt = passwordData["password_md5"].encode()  # why is it called md5 LOL
