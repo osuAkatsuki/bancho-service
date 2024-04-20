@@ -985,8 +985,6 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
         data := await glob.db.fetch(
             "SELECT {t}.*, b.song_name AS sn, "
             "b.beatmap_id AS bid, b.beatmapset_id as bsid, "
-            "b.difficulty_std, b.difficulty_taiko, "
-            "b.difficulty_ctb, b.difficulty_mania, "
             "b.ranked, b.max_combo AS fc FROM {t} "
             "LEFT JOIN beatmaps b USING(beatmap_md5) "
             "LEFT JOIN users u ON u.id = {t}.userid "
@@ -1035,10 +1033,10 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
         ]
     )
 
-    diffString = f"difficulty_{gameModes.getGameModeForDB(data['play_mode'])}"
+    # TODO: hook this up to always use performance-service
+    stars = 0.0
 
     if data["play_mode"] != gameModes.CTB:
-        stars = data[diffString]
         if data["mods"]:
             await osuToken.update_token(
                 token["token_id"],
@@ -1074,7 +1072,7 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
             " | ".join(
                 [
                     f'({data["accuracy"]:.2f}%, {rank.upper()}) {combo}',
-                    f'{data["score"]:,}, ★ {data[diffString]:.2f}',
+                    f'{data["score"]:,}, ★ {stars:.2f}',
                     f"{{ {accuracy_expanded} }}",
                 ],
             ),
