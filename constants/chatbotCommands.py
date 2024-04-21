@@ -8,6 +8,7 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from typing import Any
 from typing import Literal
+from common import beatmap_utils, performance_utils
 from typing import Optional
 from typing import TypedDict
 from typing import overload
@@ -651,38 +652,32 @@ async def getPPMessage(
     currentMap = current_info["beatmap_id"]
     currentMods = current_info["mods"]
     currentAcc = current_info["accuracy"]
+    currentMode = 0
+    currentMisscount = 0
 
-    # Send request to score-service to calculate pp
-    try:
-        response = await glob.http_client.get(
-            url=f"{settings.SCORE_SERVICE_BASE_URL}/api/v1/pp",
-            params={"b": currentMap, "m": currentMods},
-            timeout=5,
-        )
-        response.raise_for_status()
-    except:
-        logger.exception(
-            "Failed to retrieve PP from score-service API",
-            extra={
-                "user_id": userID,
-                "beatmap_id": currentMap,
-                "mods": currentMods,
-            },
-        )
-        return "Score server currently down, could not retrieve PP."
+    beatmap = await beatmap_utils.id_from_api(currentMap, should_save=False)
+    if not beatmap:
+        return "Could not retrieve beatmap information for the given map."
 
-    data = response.json()
+    est_performance, est_star_rating = await performance_utils.calculate_performance(
+        currentMap,
+        currentMode,
+        currentMods,
+        beatmap.max_combo,
+        currentAcc,
+        currentMisscount,
+    )
 
-    # Make sure status is in response data
-    if "status" not in data:
-        return "Unknown error in LESS API call."
-
-    # Make sure status is 200
-    if data["status"] != 200:
-        if "message" in data:
-            return f"Error in LESS API call ({data['message']})."
-        else:
-            return "Unknown error in LESS API call."
+    data = {
+        "status": 200,
+        "message": "ok",
+        "song_name": beatmap.song_name,
+        "pp": est_performance,
+        "length": beatmap.hit_length,
+        "stars": est_star_rating,  # TODO is this wrong for common values?
+        "ar": beatmap.ar,
+        "bpm": beatmap.bpm,
+    }
 
     if just_data:
         return data
