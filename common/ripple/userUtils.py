@@ -3,10 +3,10 @@ from __future__ import annotations
 import time
 from time import localtime
 from time import strftime
-from typing import TypedDict
 from typing import Any
 from typing import List
 from typing import Optional
+from typing import TypedDict
 
 import bcrypt
 
