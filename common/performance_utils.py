@@ -30,6 +30,7 @@ async def calculate_performance(
                     "miss_count": nmiss,
                 },
             ],
+            timeout=4,
         )
         response.raise_for_status()
     except (httpx.RequestError, httpx.HTTPStatusError, TimeoutError):
