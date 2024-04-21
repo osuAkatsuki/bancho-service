@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-from enum import IntEnum
 import random
 import time
-from typing import Optional
-
-
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import timedelta
+from enum import IntEnum
 from typing import Any
-import settings
 from typing import Mapping
 from typing import Optional
 
+import settings
 from objects import glob
 
 ONE_DAY = 86_400

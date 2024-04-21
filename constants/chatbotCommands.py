@@ -16,6 +16,7 @@ from typing import overload
 from amplitude import BaseEvent
 
 import settings
+from common import beatmap_utils
 from common import generalUtils
 from common import job_scheduling
 from common.constants import gameModes

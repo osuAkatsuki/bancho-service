@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import logging
 
 import httpx
-from objects import glob
+
 import settings
+from objects import glob
 
 
 # TODO: split sr & pp calculations
@@ -40,7 +43,7 @@ async def calculate_performance(
                     "max_combo": max_combo,
                     "accuracy": acc,
                     "miss_count": nmiss,
-                }
+                },
             },
         )
         return 0.0, 0.0
