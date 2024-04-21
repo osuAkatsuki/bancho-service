@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from time import localtime
 from time import strftime
+from typing import TypedDict
 from typing import Any
 from typing import List
 from typing import Optional
@@ -17,24 +18,6 @@ from constants import CHATBOT_USER_ID
 from objects import glob
 
 
-async def getPlaytime(userID: int, gameMode: int = 0) -> Optional[int]:
-    """
-    Get a users playtime in a specific gameMode.
-
-    :param userID:
-    :param gameMode: game mode number
-    """
-
-    modeForDB = gameModes.getGameModeForDB(gameMode)
-    result = await glob.db.fetch(
-        "SELECT playtime_{gm} as playtime FROM users_stats "
-        "WHERE id = %s".format(gm=modeForDB),
-        [userID],
-    )
-
-    return result["playtime"] if result else None
-
-
 async def getPlaytimeTotal(userID: int) -> int:
     """
     Get a users playtime for all gameModes combined.
@@ -43,12 +26,14 @@ async def getPlaytimeTotal(userID: int) -> int:
     """
 
     res = await glob.db.fetch(
-        "SELECT playtime_std, playtime_ctb, playtime_mania, playtime_taiko "
-        "FROM users_stats WHERE id = %s",
+        """
+        SELECT SUM(playtime) AS total_playtime
+        FROM user_stats
+        WHERE user_id = %s
+        """,
         [userID],
     )
-
-    return sum(res.values()) if res else 0
+    return res["total_playtime"] if res else 0
 
 
 async def editWhitelist(userID: int, bit: int) -> None:
@@ -62,16 +47,25 @@ async def editWhitelist(userID: int, bit: int) -> None:
     """
 
     await glob.db.execute(
-        "UPDATE users SET whitelist = %s " "WHERE id = %s",
+        "UPDATE users SET whitelist = %s WHERE id = %s",
         [bit, userID],
     )
+
+
+class UserStatsResponse(TypedDict):
+    ranked_score: int
+    avg_accuracy: float
+    playcount: int
+    total_score: int
+    pp: int
+    global_rank: int
 
 
 async def getUserStats(
     userID: int,
     gameMode: int,
     relax_ap: int,
-) -> Optional[dict[str, Any]]:
+) -> Optional[UserStatsResponse]:
     """
     Get all user stats relative to `gameMode`.
 
@@ -80,23 +74,14 @@ async def getUserStats(
     :return: dictionary with result
     """
 
-    modeForDB = gameModes.getGameModeForDB(gameMode)
-
-    table = "users_stats"
-    if relax_ap == 1:
-        table = "rx_stats"
-    elif relax_ap == 2:
-        table = "ap_stats"
-
     # Get stats
     stats = await glob.db.fetch(
-        "SELECT ranked_score_{gm} AS rankedScore, "
-        "avg_accuracy_{gm} AS accuracy, "
-        "playcount_{gm} AS playcount, "
-        "total_score_{gm} AS totalScore, "
-        "pp_{gm} AS pp "
-        "FROM {table} WHERE id = %s LIMIT 1".format(gm=modeForDB, table=table),
-        [userID],
+        """
+        SELECT ranked_score, avg_accuracy, playcount, total_score, pp
+        FROM user_stats
+        WHERE user_id = %s AND mode = %s
+        """,
+        [userID, gameMode + (relax_ap * 4)],
     )
     if stats is None:
         logger.warning(
@@ -104,15 +89,13 @@ async def getUserStats(
             extra={
                 "user_id": userID,
                 "game_mode": gameMode,
-                "game_mode_for_db": modeForDB,
                 "relax_ap": relax_ap,
-                "table": table,
             },
         )
         return None
 
     # Get game rank
-    stats["gameRank"] = await getGameRank(userID, gameMode, relax_ap)
+    stats["global_rank"] = await getGameRank(userID, gameMode, relax_ap)
 
     # Return stats + game rank
     return stats
@@ -245,21 +228,18 @@ async def getPP(userID: int, gameMode: int, relax: bool, autopilot: bool) -> int
     :param gameMode: game mode number
     :return: pp
     """
-
-    mode = gameModes.getGameModeForDB(gameMode)
-
-    if autopilot:
-        stats_table = "ap_stats"
-    elif relax:
-        stats_table = "rx_stats"
-    else:
-        stats_table = "users_stats"
-
+    assert not (relax and autopilot)
+    mode_offset = (4 if relax else 0) + (8 if autopilot else 0)
     result = await glob.db.fetch(
-        f"SELECT pp_{mode} FROM {stats_table} WHERE id = %s",
-        [userID],
+        """
+        SELECT pp
+        FROM user_stats
+        WHERE user_id = %s
+        AND mode = %s
+        """,
+        [userID, gameMode + mode_offset],
     )
-    return result[f"pp_{mode}"] if result else 0
+    return result[f"pp"] if result else 0
 
 
 async def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
@@ -694,7 +674,7 @@ async def getCountry(userID: int) -> str:
     """
 
     rec = await glob.db.fetch(
-        "SELECT country FROM users_stats WHERE id = %s",
+        "SELECT country FROM users WHERE id = %s",
         [userID],
     )
     return rec["country"]
