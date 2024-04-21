@@ -6,29 +6,6 @@ from common.constants import mods
 from objects import glob
 
 
-async def newFirst(
-    scoreID: int,
-    userID: int,
-    md5: str,
-    mode: int,
-    relax: bool = False,
-) -> None:
-    """
-    Set score into db
-
-    :param userID: user id
-    :param scoreID: score id
-    :param md5: beatmap md5
-    :param mode: gamemode
-    :param rx: relax / vanilla bool
-    """
-
-    await glob.db.execute(
-        "REPLACE INTO scores_first VALUES (%s, %s, %s, %s, %s)",
-        [md5, mode, 1 if relax else 0, scoreID, userID],
-    )
-
-
 async def overwritePreviousScore(
     userID: int,
 ) -> Optional[str]:  # written pretty horribly, redo one day

@@ -1,4 +1,3 @@
-# TODO: seriously nuke this
 from __future__ import annotations
 
 import time
@@ -11,7 +10,6 @@ from typing import Optional
 import bcrypt
 
 from common.constants import gameModes
-from common.constants import mods
 from common.constants import privileges
 from common.log import audit_logs
 from common.log import logger
@@ -53,7 +51,6 @@ async def getPlaytimeTotal(userID: int) -> int:
     return sum(res.values()) if res else 0
 
 
-# whitelistUserPPLimit
 async def editWhitelist(userID: int, bit: int) -> None:
     """
     Change a userID's whitelist status to bit.
@@ -198,36 +195,6 @@ async def getUsername(userID: int) -> Optional[str]:
     return result["username"] if result else None
 
 
-async def getSafeUsername(userID: int) -> Optional[str]:
-    """
-    Get userID's safe username.
-
-    :param userID: user id
-    :return: username or None
-    """
-
-    result = await glob.db.fetch(
-        "SELECT username_safe " "FROM users " "WHERE id = %s",
-        [userID],
-    )
-
-    return result["username_safe"] if result else None
-
-
-async def exists(userID: int) -> bool:
-    """
-    Check if given userID exists.
-
-    :param userID: user id to check
-    :return: True if the user exists, else False
-    """
-
-    return (
-        await glob.db.fetch("SELECT id FROM users " "WHERE id = %s", [userID])
-        is not None
-    )
-
-
 async def checkLogin(userID: int, password: str, ip: str = "") -> bool:
     """
     Check userID's login with specified password.
@@ -270,317 +237,6 @@ async def checkLogin(userID: int, password: str, ip: str = "") -> bool:
     return False
 
 
-def getRequiredScoreForLevel(level) -> int:
-    """
-    Return score required to reach a level.
-
-    :param level: level to reach
-    :return: required score
-    """
-
-    if level <= 100:
-        if level >= 2:
-            return 5000 / 3 * (4 * (level**3) - 3 * (level**2) - level) + 1.25 * (
-                1.8 ** (level - 60)
-            )
-        else:
-            return 1  # Should be 0, but we get division by 0 below so set to 1
-    else:
-        return 0x645395C2D + 100000000000 * (level - 100)
-
-
-async def getLevel(totalScore: int):
-    """
-    Return level from totalScore
-
-    :param totalScore: total score
-    :return: level
-    """
-
-    level = 1
-    while True:
-        # if the level is > 130, it's probably an endless loop. terminate it.
-        if level > 130:
-            return level
-
-        # Calculate required score
-        reqScore = getRequiredScoreForLevel(level)
-
-        # Check if this is our level
-        if totalScore <= reqScore:
-            # Our level, return it and break
-            return level - 1
-        else:
-            # Not our level, calculate score for next level
-            level += 1
-
-
-async def updateLevel(
-    userID: int,
-    gameMode: int = 0,
-    totalScore: int = 0,
-    relax: bool = False,
-) -> None:
-    """
-    Update level in DB for userID relative to gameMode.
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :param totalScore: new total score
-    :return:
-    """
-
-    # Make sure the user exists
-    # if not exists(userID):
-    # 	return
-
-    # Get total score from db if not passed
-    mode = gameModes.getGameModeForDB(gameMode)
-
-    table = "rx_stats" if relax else "users_stats"
-
-    if not totalScore:
-        res = await glob.db.fetch(
-            f"SELECT total_score_{mode} as total_score " f"FROM {table} WHERE id = %s",
-            [userID],
-        )
-
-        if res:
-            totalScore = res["total_score"]
-
-    # Calculate level from totalScore
-    level = await getLevel(totalScore)
-
-    # Save new level
-    await glob.db.execute(
-        f"UPDATE {table} SET level_{mode} = %s " "WHERE id = %s",
-        [level, userID],
-    )
-
-
-async def calculateAccuracy(userID: int, gameMode: int, relax: bool) -> float:
-    """
-    Calculate accuracy value for userID relative to gameMode.
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :param relax: whether to calculate relax or classic
-    :return: new accuracy
-    """
-
-    table = "scores_relax" if relax else "scores"
-
-    # Get best accuracy scores
-    bestAccScores = await glob.db.fetchAll(
-        f"SELECT accuracy FROM {table} "
-        "WHERE userid = %s AND play_mode = %s "
-        "AND completed = 3 ORDER BY pp DESC LIMIT 125",
-        [userID, gameMode],
-    )
-
-    v = 0
-    if bestAccScores:
-        # Calculate weighted accuracy
-        totalAcc = 0
-        divideTotal = 0
-        k = 0
-        for i in bestAccScores:
-            add = int((0.95**k) * 100)
-            totalAcc += i["accuracy"] * add
-            divideTotal += add
-            k += 1
-        # echo "$add - $totalacc - $divideTotal\n"
-        if divideTotal != 0:
-            v = totalAcc / divideTotal
-        else:
-            v = 0
-
-    return v
-
-
-async def calculatePP(userID: int, gameMode: int, relax: bool) -> int:
-    """
-    Calculate userID's total PP for gameMode.
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :param relax: whether to calculate for relax or classic
-    :return: total PP
-    """
-
-    # Get best pp scores
-    table = "scores_relax" if relax else "scores"
-    return sum(
-        round(round(row["pp"]) * 0.95**i)
-        for i, row in enumerate(
-            await glob.db.fetchAll(
-                f"SELECT pp FROM {table} LEFT JOIN(beatmaps) USING(beatmap_md5) "
-                "WHERE userid = %s AND play_mode = %s AND completed = 3 "
-                "AND ranked >= 2 AND ranked != 5 AND pp IS NOT NULL ORDER BY pp DESC LIMIT 125",
-                (userID, gameMode),
-            ),
-        )
-    )
-
-
-async def updateAccuracy(userID: int, gameMode: int, relax: bool) -> None:
-    """
-    Update accuracy value for userID relative to gameMode in DB.
-
-    :param userID: user id
-    :param gameMode: gameMode number
-    :param relax: whether to update relax or classic
-    :return:
-    """
-
-    newAcc = await calculateAccuracy(userID, gameMode, relax)
-    mode = gameModes.getGameModeForDB(gameMode)
-
-    table = "rx_stats" if relax else "users_stats"
-    await glob.db.execute(
-        f"UPDATE {table} SET avg_accuracy_{mode} = %s " "WHERE id = %s LIMIT 1",
-        [newAcc, userID],
-    )
-
-
-async def updatePP(userID: int, gameMode: int, relax: bool) -> None:
-    """
-    Update userID's pp with new value.
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :param relax: whether to update relax or classic pp
-    """
-    # Make sure the user exists
-    # if not exists(userID):
-    # 	return
-
-    # Get new total PP and update db
-    newPP = await calculatePP(userID, gameMode, relax)
-    mode = gameModes.getGameModeForDB(gameMode)
-
-    table = "rx_stats" if relax else "users_stats"
-    await glob.db.execute(
-        f"UPDATE {table} SET pp_{mode} = %s " "WHERE id = %s LIMIT 1",
-        [newPP, userID],
-    )
-
-
-ALLOWED_GRADES = {
-    "XH",
-    "X",
-    "SH",
-    "S",
-    "A",
-    "B",
-    "C",
-    "D",
-}
-
-
-async def updateStats(userID: int, __score, __old=None) -> None:
-    """
-    Update stats (playcount, total score, ranked score, level bla bla)
-    with data relative to a score object
-
-    :param userID:
-    :param __score: score object
-    """
-
-    # Make sure the user exists
-    # if not exists(userID):
-    #    log.warning(f"User {userID} doesn't exist.")
-    #    return
-
-    # Get gamemode for db
-    mode = gameModes.getGameModeForDB(__score.gameMode)
-
-    relax = __score.mods & mods.RELAX > 0
-
-    if (
-        __score.gameMode == 3 and relax
-    ):  # neutral_face (maybe this should be executed in score submission)
-        return
-
-    table = "rx_stats" if relax else "users_stats"
-
-    # Update total score and playcount
-    await glob.db.execute(
-        "UPDATE {t} SET total_score_{m} = total_score_{m} + %s, "
-        "playcount_{m}=playcount_{m}+1 WHERE id = %s LIMIT 1".format(m=mode, t=table),
-        [__score.score, userID],
-    )
-
-    # Calculate new level and update it
-    await updateLevel(userID, __score.gameMode, relax)
-
-    # Update level, accuracy and ranked score only if we have passed the song
-    if __score.passed:
-        # Update ranked score
-        qbase = f"UPDATE {table} SET ranked_score_{mode} = ranked_score_{mode} + %s"
-
-        """ TODO: score grades
-        # only update grades if the score is a new top
-        if (
-            __score.completed == 3 and
-            __score.grade in ALLOWED_GRADES and (
-                __old is None or
-                __score.grade != __old.grade
-            )
-        ):
-            qbase += f', {__score.grade}_count_{mode} = {__score.grade}_count_{mode} + 1'
-
-            if (
-                __old is not None and
-                __old.grade in ALLOWED_GRADES
-            ):
-                qbase += f', {__old.grade}_count_{mode} = {__old.grade}_count_{mode} - 1'
-        """
-
-        await glob.db.execute(
-            qbase + " WHERE id = %s LIMIT 1",
-            [__score.rankedScoreIncrease, userID],
-        )
-
-        # Update accuracy
-        await updateAccuracy(userID, __score.gameMode, relax)
-
-        # Update pp
-        await updatePP(userID, __score.gameMode, relax)
-
-
-async def updateLatestActivity(userID: int) -> None:
-    """
-    Update userID's latest activity to current UNIX time.
-
-    :param userID: user id
-    :return:
-    """
-
-    await glob.db.execute(
-        "UPDATE users " "SET latest_activity = UNIX_TIMESTAMP() " "WHERE id = %s",
-        [userID],
-    )
-
-
-async def getRankedScore(userID: int, gameMode: int) -> int:
-    """
-    Get userID's ranked score relative to gameMode.
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :return: ranked score
-    """
-
-    mode = gameModes.getGameModeForDB(gameMode)
-    result = await glob.db.fetch(
-        f"SELECT ranked_score_{mode} " "FROM users_stats " "WHERE id = %s",
-        [userID],
-    )
-
-    return result[f"ranked_score_{mode}"] if result else 0
-
-
 async def getPP(userID: int, gameMode: int, relax: bool, autopilot: bool) -> int:
     """
     Get userID's PP relative to gameMode.
@@ -606,40 +262,6 @@ async def getPP(userID: int, gameMode: int, relax: bool, autopilot: bool) -> int
     return result[f"pp_{mode}"] if result else 0
 
 
-async def incrementReplaysWatched(userID: int, gameMode: int, mods_used: int) -> None:
-    """
-    Increment userID's replays watched by others relative to gameMode.
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :return:
-    """
-
-    mode = gameModes.getGameModeForDB(gameMode)
-    table = "rx_stats" if mods_used & mods.RELAX else "users_stats"
-    await glob.db.execute(
-        f"UPDATE {table} SET replays_watched_{mode} = replays_watched_{mode} + 1 "
-        "WHERE id = %s",
-        [userID],
-    )
-
-
-async def IPLog(userID: int, ip: int) -> None:
-    """
-    Log user IP.
-
-    :param userID: user id
-    :param ip: IP address
-    :return:
-    """
-
-    await glob.db.execute(
-        'INSERT INTO ip_user (userid, ip, occurencies) VALUES (%s, %s, "1") '
-        "ON DUPLICATE KEY UPDATE occurencies = occurencies + 1",
-        [userID, ip],
-    )
-
-
 async def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
     """
     Return True if there is a bancho session for `userID` from `ip`
@@ -653,40 +275,6 @@ async def checkBanchoSessionIpLookup(userID: int, ip: str = ""):
         return await glob.redis.sismember(f"bancho:sessions_by_ip:{userID}", ip)
     else:
         return await glob.redis.exists(f"bancho:sessions_by_ip:{userID}")
-
-
-async def is2FAEnabled(userID: int):
-    """
-    Returns True if 2FA/Google auth 2FA is enable for `userID`
-
-    :userID: user ID
-    :return: True if 2fa is enabled, else False
-    """
-
-    return await glob.db.fetch(
-        "SELECT 2fa_totp.userid FROM 2fa_totp " "WHERE userid = %s AND enabled = 1",
-        [userID],
-    )
-
-
-async def check2FA(userID: int, ip: int) -> bool:
-    """
-    Returns True if this IP is untrusted.
-    Returns always False if 2fa is not enabled on `userID`
-
-    :param userID: user id
-    :param ip: IP address
-    :return: True if untrusted, False if trusted or 2fa is disabled.
-    """
-
-    enabled = await is2FAEnabled(userID)
-    if not enabled:
-        return False
-
-    return not await glob.db.fetch(
-        "SELECT id FROM ip_user " "WHERE userid = %s AND ip = %s",
-        [userID, ip],
-    )
 
 
 async def isAllowed(userID: int) -> bool:
@@ -739,26 +327,6 @@ async def isBanned(userID: int) -> bool:
             "SELECT 1 FROM users "
             "WHERE id = %s "
             "AND privileges & 3 = 0",  # no access, hidden profile
-            [userID],
-        )
-        is not None
-    )
-
-
-async def isLocked(userID: int) -> bool:
-    """
-    Check if userID is locked
-
-    :param userID: user id
-    :return: True if not locked, otherwise false.
-    """
-
-    return (
-        await glob.db.fetch(
-            "SELECT 1 FROM users "
-            "WHERE id = %s "
-            "AND privileges & 1 != 0 "  # public profile
-            "AND privileges & 2 = 0",  # no account access
             [userID],
         )
         is not None
@@ -1016,46 +584,12 @@ async def silence(
 
     await audit_logs.send_log(
         author,
-        f'has silenced {await getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
-        if seconds
-        else f"has removed {await getUsername(userID)}'s silence",
+        (
+            f'has silenced {await getUsername(userID)} for {seconds} seconds for the following reason: "{silenceReason}"'
+            if seconds
+            else f"has removed {await getUsername(userID)}'s silence"
+        ),
     )
-
-
-async def getTotalScore(userID: int, gameMode: int) -> int:
-    """
-    Get `userID`'s total score relative to `gameMode`
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :return: total score
-    """
-
-    modeForDB = gameModes.getGameModeForDB(gameMode)
-
-    rec = await glob.db.fetch(
-        f"SELECT total_score_{modeForDB} " "FROM users_stats " "WHERE id = %s",
-        [userID],
-    )
-    return rec[f"total_score_{modeForDB}"]
-
-
-async def getAccuracy(userID: int, gameMode: int) -> float:
-    """
-    Get `userID`'s average accuracy relative to `gameMode`
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :return: accuracy
-    """
-
-    modeForDB = gameModes.getGameModeForDB(gameMode)
-
-    rec = await glob.db.fetch(
-        f"SELECT avg_accuracy_{modeForDB} " "FROM users_stats " "WHERE id = %s",
-        [userID],
-    )
-    return rec[f"avg_accuracy_{modeForDB}"]
 
 
 async def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
@@ -1079,24 +613,6 @@ async def getGameRank(userID: int, gameMode: int, relax_ap: int) -> int:
     )
 
     return int(position) + 1 if position is not None else 0
-
-
-async def getPlaycount(userID: int, gameMode: int) -> int:
-    """
-    Get `userID`'s playcount relative to `gameMode`
-
-    :param userID: user id
-    :param gameMode: game mode number
-    :return: playcount
-    """
-
-    modeForDB = gameModes.getGameModeForDB(gameMode)
-
-    rec = await glob.db.fetch(
-        f"SELECT playcount_{modeForDB} " "FROM users_stats " "WHERE id = %s",
-        [userID],
-    )
-    return rec[f"playcount_{modeForDB}"]
 
 
 async def getFriendList(userID: int):
@@ -1237,22 +753,6 @@ async def setPrivileges(userID: int, priv: int) -> None:
         "UPDATE users " "SET privileges = %s " "WHERE id = %s",
         [priv, userID],
     )
-
-
-async def getGroupPrivileges(groupName: str) -> Optional[int]:
-    """
-    Returns the privileges number of a group, by its name
-
-    :param groupName: name of the group
-    :return: privilege integer or `None` if the group doesn't exist
-    """
-
-    result = await glob.db.fetch(
-        "SELECT privileges " "FROM privileges_groups " "WHERE name = %s",
-        [groupName],
-    )
-
-    return result["privileges"] if result else None
 
 
 async def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
