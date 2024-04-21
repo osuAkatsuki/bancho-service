@@ -1041,11 +1041,11 @@ async def updateCachedStats(token_id: str) -> None:
 
     await update_token(
         token_id,
-        ranked_score=stats["rankedScore"],
-        accuracy=stats["accuracy"] / 100,
+        ranked_score=stats["ranked_score"],
+        accuracy=stats["avg_accuracy"] / 100,
         playcount=stats["playcount"],
-        total_score=stats["totalScore"],
-        global_rank=stats["gameRank"],
+        total_score=stats["total_score"],
+        global_rank=stats["global_rank"],
         pp=stats["pp"],
     )
 
