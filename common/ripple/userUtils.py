@@ -690,10 +690,6 @@ async def setCountry(userID: int, country: str) -> None:
     """
 
     await glob.db.execute(
-        "UPDATE users_stats SET country = %s WHERE id = %s",
-        [country, userID],
-    )
-    await glob.db.execute(
         "UPDATE users SET country = %s WHERE id = %s",
         [country, userID],
     )
@@ -1084,16 +1080,6 @@ async def changeUsername(
     await glob.db.execute(
         "UPDATE users SET username = %s, username_safe = %s WHERE id = %s",
         [newUsername, newUsernameSafe, userID],
-    )
-
-    await glob.db.execute(
-        "UPDATE users_stats SET username = %s WHERE id = %s",
-        [newUsername, userID],
-    )
-
-    await glob.db.execute(
-        "UPDATE rx_stats SET username = %s WHERE id = %s",
-        [newUsername, userID],
     )
 
     # Empty redis username cache
