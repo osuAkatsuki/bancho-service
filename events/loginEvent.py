@@ -288,10 +288,6 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
                 # Remove their custom privileges
                 await glob.db.execute(
-                    "UPDATE users_stats set can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
-                    [userID],
-                )
-                await glob.db.execute(
                     "UPDATE users SET can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
                     [userID],
                 )
