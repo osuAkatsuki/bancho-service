@@ -714,7 +714,7 @@ async def setCountry(userID: int, country: str) -> None:
         [country, userID],
     )
     await glob.db.execute(
-        "UPDATE users SET country = %s WHERE id = %s", [country, userID]
+        "UPDATE users SET country = %s WHERE id = %s", [country, userID],
     )
 
 
