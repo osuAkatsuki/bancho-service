@@ -680,7 +680,7 @@ async def removeFriend(userID: int, friendID: int) -> None:
     # Delete user relationship. We don't need to check if the relationship was there, because who gives a shit,
     # if they were not friends and they don't want to be anymore, be it. ¯\_(ツ)_/¯
     await glob.db.execute(
-        "DELETE FROM users_relationships " "WHERE user1 = %s AND user2 = %s",
+        "DELETE FROM users_relationships WHERE user1 = %s AND user2 = %s",
         [userID, friendID],
     )
 
@@ -694,7 +694,7 @@ async def getCountry(userID: int) -> str:
     """
 
     rec = await glob.db.fetch(
-        "SELECT country " "FROM users_stats " "WHERE id = %s",
+        "SELECT country FROM users_stats WHERE id = %s",
         [userID],
     )
     return rec["country"]
@@ -710,8 +710,11 @@ async def setCountry(userID: int, country: str) -> None:
     """
 
     await glob.db.execute(
-        "UPDATE users_stats " "SET country = %s " "WHERE id = %s",
+        "UPDATE users_stats SET country = %s WHERE id = %s",
         [country, userID],
+    )
+    await glob.db.execute(
+        "UPDATE users SET country = %s WHERE id = %s", [country, userID]
     )
 
 
@@ -1098,17 +1101,17 @@ async def changeUsername(
 
     # Change username
     await glob.db.execute(
-        "UPDATE users " "SET username = %s, username_safe = %s " "WHERE id = %s",
+        "UPDATE users SET username = %s, username_safe = %s WHERE id = %s",
         [newUsername, newUsernameSafe, userID],
     )
 
     await glob.db.execute(
-        "UPDATE users_stats " "SET username = %s " "WHERE id = %s",
+        "UPDATE users_stats SET username = %s WHERE id = %s",
         [newUsername, userID],
     )
 
     await glob.db.execute(
-        "UPDATE rx_stats " "SET username = %s " "WHERE id = %s",
+        "UPDATE rx_stats SET username = %s WHERE id = %s",
         [newUsername, userID],
     )
 

@@ -291,6 +291,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     "UPDATE users_stats set can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
                     [userID],
                 )
+                await glob.db.execute(
+                    "UPDATE users SET can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
+                    [userID],
+                )
 
                 await audit_logs.send_log(userID, f"{rolename} subscription expired.")
                 await audit_logs.send_log_as_discord_webhook(
