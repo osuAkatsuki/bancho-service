@@ -201,4 +201,4 @@ def get_packet_name(packet_id: int) -> str:
         client_tournamentJoinMatchChannel: "client_tournamentJoinMatchChannel",
         client_tournamentLeaveMatchChannel: "client_tournamentLeaveMatchChannel",
         client_changeProtocolVersion: "client_changeProtocolVersion",
-    }.get(packet_id, "Unknown packet ID")
+    }.get(packet_id, f"Unknown packet ID {packet_id}")
