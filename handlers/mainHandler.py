@@ -252,7 +252,6 @@ class handler(AsyncRequestHandler):
                 time_elapsed_ms = round((time.perf_counter_ns() - st) / 1000 / 1000, 2)
 
                 if glob.amplitude and packetID:
-                    _st = time.perf_counter_ns()
                     glob.amplitude.track(
                         amplitude.BaseEvent(
                             event_type="packet_handled",
@@ -264,10 +263,6 @@ class handler(AsyncRequestHandler):
                                 "time_elapsed_ms": time_elapsed_ms,
                             },
                         ),
-                    )
-                    _et = time.perf_counter_ns()
-                    logger.info(
-                        "Amplitude call took", extra={"ms": (_et - _st) / 1000 / 1000}
                     )
 
         # Send server's response to client
