@@ -4,6 +4,7 @@ from __future__ import annotations
 client_changeAction = 0
 client_sendPublicMessage = 1
 client_logout = 2
+client_ping = 4
 client_requestStatusUpdate = 3
 server_userID = 5
 server_sendMessage = 7
@@ -109,6 +110,7 @@ def get_packet_name(packet_id: int) -> str:
         client_changeAction: "client_changeAction",
         client_sendPublicMessage: "client_sendPublicMessage",
         client_logout: "client_logout",
+        client_ping: "client_ping",
         client_requestStatusUpdate: "client_requestStatusUpdate",
         server_userID: "server_userID",
         server_sendMessage: "server_sendMessage",
