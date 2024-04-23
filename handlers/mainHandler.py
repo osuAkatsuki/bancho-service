@@ -7,6 +7,8 @@ import struct
 import time
 from uuid import UUID
 
+import amplitude
+
 import settings
 from common.log import logger
 from common.web.requestsManager import AsyncRequestHandler
@@ -57,6 +59,7 @@ from events import tournamentLeaveMatchChannelEvent
 from events import tournamentMatchInfoRequestEvent
 from events import userPanelRequestEvent
 from events import userStatsRequestEvent
+from objects import glob
 from objects import osuToken
 from objects import tokenList
 from objects.redisLock import redisLock
@@ -257,14 +260,23 @@ class handler(AsyncRequestHandler):
                 #     await token_processing_lock.release()
 
                 time_elapsed_ms = round((time.perf_counter_ns() - st) / 1000 / 1000, 2)
-                logger.info(
-                    f"Handled full packet in {time_elapsed_ms} milliseconds",
-                    extra={
-                        "packet_id": packetID,
-                        "user_id": userToken["user_id"] if userToken else None,
-                        "time_elapsed_ms": time_elapsed_ms,
-                    },
-                )
+
+                if glob.amplitude:
+                    _st = time.perf_counter_ns()
+                    glob.amplitude.track(
+                        amplitude.BaseEvent(
+                            event_type="packet_handled",
+                            user_id="performance_testing",
+                            device_id=None,
+                            event_properties={
+                                "packet_id": packetID,
+                                "_user_id": userToken["user_id"] if userToken else None,
+                                "time_elapsed_ms": time_elapsed_ms,
+                            },
+                        ),
+                    )
+                    _et = time.perf_counter_ns()
+                    logger.info("Amplitude call took %sms", (_et - _st) / 1000 / 1000)
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)
