@@ -276,7 +276,9 @@ class handler(AsyncRequestHandler):
                         ),
                     )
                     _et = time.perf_counter_ns()
-                    logger.info("Amplitude call took %sms", (_et - _st) / 1000 / 1000)
+                    logger.info(
+                        "Amplitude call took", extra={"ms": (_et - _st) / 1000 / 1000}
+                    )
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)
