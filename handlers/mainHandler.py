@@ -4,6 +4,7 @@ import asyncio
 import gzip
 import random
 import struct
+import time
 from uuid import UUID
 
 import settings
@@ -147,6 +148,8 @@ HTML_PAGE = (
 
 class handler(AsyncRequestHandler):
     async def _post(self) -> None:
+        st = time.perf_counter_ns()
+
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")
         requestData = self.request.body
@@ -172,6 +175,7 @@ class handler(AsyncRequestHandler):
             # No token, first request. Handle login.
             responseTokenString, responseData = await loginEvent.handle(self)
         else:
+            packetID = None
             # Make sure token is valid syntax
             try:
                 UUID(requestTokenString)
@@ -251,6 +255,16 @@ class handler(AsyncRequestHandler):
                 # Release processing lock
                 # if token_processing_lock is not None:
                 #     await token_processing_lock.release()
+
+                time_elapsed_micros = (time.perf_counter_ns() - st) / 1000
+                logger.info(
+                    f"Handled full packet in {time_elapsed_micros} microseconds",
+                    extra={
+                        "packet_id": packetID,
+                        "user_id": userToken["user_id"] if userToken else None,
+                        "time_elapsed_micros": time_elapsed_micros,
+                    },
+                )
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)

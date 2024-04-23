@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import time
-
-from common.log import logger
 from constants import clientPackets
 from constants import serverPackets
 from objects import match
@@ -12,7 +9,6 @@ from objects.redisLock import redisLock
 
 
 async def handle(userToken: Token, rawPacketData: bytes):
-    st = time.perf_counter_ns()
     # Make sure we are in a match
     if userToken["match_id"] is None:
         return
@@ -56,11 +52,3 @@ async def handle(userToken: Token, rawPacketData: bytes):
             match.create_playing_stream_name(multiplayer_match["match_id"]),
             serverPackets.matchFrames(slot_id, rawPacketData),
         )
-
-    logger.info(
-        f"Completed match frames packet in {(time.perf_counter_ns()-st)/1000} microseconds",
-        extra={
-            "user_id": userToken["user_id"],
-            "match_id": multiplayer_match["match_id"],
-        },
-    )
