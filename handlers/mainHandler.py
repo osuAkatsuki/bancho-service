@@ -256,13 +256,13 @@ class handler(AsyncRequestHandler):
                 # if token_processing_lock is not None:
                 #     await token_processing_lock.release()
 
-                time_elapsed_micros = (time.perf_counter_ns() - st) / 1000
+                time_elapsed_ms = (time.perf_counter_ns() - st) / 1000 / 1000
                 logger.info(
-                    f"Handled full packet in {time_elapsed_micros} microseconds",
+                    f"Handled full packet in {time_elapsed_ms} milliseconds",
                     extra={
                         "packet_id": packetID,
                         "user_id": userToken["user_id"] if userToken else None,
-                        "time_elapsed_micros": time_elapsed_micros,
+                        "time_elapsed_ms": time_elapsed_ms,
                     },
                 )
 
