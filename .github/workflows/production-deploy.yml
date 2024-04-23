@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - temp-perf-mp-tracking
 
 jobs:
   build:
