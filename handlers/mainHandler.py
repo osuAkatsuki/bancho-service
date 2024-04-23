@@ -62,7 +62,6 @@ from events import userStatsRequestEvent
 from objects import glob
 from objects import osuToken
 from objects import tokenList
-from objects.redisLock import redisLock
 
 PACKET_PROTO = struct.Struct("<HxI")
 
@@ -178,7 +177,7 @@ class handler(AsyncRequestHandler):
             # No token, first request. Handle login.
             responseTokenString, responseData = await loginEvent.handle(self)
         else:
-            packetID = None
+            packetID: int | None = None
             # Make sure token is valid syntax
             try:
                 UUID(requestTokenString)
@@ -195,12 +194,6 @@ class handler(AsyncRequestHandler):
                 # Packet start position, used to read stacked packets
                 pos = 0
 
-                # Lock token to prevent multiple requests from being processed at once
-                # token_processing_lock = redisLock(
-                #     f"{osuToken.make_key(requestTokenString)}:processing_lock",
-                # )
-                # await token_processing_lock.acquire()
-
                 # Make sure the token exists
                 userToken = await osuToken.get_token(requestTokenString)
                 if userToken is None:
@@ -214,6 +207,7 @@ class handler(AsyncRequestHandler):
 
                     # Get packet ID, data length and data
                     packetID, dataLength = PACKET_PROTO.unpack(leftData[:7])
+                    assert isinstance(packetID, int) and isinstance(dataLength, int)
                     packetData = leftData[: dataLength + 7]
 
                     # Process/ignore packet
@@ -255,13 +249,9 @@ class handler(AsyncRequestHandler):
                         if userToken["kicked"]:
                             await tokenList.deleteToken(userToken["token_id"])
 
-                # Release processing lock
-                # if token_processing_lock is not None:
-                #     await token_processing_lock.release()
-
                 time_elapsed_ms = round((time.perf_counter_ns() - st) / 1000 / 1000, 2)
 
-                if glob.amplitude:
+                if glob.amplitude and packetID:
                     _st = time.perf_counter_ns()
                     glob.amplitude.track(
                         amplitude.BaseEvent(
@@ -269,7 +259,7 @@ class handler(AsyncRequestHandler):
                             user_id="performance_testing",
                             device_id=None,
                             event_properties={
-                                "packet_id": packetID,
+                                "packet_id": packetIDs.get_packet_name(packetID),
                                 "_user_id": userToken["user_id"] if userToken else None,
                                 "time_elapsed_ms": time_elapsed_ms,
                             },
