@@ -258,7 +258,7 @@ class handler(AsyncRequestHandler):
 
                 time_elapsed_ms = (time.perf_counter_ns() - st) / 1000 / 1000
                 logger.info(
-                    f"Handled full packet in {time_elapsed_ms} milliseconds",
+                    f"Handled full packet in {time_elapsed_ms:.2f} milliseconds",
                     extra={
                         "packet_id": packetID,
                         "user_id": userToken["user_id"] if userToken else None,
