@@ -1,11 +1,12 @@
 """Contain server and client packet IDs"""
+
 from __future__ import annotations
 
 client_changeAction = 0
 client_sendPublicMessage = 1
 client_logout = 2
-client_ping = 4
 client_requestStatusUpdate = 3
+client_ping = 4
 server_userID = 5
 server_sendMessage = 7
 server_userStats = 11
