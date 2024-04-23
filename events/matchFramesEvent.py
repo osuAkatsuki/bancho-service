@@ -58,7 +58,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         )
 
     logger.info(
-        f"Completed match frames packet in {time.perf_counter_ns()-st/1000} microseconds",
+        f"Completed match frames packet in {(time.perf_counter_ns()-st)/1000} microseconds",
         extra={
             "user_id": userToken["user_id"],
             "match_id": multiplayer_match["match_id"],
