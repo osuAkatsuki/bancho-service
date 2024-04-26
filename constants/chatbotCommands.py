@@ -2448,8 +2448,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
                     or (m == "EZ" and _mods & mods.HARDROCK)
                     or (m == "HR" and _mods & mods.EASY)
-                    or (m == "RX" and _mods & mods.RELAX)
-                    or (m == "AP" and _mods & mods.AUTOPILOT)
+                    or (m == "RX" and _mods & mods.AUTOPILOT)
+                    or (m == "AP" and _mods & mods.RELAX)
                     or (m == "PF" and _mods & mods.SUDDENDEATH)
                     or (m == "SD" and _mods & mods.PERFECT)
                 ):
