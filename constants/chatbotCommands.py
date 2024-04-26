@@ -804,7 +804,7 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
 
         beatmap_id = spectatorHostToken["beatmap_id"]
 
-    return f"[MapDL] {await _get_beatmap_download_embed(beatmap_id)}"
+    return f"[Map Download] {await _get_beatmap_download_embed(beatmap_id)}"
 
 
 @command(
