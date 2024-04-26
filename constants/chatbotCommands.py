@@ -768,14 +768,14 @@ async def _get_beatmap_download_embed(beatmapID: int) -> str:
     ):
         return "Sorry, I'm not able to provide a download link for this map :("
 
-    return "[https://chimu.moe/d/{beatmapset_id} {song_name}]".format(**beatmap)
+    return "[https://osu.ppy.sh/beatmapsets/{beatmapset_id} {song_name}]".format(**beatmap)
 
 
 @command(
-    trigger="!chimu",
+    trigger="!mapdl",
     hidden=False,
 )
-async def chimu(fro: str, chan: str, message: list[str]) -> str:
+async def mapdl(fro: str, chan: str, message: list[str]) -> str:
     """Get a download link for the beatmap in the current context (multi, spectator)."""
     try:
         match_id = await channelList.getMatchIDFromChannel(chan)
