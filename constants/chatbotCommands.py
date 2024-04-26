@@ -802,7 +802,7 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
 
         beatmap_id = spectatorHostToken["beatmap_id"]
 
-    return f"[Chimu] {await _get_beatmap_download_embed(beatmap_id)}"
+    return f"[MapDL] {await _get_beatmap_download_embed(beatmap_id)}"
 
 
 @command(
@@ -826,7 +826,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if not (token := await tokenList.getTokenFromUsername(fro)):
         return
 
-    # Chimu trigger for #spect_
+    # MapDL trigger for #spect_
     if chan.startswith("#spect_"):
         spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         spectatorHostToken = await tokenList.getTokenFromUserID(
@@ -1441,7 +1441,6 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"
     icon_osudirect = "<:osudirect:1171396293948612689>"
-    icon_chimu = "<:chimu:824401502830460958>"
     icon_beatconnect = "<:beatconnect:1170497747548381184>"
     icon_nerinyan = ":cat2:"  # placeholder - they don't have a logo
 
@@ -1484,7 +1483,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
             {"name": k, "value": v}
             for k, v in {
                 "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}\n\n**Leaderboard**\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{last_np_map_id})",
-                "Download": f"{icon_osudirect}・[`osu.direct`](https://api.osu.direct/d/{res['beatmapset_id']})\n{icon_chimu}・[`chimu.moe`](https://chimu.moe/d/{res['beatmapset_id']})\n{icon_nerinyan}・[`nerinyan.moe`](https://api.nerinyan.moe/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`beatconnect.io`](https://beatconnect.io/b/{res['beatmapset_id']})",
+                "Download": f"{icon_osudirect}・[`osu.direct`](https://api.osu.direct/d/{res['beatmapset_id']})\n{icon_nerinyan}・[`nerinyan.moe`](https://api.nerinyan.moe/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`beatconnect.io`](https://beatconnect.io/b/{res['beatmapset_id']})",
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
