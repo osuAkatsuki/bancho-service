@@ -594,9 +594,11 @@ class Client:
         assert response is not None
         self.replyCode(
             response,
-            "You are no longer marked as being away"
-            if response == 305
-            else "You have been marked as being away",
+            (
+                "You are no longer marked as being away"
+                if response == 305
+                else "You have been marked as being away"
+            ),
         )
 
     async def mainHandler(self, command: str, arguments: list[str]) -> None:
