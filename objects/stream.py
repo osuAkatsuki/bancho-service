@@ -68,14 +68,10 @@ async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     :return:
     """
     current_tokens = await getClients(stream_name)
-    token_ids = await osuToken.get_token_ids()
 
     for i in current_tokens:
-        if i in token_ids:
-            if i not in but:
-                await osuToken.enqueue(i, data)
-        else:
-            await removeClient(stream_name, token_id=i)
+        if i not in but:
+            await osuToken.enqueue(i, data)
 
 
 async def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
@@ -89,11 +85,8 @@ async def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> 
     current_tokens = await getClients(stream_name)
 
     for i in current_tokens:
-        if i in await osuToken.get_token_ids():
-            if i in users:
-                await osuToken.enqueue(i, data)
-        else:
-            await removeClient(stream_name, token_id=i)
+        if i in users:
+            await osuToken.enqueue(i, data)
 
 
 async def dispose(stream_name: str) -> None:
