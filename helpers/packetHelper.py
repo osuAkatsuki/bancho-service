@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import struct
 from typing import Any
-from typing import Mapping
 from typing import TypedDict
 
 from constants import dataTypes

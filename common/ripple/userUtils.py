@@ -4,7 +4,6 @@ import time
 from time import localtime
 from time import strftime
 from typing import Any
-from typing import List
 from typing import Optional
 from typing import TypedDict
 
@@ -760,7 +759,7 @@ async def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
     )
 
 
-async def logHardware(userID: int, hashes: List[str], activation: bool = False) -> bool:
+async def logHardware(userID: int, hashes: list[str], activation: bool = False) -> bool:
     """
     Hardware log
     USED FOR MULTIACCOUNT DETECTION

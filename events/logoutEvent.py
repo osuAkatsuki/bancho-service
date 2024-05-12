@@ -8,7 +8,6 @@ from amplitude import BaseEvent
 import settings
 from common.log import logger
 from constants import serverPackets
-from helpers import chatHelper as chat
 from helpers import countryHelper
 from objects import glob
 from objects import osuToken

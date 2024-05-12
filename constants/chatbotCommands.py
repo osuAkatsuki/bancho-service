@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import random
-import re
 import secrets
 import time
 from typing import Any

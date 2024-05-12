@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from contextvars import ContextVar
 from types import TracebackType
 from typing import Any
-from typing import Mapping
 from typing import Optional
 from typing import Union
 

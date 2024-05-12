@@ -110,8 +110,7 @@ async def getTokenFromUserID(
     userID: int,
     ignoreIRC: bool = ...,
     _all: Literal[False] = False,
-) -> Optional[osuToken.Token]:
-    ...
+) -> Optional[osuToken.Token]: ...
 
 
 @overload
@@ -119,8 +118,7 @@ async def getTokenFromUserID(
     userID: int,
     ignoreIRC: bool = ...,
     _all: Literal[True] = ...,
-) -> list[osuToken.Token]:
-    ...
+) -> list[osuToken.Token]: ...
 
 
 async def getTokenFromUserID(
@@ -158,8 +156,7 @@ async def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = ...,
     _all: Literal[False] = ...,
-) -> Optional[osuToken.Token]:
-    ...
+) -> Optional[osuToken.Token]: ...
 
 
 @overload
@@ -167,8 +164,7 @@ async def getTokenFromUsername(
     username: str,
     ignoreIRC: bool = ...,
     _all: Literal[True] = ...,
-) -> list[osuToken.Token]:
-    ...
+) -> list[osuToken.Token]: ...
 
 
 async def getTokenFromUsername(

@@ -250,9 +250,11 @@ async def userStats(userID: int, force: bool = False) -> bytes:
             (userToken["game_mode"], dataTypes.BYTE),
             (userToken["beatmap_id"], dataTypes.SINT32),
             (
-                userToken["ranked_score"]
-                if userToken["pp"] < 0x8000
-                else userToken["pp"],
+                (
+                    userToken["ranked_score"]
+                    if userToken["pp"] < 0x8000
+                    else userToken["pp"]
+                ),
                 dataTypes.UINT64,
             ),
             (userToken["accuracy"], dataTypes.FFLOAT),
