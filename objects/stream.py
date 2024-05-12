@@ -98,5 +98,4 @@ async def dispose(stream_name: str) -> None:
     current_tokens = await getClients(stream_name)
 
     for i in current_tokens:
-        if i in await osuToken.get_token_ids():
-            await osuToken.leaveStream(i, stream_name)
+        await osuToken.leaveStream(i, stream_name)
