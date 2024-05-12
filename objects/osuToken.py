@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from time import localtime
 from time import strftime
 from time import time
@@ -691,6 +692,10 @@ async def stopSpectating(token_id: str, get_lock: bool = True) -> None:
 
     # Remove our token id from host's spectators
     if token["spectating_token_id"] is None:
+        logging.warning(
+            "Could not stop spectating, token is not spectating anyone.",
+            extra={"token_id": token_id},
+        )
         return
 
     host_token = await get_token(token["spectating_token_id"])
@@ -1144,6 +1149,10 @@ async def joinStream(token_id: str, name: str) -> None:
 async def leaveStream(token_id: str, name: str) -> None:
     """
     Leave a packets stream
+
+    "Leaving" is a higher level abstraction than "removing" a stream,
+    because it additionally handles the two-way relationship between
+    the stream and the user's token.
 
     :param name: stream name
     :return:
