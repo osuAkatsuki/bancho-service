@@ -26,10 +26,12 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         return
 
     # Stop spectating
-    await osuToken.stopSpectating(token["token_id"])
+    if token["spectating_token_id"] is not None:
+        await osuToken.stopSpectating(token["token_id"])
 
     # Part matches
-    await osuToken.leaveMatch(token["token_id"])
+    if token["match_id"] is not None:
+        await osuToken.leaveMatch(token["token_id"])
 
     # Part all joined channels
     for channel_name in await osuToken.get_joined_channels(token["token_id"]):
