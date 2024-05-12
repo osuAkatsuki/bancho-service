@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 from objects import glob
-from objects import osuToken
 from objects import stream
 
 
