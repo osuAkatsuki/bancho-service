@@ -150,8 +150,7 @@ async def dispose(name: str) -> None:
 
     current_clients = await stream.getClients(name)
     for i in current_clients:
-        if i in await osuToken.get_token_ids():
-            await osuToken.leaveStream(i, name)
+        await osuToken.leaveStream(i, name)
 
     # self.streams.pop(name)
     previous_members = await stream.getClients(name)
