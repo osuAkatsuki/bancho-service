@@ -34,8 +34,7 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         await osuToken.leaveMatch(token["token_id"])
 
     # Part all joined channels
-    for channel_name in await osuToken.get_joined_channels(token["token_id"]):
-        await chat.partChannel(token_id=token["token_id"], channel_name=channel_name)
+    await osuToken.leaveAllChannels(token["token_id"])
 
     # Leave all joined streams
     await osuToken.leaveAllStreams(token["token_id"])

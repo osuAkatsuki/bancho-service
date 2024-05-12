@@ -1180,6 +1180,20 @@ async def leaveAllStreams(token_id: str) -> None:
         await leaveStream(token_id, stream)
 
 
+async def leaveAllChannels(token_id: str) -> None:
+    """
+    Leave all joined channels
+
+    :return:
+    """
+    token = await get_token(token_id)
+    if token is None:
+        return
+
+    for channel_name in await get_joined_channels(token_id):
+        await chat.partChannel(token_id=token_id, channel_name=channel_name)
+
+
 async def awayCheck(token_id: str, user_id: int) -> bool:
     """
     Returns True if user_id doesn't know that we are away
