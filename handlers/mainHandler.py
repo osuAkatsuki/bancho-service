@@ -150,8 +150,6 @@ HTML_PAGE = (
 
 class handler(AsyncRequestHandler):
     async def _post(self) -> None:
-        st = time.perf_counter_ns()
-
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")
         requestData = self.request.body
@@ -188,7 +186,6 @@ class handler(AsyncRequestHandler):
                 return
 
             userToken = None  # default value
-            token_processing_lock = None
             try:
                 # This is not the first packet, send response based on client's request
                 # Packet start position, used to read stacked packets
@@ -202,6 +199,7 @@ class handler(AsyncRequestHandler):
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
                 while pos < requestDataLen:
+                    st = time.perf_counter_ns()
                     # Get packet from stack starting from new packet
                     leftData = requestData[pos:]
 
@@ -223,6 +221,27 @@ class handler(AsyncRequestHandler):
                     else:
                         # This is a ping packet (4) - update ping time for timeout
                         await osuToken.updatePingTime(userToken["token_id"])
+
+                    time_elapsed_ms = round(
+                        (time.perf_counter_ns() - st) / 1000 / 1000,
+                        2,
+                    )
+
+                    if glob.amplitude and packetID:
+                        glob.amplitude.track(
+                            amplitude.BaseEvent(
+                                event_type="packet_handled",
+                                user_id="performance_testing",
+                                device_id=None,
+                                event_properties={
+                                    "packet_id": packetIDs.get_packet_name(packetID),
+                                    "_user_id": (
+                                        userToken["user_id"] if userToken else None
+                                    ),
+                                    "time_elapsed_ms": time_elapsed_ms,
+                                },
+                            ),
+                        )
 
                     # Update pos so we can read the next stacked packet
                     # +7 because we add packet ID bytes, unused byte and data length bytes
@@ -248,22 +267,6 @@ class handler(AsyncRequestHandler):
                         # Delete token if kicked
                         if userToken["kicked"]:
                             await tokenList.deleteToken(userToken["token_id"])
-
-                time_elapsed_ms = round((time.perf_counter_ns() - st) / 1000 / 1000, 2)
-
-                if glob.amplitude and packetID:
-                    glob.amplitude.track(
-                        amplitude.BaseEvent(
-                            event_type="packet_handled",
-                            user_id="performance_testing",
-                            device_id=None,
-                            event_properties={
-                                "packet_id": packetIDs.get_packet_name(packetID),
-                                "_user_id": userToken["user_id"] if userToken else None,
-                                "time_elapsed_ms": time_elapsed_ms,
-                            },
-                        ),
-                    )
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)
