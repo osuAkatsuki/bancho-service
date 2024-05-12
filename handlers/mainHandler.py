@@ -4,7 +4,10 @@ import asyncio
 import gzip
 import random
 import struct
+import time
 from uuid import UUID
+
+import amplitude
 
 import settings
 from common.log import logger
@@ -56,9 +59,9 @@ from events import tournamentLeaveMatchChannelEvent
 from events import tournamentMatchInfoRequestEvent
 from events import userPanelRequestEvent
 from events import userStatsRequestEvent
+from objects import glob
 from objects import osuToken
 from objects import tokenList
-from objects.redisLock import redisLock
 
 PACKET_PROTO = struct.Struct("<HxI")
 
@@ -147,6 +150,8 @@ HTML_PAGE = (
 
 class handler(AsyncRequestHandler):
     async def _post(self) -> None:
+        st = time.perf_counter_ns()
+
         # Client's token string and request data
         requestTokenString = self.request.headers.get("osu-token")
         requestData = self.request.body
@@ -172,6 +177,7 @@ class handler(AsyncRequestHandler):
             # No token, first request. Handle login.
             responseTokenString, responseData = await loginEvent.handle(self)
         else:
+            packetID: int | None = None
             # Make sure token is valid syntax
             try:
                 UUID(requestTokenString)
@@ -188,12 +194,6 @@ class handler(AsyncRequestHandler):
                 # Packet start position, used to read stacked packets
                 pos = 0
 
-                # Lock token to prevent multiple requests from being processed at once
-                # token_processing_lock = redisLock(
-                #     f"{osuToken.make_key(requestTokenString)}:processing_lock",
-                # )
-                # await token_processing_lock.acquire()
-
                 # Make sure the token exists
                 userToken = await osuToken.get_token(requestTokenString)
                 if userToken is None:
@@ -207,6 +207,7 @@ class handler(AsyncRequestHandler):
 
                     # Get packet ID, data length and data
                     packetID, dataLength = PACKET_PROTO.unpack(leftData[:7])
+                    assert isinstance(packetID, int) and isinstance(dataLength, int)
                     packetData = leftData[: dataLength + 7]
 
                     # Process/ignore packet
@@ -248,9 +249,21 @@ class handler(AsyncRequestHandler):
                         if userToken["kicked"]:
                             await tokenList.deleteToken(userToken["token_id"])
 
-                # Release processing lock
-                # if token_processing_lock is not None:
-                #     await token_processing_lock.release()
+                time_elapsed_ms = round((time.perf_counter_ns() - st) / 1000 / 1000, 2)
+
+                if glob.amplitude and packetID:
+                    glob.amplitude.track(
+                        amplitude.BaseEvent(
+                            event_type="packet_handled",
+                            user_id="performance_testing",
+                            device_id=None,
+                            event_properties={
+                                "packet_id": packetIDs.get_packet_name(packetID),
+                                "_user_id": userToken["user_id"] if userToken else None,
+                                "time_elapsed_ms": time_elapsed_ms,
+                            },
+                        ),
+                    )
 
         # Send server's response to client
         # We don't use token object because we might not have a token (failed login)

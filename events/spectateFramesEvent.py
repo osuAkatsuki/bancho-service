@@ -17,5 +17,5 @@ async def handle(userToken: Token, rawPacketData: bytes):
 
     logger.debug(
         "Broadcasting osu! spectator frames",
-        extra={"host_user_id": userToken["user_id"]},
+        extra={"user_id": userToken["user_id"]},
     )
