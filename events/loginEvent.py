@@ -30,7 +30,6 @@ from objects import stream
 from objects import streamList
 from objects import tokenList
 from objects import verifiedCache
-from objects.redisLock import redisLock
 
 osu_ver_regex = re.compile(
     r"^b(?P<ver>\d{8})(?:\.(?P<subver>\d))?"

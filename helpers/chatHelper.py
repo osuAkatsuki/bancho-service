@@ -19,7 +19,6 @@ from objects import osuToken
 from objects import stream
 from objects import streamList
 from objects import tokenList
-from objects.redisLock import redisLock
 
 if TYPE_CHECKING:
     from typing import Optional
