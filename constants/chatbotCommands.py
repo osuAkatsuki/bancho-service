@@ -910,7 +910,9 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 
     _mods = 0
 
-    for mod_str in (message[0][i : i + 2].upper() for i in range(0, len(message[0]), 2)):
+    for mod_str in (
+        message[0][i : i + 2].upper() for i in range(0, len(message[0]), 2)
+    ):
         new_mod = modMap.get(mod_str, mods.NOMOD)
         if not (
             (new_mod & (mods.DOUBLETIME | mods.NIGHTCORE) and _mods & mods.HALFTIME)
@@ -919,8 +921,8 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
             or (mod_str == "HR" and _mods & mods.EASY)
             or (mod_str == "AP" and _mods & mods.RELAX)
             or (mod_str == "RX" and _mods & mods.AUTOPILOT)
-                or (mod_str == "PF" and _mods & mods.SUDDENDEATH)
-                or (mod_str == "SD" and _mods & mods.PERFECT)
+            or (mod_str == "PF" and _mods & mods.SUDDENDEATH)
+            or (mod_str == "SD" and _mods & mods.PERFECT)
         ):
             _mods |= modMap.get(mod_str, mods.NOMOD)
 
