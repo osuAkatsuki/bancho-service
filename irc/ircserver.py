@@ -466,7 +466,7 @@ class Client:
                 if f"chat/{channel_name}" not in await streamList.getStreams():
                     self.reply403(channel_name)
                     continue
-                users = await stream.getClients(f"chat/{channel_name}")
+                users = await stream.get_token_ids_in_stream(f"chat/{channel_name}")
                 usernames = []
                 for user in users:
                     token = await osuToken.get_token(user)

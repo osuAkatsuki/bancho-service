@@ -618,7 +618,7 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
         return
 
     # Stop spectating old client
-    await stopSpectating(token_id, get_lock=False)  # (we already have the lock)
+    await stopSpectating(token_id)
 
     # Set new spectator host
     await update_token(
@@ -678,7 +678,7 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
             )
 
 
-async def stopSpectating(token_id: str, get_lock: bool = True) -> None:
+async def stopSpectating(token_id: str) -> None:
     """
     Stop spectating, leave spectator stream and channel
     and send required packets to host

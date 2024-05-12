@@ -8,7 +8,7 @@ def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
 
 
-async def getClients(stream_name: str) -> set[str]:
+async def get_token_ids_in_stream(stream_name: str) -> set[str]:
     """
     Get all clients in this stream
 
@@ -36,9 +36,9 @@ async def addClient(stream_name: str, token_id: str) -> None:
     :return:
     """
 
-    current_tokens = await getClients(stream_name)
+    tokens_in_stream = await get_token_ids_in_stream(stream_name)
 
-    if token_id not in current_tokens:
+    if token_id not in tokens_in_stream:
         # log.info("{} has joined stream {}.".format(token, self.name))
         await glob.redis.sadd(make_key(stream_name), token_id)
 
@@ -53,9 +53,9 @@ async def removeClient(
     :param token_id: client uuid string
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    tokens_in_stream = await get_token_ids_in_stream(stream_name)
 
-    if token_id in current_tokens:
+    if token_id in tokens_in_stream:
         await glob.redis.srem(make_key(stream_name), token_id)
 
 
@@ -67,18 +67,14 @@ async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     :param but: array of tokens to ignore. Default: None (send to everyone)
     :return:
     """
-    current_tokens = await getClients(stream_name)
-    token_ids = await osuToken.get_token_ids()
+    tokens_in_stream = await get_token_ids_in_stream(stream_name)
 
-    for i in current_tokens:
-        if i in token_ids:
-            if i not in but:
-                await osuToken.enqueue(i, data)
-        else:
-            await removeClient(stream_name, token_id=i)
+    for token_id in tokens_in_stream:
+        if token_id not in but:
+            await osuToken.enqueue(token_id, data)
 
 
-async def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
+async def multicast(stream_name: str, data: bytes, target_token_ids: list[str]) -> None:
     """
     Send some data to specific clients connected to this stream
 
@@ -86,14 +82,11 @@ async def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> 
     :param users: array of tokens broadcast to.
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    tokens_in_stream = await get_token_ids_in_stream(stream_name)
 
-    for i in current_tokens:
-        if i in await osuToken.get_token_ids():
-            if i in users:
-                await osuToken.enqueue(i, data)
-        else:
-            await removeClient(stream_name, token_id=i)
+    for token_id in tokens_in_stream:
+        if token_id in target_token_ids:
+            await osuToken.enqueue(token_id, data)
 
 
 async def dispose(stream_name: str) -> None:
@@ -102,8 +95,7 @@ async def dispose(stream_name: str) -> None:
 
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    tokens_in_stream = await get_token_ids_in_stream(stream_name)
 
-    for i in current_tokens:
-        if i in await osuToken.get_token_ids():
-            await osuToken.leaveStream(i, stream_name)
+    for token_id in tokens_in_stream:
+        await osuToken.leaveStream(token_id, stream_name)

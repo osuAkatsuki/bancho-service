@@ -159,7 +159,7 @@ async def removeChannel(name: str) -> None:
         return
 
     await streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
-    for token_id in await stream.getClients(f"chat/{name}"):
+    for token_id in await stream.get_token_ids_in_stream(f"chat/{name}"):
         token = await osuToken.get_token(token_id)
         if token is not None:
             await chat.partChannel(
