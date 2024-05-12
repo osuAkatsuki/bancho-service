@@ -26,7 +26,10 @@ async def handle(userToken: Token, rawPacketData: bytes):
         if packetData["userID"] < 0:
             logging.warning(
                 "Received a negative user id in start spectating packet.",
-                extra={"user_id": userToken["user_id"]},
+                extra={
+                    "user_id": userToken["user_id"],
+                    "host_user_id": packetData["userID"],
+                },
             )
             await osuToken.stopSpectating(userToken["token_id"])
             return
