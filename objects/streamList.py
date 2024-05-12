@@ -38,7 +38,7 @@ async def add(name: str) -> None:
     :param name: stream name
     :return:
     """
-    if not stream_exists(name):
+    if not await stream_exists(name):
         await glob.redis.sadd(make_key(), name)
 
 
