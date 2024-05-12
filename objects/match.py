@@ -687,7 +687,6 @@ async def allPlayersCompleted(match_id: int) -> None:
     # Destroy playing stream
     playing_stream_name = create_playing_stream_name(match_id)
     await streamList.dispose(playing_stream_name)
-    await streamList.remove(playing_stream_name)
 
     if multiplayer_match["current_game_id"] != 0:
         await finish_match_game(multiplayer_match["current_game_id"])
