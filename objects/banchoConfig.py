@@ -80,7 +80,7 @@ class banchoConfig:
         await streamList.broadcast("main", serverPackets.channelInfoEnd)
         for channel in await channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
-                client_count = await stream.getClientCount(f"chat/{channel['name']}")
+                client_count = await stream.get_client_count(f"chat/{channel['name']}")
                 packet_data = serverPackets.channelInfo(
                     channel["name"],
                     channel["description"],

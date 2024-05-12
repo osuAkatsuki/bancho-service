@@ -10,17 +10,17 @@ def make_key(stream_name: str) -> str:
     return f"bancho:streams:{stream_name}"
 
 
-async def getClients(stream_name: str) -> set[str]:
+async def get_client_token_ids(stream_name: str) -> set[str]:
     """
     Get all clients in this stream
 
     :return: list of clients
     """
-    raw_members: set[bytes] = await glob.redis.smembers(make_key(stream_name))
-    return {member.decode() for member in raw_members}
+    raw_token_ids: set[bytes] = await glob.redis.smembers(make_key(stream_name))
+    return {member.decode() for member in raw_token_ids}
 
 
-async def getClientCount(stream_name: str) -> int:
+async def get_client_count(stream_name: str) -> int:
     """
     Get the amount of clients in this stream
 
@@ -29,7 +29,7 @@ async def getClientCount(stream_name: str) -> int:
     return await glob.redis.scard(make_key(stream_name))
 
 
-async def addClient(stream_name: str, token_id: str) -> None:
+async def add_client(stream_name: str, token_id: str) -> None:
     """
     Add a client to this stream if not already in
 
@@ -38,9 +38,9 @@ async def addClient(stream_name: str, token_id: str) -> None:
     :return:
     """
 
-    current_tokens = await getClients(stream_name)
+    client_token_ids = await get_client_token_ids(stream_name)
 
-    if token_id in current_tokens:
+    if token_id in client_token_ids:
         logging.warning(
             "Attempted to add client to stream which is already in",
             extra={"stream": stream_name, "token": token_id},
@@ -50,7 +50,7 @@ async def addClient(stream_name: str, token_id: str) -> None:
     await glob.redis.sadd(make_key(stream_name), token_id)
 
 
-async def removeClient(
+async def remove_client(
     stream_name: str,
     token_id: str,
 ) -> None:
@@ -60,9 +60,9 @@ async def removeClient(
     :param token_id: client uuid string
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    client_token_ids = await get_client_token_ids(stream_name)
 
-    if token_id not in current_tokens:
+    if token_id not in client_token_ids:
         logging.warning(
             "Attempted to remove client from stream which is not in",
             extra={"stream": stream_name, "token": token_id},
@@ -72,7 +72,7 @@ async def removeClient(
     await glob.redis.srem(make_key(stream_name), token_id)
 
 
-async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
+async def broadcast_data(stream_name: str, data: bytes, but: list[str] = []) -> None:
     """
     Send some data to all (or some) clients connected to this stream
 
@@ -80,14 +80,14 @@ async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
     :param but: array of tokens to ignore. Default: None (send to everyone)
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    client_token_ids = await get_client_token_ids(stream_name)
 
-    for i in current_tokens:
-        if i not in but:
-            await osuToken.enqueue(i, data)
+    for token_id in client_token_ids:
+        if token_id not in but:
+            await osuToken.enqueue(token_id, data)
 
 
-async def multicast(stream_name: str, data: bytes, users: list[str]) -> None:
+async def multicast_data(stream_name: str, data: bytes, users: list[str]) -> None:
     """
     Send some data to specific clients connected to this stream
 
@@ -95,11 +95,11 @@ async def multicast(stream_name: str, data: bytes, users: list[str]) -> None:
     :param users: array of tokens broadcast to.
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    client_token_ids = await get_client_token_ids(stream_name)
 
-    for i in current_tokens:
-        if i in users:
-            await osuToken.enqueue(i, data)
+    for token_id in client_token_ids:
+        if token_id in users:
+            await osuToken.enqueue(token_id, data)
 
 
 async def dispose(stream_name: str) -> None:
@@ -108,7 +108,7 @@ async def dispose(stream_name: str) -> None:
 
     :return:
     """
-    current_tokens = await getClients(stream_name)
+    client_token_ids = await get_client_token_ids(stream_name)
 
-    for i in current_tokens:
-        await osuToken.leaveStream(i, stream_name)
+    for token_id in client_token_ids:
+        await osuToken.leaveStream(token_id, stream_name)

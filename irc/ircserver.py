@@ -6,6 +6,7 @@ by Joel Rosdahl, licensed under the GNU GPL 2 License.
 Most of the reference code from miniircd was used for the low-level logic.
 The high-level code has been rewritten to make it compatible with bancho-service.
 """
+
 # NOTE(2023-08-10): this is currently deprecated within akatsuki and is not functional
 # here because we may use it in the future - perhaps for deletion eventually.
 from __future__ import annotations
@@ -466,7 +467,7 @@ class Client:
                 if f"chat/{channel_name}" not in await streamList.getStreams():
                     self.reply403(channel_name)
                     continue
-                users = await stream.getClients(f"chat/{channel_name}")
+                users = await stream.get_client_token_ids(f"chat/{channel_name}")
                 usernames = []
                 for user in users:
                     token = await osuToken.get_token(user)
@@ -594,9 +595,11 @@ class Client:
         assert response is not None
         self.replyCode(
             response,
-            "You are no longer marked as being away"
-            if response == 305
-            else "You have been marked as being away",
+            (
+                "You are no longer marked as being away"
+                if response == 305
+                else "You have been marked as being away"
+            ),
         )
 
     async def mainHandler(self, command: str, arguments: list[str]) -> None:

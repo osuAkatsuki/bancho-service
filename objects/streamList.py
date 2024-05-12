@@ -64,7 +64,7 @@ async def join(name: str, token_id: str) -> None:
         )
         return
 
-    await stream.addClient(name, token_id)
+    await stream.add_client(name, token_id)
 
 
 async def leave(
@@ -87,7 +87,7 @@ async def leave(
         )
         return
 
-    await stream.removeClient(name, token_id)
+    await stream.remove_client(name, token_id)
 
 
 async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
@@ -107,7 +107,7 @@ async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
         )
         return
 
-    await stream.broadcast(name, data, but)
+    await stream.broadcast_data(name, data, but)
 
 
 async def multicast(name: str, data: bytes, users: list[str]) -> None:
@@ -127,7 +127,7 @@ async def multicast(name: str, data: bytes, users: list[str]) -> None:
         )
         return
 
-    await stream.multicast(name, data, users)
+    await stream.multicast_data(name, data, users)
 
 
 async def dispose(name: str) -> None:

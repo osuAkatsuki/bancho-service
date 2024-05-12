@@ -196,7 +196,7 @@ async def partChannel(
         # Delete temporary channel if everyone left
         key = f"chat/{channel_name}"
         if key in await streamList.getStreams():
-            if channel["instance"] and (await stream.getClientCount(key)) - 1 == 0:
+            if channel["instance"] and (await stream.get_client_count(key)) - 1 == 0:
                 await channelList.removeChannel(channel_name)
 
         # Force close tab if needed
