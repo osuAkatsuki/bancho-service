@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from objects import glob
 from objects import osuToken
 
@@ -38,9 +40,14 @@ async def addClient(stream_name: str, token_id: str) -> None:
 
     current_tokens = await getClients(stream_name)
 
-    if token_id not in current_tokens:
-        # log.info("{} has joined stream {}.".format(token, self.name))
-        await glob.redis.sadd(make_key(stream_name), token_id)
+    if token_id in current_tokens:
+        logging.warning(
+            "Attempted to add client to stream which is already in",
+            extra={"stream": stream_name, "token": token_id},
+        )
+        return
+
+    await glob.redis.sadd(make_key(stream_name), token_id)
 
 
 async def removeClient(
@@ -55,8 +62,14 @@ async def removeClient(
     """
     current_tokens = await getClients(stream_name)
 
-    if token_id in current_tokens:
-        await glob.redis.srem(make_key(stream_name), token_id)
+    if token_id not in current_tokens:
+        logging.warning(
+            "Attempted to remove client from stream which is not in",
+            extra={"stream": stream_name, "token": token_id},
+        )
+        return
+
+    await glob.redis.srem(make_key(stream_name), token_id)
 
 
 async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
