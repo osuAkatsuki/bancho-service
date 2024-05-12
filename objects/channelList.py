@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 from typing import TypedDict
 
@@ -167,6 +168,19 @@ async def removeChannel(name: str) -> None:
                 token_id=token_id,
                 kick=True,
             )
+
+    # Make the chatbot leave the channel, if it was a member
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    if chatbot_token:
+        try:
+            await osuToken.partChannel(chatbot_token["token_id"], name)
+            logging.info(
+                "Removed chatbot from disbanding channel",
+                extra={"channel_name": name},
+            )
+        except exceptions.userNotInChannelException:
+            pass
+
     await streamList.dispose(f"chat/{name}")
     await glob.redis.delete(make_key(name))
     await glob.redis.srem("bancho:channels", name)
