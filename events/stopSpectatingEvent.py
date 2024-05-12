@@ -41,4 +41,17 @@ async def handle(userToken: osuToken.Token, _=None):
 
     except exceptions.tokenNotFoundException:
         # Stop spectating if token not found
-        logger.warning("Spectator stop: host token not found")
+        logger.warning(
+            "Could not find the host token while stopping spectating",
+            extra={
+                "user_id": userToken["user_id"],
+                "host_user_id": userToken["spectating_user_id"],
+            },
+        )
+
+        # Set our spectating user to None
+        await osuToken.update_token(
+            userToken["token_id"],
+            spectating_token_id=None,
+            spectating_user_id=None,
+        )
