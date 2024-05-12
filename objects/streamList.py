@@ -38,13 +38,14 @@ async def add(name: str) -> None:
     :param name: stream name
     :return:
     """
-    if not await stream_exists(name):
-        await glob.redis.sadd(make_key(), name)
-    else:
+    if await stream_exists(name):
         logging.warning(
             "Could not add stream which already exists",
             extra={"stream": name},
         )
+        return
+
+    await glob.redis.sadd(make_key(), name)
 
 
 async def join(name: str, token_id: str) -> None:
@@ -57,13 +58,14 @@ async def join(name: str, token_id: str) -> None:
     :return:
     """
 
-    if await stream_exists(name):
-        await stream.addClient(name, token_id)
-    else:
+    if not await stream_exists(name):
         logging.warning(
             "Could not join stream which does not exist",
             extra={"stream": name, "token": token_id},
         )
+        return
+
+    await stream.addClient(name, token_id)
 
 
 async def leave(
@@ -79,13 +81,14 @@ async def leave(
     :return:
     """
 
-    if await stream_exists(name):
-        await stream.removeClient(name, token_id)
-    else:
+    if not await stream_exists(name):
         logging.warning(
             "Could not leave stream which does not exist",
             extra={"stream": name, "token": token_id},
         )
+        return
+
+    await stream.removeClient(name, token_id)
 
 
 async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
@@ -98,13 +101,14 @@ async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     :return:
     """
 
-    if await stream_exists(name):
-        await stream.broadcast(name, data, but)
-    else:
+    if not await stream_exists(name):
         logging.warning(
             "Could not broadcast to stream which does not exist",
             extra={"stream": name},
         )
+        return
+
+    await stream.broadcast(name, data, but)
 
 
 async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
@@ -117,13 +121,14 @@ async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
     :return:
     """
 
-    if await stream_exists(name):
-        await stream.broadcast_limited(name, data, users)
-    else:
+    if not await stream_exists(name):
         logging.warning(
             "Could not multicast to stream which does not exist",
             extra={"stream": name},
         )
+        return
+
+    await stream.broadcast_limited(name, data, users)
 
 
 async def dispose(name: str) -> None:
@@ -134,21 +139,22 @@ async def dispose(name: str) -> None:
     :return:
     """
 
-    if await stream_exists(name):
-        await stream.dispose(name)
-
-        current_clients = await stream.getClients(name)
-        for i in current_clients:
-            if i in await osuToken.get_token_ids():
-                await osuToken.leaveStream(i, name)
-
-        # self.streams.pop(name)
-        previous_members = await stream.getClients(name)
-        for token in previous_members:
-            await stream.removeClient(name, token_id=token)
-        await glob.redis.srem(make_key(), name)
-    else:
+    if not await stream_exists(name):
         logging.warning(
             "Could not dispose stream which does not exist",
             extra={"stream": name},
         )
+        return
+
+    await stream.dispose(name)
+
+    current_clients = await stream.getClients(name)
+    for i in current_clients:
+        if i in await osuToken.get_token_ids():
+            await osuToken.leaveStream(i, name)
+
+    # self.streams.pop(name)
+    previous_members = await stream.getClients(name)
+    for token in previous_members:
+        await stream.removeClient(name, token_id=token)
+    await glob.redis.srem(make_key(), name)
