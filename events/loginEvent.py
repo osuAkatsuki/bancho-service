@@ -444,9 +444,6 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
             )
 
-        # Save token in redis
-        await glob.redis.set(f"akatsuki:sessions:{responseTokenString}", userID)
-
         # Send online users' panels
         for token in await osuToken.get_tokens():
             if not osuToken.is_restricted(token["privileges"]):

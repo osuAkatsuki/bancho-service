@@ -76,12 +76,6 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
             ),
         )
 
-    # Expire token in redis
-    await glob.redis.expire(
-        f"akatsuki:sessions:{token['token_id']}",
-        60 * 60,
-    )  # expire in 1 hour (60 minutes)
-
     if glob.amplitude is not None:
         glob.amplitude.track(
             BaseEvent(
