@@ -154,6 +154,11 @@ async def dispose(name: str) -> None:
 
     # self.streams.pop(name)
     previous_members = await stream.getClients(name)
+    logging.warning(
+        "Debug: previous_members: %s",
+        len(previous_members),
+        extra={"previous_members": len(previous_members)},
+    )
     for token in previous_members:
         await stream.removeClient(name, token_id=token)
     await glob.redis.srem(make_key(), name)
