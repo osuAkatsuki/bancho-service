@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from amplitude import BaseEvent
 
 from common.log import logger
@@ -22,6 +24,10 @@ async def handle(userToken: Token, rawPacketData: bytes):
     try:
         # If the user id is less than 0, treat this as a stop spectating packet
         if packetData["userID"] < 0:
+            logging.warning(
+                "Received a negative user id in start spectating packet.",
+                extra={"user_id": userToken["user_id"]},
+            )
             await osuToken.stopSpectating(userToken["token_id"])
             return
 
