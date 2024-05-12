@@ -40,6 +40,11 @@ async def add(name: str) -> None:
     """
     if not await stream_exists(name):
         await glob.redis.sadd(make_key(), name)
+    else:
+        logging.warning(
+            "Could not add stream which already exists",
+            extra={"stream": name},
+        )
 
 
 async def join(name: str, token_id: str) -> None:
