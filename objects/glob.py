@@ -1,9 +1,10 @@
 """Global objects and variables"""
+
 from __future__ import annotations
 
 import time
-from typing import Optional
 from typing import TYPE_CHECKING
+from typing import Optional
 
 import httpx
 from amplitude import Amplitude
@@ -14,9 +15,9 @@ import settings
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
-    from objects.dbPool import DBPool
     from irc.ircserver import Server as IRCServer
     from objects.banchoConfig import banchoConfig
+    from objects.dbPool import DBPool
 
 
 BOT_NAME = "Aika"

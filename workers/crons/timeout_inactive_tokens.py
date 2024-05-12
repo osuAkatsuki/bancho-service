@@ -13,10 +13,10 @@ import lifecycle
 from common import exception_handling
 from common.log import logger
 from common.log import logging_config
+from constants import CHATBOT_USER_ID
 from events import logoutEvent
 from objects import osuToken
 from objects.redisLock import redisLock
-from constants import CHATBOT_USER_ID
 
 OSU_MAX_PING_INTERVAL = 300  # seconds
 

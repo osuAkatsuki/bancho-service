@@ -1,4 +1,5 @@
 """ Contains functions used to write specific server packets to byte streams """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -14,7 +15,6 @@ from objects import glob
 from objects import match
 from objects import osuToken
 from objects import tokenList
-
 
 # TODO: any packet using async/await should likely
 # be refactored to accept the data as a parameter

@@ -1,4 +1,5 @@
 """Contain server and client packet IDs"""
+
 from __future__ import annotations
 
 client_changeAction = 0

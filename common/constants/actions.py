@@ -1,4 +1,5 @@
 """Contains user actions"""
+
 from __future__ import annotations
 
 IDLE = 0

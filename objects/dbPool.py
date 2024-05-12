@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import cast
 from typing import Optional
+from typing import cast
 
 import aiomysql
 

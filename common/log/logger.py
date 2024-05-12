@@ -10,7 +10,6 @@ from typing import Union
 
 from typing_extensions import TypeAlias
 
-
 LOG_CONTEXT: ContextVar[Optional[dict[str, Any]]] = ContextVar(
     "LOG_CONTEXT",
     default=None,

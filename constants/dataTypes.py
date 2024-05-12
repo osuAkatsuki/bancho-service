@@ -1,4 +1,5 @@
 """Bancho packets data types"""
+
 from __future__ import annotations
 
 BYTE = 0
