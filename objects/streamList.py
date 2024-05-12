@@ -148,8 +148,4 @@ async def dispose(name: str) -> None:
 
     await stream.dispose(name)
 
-    current_clients = await stream.getClients(name)
-    for i in current_clients:
-        await osuToken.leaveStream(i, name)
-
     await glob.redis.srem(make_key(), name)
