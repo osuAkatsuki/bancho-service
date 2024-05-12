@@ -910,18 +910,19 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 
     _mods = 0
 
-    for m in (message[0][i : i + 2].upper() for i in range(0, len(message[0]), 2)):
+    for mod_str in (message[0][i : i + 2].upper() for i in range(0, len(message[0]), 2)):
+        new_mod = modMap.get(mod_str, mods.NOMOD)
         if not (
-            (m in ("DT", "NC") and _mods & mods.HALFTIME)
-            or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
-            or (m == "EZ" and _mods & mods.HARDROCK)
-            or (m == "HR" and _mods & mods.EASY)
-            or (m == "AP" and _mods & mods.RELAX)
-            or (m == "RX" and _mods & mods.AUTOPILOT)
-            or (m == "PF" and _mods & mods.SUDDENDEATH)
-            or (m == "SD" and _mods & mods.PERFECT)
+            (new_mod & (mods.DOUBLETIME | mods.NIGHTCORE) and _mods & mods.HALFTIME)
+            or (mod_str == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
+            or (mod_str == "EZ" and _mods & mods.HARDROCK)
+            or (mod_str == "HR" and _mods & mods.EASY)
+            or (mod_str == "AP" and _mods & mods.RELAX)
+            or (mod_str == "RX" and _mods & mods.AUTOPILOT)
+                or (mod_str == "PF" and _mods & mods.SUDDENDEATH)
+                or (mod_str == "SD" and _mods & mods.PERFECT)
         ):
-            _mods |= modMap.get(m, mods.NOMOD)
+            _mods |= modMap.get(mod_str, mods.NOMOD)
 
     # Set mods
     token["last_np"]["mods"] = _mods
@@ -2428,7 +2429,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             "DT": mods.DOUBLETIME,
             "RX": mods.RELAX,
             "HT": mods.HALFTIME,
-            "NC": mods.NIGHTCORE,
+            "NC": mods.NIGHTCORE | mods.DOUBLETIME,
             "FL": mods.FLASHLIGHT,
             "SO": mods.SPUNOUT,
             "AP": mods.AUTOPILOT,
@@ -2443,7 +2444,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             if m == "FM":
                 freemods = True
             else:
-                if not (
+                if osuToken.is_staff(user_token["privileges"]) or not (
                     (m in {"DT", "NC"} and _mods & mods.HALFTIME)
                     or (m == "HT" and _mods & (mods.DOUBLETIME | mods.NIGHTCORE))
                     or (m == "EZ" and _mods & mods.HARDROCK)
@@ -2453,7 +2454,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                     or (m == "PF" and _mods & mods.SUDDENDEATH)
                     or (m == "SD" and _mods & mods.PERFECT)
                 ):
-                    _mods |= modMap.get(m, 0)
+                    _mods |= modMap.get(m, mods.NOMOD)
 
         new_match_mod_mode = (
             matchModModes.FREE_MOD if freemods else matchModModes.NORMAL
