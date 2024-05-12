@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from objects import glob
 from objects import osuToken
 from objects import stream
@@ -52,6 +54,8 @@ async def remove(name: str) -> None:
         for token in previous_members:
             await stream.removeClient(name, token_id=token)
         await glob.redis.srem(make_key(), name)
+    else:
+        logging.warning("Stream does not exist", extra={"stream": name})
 
 
 async def join(name: str, token_id: str) -> None:
@@ -67,6 +71,8 @@ async def join(name: str, token_id: str) -> None:
     streams = await getStreams()
     if name in streams:
         await stream.addClient(name, token_id)
+    else:
+        logging.warning("Stream does not exist", extra={"stream": name})
 
 
 async def leave(
@@ -85,6 +91,8 @@ async def leave(
     streams = await getStreams()
     if name in streams:
         await stream.removeClient(name, token_id)
+    else:
+        logging.warning("Stream does not exist", extra={"stream": name})
 
 
 async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
@@ -100,6 +108,8 @@ async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     streams = await getStreams()
     if name in streams:
         await stream.broadcast(name, data, but)
+    else:
+        logging.warning("Stream does not exist", extra={"stream": name})
 
 
 async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
@@ -115,6 +125,8 @@ async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
     streams = await getStreams()
     if name in streams:
         await stream.broadcast_limited(name, data, users)
+    else:
+        logging.warning("Stream does not exist", extra={"stream": name})
 
 
 async def dispose(name: str, *args, **kwargs) -> None:
@@ -130,3 +142,5 @@ async def dispose(name: str, *args, **kwargs) -> None:
     streams = await getStreams()
     if name in streams:
         await stream.dispose(name, *args, **kwargs)
+    else:
+        logging.warning("Stream does not exist", extra={"stream": name})
