@@ -110,7 +110,7 @@ async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     await stream.broadcast(name, data, but)
 
 
-async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
+async def multicast(name: str, data: bytes, users: list[str]) -> None:
     """
     Send some data to specific clients in a stream
 
@@ -127,7 +127,7 @@ async def broadcast_limited(name: str, data: bytes, users: list[str]) -> None:
         )
         return
 
-    await stream.broadcast_limited(name, data, users)
+    await stream.multicast(name, data, users)
 
 
 async def dispose(name: str) -> None:

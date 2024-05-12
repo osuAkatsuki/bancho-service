@@ -466,7 +466,7 @@ async def sendMessage(
                     }
 
                     # Send their command
-                    await streamList.broadcast_limited(
+                    await streamList.multicast(
                         f"chat/{to}",
                         msg_packet,
                         send_to,
@@ -480,7 +480,7 @@ async def sendMessage(
                         message=chatbot_response["response"],
                         fro_id=CHATBOT_USER_ID,
                     )
-                    await streamList.broadcast_limited(
+                    await streamList.multicast(
                         f"chat/{to}",
                         response_packet,
                         send_to,

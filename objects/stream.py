@@ -74,7 +74,7 @@ async def broadcast(stream_name: str, data: bytes, but: list[str] = []) -> None:
             await osuToken.enqueue(i, data)
 
 
-async def broadcast_limited(stream_name: str, data: bytes, users: list[str]) -> None:
+async def multicast(stream_name: str, data: bytes, users: list[str]) -> None:
     """
     Send some data to specific clients connected to this stream
 
