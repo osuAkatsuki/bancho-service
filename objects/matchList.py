@@ -118,8 +118,6 @@ async def disposeMatch(match_id: int) -> None:
     # Dispose all streams
     await streamList.dispose(stream_name)
     await streamList.dispose(playing_stream_name)
-    await streamList.remove(stream_name)
-    await streamList.remove(playing_stream_name)
 
     # Send match dispose packet to everyone in lobby
     await streamList.broadcast("lobby", serverPackets.disposeMatch(match_id))

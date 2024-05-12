@@ -168,7 +168,6 @@ async def removeChannel(name: str) -> None:
                 kick=True,
             )
     await streamList.dispose(f"chat/{name}")
-    await streamList.remove(f"chat/{name}")
     await glob.redis.delete(make_key(name))
     await glob.redis.srem("bancho:channels", name)
     logger.info("Deleted channel from redis", extra={"channel_name": name})

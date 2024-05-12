@@ -1367,7 +1367,6 @@ async def abort(match_id: int) -> None:
     playing_stream_name = create_playing_stream_name(match_id)
     await streamList.broadcast(playing_stream_name, serverPackets.matchAbort)
     await streamList.dispose(playing_stream_name)
-    await streamList.remove(playing_stream_name)
 
 
 async def initializeTeams(match_id: int) -> None:
