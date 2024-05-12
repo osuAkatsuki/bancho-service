@@ -30,10 +30,7 @@ async def add(name: str) -> None:
     :param name: stream name
     :return:
     """
-
-    current_streams = await getStreams()
-    if name not in current_streams:
-        await glob.redis.sadd(make_key(), name)
+    await glob.redis.sadd(make_key(), name)
 
 
 async def remove(name: str) -> None:
@@ -43,18 +40,11 @@ async def remove(name: str) -> None:
     :param name: stream name
     :return:
     """
-    current_streams = await getStreams()
-
-    if name in current_streams:
+    if await stream_exists(name):
         current_clients = await stream.get_token_ids_in_stream(name)
         for token_id in current_clients:
-            if token_id in await osuToken.get_token_ids():
-                await osuToken.leaveStream(token_id, name)
+            await osuToken.leaveStream(token_id, name)
 
-        # self.streams.pop(name)
-        previous_members = await stream.get_token_ids_in_stream(name)
-        for token_id in previous_members:
-            await stream.removeClient(name, token_id)
         await glob.redis.srem(make_key(), name)
 
 
@@ -68,7 +58,7 @@ async def join(name: str, token_id: str) -> None:
     :return:
     """
 
-    if stream_exists(name):
+    if await stream_exists(name):
         await stream.addClient(name, token_id)
 
 
@@ -85,7 +75,7 @@ async def leave(
     :return:
     """
 
-    if stream_exists(name):
+    if await stream_exists(name):
         await stream.removeClient(name, token_id)
 
 
@@ -99,7 +89,7 @@ async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
     :return:
     """
 
-    if stream_exists(name):
+    if await stream_exists(name):
         await stream.broadcast(name, data, but)
 
 
@@ -113,7 +103,7 @@ async def multicast(name: str, data: bytes, target_token_ids: list[str]) -> None
     :return:
     """
 
-    if stream_exists(name):
+    if await stream_exists(name):
         await stream.multicast(name, data, target_token_ids)
 
 
@@ -125,5 +115,5 @@ async def dispose(name: str) -> None:
     :return:
     """
 
-    if stream_exists(name):
+    if await stream_exists(name):
         await stream.dispose(name)

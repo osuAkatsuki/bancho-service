@@ -429,11 +429,11 @@ async def get_streams(token_id: str) -> set[str]:
     return {raw_stream.decode() for raw_stream in raw_streams}
 
 
-async def add_stream(token_id: str, stream_name: str) -> None:
+async def add_stream_to_token(token_id: str, stream_name: str) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
 
 
-async def remove_stream(token_id: str, stream_name: str) -> None:
+async def remove_stream_from_token(token_id: str, stream_name: str) -> None:
     await glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
 
 
@@ -1138,7 +1138,7 @@ async def joinStream(token_id: str, name: str) -> None:
 
     await streamList.join(name, token_id=token_id)
     if name not in await get_streams(token_id):
-        await add_stream(token_id, name)
+        await add_stream_to_token(token_id, name)
 
 
 async def leaveStream(token_id: str, name: str) -> None:
@@ -1154,7 +1154,7 @@ async def leaveStream(token_id: str, name: str) -> None:
 
     await streamList.leave(name, token_id)
     if name in await get_streams(token_id):
-        await remove_stream(token_id, name)
+        await remove_stream_from_token(token_id, name)
 
 
 async def leaveAllStreams(token_id: str) -> None:
