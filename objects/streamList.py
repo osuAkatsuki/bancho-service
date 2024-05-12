@@ -8,7 +8,7 @@ from objects import stream
 
 
 def make_key() -> str:
-    return f"bancho:streams"
+    return "bancho:streams"
 
 
 async def getStreams() -> set[str]:
