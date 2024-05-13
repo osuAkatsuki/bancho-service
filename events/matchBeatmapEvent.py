@@ -4,7 +4,6 @@ from objects import match
 from objects.osuToken import Token
 from objects.redisLock import redisLock
 
-
 # NOTE: This is invoked not directly from mainHandler, but rather from
 # the matchNoBeatmapEvent and matchHasBeatmapEvent event handlers, to
 # allow for more code reuse.
