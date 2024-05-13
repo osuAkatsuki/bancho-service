@@ -618,8 +618,9 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
     if host_token is None:
         return
 
-    # Stop spectating old client
-    await stopSpectating(token_id)  # (we already have the lock)
+    # Stop spectating old client, if any
+    if token["spectating_token_id"] is not None:
+        await stopSpectating(token_id)
 
     # Set new spectator host
     await update_token(
