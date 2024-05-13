@@ -390,17 +390,6 @@ async def sendMessage(
                     to,
                     message,
                 )
-                if chatbot_response:
-                    logger.info(
-                        "Chatbot interaction",
-                        extra={
-                            "username": userToken["username"],
-                            "user_id": userToken["user_id"],
-                            "channel_name": to,
-                            "user_message": message,
-                            "chatbot_response": chatbot_response,
-                        },
-                    )
             else:
                 chatbot_response = None
 
