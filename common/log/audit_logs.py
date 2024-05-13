@@ -84,7 +84,7 @@ async def send_log(
     if discord_channel is not None:
         asyncio.create_task(
             send_log_as_discord_webhook(
-                message=f"{userUtils.getUsername(user_id)} {message}",
+                message=f"{userUtils.get_username_from_id(user_id)} {message}",
                 discord_channel=discord_channel,
             ),
         )

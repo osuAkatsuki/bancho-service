@@ -70,7 +70,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Try to get the ID from username
         username = loginData[0]
-        userID = await userUtils.getID(username)
+        userID = await userUtils.get_id_from_username(username)
 
         if not userID:
             # Invalid username
@@ -78,12 +78,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         elif userID == CHATBOT_USER_ID:
             raise exceptions.invalidArgumentsException()
 
-        if not await userUtils.checkLogin(userID, loginData[1]):
+        if not await userUtils.authenticate(userID, loginData[1]):
             # Invalid password
             raise exceptions.loginFailedException()
 
         # Make sure we are not banned or locked
-        priv = await userUtils.getPrivileges(userID)
+        priv = await userUtils.get_privileges(userID)
         pending_verification = priv & privileges.USER_PENDING_VERIFICATION != 0
 
         if not pending_verification:
@@ -122,8 +122,13 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Verify this user (if pending activation)
         firstLogin = False
         shouldBan = False
-        if pending_verification or not await userUtils.hasVerifiedHardware(userID):
-            if await userUtils.verifyUser(userID, clientData):
+        if pending_verification or not await userUtils.has_verified_with_any_hardware(
+            userID,
+        ):
+            if await userUtils.authorize_login_and_activate_new_account(
+                userID,
+                clientData,
+            ):
                 # Valid account
                 logger.info(
                     "User verified their account",
@@ -140,17 +145,23 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 await verifiedCache.set(userID, False)
                 shouldBan = True
 
-        # Save HWID in db for multiaccount detection
-        hwAllowed = await userUtils.logHardware(userID, clientData, firstLogin)
-
-        # This is false only if HWID is empty
-        # if HWID is banned, we get restricted so there's no
-        # need to deny bancho access
-        if not hwAllowed:
+        if not userUtils.validate_hwid_set(clientData):
+            await audit_logs.send_log_as_discord_webhook(
+                message=f"Invalid hash set ({clientData}) for user [{username}](https://akatsuki.gg/u/{userID}) in HWID check",
+                discord_channel="ac_confidential",
+            )
             raise exceptions.haxException()
 
+        # Save HWID in db for multiaccount detection, and restrict them if
+        # they are determined to be engaging in multi-accounting.
+        await userUtils.associate_user_with_hwids_and_restrict_if_multiaccounting(
+            userID,
+            clientData,
+            associate_with_account_activation=firstLogin,
+        )
+
         # Log user IP
-        await userUtils.logIP(userID, requestIP)
+        await userUtils.associate_user_with_ip(userID, requestIP)
 
         if shouldBan:
             await userUtils.ban(userID)
@@ -203,12 +214,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Get the user's `frozen` status from the DB
         # For a normal user, this will return 0.
         # For a frozen user, this will return a unix timestamp (the date of their pending restriction).
-        freeze_timestamp = await userUtils.getFreezeTime(userID)
+        freeze_timestamp = await userUtils.get_freeze_restriction_date(userID)
         current_time = int(time.time())
 
         if freeze_timestamp:
             if freeze_timestamp == 1:  # Begin the timer.
-                freeze_timestamp = await userUtils.beginFreezeTimer(userID)
+                freeze_timestamp = await userUtils.begin_freeze_timer(userID)
 
             # reason = await userUtils.getFreezeReason(userID)
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
@@ -235,7 +246,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 # TODO: perhaps move this to the cron?
                 # right now a user can avoid a resitrction by simply not logging in lol..
                 await userUtils.restrict(userID)
-                await userUtils.unfreeze(userID, _log=False)
+                await userUtils.unfreeze(
+                    userID,
+                    should_log_to_cm_notes_and_discord=False,
+                )
 
                 await osuToken.enqueue(
                     userToken["token_id"],
@@ -260,12 +274,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Send message if premium / donor expires soon
         # This should NOT be done at login, but done by the cron
         if userToken["privileges"] & privileges.USER_DONOR:
-            expireDate = await userUtils.getDonorExpire(userID)
+            expireDate = await userUtils.get_absolute_donor_expiry_time(userID)
             premium = userToken["privileges"] & privileges.USER_PREMIUM
             rolename = "premium" if premium else "supporter"
 
             if current_time >= expireDate:
-                await userUtils.setPrivileges(
+                await userUtils.set_privileges(
                     userID,
                     userToken["privileges"] - privileges.USER_DONOR
                     | (privileges.USER_PREMIUM if premium else 0),
@@ -325,7 +339,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Set silence end UNIX time in token
         await osuToken.update_token(
             userToken["token_id"],
-            silence_end_time=await userUtils.getSilenceEnd(userID),
+            silence_end_time=await userUtils.get_absolute_silence_end(userID),
         )
 
         # Get only silence remaining seconds
@@ -430,11 +444,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
 
         # Send friends list
-        friends_list = await userUtils.getFriendList(userID)
-        await osuToken.enqueue(
-            userToken["token_id"],
-            serverPackets.friendList(userID, friends_list),
-        )
+        friends_list = await userUtils.get_friend_user_ids(userID)
+        if friends_list:
+            await osuToken.enqueue(
+                userToken["token_id"],
+                serverPackets.friendList(userID, friends_list),
+            )
 
         # Send main menu icon
         if glob.banchoConf.config["menuIcon"]:
@@ -467,7 +482,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Set country in db if user has no country (first bancho login)
         if await userUtils.getCountry(userID) == "XX":
-            await userUtils.setCountry(userID, countryLetters)
+            await userUtils.set_country(userID, countryLetters)
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):

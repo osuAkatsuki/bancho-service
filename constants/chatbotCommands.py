@@ -85,8 +85,8 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
     """Show all documented commands the player can access."""
     l = ["Individual commands", "-----------"]
 
-    userID = await userUtils.getID(fro)  # TODO: rewrite this command as well..
-    user_privs = await userUtils.getPrivileges(userID)
+    userID = await userUtils.get_id_from_username(fro)
+    user_privs = await userUtils.get_privileges(userID)
 
     for cmd in commands:
         cmd_trigger = cmd["trigger"]
@@ -124,7 +124,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
     if not (msg := " ".join(message).strip()):
         return "Guy was going to say @everyone and leave..."
 
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
     await streamList.broadcast("main", serverPackets.notification(msg))
     await audit_logs.send_log(
         userID,
@@ -149,7 +149,7 @@ async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return
 
     target = message[0].lower()
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return "Could not find user."
 
     if not (targetToken := await osuToken.get_token_by_user_id(targetID)):
@@ -176,7 +176,7 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         # Turn on/off moderated mode
         # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
         await channelList.updateChannel(channel_name, moderated=enable)
-        userID = await userUtils.getID(fro)
+        userID = await userUtils.get_id_from_username(fro)
         await audit_logs.send_log(
             userID,
             f"has toggled moderated mode in {channel_name}.",
@@ -207,9 +207,9 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return "Could not find user"
 
     if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
@@ -256,10 +256,10 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
         amount = int(amount)
 
     # Make sure the user exists
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     # Calculate silence seconds
     if unit == "s":
@@ -280,7 +280,9 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
         return "Invalid silence time. Max silence time is 4 weeks."
 
     # Send silence packet to target if he's connected
-    targetToken = await tokenList.getTokenFromUsername(userUtils.safeUsername(target))
+    targetToken = await tokenList.getTokenFromUsername(
+        userUtils.get_safe_username(target),
+    )
     if targetToken:
         # user online, silence both in db and with packet
         await osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
@@ -302,7 +304,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(
+    await userUtils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) silenced {target} for {reason}.",
     )
@@ -323,9 +325,9 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
-    if not (targetID := await userUtils.getIDSafe(target)):
+    if not (targetID := await userUtils.get_id_from_safe_username(target)):
         return f"{target}: user not found."
 
     # Send new silence end packet to user if he's online
@@ -347,7 +349,7 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
             discord_channel="ac_general",
         )
 
-    await userUtils.appendNotes(
+    await userUtils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) unsilenced {target} for {reason}",
     )
@@ -367,11 +369,11 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return f"{target}: user not found."
 
     username = await chat.fixUsernameForBancho(fro)
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     if not reason:
         return "Please specify a reason for the ban!"
@@ -398,7 +400,10 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{username} ({userID}) banned for: {reason}")
+    await userUtils.append_cm_notes(
+        targetID,
+        f"{username} ({userID}) banned for: {reason}",
+    )
     return f"{target} has been banned."
 
 
@@ -415,10 +420,10 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     # Set allowed to 1
     await userUtils.unban(targetID)
@@ -435,7 +440,10 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unbanned for: {reason}")
+    await userUtils.append_cm_notes(
+        targetID,
+        f"{fro} ({userID}) unbanned for: {reason}",
+    )
     return f"{target} has been unbanned."
 
 
@@ -452,10 +460,10 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     if not reason:
         return "Please specify a reason for the restriction!"
@@ -482,7 +490,10 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) restricted for: {reason}")
+    await userUtils.append_cm_notes(
+        targetID,
+        f"{fro} ({userID}) restricted for: {reason}",
+    )
     return f"{target} has been restricted."
 
 
@@ -499,10 +510,10 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     if not reason:
         return "Please specify a reason for the unrestriction!"
@@ -521,7 +532,7 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(
+    await userUtils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) unrestricted for: {reason}",
     )
@@ -1094,8 +1105,8 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         # Get username, report reason and report info
         target, reason, additionalInfo = result.groups()
         target = await chat.fixUsernameForBancho(target)
-        userID = await userUtils.getID(fro)
-        targetID = await userUtils.getID(target)
+        userID = await userUtils.get_id_from_username(fro)
+        targetID = await userUtils.get_id_from_username(target)
 
         # Make sure the user exists
         if not targetID:
@@ -1118,7 +1129,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         await glob.db.execute(
             "INSERT INTO reports (id, from_uid, to_uid, reason, chatlog, time) VALUES (NULL, %s, %s, %s, %s, %s)",
             [
-                await userUtils.getID(fro),
+                await userUtils.get_id_from_username(fro),
                 targetID,
                 f"{reason} - ingame {f'({additionalInfo})' if additionalInfo else ''}",
                 chatlog,
@@ -1176,7 +1187,7 @@ async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
         return "Invalid syntax, please use !linkosu in Akatsuki's Discord server first."
 
     discordID = int(discordID) >> (0o14 - 1)  # get rid of the mess lol
-    userID = await userUtils.getID(fro)  # aika side for a tad of secrecy
+    userID = await userUtils.get_id_from_username(fro)  # aika side for a tad of secrecy
 
     # Check if their osu! account already has a discord link.
     if await glob.db.fetch("SELECT 1 FROM aika_akatsuki WHERE osu_id = %s", [userID]):
@@ -1214,17 +1225,20 @@ async def freeze(fro: str, chan: str, message: list[str]) -> str:
     target = message[0].lower()
     reason = " ".join(message[1:])
 
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return "That user does not exist"
 
-    if await userUtils.getFreezeTime(targetID):
+    if await userUtils.get_freeze_restriction_date(targetID):
         return "That user is already frozen."
 
     if not reason:
         return f"Please specify your reason to freeze {target}."
 
-    await userUtils.freeze(targetID, await userUtils.getID(fro))
-    userID = await userUtils.getID(fro)
+    await userUtils.freeze(
+        targetID,
+        author_user_id=await userUtils.get_id_from_username(fro),
+    )
+    userID = await userUtils.get_id_from_username(fro)
     await audit_logs.send_log(userID, f"has froze {target}")
     await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
@@ -1237,7 +1251,7 @@ async def freeze(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) froze {target}")
+    await userUtils.append_cm_notes(targetID, f"{fro} ({userID}) froze {target}")
     return f"Froze {target}."
 
 
@@ -1252,17 +1266,17 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     target = message[0].lower()
     reason = " ".join(message[1:])
 
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return "That user does not exist"
 
-    if not await userUtils.getFreezeTime(targetID):
+    if not await userUtils.get_freeze_restriction_date(targetID):
         return "That user is not frozen."
 
     if not reason:
         return f"Please specify a reason to unfreeze {target}."
 
-    userID = await userUtils.getID(fro)
-    await userUtils.unfreeze(targetID, userID)
+    userID = await userUtils.get_id_from_username(fro)
+    await userUtils.unfreeze(targetID, author_user_id=userID)
     await audit_logs.send_log(userID, f"unfroze {target}")
     await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
@@ -1275,7 +1289,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.appendNotes(targetID, f"{fro} ({userID}) unfroze {target}")
+    await userUtils.append_cm_notes(targetID, f"{fro} ({userID}) unfroze {target}")
     return f"Unfroze {target}."
 
 
@@ -1324,19 +1338,19 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     """Change your own username."""
     # For premium members to change their own usernames
     newUsername = " ".join(message)
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     if not chatbot.USERNAME_REGEX.match(newUsername) or (
         " " in newUsername and "_" in newUsername
     ):
         return "Invalid username."
 
-    newUsernameSafe = userUtils.safeUsername(newUsername)
+    newUsernameSafe = userUtils.get_safe_username(newUsername)
 
-    if userUtils.getIDSafe(newUsernameSafe):
+    if userUtils.get_id_from_safe_username(newUsernameSafe):
         return "That username is already in use."
 
-    await userUtils.changeUsername(userID, fro, newUsername)
+    await userUtils.change_username(userID, newUsername)
 
     notif_pkt = serverPackets.notification(
         "\n".join(
@@ -1354,7 +1368,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
             token["token_id"],
         )
 
-    await userUtils.appendNotes(
+    await userUtils.append_cm_notes(
         userID,
         f"Username changed (self): '{fro}' -> '{newUsername}'.",
     )
@@ -1466,7 +1480,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     prev_status_emoji_id = status_to_emoji_id(res["ranked"])
 
     # Get the nominator profile URL just once
-    nominator_profile_url = userUtils.getProfile(token["user_id"])
+    nominator_profile_url = userUtils.get_profile_url(token["user_id"])
 
     # Get the last /np'd Beatmap ID
     last_np_map_id = token["last_np"]["beatmap_id"]
@@ -1531,8 +1545,8 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
 
 @command(trigger="!playtime", hidden=False)
 async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
-    user_id = await userUtils.getID(fro)
-    total_playtime = await userUtils.getPlaytimeTotal(user_id)
+    user_id = await userUtils.get_id_from_username(fro)
+    total_playtime = await userUtils.get_playtime_total(user_id)
     readable_time = generalUtils.secondsToReadable(total_playtime)
     return (
         f"{fro}: Your total osu!Akatsuki playtime (all gamemodes) is: {readable_time}."
@@ -1555,14 +1569,14 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     if bit not in range(4):
         return "Invalid bit."
 
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return "That user does not exist."
 
     if not reason:
         return "Please specify the reason for your whitelist request."
 
     # Get command executioner's ID
-    userID = await userUtils.getID(fro)
+    userID = await userUtils.get_id_from_username(fro)
 
     # If target user is online, update their token's whitelist bit
     targetToken = await tokenList.getTokenFromUserID(targetID)
@@ -1572,7 +1586,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
             whitelist=bit,
         )
 
-    await userUtils.editWhitelist(targetID, bit)
+    await userUtils.update_whitelist_status(targetID, bit)
 
     await audit_logs.send_log(
         userID,
@@ -1588,7 +1602,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
         ),
         discord_channel="ac_general",
     )
-    await userUtils.appendNotes(
+    await userUtils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) has set {target}'s Whitelist Status to {bit}. Reason: {reason}",
     )
@@ -1604,13 +1618,13 @@ async def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[s
     if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
 
-    if not (res := await userUtils.getMapNominator(token["last_np"]["beatmap_id"])):
+    if not (res := await userUtils.get_map_nominator(token["last_np"]["beatmap_id"])):
         return "That map isn't stored in our database."
     elif not res["rankedby"]:
         return "Our logs sadly do not go back far enough to find this data."
 
     status_readable = {0: "unranked", 2: "ranked", 5: "loved"}[res["ranked"]]
-    rankedby = await userUtils.getProfileEmbed(res["rankedby"])
+    rankedby = await userUtils.get_profile_url_osu_chat_embed(res["rankedby"])
 
     return f'{res["song_name"]} was {status_readable} by: {rankedby}.'
 
@@ -1639,13 +1653,15 @@ def announceContest(fro: str, chan: str, message: list[str]) -> None:
 @command(trigger="!overwrite", hidden=True)
 async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     """Force your latest score to overwrite. (NOTE: this is possibly destructive)"""
-    userID = await userUtils.getID(fro)  # TODO: rewrite this command as well..
-    user_privs = await userUtils.getPrivileges(userID)
+    userID = await userUtils.get_id_from_username(
+        fro,
+    )  # TODO: rewrite this command as well..
+    user_privs = await userUtils.get_privileges(userID)
 
     if not user_privs & privileges.USER_DONOR:
         return "The overwrite command is only available to Akatsuki supporters."
 
-    if not (ratelimit := await userUtils.getOverwriteWaitRemainder(userID)):
+    if not (ratelimit := await userUtils.get_remaining_overwrite_wait(userID)):
         await glob.db.execute(
             "UPDATE users SET previous_overwrite = 1 WHERE id = %s",
             [userID],
@@ -1759,7 +1775,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         ref_usernames: list[str] = []
         for ref_id in referees:
-            username = await userUtils.getUsername(ref_id)
+            username = await userUtils.get_username_from_id(ref_id)
             assert username is not None
             ref_usernames.append(username)
 
@@ -2714,7 +2730,7 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
         return "I'll need a user to perform the command on.."
 
     target = message[0]
-    if not (targetID := await userUtils.getID(target)):
+    if not (targetID := await userUtils.get_id_from_username(target)):
         return f"{target} not found."
 
     userToken = await tokenList.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)

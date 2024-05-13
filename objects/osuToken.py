@@ -944,7 +944,7 @@ async def silence(
 
     if seconds is None:
         # Get silence expire from db if needed
-        seconds = max(0, await userUtils.getSilenceEnd(token["user_id"]) - int(time()))
+        seconds = await userUtils.get_remaining_silence_time(token["user_id"])
     else:
         # Silence in db and token
         await userUtils.silence(token["user_id"], seconds, reason, author)
@@ -1036,7 +1036,7 @@ async def updateCachedStats(token_id: str) -> None:
     else:
         relax_int = 0
 
-    stats = await userUtils.getUserStats(
+    stats = await userUtils.get_user_stats(
         token["user_id"],
         token["game_mode"],
         relax_int,
@@ -1067,7 +1067,7 @@ async def checkRestricted(token_id: str) -> None:
         return
 
     old_restricted = is_restricted(token["privileges"])
-    restricted = await userUtils.isRestricted(token["user_id"])
+    restricted = await userUtils.is_restricted(token["user_id"])
     if restricted:
         await setRestricted(token_id)
     elif not restricted and old_restricted != restricted:
@@ -1084,7 +1084,7 @@ async def disconnectUserIfBanned(token_id: str) -> None:
     if token is None:
         return
 
-    if await userUtils.isBanned(token["user_id"]):
+    if await userUtils.is_banned(token["user_id"]):
         await enqueue(token_id, serverPackets.loginBanned)
         from events import logoutEvent  # TODO: fix circular import
 

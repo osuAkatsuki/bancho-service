@@ -348,7 +348,7 @@ class Client:
                 return
 
             # Make sure that the user is not banned/restricted:
-            if not userUtils.isAllowed(self.supposedUserID):
+            if not userUtils.is_not_banned_or_restricted(self.supposedUserID):
                 self.reply("465 :You're banned")
                 return
 

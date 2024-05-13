@@ -50,8 +50,6 @@ async def addToken(
     )
 
     await osuToken.updateCachedStats(token["token_id"])
-    if ip != "":
-        await userUtils.saveBanchoSessionIpLookup(token["user_id"], ip)
 
     await osuToken.joinStream(token["token_id"], "main")
 
@@ -80,9 +78,6 @@ async def deleteToken(token_id: str) -> None:
             extra={"token_id": token_id},
         )
         return
-
-    if token["ip"]:
-        await userUtils.deleteBanchoSessionIpLookup(token["user_id"], token["ip"])
 
     await osuToken.delete_token(token_id)
     await glob.redis.set(
@@ -181,12 +176,12 @@ async def getTokenFromUsername(
                 only the first occurrence.
     :return: osuToken object or None
     """
-    username = userUtils.safeUsername(username)
+    username = userUtils.get_safe_username(username)
 
     # Make sure the token exists
     ret = []
     for value in await osuToken.get_tokens():
-        if userUtils.safeUsername(value["username"]) == username:
+        if userUtils.get_safe_username(value["username"]) == username:
             if ignoreIRC and value["irc"]:
                 continue
             if _all:

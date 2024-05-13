@@ -15,9 +15,9 @@ from objects import tokenList
 
 async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
     try:
-        oldUsername = await userUtils.getUsername(userID)
-        await userUtils.changeUsername(userID, newUsername=newUsername)
-        await userUtils.appendNotes(
+        oldUsername = await userUtils.get_username_from_id(userID)
+        await userUtils.change_username(userID, newUsername)
+        await userUtils.append_cm_notes(
             userID,
             notes=f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
@@ -52,7 +52,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "new_username": newUsername,
             },
         )
-    except userUtils.usernameAlreadyInUseError:
+    except userUtils.UsernameAlreadyInUseError:
         logger.error(
             "Job failed to update username",
             extra={
@@ -67,7 +67,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
             )
-    except userUtils.invalidUsernameError:
+    except userUtils.InvalidUsernameError:
         logger.error(
             "Job failed to update username",
             extra={
