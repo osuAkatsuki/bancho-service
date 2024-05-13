@@ -1073,7 +1073,7 @@ async def checkRestricted(token_id: str) -> None:
         await resetRestricted(token_id)
 
 
-async def checkBanned(token_id: str) -> None:
+async def disconnectUserIfBanned(token_id: str) -> None:
     """
     Check if this user is banned. If so, disconnect it.
 

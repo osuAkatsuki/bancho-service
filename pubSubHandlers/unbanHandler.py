@@ -31,7 +31,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             return
 
         targetToken["privileges"] = await userUtils.getPrivileges(userID)
-        await osuToken.checkBanned(targetToken["token_id"])
+        await osuToken.disconnectUserIfBanned(targetToken["token_id"])
         await osuToken.checkRestricted(targetToken["token_id"])
 
         logger.info(
