@@ -41,15 +41,6 @@ class LastNp(TypedDict):
     accuracy: float
 
 
-# self,
-# userID: int,
-# token_: Optional[str] = None,
-# ip: str = "",
-# irc: bool = False,
-# timeOffset: int = 0,
-# tournament: bool = False,
-
-
 class Token(TypedDict):
     token_id: str
     user_id: int
@@ -59,7 +50,6 @@ class Token(TypedDict):
     whitelist: int
     # staff: bool
     # restricted: bool
-    irc: bool
     kicked: bool
     login_time: float
     ping_time: float
@@ -132,7 +122,6 @@ async def create_token(
     whitelist: int,
     ip: str,
     utc_offset: int,
-    irc: bool,
     tournament: bool,
     block_non_friends_dm: bool,
     amplitude_device_id: Optional[str],
@@ -146,7 +135,6 @@ async def create_token(
         "username": username,
         "privileges": privileges,
         "whitelist": whitelist,
-        "irc": irc,
         "kicked": False,
         "login_time": creation_time,
         "ping_time": creation_time,
@@ -254,7 +242,6 @@ async def update_token(
     username: Optional[str] = None,
     privileges: Optional[int] = None,
     whitelist: Optional[int] = None,
-    irc: Optional[bool] = None,
     kicked: Optional[bool] = None,
     # login_time: Optional[float] = None,
     ping_time: Optional[float] = None,
@@ -299,8 +286,6 @@ async def update_token(
         token["privileges"] = privileges
     if whitelist is not None:
         token["whitelist"] = whitelist
-    if irc is not None:
-        token["irc"] = irc
     if kicked is not None:
         token["kicked"] = kicked
     if ping_time is not None:
@@ -487,8 +472,8 @@ async def enqueue(token_id: str, data: bytes) -> None:
     if token is None:
         return
 
-    # Never enqueue for IRC clients or Aika
-    if token["irc"] or token["user_id"] == CHATBOT_USER_ID:
+    # Never enqueue data to the chatbot
+    if token["user_id"] == CHATBOT_USER_ID:
         return
 
     if len(data) >= 10 * 10**6:
@@ -905,7 +890,7 @@ async def kick(
     # Logout event
     from events import logoutEvent  # TODO: fix circular import
 
-    await logoutEvent.handle(token, deleteToken=token["irc"])
+    await logoutEvent.handle(token)
 
     logger.info(
         "Invalidated a user's bancho session",
@@ -1097,9 +1082,9 @@ async def setRestricted(token_id: str) -> None:
 
     aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
-        token_id=aika_token["token_id"],
-        to=token["username"],
+    await chat.send_message(
+        sender_token_id=aika_token["token_id"],
+        recipient_name=token["username"],
         message="Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
     )
 
@@ -1117,9 +1102,9 @@ async def resetRestricted(token_id: str) -> None:
 
     aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
-        token_id=aika_token["token_id"],
-        to=token["username"],
+    await chat.send_message(
+        sender_token_id=aika_token["token_id"],
+        recipient_name=token["username"],
         message="Your account has been unrestricted! Please log in again.",
     )
 

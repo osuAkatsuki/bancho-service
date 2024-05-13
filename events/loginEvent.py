@@ -186,7 +186,6 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         userToken = await tokenList.addToken(
             userID,
             ip=requestIP,
-            irc=False,
             utc_offset=utc_offset,
             tournament=isTournament,
             block_non_friends_dm=block_non_friends_dm,
@@ -228,9 +227,9 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                 assert aika_token is not None
 
-                await chat.sendMessage(
-                    token_id=aika_token["token_id"],
-                    to=username,
+                await chat.send_message(
+                    sender_token_id=aika_token["token_id"],
+                    recipient_name=username,
                     message="\n".join(
                         [
                             f"Your account has been frozen",  # "Your account has been frozen{freeze_str}"

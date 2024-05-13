@@ -13,7 +13,6 @@ from amplitude import Config as AmplitudeConfig
 import settings
 
 if TYPE_CHECKING:
-    from irc.ircserver import Server as IRCServer
     from redis.asyncio import Redis
 
     from objects.banchoConfig import banchoConfig
@@ -26,7 +25,6 @@ application = None
 db: DBPool
 redis: Redis
 banchoConf: banchoConfig
-ircServer: IRCServer
 
 restarting = False
 

@@ -26,7 +26,7 @@ async def handle(
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login
     # if the user logs out before 2 seconds, he will be disconnected later with timeout check
-    if not (time.time() - token["login_time"] >= 2 or token["irc"]):
+    if not (time.time() - token["login_time"] >= 2):
         return
 
     # Stop spectating
@@ -45,10 +45,6 @@ async def handle(
 
     # Enqueue our disconnection to everyone else
     await streamList.broadcast("main", serverPackets.userLogout(token["user_id"]))
-
-    # Disconnect from IRC if needed
-    if settings.IRC_ENABLE and token["irc"]:
-        await glob.ircServer.forceDisconnection(token["username"])
 
     # Delete token
     if deleteToken:

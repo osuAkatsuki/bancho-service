@@ -41,10 +41,6 @@ MIRROR_URL = os.environ["MIRROR_URL"]
 
 DEBUG = os.environ["DEBUG"] == "1"
 
-IRC_ENABLE = os.environ["IRC_ENABLE"] == "1"
-IRC_PORT = int(os.environ["IRC_PORT"])
-IRC_HOSTNAME = os.environ["IRC_HOSTNAME"]
-
 LOCALIZE_ENABLE = os.environ["LOCALIZE_ENABLE"] == "1"
 LOCALIZE_IP_API_URL = os.environ["LOCALIZE_IP_API_URL"]
 

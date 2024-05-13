@@ -392,7 +392,6 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    username = await chat.fixUsernameForBancho(fro)
     userID = await user_utils.get_id_from_username(fro)
 
     if not reason:
@@ -422,7 +421,7 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
 
     await user_utils.append_cm_notes(
         targetID,
-        f"{username} ({userID}) banned for: {reason}",
+        f"{fro} ({userID}) banned for: {reason}",
     )
     return f"{target} has been banned."
 
@@ -841,10 +840,7 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
         except exceptions.wrongChannelException:
             return "This command is only usable when either spectating a user, or playing multiplayer."
 
-        spectatorHostToken = await tokenList.getTokenFromUserID(
-            spectatorHostUserID,
-            ignoreIRC=True,
-        )
+        spectatorHostToken = await tokenList.getTokenFromUserID(spectatorHostUserID)
         if not spectatorHostToken:
             return "The spectator host is offline."
 
@@ -879,7 +875,6 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
         spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         spectatorHostToken = await tokenList.getTokenFromUserID(
             spectatorHostUserID,
-            ignoreIRC=True,
         )
         return (
             await _get_beatmap_download_embed(spectatorHostToken["beatmap_id"])
@@ -1140,7 +1135,6 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
 
         # Get username, report reason and report info
         target, reason, additionalInfo = result.groups()
-        target = await chat.fixUsernameForBancho(target)
         userID = await user_utils.get_id_from_username(fro)
         targetID = await user_utils.get_id_from_username(target)
 
@@ -1199,19 +1193,10 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
     finally:
         if msg:
             if token := await tokenList.getTokenFromUsername(fro):
-                if token["irc"]:
-                    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-                    assert aika_token is not None
-                    await chat.sendMessage(
-                        token_id=aika_token["token_id"],
-                        to=fro,
-                        message=msg,
-                    )
-                else:
-                    await osuToken.enqueue(
-                        token["token_id"],
-                        serverPackets.notification(msg),
-                    )
+                await osuToken.enqueue(
+                    token["token_id"],
+                    serverPackets.notification(msg),
+                )
 
 
 @command(trigger="!vdiscord", syntax="<discord_user_id>", hidden=True)
@@ -1555,9 +1540,9 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
-        token_id=aika_token["token_id"],
-        to="#announce",
+    await chat.send_message(
+        sender_token_id=aika_token["token_id"],
+        recipient_name="#announce",
         message=f"[{nominator_profile_url} {fro}] has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
@@ -1573,9 +1558,9 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
-        token_id=aika_token["token_id"],
-        to="#announce",
+    await chat.send_message(
+        sender_token_id=aika_token["token_id"],
+        recipient_name="#announce",
         message=" ".join(message),
     )
     return "Announcement successfully sent."
@@ -1844,17 +1829,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             is_tourney=True,
         )
 
-        if user_token["irc"]:
-            await chat.join_channel(  # join channel
-                token_id=user_token["token_id"],
-                channel_name=f"#mp_{multiplayer_match['match_id']}",
-                allow_instance_channels=True,
-            )
-        else:
-            await osuToken.joinMatch(
-                user_token["token_id"],
-                multiplayer_match["match_id"],
-            )
+        await osuToken.joinMatch(
+            user_token["token_id"],
+            multiplayer_match["match_id"],
+        )
 
         await match.setHost(multiplayer_match["match_id"], user_token["user_id"])
         await match.sendUpdates(multiplayer_match["match_id"])
@@ -1949,7 +1927,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         matchID = int(message[2])
 
-        userToken = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
+        userToken = await tokenList.getTokenFromUsername(username)
         if not userToken:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -1984,7 +1962,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         newSlotID = int(message[2])
 
-        target_token = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
+        target_token = await tokenList.getTokenFromUsername(username)
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -2073,9 +2051,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
             assert aika_token is not None
             if not await match.start(multiplayer_match["match_id"]):
-                await chat.sendMessage(
-                    token_id=aika_token["token_id"],
-                    to=chan,
+                await chat.send_message(
+                    sender_token_id=aika_token["token_id"],
+                    recipient_name=chan,
                     message=(
                         "Couldn't start match. Make sure there are enough players and "
                         "teams are valid. The match has been unlocked."
@@ -2083,9 +2061,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 )
                 return True  # Failed to start
             else:
-                await chat.sendMessage(
-                    token_id=aika_token["token_id"],
-                    to=chan,
+                await chat.send_message(
+                    sender_token_id=aika_token["token_id"],
+                    recipient_name=chan,
                     message="Have fun!",
                 )
 
@@ -2134,9 +2112,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 if not t % 10 or t <= 5:
                     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
-                    await chat.sendMessage(
-                        token_id=aika_token["token_id"],
-                        to=chan,
+                    await chat.send_message(
+                        sender_token_id=aika_token["token_id"],
+                        recipient_name=chan,
                         message=f"Match starts in {t} seconds.",
                     )
 
@@ -2210,7 +2188,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not username:
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        target_token = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
+        target_token = await tokenList.getTokenFromUsername(username)
         if not target_token:
             raise exceptions.invalidUserException(
                 "That user is not connected to Akatsuki right now.",
@@ -2751,7 +2729,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #    if not (targetID := await user_utils.getIDSafe(target)):
 #        return f'{target}: user not found.'
 #
-#    userToken = await osuToken.get_token_by_user_id(targetID, ignoreIRC=True, _all=False)
+#    userToken = await osuToken.get_token_by_user_id(targetID, _all=False)
 #    userToken.enqueue(serverPackets.rtx(message))
 #    return ':box_flushed:'
 
@@ -2771,7 +2749,7 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target} not found."
 
-    userToken = await tokenList.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)
+    userToken = await tokenList.getTokenFromUserID(targetID, _all=False)
     assert userToken is not None
 
     packet_data = serverPackets.invalidChatMessage(target)

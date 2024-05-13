@@ -27,7 +27,6 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
     if (
         token["ping_time"] < oldest_ping_time
         and token["user_id"] != CHATBOT_USER_ID
-        and not token["irc"]
         and not token["tournament"]
     ):
         logger.warning(
@@ -64,7 +63,6 @@ async def _timeout_inactive_users() -> None:
                     "time_since_last_ping": (
                         time.time() - token["ping_time"] if token else None
                     ),
-                    "irc": token["irc"] if token else None,
                     "tournament": token["tournament"] if token else None,
                 },
             )

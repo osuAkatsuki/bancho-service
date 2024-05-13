@@ -118,9 +118,9 @@ async def main() -> int:
             logger.info("Closed HTTP connections")
 
         if settings.MASTER_PROCESS:
-            logger.info("Disconnecting from IRC")
+            logger.info("Disconnecting Chatbot")
             await chatbot.disconnect()
-            logger.info("Disconnected from IRC")
+            logger.info("Disconnected Chatbot")
 
         await lifecycle.shutdown()
 

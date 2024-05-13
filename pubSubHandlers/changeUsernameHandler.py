@@ -120,12 +120,11 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             # If the user is offline change username immediately
             await handleUsernameChange(data["userID"], data["newUsername"])
         else:
-            if targetToken["irc"] or targetToken["action_id"] not in {
+            if targetToken["action_id"] not in {
                 actions.PLAYING,
                 actions.MULTIPLAYING,
             }:
-                # If the user is online and he's connected through IRC or he's not playing,
-                # change username and kick the user immediately
+                # If the user is not playing, change username and kick the user immediately
                 await handleUsernameChange(
                     data["userID"],
                     data["newUsername"],

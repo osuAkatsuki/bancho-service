@@ -228,11 +228,7 @@ async def userStats(userID: int, force: bool = False) -> bytes:
         return b""
 
     if not force:
-        if (
-            osuToken.is_restricted(userToken["privileges"])
-            or userToken["irc"]
-            or userToken["tournament"]
-        ):
+        if osuToken.is_restricted(userToken["privileges"]) or userToken["tournament"]:
             return b""
 
     # If our PP is over the osu client's cap (32768), we simply send
