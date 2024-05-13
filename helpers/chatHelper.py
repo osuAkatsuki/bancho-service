@@ -121,7 +121,9 @@ async def part_channel(
         # (toclient is used clientwise for #multiplayer and #spectator channels)
         channelClient = channel_name
         if channel_name == "#spectator":
-            assert token["spectating_user_id"] is not None
+            if token["spectating_user_id"] is None:
+                raise exceptions.channelUnknownException()
+
             spectating_user_id = token["spectating_user_id"]
             channel_name = f"#spect_{spectating_user_id}"
         elif channel_name == "#multiplayer":
