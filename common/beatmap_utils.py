@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import timedelta
 from enum import IntEnum
 from typing import Any
-from typing import Mapping
 from typing import Optional
 
 import settings
