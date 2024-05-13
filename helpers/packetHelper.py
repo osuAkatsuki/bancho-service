@@ -132,7 +132,7 @@ class PacketData(TypedDict):
 
 def readPacketData(
     stream: bytes,
-    structure: tuple = (),
+    structure: tuple[tuple[str, int], ...],
     hasFirstBytes: bool = True,
 ) -> PacketData:
     """

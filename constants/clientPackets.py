@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from constants import dataTypes
 from constants import slotStatuses
 from helpers import packetHelper
@@ -7,7 +9,7 @@ from helpers import packetHelper
 """ Protocol v20 """
 
 
-def changeProtocolVersion(stream):
+def changeProtocolVersion(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("version", dataTypes.UINT32),))["data"]
 
 
@@ -24,15 +26,15 @@ ACTION_CHANGE_FMT = (
 """ Users listing packets """
 
 
-def userActionChange(stream):
+def userActionChange(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, ACTION_CHANGE_FMT)["data"]
 
 
-def userStatsRequest(stream):
+def userStatsRequest(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("users", dataTypes.INT_LIST),))["data"]
 
 
-def userPanelRequest(stream):
+def userPanelRequest(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("users", dataTypes.INT_LIST),))["data"]
 
 
@@ -44,7 +46,7 @@ PUBLIC_MSG_FMT = (
 )
 
 
-def sendPublicMessage(stream):
+def sendPublicMessage(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, PUBLIC_MSG_FMT)["data"]
 
 
@@ -56,30 +58,30 @@ PRIVATE_MSG_FMT = (
 )
 
 
-def sendPrivateMessage(stream):
+def sendPrivateMessage(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, PRIVATE_MSG_FMT)["data"]
 
 
-def setAwayMessage(stream):
+def setAwayMessage(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(
         stream,
         (("unknown", dataTypes.STRING), ("awayMessage", dataTypes.STRING)),
     )["data"]
 
 
-def blockDM(stream):
+def blockDM(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("value", dataTypes.UINT32),))["data"]
 
 
-def channelJoin(stream):
+def channelJoin(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("channel", dataTypes.STRING),))["data"]
 
 
-def channelPart(stream):
+def channelPart(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("channel", dataTypes.STRING),))["data"]
 
 
-def addRemoveFriend(stream):
+def addRemoveFriend(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("friendID", dataTypes.SINT32),))[
         "data"
     ]
@@ -88,7 +90,7 @@ def addRemoveFriend(stream):
 """ Spectator packets """
 
 
-def startSpectating(stream):
+def startSpectating(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("userID", dataTypes.SINT32),))["data"]
 
 
@@ -116,7 +118,7 @@ MATCH_SETTINGS_FMT_SECOND = (
 MATCH_SETTINGS_FMT_THIRD = (*[(f"slot{i}Mods", dataTypes.UINT32) for i in range(16)],)
 
 
-def matchSettings(stream):
+def matchSettings(stream: bytes) -> dict[str, Any]:
     # Data to return, will be merged later
     data = {}
 
@@ -157,38 +159,38 @@ def matchSettings(stream):
     return data
 
 
-def createMatch(stream):
+def createMatch(stream: bytes) -> dict[str, Any]:
     return matchSettings(stream)
 
 
-def changeMatchSettings(stream):
+def changeMatchSettings(stream: bytes) -> dict[str, Any]:
     return matchSettings(stream)
 
 
-def changeSlot(stream):
+def changeSlot(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("slotID", dataTypes.UINT32),))["data"]
 
 
-def joinMatch(stream):
+def joinMatch(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(
         stream,
         (("matchID", dataTypes.UINT32), ("password", dataTypes.STRING)),
     )["data"]
 
 
-def changeMods(stream):
+def changeMods(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("mods", dataTypes.UINT32),))["data"]
 
 
-def lockSlot(stream):
+def lockSlot(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("slotID", dataTypes.UINT32),))["data"]
 
 
-def transferHost(stream):
+def transferHost(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("slotID", dataTypes.UINT32),))["data"]
 
 
-def matchInvite(stream):
+def matchInvite(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("userID", dataTypes.UINT32),))["data"]
 
 
@@ -211,17 +213,17 @@ MATCH_FRAMES_FMT = (
 )
 
 
-def matchFrames(stream):
+def matchFrames(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, MATCH_FRAMES_FMT)["data"]
 
 
-def tournamentMatchInfoRequest(stream):
+def tournamentMatchInfoRequest(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("matchID", dataTypes.UINT32),))["data"]
 
 
-def tournamentJoinMatchChannel(stream):
+def tournamentJoinMatchChannel(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("matchID", dataTypes.UINT32),))["data"]
 
 
-def tournamentLeaveMatchChannel(stream):
+def tournamentLeaveMatchChannel(stream: bytes) -> dict[str, Any]:
     return packetHelper.readPacketData(stream, (("matchID", dataTypes.UINT32),))["data"]
