@@ -950,8 +950,7 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
     This is typically used when a user is unrestricted, and we wish to
     give them back their #1 scores.
 
-    This works for vanilla, and relax.
-    # TODO: add support for autopilot.
+    This works for vanilla, relax and autopilot.
     """
 
     # The algorithm works as follows:
