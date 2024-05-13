@@ -108,7 +108,7 @@ async def getIDSafe(_safeUsername: str) -> Optional[int]:
     """
 
     result = await glob.db.fetch(
-        "SELECT id " "FROM users " "WHERE username_safe = %s",
+        "SELECT id FROM users WHERE username_safe = %s",
         [_safeUsername],
     )
 
@@ -121,7 +121,7 @@ async def getMapNominator(beatmapID: int) -> Optional[Any]:
     """
 
     res = await glob.db.fetch(
-        "SELECT song_name, ranked, rankedby " "FROM beatmaps WHERE beatmap_id = %s",
+        "SELECT song_name, ranked, rankedby FROM beatmaps WHERE beatmap_id = %s",
         [beatmapID],
     )
 
@@ -170,7 +170,7 @@ async def getUsername(userID: int) -> Optional[str]:
     """
 
     result = await glob.db.fetch(
-        "SELECT username " "FROM users " "WHERE id = %s",
+        "SELECT username FROM users WHERE id = %s",
         [userID],
     )
 
@@ -266,7 +266,7 @@ async def isAllowed(userID: int) -> bool:
 
     return (
         await glob.db.fetch(
-            "SELECT 1 FROM users " "WHERE id = %s " "AND privileges & 3 = 3",
+            "SELECT 1 FROM users WHERE id = %s AND privileges & 3 = 3",
             [userID],
         )
         is not None
@@ -443,7 +443,7 @@ async def getFreezeTime(userID: int) -> int:
     """
 
     result = await glob.db.fetch(
-        "SELECT frozen " "FROM users " "WHERE id = %s",
+        "SELECT frozen FROM users WHERE id = %s",
         [userID],
     )
 
@@ -484,7 +484,7 @@ async def beginFreezeTimer(userID) -> int:
     restriction_time = int(time.time() + (86400 * 7))
 
     await glob.db.execute(
-        "UPDATE users SET frozen = %s " "WHERE id = %s",
+        "UPDATE users SET frozen = %s WHERE id = %s",
         [restriction_time, userID],
     )
 
@@ -500,7 +500,7 @@ async def unfreeze(userID: int, author: int = CHATBOT_USER_ID, _log=True) -> Non
     """
 
     await glob.db.execute(
-        "UPDATE users " "SET frozen = 0, freeze_reason = '' WHERE id = %s",
+        "UPDATE users SET frozen = 0, freeze_reason = '' WHERE id = %s",
         [userID],
     )
 
@@ -526,7 +526,7 @@ async def getSilenceEnd(userID: int) -> int:
     """
 
     rec = await glob.db.fetch(
-        "SELECT silence_end " "FROM users " "WHERE id = %s",
+        "SELECT silence_end FROM users WHERE id = %s",
         [userID],
     )
     return rec["silence_end"]
@@ -551,7 +551,7 @@ async def silence(
     silence_time = int(time.time() + seconds)
 
     await glob.db.execute(
-        "UPDATE users " "SET silence_end = %s, silence_reason = %s " "WHERE id = %s",
+        "UPDATE users SET silence_end = %s, silence_reason = %s WHERE id = %s",
         [silence_time, silenceReason, userID],
     )
 
@@ -599,7 +599,7 @@ async def getFriendList(userID: int):
     # Get friends from db
     # TODO: tuple cursor support? or use cmyui.mysql sync ver/make this native async
     friends = await glob.db.fetchAll(
-        "SELECT user2 " "FROM users_relationships " "WHERE user1 = %s",
+        "SELECT user2 FROM users_relationships WHERE user1 = %s",
         [userID],
     )
 
@@ -629,14 +629,14 @@ async def addFriend(userID: int, friendID: int) -> None:
 
     # Check user isn't already a friend of ours
     if await glob.db.fetch(
-        "SELECT id " "FROM users_relationships " "WHERE user1 = %s AND user2 = %s",
+        "SELECT id FROM users_relationships WHERE user1 = %s AND user2 = %s",
         [userID, friendID],
     ):
         return
 
     # Set new value
     await glob.db.execute(
-        "INSERT INTO users_relationships " "(user1, user2) VALUES (%s, %s)",
+        "INSERT INTO users_relationships (user1, user2) VALUES (%s, %s)",
         [userID, friendID],
     )
 
@@ -723,7 +723,7 @@ async def setPrivileges(userID: int, priv: int) -> None:
     """
 
     await glob.db.execute(
-        "UPDATE users " "SET privileges = %s " "WHERE id = %s",
+        "UPDATE users SET privileges = %s WHERE id = %s",
         [priv, userID],
     )
 
@@ -739,7 +739,7 @@ async def compareHWID(userID: int, mac: str, unique: str, disk: str) -> bool:
     """
 
     allowed = await glob.db.fetch(
-        "SELECT * FROM hw_comparison " "WHERE id = %s",
+        "SELECT * FROM hw_comparison WHERE id = %s",
         [userID],
     )
 
@@ -885,13 +885,13 @@ async def resetPendingFlag(userID: int, success: bool = True) -> None:
     """
 
     await glob.db.execute(
-        "UPDATE users " "SET privileges = privileges & %s " "WHERE id = %s",
+        "UPDATE users SET privileges = privileges & %s WHERE id = %s",
         [~privileges.USER_PENDING_VERIFICATION, userID],
     )
 
     if success:
         await glob.db.execute(
-            "UPDATE users " "SET privileges = privileges | %s " "WHERE id = %s",
+            "UPDATE users SET privileges = privileges | %s WHERE id = %s",
             [privileges.USER_PUBLIC | privileges.USER_NORMAL, userID],
         )
 
@@ -992,7 +992,7 @@ async def hasVerifiedHardware(userID: int):
     """
 
     return await glob.db.fetch(
-        "SELECT id FROM hw_user WHERE userid = %s " "AND activated = 1",
+        "SELECT id FROM hw_user WHERE userid = %s AND activated = 1",
         [userID],
     )
 
@@ -1006,7 +1006,7 @@ async def getDonorExpire(userID: int) -> int:
     """
 
     data = await glob.db.fetch(
-        "SELECT donor_expire FROM users " "WHERE id = %s",
+        "SELECT donor_expire FROM users WHERE id = %s",
         [userID],
     )
 
@@ -1090,7 +1090,7 @@ async def removeFromLeaderboard(userID: int) -> None:
     """
 
     # Remove the user from global and country leaderboards, for every mode
-    country: str = (await getCountry(userID)).lower()
+    country = (await getCountry(userID)).lower()
     for board in ("leaderboard", "relaxboard"):
         for mode in ("std", "taiko", "ctb", "mania"):
             await glob.redis.zrem(f"ripple:{board}:{mode}", str(userID))
@@ -1103,7 +1103,7 @@ async def remove_from_specified_leaderboard(
     mode: int,
     relax: int,
 ) -> None:
-    country: str = (await getCountry(user_id)).lower()
+    country = (await getCountry(user_id)).lower()
 
     board = {
         0: "leaderboard",
@@ -1147,7 +1147,7 @@ async def removeFirstPlaces(
     # Go through all of the users first place scores.
     # If we find a better play, transfer the #1 to them,
     # otherwise simply delete the #1 from the db.
-    q = ["SELECT scoreid, beatmap_md5, mode, rx " "FROM scores_first WHERE userid = %s"]
+    q = ["SELECT scoreid, beatmap_md5, mode, rx FROM scores_first WHERE userid = %s"]
 
     if akat_mode is not None:
         q.append(f"AND rx = {akat_mode}")
@@ -1224,7 +1224,7 @@ async def updateFirstPlaces(userID: int) -> None:
                 or userID == firstPlace["userid"]
             ):
                 await glob.db.execute(
-                    "REPLACE INTO scores_first " "VALUES (%s, %s, %s, %s, %s)",
+                    "REPLACE INTO scores_first VALUES (%s, %s, %s, %s, %s)",
                     [score["beatmap_md5"], score["play_mode"], rx, score["id"], userID],
                 )
 
