@@ -46,7 +46,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         should_update_cached_stats = True
 
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-    user_pp = await userUtils.getPP(
+    user_pp = await userUtils.get_user_pp_for_mode(
         userToken["user_id"],
         userToken["game_mode"],
         userToken["relax"],

@@ -25,13 +25,13 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         userID = int(userID)
 
         # Remove the user from global, country and first place leaderboards
-        await userUtils.removeFromLeaderboard(userID)
-        await userUtils.removeFirstPlaces(userID)
+        await userUtils.remove_from_leaderboard(userID)
+        await userUtils.remove_first_place(userID)
 
         if not (targetToken := await tokenList.getTokenFromUserID(userID)):
             return
 
-        targetToken["privileges"] = await userUtils.getPrivileges(userID)
+        targetToken["privileges"] = await userUtils.get_privileges(userID)
         await osuToken.disconnectUserIfBanned(targetToken["token_id"])
         await osuToken.checkRestricted(targetToken["token_id"])
 

@@ -20,7 +20,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if any(i is None for i in (userID, rx, gm)):
             return
 
-        await userUtils.removeFirstPlaces(userID, rx, gm)
+        await userUtils.remove_first_place(userID, rx, gm)
         await userUtils.remove_from_specified_leaderboard(userID, gm, rx)
 
         logger.info(

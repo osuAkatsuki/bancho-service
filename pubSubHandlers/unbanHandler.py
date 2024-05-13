@@ -21,7 +21,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         if (userID := super().parseData(userID)) is None:
             return
 
-        await userUtils.updateFirstPlaces(userID)
+        await userUtils.recalculate_and_update_first_place_scores(userID)
 
         if not (targetToken := await tokenList.getTokenFromUserID(userID)):
             logger.error(
@@ -30,7 +30,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             )
             return
 
-        targetToken["privileges"] = await userUtils.getPrivileges(userID)
+        targetToken["privileges"] = await userUtils.get_privileges(userID)
         await osuToken.disconnectUserIfBanned(targetToken["token_id"])
         await osuToken.checkRestricted(targetToken["token_id"])
 

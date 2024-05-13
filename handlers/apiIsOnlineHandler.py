@@ -22,7 +22,7 @@ class handler(AsyncRequestHandler):
             username = None
             userID = None
             if "u" in self.request.arguments:
-                username = userUtils.safeUsername(self.get_argument("u"))
+                username = userUtils.get_safe_username(self.get_argument("u"))
             else:
                 try:
                     userID = int(self.get_argument("id"))

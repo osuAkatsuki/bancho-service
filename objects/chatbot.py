@@ -94,8 +94,8 @@ async def query(
             continue
 
         # message has triggered a command
-        user_id = await userUtils.getID(fro)
-        user_privileges = await userUtils.getPrivileges(user_id)
+        user_id = await userUtils.get_id_from_username(fro)
+        user_privileges = await userUtils.get_privileges(user_id)
 
         # Make sure the user has right permissions
         if cmd["privileges"] and not user_privileges & cmd["privileges"]:

@@ -526,7 +526,9 @@ async def sendMessage(
                 # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
                 if recipient_token["block_non_friends_dm"] and userToken[
                     "user_id"
-                ] not in await userUtils.getFriendList(recipient_token["user_id"]):
+                ] not in await userUtils.get_friend_user_ids(
+                    recipient_token["user_id"],
+                ):
                     await osuToken.enqueue(
                         token_id,
                         serverPackets.targetBlockingDMs(
@@ -757,7 +759,7 @@ async def IRCConnect(username: str) -> None:
     :param username: username
     :return:
     """
-    user_id = await userUtils.getID(username)
+    user_id = await userUtils.get_id_from_username(username)
     if not user_id:
         return
 
@@ -792,7 +794,7 @@ async def IRCJoinChannel(username: str, channel: str) -> Optional[int]:
     :param channel: channel name
     :return: IRC return code
     """
-    userID = await userUtils.getID(username)
+    userID = await userUtils.get_id_from_username(username)
     if not userID:
         logger.warning(
             "User not found by name when attempting to join channel",
@@ -814,7 +816,7 @@ async def IRCPartChannel(username: str, channel: str) -> Optional[int]:
     :param channel: channel name
     :return: IRC return code
     """
-    userID = await userUtils.getID(username)
+    userID = await userUtils.get_id_from_username(username)
     if not userID:
         logger.warning(
             "User not found by name when attempting to leave channel",
@@ -833,7 +835,7 @@ async def IRCAway(username: str, message: str) -> Optional[int]:
     :param message: away message
     :return: IRC return code
     """
-    userID = await userUtils.getID(username)
+    userID = await userUtils.get_id_from_username(username)
     if not userID:
         logger.warning(
             "User not found by name when attempting to handle the AWAY command",

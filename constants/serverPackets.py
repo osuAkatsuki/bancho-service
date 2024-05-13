@@ -276,7 +276,7 @@ def sendMessage(fro: str, to: str, message: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             (message, dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.getID(fro), dataTypes.SINT32),
+            (fro_id or userUtils.get_id_from_username(fro), dataTypes.SINT32),
         ),
     )
 
@@ -288,7 +288,7 @@ def targetBlockingDMs(to: str, fro: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.getID(fro), dataTypes.SINT32),
+            (fro_id or userUtils.get_id_from_username(fro), dataTypes.SINT32),
         ),
     )
 
@@ -300,7 +300,7 @@ def targetSilenced(to: str, fro: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.getID(fro), dataTypes.SINT32),
+            (fro_id or userUtils.get_id_from_username(fro), dataTypes.SINT32),
         ),
     )
 
