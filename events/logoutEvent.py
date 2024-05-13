@@ -59,6 +59,8 @@ async def handle(
         f"ripple:change_username_pending:{token['user_id']}",
     )
     if newUsername:
+        assert isinstance(newUsername, bytes)
+
         logger.info(
             "Sending username change request",
             {
