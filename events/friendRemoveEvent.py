@@ -8,9 +8,7 @@ from objects import glob
 from objects.osuToken import Token
 
 
-async def handle(
-    userToken: Token, rawPacketData: bytes,
-) -> None:  # Friend remove packet
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     friend_user_id = clientPackets.addRemoveFriend(rawPacketData)["friendID"]
     await user_utils.remove_friend(userToken["user_id"], friend_user_id)
 
