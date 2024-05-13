@@ -737,7 +737,7 @@ async def getPPMessage(
         )
     except:
         logger.exception(
-            "Failed to retrieve PP from LESS API",
+            "Failed to retrieve PP from score-service API",
             extra={
                 "user_id": userID,
                 "beatmap_id": currentMap,
