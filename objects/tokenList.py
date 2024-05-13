@@ -50,8 +50,6 @@ async def addToken(
     )
 
     await osuToken.updateCachedStats(token["token_id"])
-    if ip != "":
-        await userUtils.associate_bancho_session_with_ip(token["user_id"], ip)
 
     await osuToken.joinStream(token["token_id"], "main")
 
@@ -80,12 +78,6 @@ async def deleteToken(token_id: str) -> None:
             extra={"token_id": token_id},
         )
         return
-
-    if token["ip"]:
-        await userUtils.delete_bancho_session_ip_association(
-            token["user_id"],
-            token["ip"],
-        )
 
     await osuToken.delete_token(token_id)
     await glob.redis.set(

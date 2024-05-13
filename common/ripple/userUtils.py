@@ -31,9 +31,9 @@ async def get_playtime_total(user_id: int) -> int:
     return res["total_playtime"] if res else 0
 
 
-async def edit_whitelist_status(user_id: int, new_value: int) -> None:
+async def update_whitelist_status(user_id: int, new_value: int) -> None:
     """
-    Change a user's whitelist status to the given new value.
+    Update a user's whitelist status to the given new value.
 
     Value legend:
     0 = no whitelist
@@ -151,24 +151,9 @@ async def get_username_from_id(user_id: int) -> Optional[str]:
     return result["username"] if result else None
 
 
-async def authenticate(
-    user_id: int,
-    password: str,
-    ip_address: Optional[str] = None,
-) -> bool:
+async def authenticate(user_id: int, password: str) -> bool:
     """Check a user's login with specified password."""
-
-    # Check cached bancho session
-    banchoSession = False
-    if ip_address:
-        banchoSession = await bancho_session_exists_for_ip(user_id, ip_address)
-
-    # Return True if there's a bancho session for this user from that ip
-    if banchoSession:
-        return True
-
-    # Otherwise, check password
-    # Get password data
+    # Get saved password data
     passwordData = await glob.db.fetch(
         "SELECT password_md5 FROM users WHERE id = %s LIMIT 1",
         [user_id],
@@ -209,21 +194,6 @@ async def get_user_pp_for_mode(
         [user_id, game_mode + mode_offset],
     )
     return result[f"pp"] if result else 0
-
-
-async def bancho_session_exists_for_ip(user_id: int, ip_address: Optional[str]):
-    """
-    Return True if there is a bancho session for the given user by ip.
-
-    If `ip` is a falsey value, check if there's a bancho session for that user, from any IP.
-    """
-    if ip_address:
-        return await glob.redis.sismember(
-            f"bancho:sessions_by_ip:{user_id}",
-            ip_address,
-        )
-    else:
-        return await glob.redis.exists(f"bancho:sessions_by_ip:{user_id}")
 
 
 async def is_not_banned_or_restricted(user_id: int) -> bool:
@@ -555,14 +525,6 @@ async def associate_user_with_ip(user_id: int, ip_address: str) -> None:
         "ON DUPLICATE KEY UPDATE occurencies = occurencies + 1",
         [user_id, ip_address],
     )
-
-
-async def associate_bancho_session_with_ip(user_id: int, ip_address: str) -> None:
-    await glob.redis.sadd(f"bancho:sessions_by_ip:{user_id}", ip_address)
-
-
-async def delete_bancho_session_ip_association(user_id: int, ip_address: str) -> None:
-    await glob.redis.srem(f"bancho:sessions_by_ip:{user_id}", ip_address)
 
 
 async def set_privileges(user_id: int, new_privileges: int) -> None:

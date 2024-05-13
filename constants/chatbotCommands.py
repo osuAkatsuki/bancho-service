@@ -1586,7 +1586,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
             whitelist=bit,
         )
 
-    await userUtils.edit_whitelist_status(targetID, bit)
+    await userUtils.update_whitelist_status(targetID, bit)
 
     await audit_logs.send_log(
         userID,
