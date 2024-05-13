@@ -339,9 +339,6 @@ async def ban(userID: int) -> None:
     # Notify bancho about the ban
     await glob.redis.publish("peppy:ban", userID)
 
-    # Remove the user from global and country leaderboards
-    await removeFromLeaderboard(userID)
-
 
 async def unban(userID: int) -> None:
     """
@@ -379,9 +376,6 @@ async def restrict(userID: int) -> None:
 
         # Notify bancho about this ban
         await glob.redis.publish("peppy:ban", userID)
-
-        # Remove the user from global and country leaderboards
-        await removeFromLeaderboard(userID)
 
 
 async def unrestrict(userID: int) -> None:

@@ -24,6 +24,8 @@ class handler(generalPubSubHandler.generalPubSubHandler):
 
         userID = int(userID)
 
+        # Remove the user from global, country and first place leaderboards
+        await userUtils.removeFromLeaderboard(userID)
         await userUtils.removeFirstPlaces(userID)
 
         if not (targetToken := await tokenList.getTokenFromUserID(userID)):
