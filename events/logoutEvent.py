@@ -6,7 +6,6 @@ from typing import Optional
 import orjson
 from amplitude import BaseEvent
 
-import settings
 from common.log import logger
 from constants import serverPackets
 from helpers import countryHelper
