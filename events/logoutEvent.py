@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from typing import Optional
 
 import orjson
 from amplitude import BaseEvent
@@ -16,7 +17,11 @@ from objects import tokenList
 from objects.osuToken import Token
 
 
-async def handle(token: Token, _=None, deleteToken: bool = True):
+async def handle(
+    token: Token,
+    rawPacketData: Optional[bytes] = None,
+    deleteToken: bool = True,
+) -> None:
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login

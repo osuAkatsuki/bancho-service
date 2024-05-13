@@ -5,7 +5,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-async def handle(userToken: Token, _):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     if userToken["match_id"] is None:
         return
 

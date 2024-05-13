@@ -15,7 +15,7 @@ from common.constants import actions
 from common.constants import gameModes
 from common.constants import privileges
 from common.log import logger
-from common.ripple import userUtils
+from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
@@ -56,7 +56,7 @@ class Token(TypedDict):
     username: str
     # safe_username: str
     privileges: int
-    whitelist: int  # TODO: this is fuckignstupid
+    whitelist: int
     # staff: bool
     # restricted: bool
     irc: bool
@@ -104,13 +104,6 @@ class Token(TypedDict):
     pp: int
 
     amplitude_device_id: Optional[str]
-
-    # processing_lock: Lock
-
-    # self.updateCachedStats()
-    # if ip != "":
-    #     userUtils.saveBanchoSession(self.userID, self.ip)
-    # self.joinStream("main")
 
 
 def safeUsername(username: str) -> str:
@@ -649,19 +642,19 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
         public_write=False,
         instance=True,
     )
-    await chat.joinChannel(
+    await chat.join_channel(
         token_id=token_id,
         channel_name=f"#spect_{host_token['user_id']}",
-        force=True,
+        allow_instance_channels=True,
     )
 
     spectators = await get_spectators(host_token["token_id"])
     if len(spectators) == 1:
         # First spectator, send #spectator join to host too
-        await chat.joinChannel(
+        await chat.join_channel(
             token_id=host_token_id,
             channel_name=f"#spect_{host_token['user_id']}",
-            force=True,
+            allow_instance_channels=True,
         )
 
     # Send fellow spectator join to all clients
@@ -727,11 +720,11 @@ async def stopSpectating(token_id: str) -> None:
         # If nobody is spectating the host anymore, close #spectator channel
         # and remove host from spect stream too
         if not spectators:
-            await chat.partChannel(
+            await chat.part_channel(
                 token_id=host_token["token_id"],
                 channel_name=f"#spect_{host_token['user_id']}",
-                kick=True,
-                force=True,
+                notify_user_of_kick=True,
+                allow_instance_channels=True,
             )
             await leaveStream(host_token["token_id"], stream_name)
 
@@ -739,11 +732,11 @@ async def stopSpectating(token_id: str) -> None:
         # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
 
     # Part #spectator channel
-    await chat.partChannel(
+    await chat.part_channel(
         token_id=token_id,
         channel_name=f"#spect_{token['spectating_user_id']}",
-        kick=True,
-        force=True,
+        notify_user_of_kick=True,
+        allow_instance_channels=True,
     )
 
     # Set our spectating user to None
@@ -804,10 +797,10 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         match_id=match_id,
     )
     await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
-    await chat.joinChannel(
+    await chat.join_channel(
         token_id=token_id,
         channel_name=f"#mp_{match_id}",
-        force=True,
+        allow_instance_channels=True,
     )
     await enqueue(token_id, await serverPackets.matchJoinSuccess(match_id))
 
@@ -853,11 +846,11 @@ async def leaveMatch(token_id: str) -> None:
         return
 
     # Part #multiplayer channel and streams (/ and /playing)
-    await chat.partChannel(
+    await chat.part_channel(
         token_id=token_id,
         channel_name=f"#mp_{token['match_id']}",
-        kick=True,
-        force=True,
+        notify_user_of_kick=True,
+        allow_instance_channels=True,
     )
     await leaveStream(token_id, match.create_stream_name(token["match_id"]))
     await leaveStream(
@@ -944,10 +937,10 @@ async def silence(
 
     if seconds is None:
         # Get silence expire from db if needed
-        seconds = await userUtils.get_remaining_silence_time(token["user_id"])
+        seconds = await user_utils.get_remaining_silence_time(token["user_id"])
     else:
         # Silence in db and token
-        await userUtils.silence(token["user_id"], seconds, reason, author)
+        await user_utils.silence(token["user_id"], seconds, reason, author)
 
     # Silence token
     await update_token(
@@ -1036,7 +1029,7 @@ async def updateCachedStats(token_id: str) -> None:
     else:
         relax_int = 0
 
-    stats = await userUtils.get_user_stats(
+    stats = await user_utils.get_user_stats(
         token["user_id"],
         token["game_mode"],
         relax_int,
@@ -1067,7 +1060,7 @@ async def checkRestricted(token_id: str) -> None:
         return
 
     old_restricted = is_restricted(token["privileges"])
-    restricted = await userUtils.is_restricted(token["user_id"])
+    restricted = await user_utils.is_restricted(token["user_id"])
     if restricted:
         await setRestricted(token_id)
     elif not restricted and old_restricted != restricted:
@@ -1084,7 +1077,7 @@ async def disconnectUserIfBanned(token_id: str) -> None:
     if token is None:
         return
 
-    if await userUtils.is_banned(token["user_id"]):
+    if await user_utils.is_banned(token["user_id"]):
         await enqueue(token_id, serverPackets.loginBanned)
         from events import logoutEvent  # TODO: fix circular import
 
@@ -1192,7 +1185,7 @@ async def leaveAllChannels(token_id: str) -> None:
         return
 
     for channel_name in await get_joined_channels(token_id):
-        await chat.partChannel(token_id=token_id, channel_name=channel_name)
+        await chat.part_channel(token_id=token_id, channel_name=channel_name)
 
 
 async def awayCheck(token_id: str, user_id: int) -> bool:

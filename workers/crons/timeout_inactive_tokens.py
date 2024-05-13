@@ -38,7 +38,7 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
             },
         )
 
-        await logoutEvent.handle(token, _=None)
+        await logoutEvent.handle(token)
 
 
 async def _timeout_inactive_users() -> None:

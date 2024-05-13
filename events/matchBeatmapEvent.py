@@ -5,7 +5,12 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-async def handle(userToken: Token, _, has_beatmap: bool):
+async def handle(
+    userToken: Token,
+    rawPacketData: bytes,
+    *,
+    has_beatmap: bool,
+) -> None:
     # Make sure we are in a match
     if userToken["match_id"] is None:
         return

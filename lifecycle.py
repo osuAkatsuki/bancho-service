@@ -96,7 +96,7 @@ async def shutdown() -> None:
     #     logger.info("Closed IRC server")
 
     logger.info("Closing connection to redis")
-    await glob.redis.aclose()
+    await glob.redis.close()
     logger.info("Closed connection to redis")
 
     logger.info("Closing connection(s) to MySQL")

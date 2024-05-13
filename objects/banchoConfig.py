@@ -1,5 +1,6 @@
 # TODO: Rewrite this shit
 from __future__ import annotations
+from typing import Any
 
 from common import generalUtils
 from constants import serverPackets
@@ -14,7 +15,7 @@ class banchoConfig:
     Class that loads settings from bancho_settings db table
     """
 
-    config = {
+    config: dict[str, Any] = {
         "banchoMaintenance": False,
         "freeDirect": True,
         "menuIcon": "",

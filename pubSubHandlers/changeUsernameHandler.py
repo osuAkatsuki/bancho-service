@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 from amplitude import BaseEvent
 from amplitude import EventOptions
@@ -7,17 +8,21 @@ from amplitude import Identify
 from common.constants import actions
 from common.log import logger
 from common.redis import generalPubSubHandler
-from common.ripple import userUtils
+from common.ripple import user_utils
 from objects import glob
 from objects import osuToken
 from objects import tokenList
 
 
-async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
+async def handleUsernameChange(
+    userID: int,
+    newUsername: str,
+    targetToken: Optional[osuToken.Token] = None,
+) -> None:
     try:
-        oldUsername = await userUtils.get_username_from_id(userID)
-        await userUtils.change_username(userID, newUsername)
-        await userUtils.append_cm_notes(
+        oldUsername = await user_utils.get_username_from_id(userID)
+        await user_utils.change_username(userID, newUsername)
+        await user_utils.append_cm_notes(
             userID,
             notes=f"Username change: '{oldUsername}' -> '{newUsername}'",
         )
@@ -52,7 +57,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "new_username": newUsername,
             },
         )
-    except userUtils.UsernameAlreadyInUseError:
+    except user_utils.UsernameAlreadyInUseError:
         logger.error(
             "Job failed to update username",
             extra={
@@ -67,7 +72,7 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
                 "There was a critical error while trying to change your username. Please contact a developer.",
                 "username_change",
             )
-    except userUtils.InvalidUsernameError:
+    except user_utils.InvalidUsernameError:
         logger.error(
             "Job failed to update username",
             extra={
@@ -93,12 +98,12 @@ async def handleUsernameChange(userID: int, newUsername: str, targetToken=None):
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.structure = {"userID": 0, "newUsername": ""}
 
-    async def handle(self, data):
-        if not (data := super().parseData(data)):
+    async def handle(self, raw_data: bytes) -> None:
+        if not (data := super().parseData(raw_data)):
             return
 
         logger.info(

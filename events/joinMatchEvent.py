@@ -12,7 +12,7 @@ from objects.osuToken import Token
 from objects.redisLock import redisLock
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # read packet data
     packetData = clientPackets.joinMatch(rawPacketData)
     matchID = packetData["matchID"]

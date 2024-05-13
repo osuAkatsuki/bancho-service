@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from common.constants import privileges
-from common.ripple import userUtils
+from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
 from constants import dataTypes
 from constants import packetIDs
@@ -276,7 +276,7 @@ def sendMessage(fro: str, to: str, message: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             (message, dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.get_id_from_username(fro), dataTypes.SINT32),
+            (fro_id or user_utils.get_id_from_username(fro), dataTypes.SINT32),
         ),
     )
 
@@ -288,7 +288,7 @@ def targetBlockingDMs(to: str, fro: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.get_id_from_username(fro), dataTypes.SINT32),
+            (fro_id or user_utils.get_id_from_username(fro), dataTypes.SINT32),
         ),
     )
 
@@ -300,7 +300,7 @@ def targetSilenced(to: str, fro: str, fro_id: int = 0) -> bytes:
             (fro, dataTypes.STRING),
             ("", dataTypes.STRING),
             (to, dataTypes.STRING),
-            (fro_id or userUtils.get_id_from_username(fro), dataTypes.SINT32),
+            (fro_id or user_utils.get_id_from_username(fro), dataTypes.SINT32),
         ),
     )
 

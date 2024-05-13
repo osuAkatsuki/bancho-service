@@ -5,6 +5,7 @@ import gzip
 import random
 import struct
 import time
+from typing import Awaitable, Callable
 from uuid import UUID
 
 import amplitude
@@ -67,7 +68,7 @@ PACKET_PROTO = struct.Struct("<HxI")
 
 # Packet map of all bancho related
 # interactions with the osu! client.
-bancho_packets = {
+bancho_packets: dict[int, Callable[[osuToken.Token, bytes], Awaitable[None]]] = {
     packetIDs.client_changeAction: changeActionEvent.handle,
     packetIDs.client_logout: logoutEvent.handle,
     packetIDs.client_friendAdd: friendAddEvent.handle,

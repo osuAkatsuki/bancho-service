@@ -15,7 +15,7 @@ class VerificationStatus:
     VERIFIED = 1
 
 
-async def get(user_id: int) -> Literal[0, 1, -1]:
+async def get(user_id: int) -> int:
     raw_response = await glob.redis.get(make_key(user_id))
     if raw_response is None:
         return VerificationStatus.NON_EXISTENT

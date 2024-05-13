@@ -14,7 +14,7 @@ from objects import osuToken
 from objects.redisLock import redisLock
 
 
-async def handle(token: osuToken.Token, rawPacketData: bytes):
+async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
     try:
         # Read packet data
         packetData = clientPackets.createMatch(rawPacketData)

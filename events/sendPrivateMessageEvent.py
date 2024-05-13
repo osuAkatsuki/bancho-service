@@ -8,7 +8,7 @@ from objects import glob
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Send private message packet
     packetData = clientPackets.sendPrivateMessage(rawPacketData)
     await chat.sendMessage(

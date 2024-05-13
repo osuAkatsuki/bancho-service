@@ -7,7 +7,7 @@ import httpx
 
 import settings
 from common.log import logger
-from common.ripple import userUtils
+from common.ripple import user_utils
 from common.web.discord import Webhook
 from objects import glob
 
@@ -84,7 +84,7 @@ async def send_log(
     if discord_channel is not None:
         asyncio.create_task(
             send_log_as_discord_webhook(
-                message=f"{userUtils.get_username_from_id(user_id)} {message}",
+                message=f"{user_utils.get_username_from_id(user_id)} {message}",
                 discord_channel=discord_channel,
             ),
         )

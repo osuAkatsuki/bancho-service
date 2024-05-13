@@ -5,7 +5,7 @@ from typing import Optional
 from typing import overload
 
 from common.log import logger
-from common.ripple import userUtils
+from common.ripple import user_utils
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
@@ -176,12 +176,12 @@ async def getTokenFromUsername(
                 only the first occurrence.
     :return: osuToken object or None
     """
-    username = userUtils.get_safe_username(username)
+    username = user_utils.get_safe_username(username)
 
     # Make sure the token exists
     ret = []
     for value in await osuToken.get_tokens():
-        if userUtils.get_safe_username(value["username"]) == username:
+        if user_utils.get_safe_username(value["username"]) == username:
             if ignoreIRC and value["irc"]:
                 continue
             if _all:

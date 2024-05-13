@@ -15,7 +15,7 @@ from common import generalUtils
 from common.constants import privileges
 from common.log import audit_logs
 from common.log import logger
-from common.ripple import userUtils
+from common.ripple import user_utils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import CHATBOT_USER_ID
 from constants import exceptions
@@ -70,7 +70,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Try to get the ID from username
         username = loginData[0]
-        userID = await userUtils.get_id_from_username(username)
+        userID = await user_utils.get_id_from_username(username)
 
         if not userID:
             # Invalid username
@@ -78,12 +78,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         elif userID == CHATBOT_USER_ID:
             raise exceptions.invalidArgumentsException()
 
-        if not await userUtils.authenticate(userID, loginData[1]):
+        if not await user_utils.authenticate(userID, loginData[1]):
             # Invalid password
             raise exceptions.loginFailedException()
 
         # Make sure we are not banned or locked
-        priv = await userUtils.get_privileges(userID)
+        priv = await user_utils.get_privileges(userID)
         pending_verification = priv & privileges.USER_PENDING_VERIFICATION != 0
 
         if not pending_verification:
@@ -122,10 +122,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Verify this user (if pending activation)
         firstLogin = False
         shouldBan = False
-        if pending_verification or not await userUtils.has_verified_with_any_hardware(
+        if pending_verification or not await user_utils.has_verified_with_any_hardware(
             userID,
         ):
-            if await userUtils.authorize_login_and_activate_new_account(
+            if await user_utils.authorize_login_and_activate_new_account(
                 userID,
                 clientData,
             ):
@@ -145,7 +145,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 await verifiedCache.set(userID, False)
                 shouldBan = True
 
-        if not userUtils.validate_hwid_set(clientData):
+        if not user_utils.validate_hwid_set(clientData):
             await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid hash set ({clientData}) for user [{username}](https://akatsuki.gg/u/{userID}) in HWID check",
                 discord_channel="ac_confidential",
@@ -154,17 +154,17 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Save HWID in db for multiaccount detection, and restrict them if
         # they are determined to be engaging in multi-accounting.
-        await userUtils.associate_user_with_hwids_and_restrict_if_multiaccounting(
+        await user_utils.associate_user_with_hwids_and_restrict_if_multiaccounting(
             userID,
             clientData,
             associate_with_account_activation=firstLogin,
         )
 
         # Log user IP
-        await userUtils.associate_user_with_ip(userID, requestIP)
+        await user_utils.associate_user_with_ip(userID, requestIP)
 
         if shouldBan:
-            await userUtils.ban(userID)
+            await user_utils.ban(userID)
             raise exceptions.loginBannedException()
 
         # Delete old tokens for that user and generate a new one
@@ -214,14 +214,14 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Get the user's `frozen` status from the DB
         # For a normal user, this will return 0.
         # For a frozen user, this will return a unix timestamp (the date of their pending restriction).
-        freeze_timestamp = await userUtils.get_freeze_restriction_date(userID)
+        freeze_timestamp = await user_utils.get_freeze_restriction_date(userID)
         current_time = int(time.time())
 
         if freeze_timestamp:
             if freeze_timestamp == 1:  # Begin the timer.
-                freeze_timestamp = await userUtils.begin_freeze_timer(userID)
+                freeze_timestamp = await user_utils.begin_freeze_timer(userID)
 
-            # reason = await userUtils.getFreezeReason(userID)
+            # reason = await user_utils.getFreezeReason(userID)
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
@@ -245,8 +245,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             else:  # We are restricting the user
                 # TODO: perhaps move this to the cron?
                 # right now a user can avoid a resitrction by simply not logging in lol..
-                await userUtils.restrict(userID)
-                await userUtils.unfreeze(
+                await user_utils.restrict(userID)
+                await user_utils.unfreeze(
                     userID,
                     should_log_to_cm_notes_and_discord=False,
                 )
@@ -274,12 +274,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Send message if premium / donor expires soon
         # This should NOT be done at login, but done by the cron
         if userToken["privileges"] & privileges.USER_DONOR:
-            expireDate = await userUtils.get_absolute_donor_expiry_time(userID)
+            expireDate = await user_utils.get_absolute_donor_expiry_time(userID)
             premium = userToken["privileges"] & privileges.USER_PREMIUM
             rolename = "premium" if premium else "supporter"
 
             if current_time >= expireDate:
-                await userUtils.set_privileges(
+                await user_utils.set_privileges(
                     userID,
                     userToken["privileges"] - privileges.USER_DONOR
                     | (privileges.USER_PREMIUM if premium else 0),
@@ -339,7 +339,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Set silence end UNIX time in token
         await osuToken.update_token(
             userToken["token_id"],
-            silence_end_time=await userUtils.get_absolute_silence_end(userID),
+            silence_end_time=await user_utils.get_absolute_silence_end(userID),
         )
 
         # Get only silence remaining seconds
@@ -404,27 +404,29 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         )
 
         # Default opened channels.
-        await chat.joinChannel(token_id=userToken["token_id"], channel_name="#osu")
-        await chat.joinChannel(token_id=userToken["token_id"], channel_name="#announce")
+        await chat.join_channel(token_id=userToken["token_id"], channel_name="#osu")
+        await chat.join_channel(
+            token_id=userToken["token_id"], channel_name="#announce"
+        )
 
         # Join role-related channels.
         if userToken["privileges"] & privileges.ADMIN_CAKER:
-            await chat.joinChannel(
+            await chat.join_channel(
                 token_id=userToken["token_id"],
                 channel_name="#devlog",
             )
         if osuToken.is_staff(userToken["privileges"]):
-            await chat.joinChannel(
+            await chat.join_channel(
                 token_id=userToken["token_id"],
                 channel_name="#staff",
             )
         if userToken["privileges"] & privileges.USER_PREMIUM:
-            await chat.joinChannel(
+            await chat.join_channel(
                 token_id=userToken["token_id"],
                 channel_name="#premium",
             )
         if userToken["privileges"] & privileges.USER_DONOR:
-            await chat.joinChannel(
+            await chat.join_channel(
                 token_id=userToken["token_id"],
                 channel_name="#supporter",
             )
@@ -444,7 +446,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await osuToken.enqueue(userToken["token_id"], serverPackets.channelInfoEnd)
 
         # Send friends list
-        friends_list = await userUtils.get_friend_user_ids(userID)
+        friends_list = await user_utils.get_friend_user_ids(userID)
         if friends_list:
             await osuToken.enqueue(
                 userToken["token_id"],
@@ -481,8 +483,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await osuToken.update_token(userToken["token_id"], country=country)
 
         # Set country in db if user has no country (first bancho login)
-        if await userUtils.getCountry(userID) == "XX":
-            await userUtils.set_country(userID, countryLetters)
+        if await user_utils.getCountry(userID) == "XX":
+            await user_utils.set_country(userID, countryLetters)
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
@@ -543,7 +545,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             )
 
         # Set reponse data to right value and reset our queue
-        responseData = await osuToken.dequeue(userToken["token_id"])
+        queued_token_data = await osuToken.dequeue(userToken["token_id"])
+        responseData = bytearray(queued_token_data)
     except exceptions.loginFailedException:
         # Login failed error packet
         # (we don't use enqueue because we don't have a token since login has failed)
@@ -567,7 +570,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
     except exceptions.banchoMaintenanceException:
         # Bancho is in maintenance mode
         if userToken:
-            responseData = await osuToken.dequeue(userToken["token_id"])
+            queued_token_data = await osuToken.dequeue(userToken["token_id"])
+            responseData = bytearray(queued_token_data)
         else:
             responseData.clear()
         responseData += serverPackets.notification(

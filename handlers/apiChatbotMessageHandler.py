@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from json import dumps
-from typing import Union
+from typing import Any
 
 import settings
 from common.web.requestsManager import AsyncRequestHandler
@@ -14,7 +14,7 @@ from objects import tokenList
 class handler(AsyncRequestHandler):
     async def get(self) -> None:
         statusCode = 400
-        data: dict[str, Union[int, str]] = {"message": "unknown error"}
+        data: dict[str, Any] = {"message": "unknown error"}
         try:
             # Check arguments
             if not self.checkArguments(required=["k", "to", "msg"]):

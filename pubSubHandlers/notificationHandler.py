@@ -8,12 +8,12 @@ from objects import tokenList
 
 
 class handler(generalPubSubHandler.generalPubSubHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.structure = {"userID": 0, "message": ""}
 
-    async def handle(self, data):
-        if (data := super().parseData(data)) is None:
+    async def handle(self, raw_data: bytes) -> None:
+        if (data := super().parseData(raw_data)) is None:
             return
 
         logger.info(

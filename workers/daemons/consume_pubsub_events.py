@@ -33,10 +33,6 @@ PUBSUB_HANDLERS: dict[str, generalPubSubHandler] = {
     "peppy:change_username": changeUsernameHandler.handler(),
     "peppy:update_cached_stats": updateStatsHandler.handler(),
     "peppy:wipe": wipeHandler.handler(),
-    # TODO: support this?
-    # "peppy:reload_settings": (
-    #     lambda x: x == b"reload" and await glob.banchoConf.reload()
-    # ),
 }
 
 
