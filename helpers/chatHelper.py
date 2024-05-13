@@ -259,6 +259,7 @@ async def sendMessage(
             userToken = await osuToken.get_token(token_id)
             if userToken is None:
                 raise exceptions.userNotFoundException()
+            fro = userToken["username"]
 
         # Make sure this is not a tournament client
         if userToken["tournament"]:
