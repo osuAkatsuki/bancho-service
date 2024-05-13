@@ -133,21 +133,22 @@ class PacketData(TypedDict):
 def readPacketData(
     stream: bytes,
     structure: tuple[tuple[str, int], ...],
-    hasFirstBytes: bool = True,
+    *,
+    has_packet_header: bool = True,
 ) -> PacketData:
     """
     Read packet data from `stream` according to `structure`
     :param stream: packet bytes
     :param structure: packet structure: [[name, dataType], [name, dataType], ...]
-    :param hasFirstBytes: 	if True, `stream` has packetID and length bytes.
-                            if False, `stream` has only packet data. Default: True
+    :param has_packet_header: 	if True, `stream` has packetID and length bytes.
+                                if False, `stream` has only packet data. Default: True
     :return: {data, end}
     """
     # Read packet ID (first 2 bytes)
     data = {}
 
     # Skip packet ID and packet length if needed
-    start = end = 7 if hasFirstBytes else 0
+    start = end = 7 if has_packet_header else 0
 
     # Read packet
     for i in structure:

@@ -140,7 +140,11 @@ def matchSettings(stream: bytes) -> dict[str, Any]:
     struct.extend(MATCH_SETTINGS_FMT_SECOND)
 
     # Read second part
-    result = packetHelper.readPacketData(stream[start:], tuple(struct), False)
+    result = packetHelper.readPacketData(
+        stream[start:],
+        tuple(struct),
+        has_packet_header=False,
+    )
     data.update(result["data"])
 
     if data["freeMods"] == 0:
@@ -151,9 +155,11 @@ def matchSettings(stream: bytes) -> dict[str, Any]:
 
     # Read third (final) part
     data.update(
-        packetHelper.readPacketData(stream[start:], MATCH_SETTINGS_FMT_THIRD, False)[
-            "data"
-        ],
+        packetHelper.readPacketData(
+            stream[start:],
+            MATCH_SETTINGS_FMT_THIRD,
+            has_packet_header=False,
+        )["data"],
     )
 
     return data
