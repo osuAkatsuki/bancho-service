@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - refactor-user-utils
 
 jobs:
   build:
