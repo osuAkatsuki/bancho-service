@@ -1199,44 +1199,6 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
                 )
 
 
-@command(trigger="!vdiscord", syntax="<discord_user_id>", hidden=True)
-async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
-    # NOTE: not documented on purpose
-    input_discord_id = message[0]
-
-    if not input_discord_id.isnumeric() or len(input_discord_id) not in range(21, 23):
-        return "Invalid syntax, please use !linkosu in Akatsuki's Discord server first."
-
-    discord_id = int(input_discord_id) >> (0o14 - 1)  # get rid of the mess lol
-    userID = await user_utils.get_id_from_username(
-        fro,
-    )  # aika side for a tad of secrecy
-
-    # Check if their osu! account already has a discord link.
-    if await glob.db.fetch("SELECT 1 FROM aika_akatsuki WHERE osu_id = %s", [userID]):
-        return "Your osu! account has already been linked to a Discord account."
-
-    res = await glob.db.fetch(
-        "SELECT osu_id FROM aika_akatsuki WHERE discordid = %s",
-        [discord_id],
-    )
-
-    if res is None or res["osu_id"] is None:
-        return "Please use !linkosu in Akatsuki's Discord server first."
-    elif res["osu_id"] > 0:
-        return (
-            "That discord account has already been linked to another Akatsuki account."
-        )
-
-    # Checks passed, they're ready to be linked.
-    await glob.db.execute(
-        "UPDATE aika_akatsuki SET osu_id = %s WHERE discordid = %s",
-        [userID, discord_id],
-    )
-
-    return "Your discord account has been successfully linked."
-
-
 @command(
     trigger="!freeze",
     privs=privileges.ADMIN_FREEZE_USERS,
