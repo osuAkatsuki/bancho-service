@@ -406,7 +406,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Default opened channels.
         await chat.join_channel(token_id=userToken["token_id"], channel_name="#osu")
         await chat.join_channel(
-            token_id=userToken["token_id"], channel_name="#announce"
+            token_id=userToken["token_id"], channel_name="#announce",
         )
 
         # Join role-related channels.

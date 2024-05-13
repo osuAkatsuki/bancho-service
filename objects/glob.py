@@ -13,9 +13,9 @@ from amplitude import Config as AmplitudeConfig
 import settings
 
 if TYPE_CHECKING:
+    from irc.ircserver import Server as IRCServer
     from redis.asyncio import Redis
 
-    from irc.ircserver import Server as IRCServer
     from objects.banchoConfig import banchoConfig
     from objects.dbPool import DBPool
 

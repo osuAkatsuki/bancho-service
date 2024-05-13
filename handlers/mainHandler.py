@@ -5,7 +5,8 @@ import gzip
 import random
 import struct
 import time
-from typing import Awaitable, Callable
+from collections.abc import Awaitable
+from typing import Callable
 from uuid import UUID
 
 import amplitude

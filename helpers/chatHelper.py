@@ -441,7 +441,7 @@ async def sendMessage(
                     )
                 else:  # Send to all streams
                     await osuToken.addMessageInBuffer(
-                        userToken["token_id"], to, message
+                        userToken["token_id"], to, message,
                     )
                     await streamList.broadcast(
                         f"chat/{to}",

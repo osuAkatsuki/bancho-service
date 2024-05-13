@@ -4,10 +4,14 @@ import asyncio
 import random
 import secrets
 import time
-from typing import TypedDict, overload
-from typing import Any, Awaitable, Literal, Union
+from collections.abc import Awaitable
+from typing import Any
 from typing import Callable
+from typing import Literal
 from typing import Optional
+from typing import TypedDict
+from typing import Union
+from typing import overload
 
 from amplitude import BaseEvent
 
