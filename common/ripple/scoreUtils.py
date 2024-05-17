@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from typing import Optional
 
+from amplitude import BaseEvent
+
+import adapters.amplitude
 from common.constants import mods
 from objects import glob
+from objects import osuToken
 
 
 async def overwritePreviousScore(
@@ -14,8 +18,15 @@ async def overwritePreviousScore(
     The ratelimit has already been checked in the case of the !overwrite command.
     """
 
+    # XXX: a bit of a strange dependency -- means the user needs to be online
+    # to overwrite a score, but it's not a huge deal. Worth the analytics.
+    user_token = await osuToken.get_token_by_user_id(userID)
+    if user_token is None:
+        return None
+
     # Figure out whether they would like
     # to overwrite a relax or vanilla score
+    # TODO: support autopilot, if this feature lives on
     relax = await glob.db.fetch(
         "SELECT time, play_mode FROM scores_relax "
         "WHERE userid = %s AND completed = 2 "
@@ -41,7 +52,7 @@ async def overwritePreviousScore(
     mode = relax["play_mode"] if table == "scores_relax" else vanilla["play_mode"]
 
     # Select the users newest completed=2 score
-    result = await glob.db.fetch(
+    new_best_score = await glob.db.fetch(
         "SELECT {0}.id, {0}.beatmap_md5, beatmaps.song_name FROM {0} "
         "LEFT JOIN beatmaps USING(beatmap_md5) "
         "WHERE {0}.userid = %s AND {0}.completed = 2 AND {0}.play_mode = %s "
@@ -50,17 +61,24 @@ async def overwritePreviousScore(
     )
 
     # Set their previous completed scores on the map to completed = 2.
+    old_best_score = await glob.db.fetch(
+        f"SELECT id FROM {table} "
+        "WHERE beatmap_md5 = %s AND completed = 3 "
+        "AND userid = %s AND play_mode = %s",
+        [new_best_score["beatmap_md5"], userID, mode],
+    )
+
     await glob.db.execute(
         f"UPDATE {table} SET completed = 2 "
-        "WHERE beatmap_md5 = %s AND (completed & 3) = 3 "
+        "WHERE beatmap_md5 = %s AND completed = 3 "
         "AND userid = %s AND play_mode = %s",
-        [result["beatmap_md5"], userID, mode],
+        [new_best_score["beatmap_md5"], userID, mode],
     )
 
     # Set their new score to completed = 3.
     await glob.db.execute(
         f"UPDATE {table} SET completed = 3 WHERE id = %s",
-        [result["id"]],
+        [new_best_score["id"]],
     )
 
     # Update the last time they overwrote a score to the current time.
@@ -69,8 +87,24 @@ async def overwritePreviousScore(
         [userID],
     )
 
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="score_overwrite",
+                user_id=str(userID),
+                device_id=user_token["amplitude_device_id"],
+                event_properties={
+                    "new_best_score_id": new_best_score["id"],
+                    "old_best_score_id": old_best_score["id"],
+                    "beatmap_md5": new_best_score["beatmap_md5"],
+                    "mode": adapters.amplitude.format_mode(mode + (4 if relax else 0)),
+                    "source": "bancho-service",
+                },
+            ),
+        )
+
     # Return song_name for the command to send back to the user
-    return result["song_name"]
+    return new_best_score["song_name"]
 
 
 def readableMods(m: int) -> str:
