@@ -668,11 +668,6 @@ async def _handle_message_from_chatbot(
             )
             return ChatMessageError.UNKNOWN_CHANNEL
 
-        await osuToken.addMessageInBuffer(
-            chatbot_token["token_id"],
-            channel_names["server_name"],
-            message,
-        )
         await _broadcast_public_message(
             sender_token=chatbot_token,
             server_channel_name=channel_names["server_name"],
