@@ -459,4 +459,3 @@ def parse_from_osu_api(
         )
 
     return maps
-
