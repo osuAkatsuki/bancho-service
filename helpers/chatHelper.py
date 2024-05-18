@@ -233,7 +233,7 @@ def _get_client_channel_and_channel(
     return channel_name, client_channel_name
 
 
-async def enqueue_private_message(
+async def _unicast_private_message(
     *,
     sender_token: osuToken.Token,
     recipient_token: osuToken.Token,
@@ -248,7 +248,7 @@ async def enqueue_private_message(
     await osuToken.enqueue(recipient_token["token_id"], packet)
 
 
-async def enqueue_public_message(
+async def _broadcast_public_message(
     *,
     sender_token: osuToken.Token,
     channel_name: str,
@@ -270,7 +270,7 @@ async def enqueue_public_message(
     )
 
 
-async def enqueue_public_limited_message(
+async def _multicast_public_message(
     sender_token: osuToken.Token,
     channel_name: str,
     client_channel_name: str,
@@ -291,7 +291,7 @@ async def enqueue_public_limited_message(
     )
 
 
-async def handle_private_bot_response(
+async def _handle_private_bot_response(
     *,
     sender_token: osuToken.Token,
     response: Optional[chatbot.CommandResponse],
@@ -303,14 +303,14 @@ async def handle_private_bot_response(
     assert aika_token is not None
 
     # chatbot's response
-    await enqueue_private_message(
+    await _unicast_private_message(
         sender_token=aika_token,
         recipient_token=sender_token,
         message=response["response"],
     )
 
 
-async def handle_public_bot_response(
+async def _handle_public_bot_response(
     *,
     sender_token: osuToken.Token,
     recipient_name: str,
@@ -338,7 +338,7 @@ async def handle_public_bot_response(
         }
 
         # user's message
-        await enqueue_public_limited_message(
+        await _multicast_public_message(
             sender_token=sender_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
@@ -348,7 +348,7 @@ async def handle_public_bot_response(
 
         # chatbot's response
         enqueue_to.add(sender_token["token_id"])
-        await enqueue_public_limited_message(
+        await _multicast_public_message(
             sender_token=aika_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
@@ -360,7 +360,7 @@ async def handle_public_bot_response(
     # There are 2 cases here: no response from chatbot
     # or response from chatbot visible to everyone eg. !roll
     await osuToken.addMessageInBuffer(sender_token["token_id"], channel_name, message)
-    await enqueue_public_message(  # user's message
+    await _broadcast_public_message(  # user's message
         sender_token=sender_token,
         channel_name=channel_name,
         client_channel_name=client_channel_name,
@@ -369,7 +369,7 @@ async def handle_public_bot_response(
     )
 
     if chatbot_response is not None:  # chatbot's response
-        await enqueue_public_message(
+        await _broadcast_public_message(
             sender_token=aika_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
@@ -377,7 +377,7 @@ async def handle_public_bot_response(
         )
 
 
-async def handle_interaction_with_bot(
+async def _handle_interaction_with_bot(
     *,
     sender_token: osuToken.Token,
     recipient_name: str,
@@ -404,14 +404,14 @@ async def handle_interaction_with_bot(
 
     is_channel = recipient_name.startswith("#")
     if is_channel:
-        await handle_public_bot_response(
+        await _handle_public_bot_response(
             sender_token=sender_token,
             recipient_name=recipient_name,
             message=message,
             chatbot_response=response,
         )
     else:
-        await handle_private_bot_response(
+        await _handle_private_bot_response(
             sender_token=sender_token,
             response=response,
         )
@@ -419,7 +419,7 @@ async def handle_interaction_with_bot(
     return None
 
 
-async def handle_public_message(
+async def _handle_public_message(
     *,
     sender_token: osuToken.Token,
     recipient_name: str,
@@ -516,7 +516,7 @@ async def handle_public_message(
         return ChatMessageError.INSUFFICIENT_PRIVILEGES
 
     await osuToken.addMessageInBuffer(sender_token["token_id"], channel_name, message)
-    await enqueue_public_message(
+    await _broadcast_public_message(
         sender_token=sender_token,
         channel_name=channel_name,
         client_channel_name=client_channel_name,
@@ -526,7 +526,7 @@ async def handle_public_message(
     return None
 
 
-async def handle_private_message(
+async def _handle_private_message(
     *,
     sender_token: osuToken.Token,
     recipient_name: str,
@@ -613,13 +613,13 @@ async def handle_private_message(
         recipient_token["token_id"],
         sender_token["user_id"],
     ):
-        await enqueue_private_message(
+        await _unicast_private_message(
             sender_token=recipient_token,
             recipient_token=sender_token,
             message=f"\x01ACTION is away: {recipient_token['away_message'] or ''}\x01",
         )
 
-    await enqueue_private_message(
+    await _unicast_private_message(
         sender_token=sender_token,
         recipient_token=recipient_token,
         message=message,
@@ -628,7 +628,7 @@ async def handle_private_message(
     return None
 
 
-async def handle_bot_message(
+async def _handle_bot_message(
     *,
     sender_token: osuToken.Token,
     recipient_name: str,
@@ -660,7 +660,7 @@ async def handle_bot_message(
             channel_name,
             message,
         )
-        await enqueue_public_message(
+        await _broadcast_public_message(
             sender_token=sender_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
@@ -682,7 +682,7 @@ async def handle_bot_message(
             )
             return ChatMessageError.USER_NOT_FOUND
 
-        await enqueue_private_message(
+        await _unicast_private_message(
             sender_token=sender_token,
             recipient_token=recipient_token,
             message=message,
@@ -724,7 +724,7 @@ async def send_message(
         return ChatMessageError.USER_NOT_FOUND
 
     if sender_token["user_id"] == CHATBOT_USER_ID:
-        return await handle_bot_message(
+        return await _handle_bot_message(
             sender_token=sender_token,
             recipient_name=recipient_name,
             message=message,
@@ -796,19 +796,19 @@ async def send_message(
     # There are 3 types: bot interactions, public messages and private messages
     is_channel = recipient_name.startswith("#")
     if _bot_can_observe_message(recipient_name) and _is_command_message(message):
-        response = await handle_interaction_with_bot(
+        response = await _handle_interaction_with_bot(
             sender_token=sender_token,
             recipient_name=recipient_name,
             message=message,
         )
     elif is_channel:
-        response = await handle_public_message(
+        response = await _handle_public_message(
             sender_token=sender_token,
             recipient_name=recipient_name,
             message=message,
         )
     else:
-        response = await handle_private_message(
+        response = await _handle_private_message(
             sender_token=sender_token,
             recipient_name=recipient_name,
             message=message,
