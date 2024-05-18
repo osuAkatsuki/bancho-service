@@ -441,7 +441,7 @@ async def _handle_public_message(
                 "sender_token_id": sender_token["token_id"],
                 "sender_username": sender_token["username"],
                 "sender_user_id": sender_token["user_id"],
-                "recipient_name": recipient_name,
+                "channel_names": channel_names,
                 "bot_responded": chatbot_response is not None,
             },
         )
@@ -664,7 +664,7 @@ async def _handle_message_from_chatbot(
                     "chatbot_token_id": chatbot_token["token_id"],
                     "chatbot_username": chatbot_token["username"],
                     "chatbot_user_id": chatbot_token["user_id"],
-                    "server_channel_name": channel_names["server_name"],
+                    "channel_names": channel_names,
                 },
             )
             return ChatMessageError.UNKNOWN_CHANNEL
