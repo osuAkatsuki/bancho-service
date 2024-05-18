@@ -7,7 +7,7 @@ from typing import TypedDict
 
 from common.constants import actions
 from common.constants import privileges
-from common.ripple import userUtils
+from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
 from constants import chatbotCommands
 from constants import serverPackets
@@ -94,8 +94,8 @@ async def query(
             continue
 
         # message has triggered a command
-        user_id = await userUtils.get_id_from_username(fro)
-        user_privileges = await userUtils.get_privileges(user_id)
+        user_id = await user_utils.get_id_from_username(fro)
+        user_privileges = await user_utils.get_privileges(user_id)
 
         # Make sure the user has right permissions
         if cmd["privileges"] and not user_privileges & cmd["privileges"]:

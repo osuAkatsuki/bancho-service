@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from common.constants import actions
 from common.constants import mods
-from common.ripple import userUtils
+from common.ripple import user_utils
 from constants import clientPackets
 from constants import serverPackets
 from objects import osuToken
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Make sure we are not banned
-    # if await userUtils.isBanned(userID):
+    # if await user_utils.isBanned(userID):
     # 	userToken.enqueue(serverPackets.loginBanned)
     # 	return
 
@@ -46,7 +46,7 @@ async def handle(userToken: Token, rawPacketData: bytes):
         should_update_cached_stats = True
 
     # Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-    user_pp = await userUtils.get_user_pp_for_mode(
+    user_pp = await user_utils.get_user_pp_for_mode(
         userToken["user_id"],
         userToken["game_mode"],
         userToken["relax"],

@@ -4,5 +4,5 @@ from events import matchBeatmapEvent
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
-    await matchBeatmapEvent.handle(userToken, rawPacketData, False)
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
+    await matchBeatmapEvent.handle(userToken, rawPacketData, has_beatmap=False)

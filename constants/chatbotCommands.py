@@ -4,9 +4,14 @@ import asyncio
 import random
 import secrets
 import time
+from collections.abc import Awaitable
 from typing import Any
 from typing import Callable
+from typing import Literal
 from typing import Optional
+from typing import TypedDict
+from typing import Union
+from typing import overload
 
 from amplitude import BaseEvent
 
@@ -18,7 +23,7 @@ from common.constants import privileges
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import scoreUtils
-from common.ripple import userUtils
+from common.ripple import user_utils
 from common.web import discord
 from constants import CHATBOT_USER_ID
 from constants import exceptions
@@ -56,7 +61,21 @@ return the message or **False** if there's no response by the bot
 TODO: Change False to None, because False doesn't make any sense
 """
 
-commands = []
+CommandCallable = Callable[[str, str, list[str]], Awaitable[Optional[str]]]
+
+
+class Command(TypedDict):
+    trigger: str
+    privileges: int
+    syntax: Optional[str]
+    hidden: bool
+    callback: CommandCallable
+
+
+commands: list[Command] = []
+
+
+# fro: str, chan: str, message: list[str]) -> str:
 
 
 def command(
@@ -64,8 +83,8 @@ def command(
     privs: int = privileges.USER_NORMAL,
     syntax: Optional[str] = None,
     hidden: bool = False,
-) -> Callable:
-    def wrapper(f: Callable) -> Callable:
+) -> Callable[[CommandCallable], CommandCallable]:
+    def wrapper(f: CommandCallable) -> CommandCallable:
         commands.append(
             {
                 "trigger": trigger,
@@ -85,8 +104,8 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
     """Show all documented commands the player can access."""
     l = ["Individual commands", "-----------"]
 
-    userID = await userUtils.get_id_from_username(fro)
-    user_privs = await userUtils.get_privileges(userID)
+    userID = await user_utils.get_id_from_username(fro)
+    user_privs = await user_utils.get_privileges(userID)
 
     for cmd in commands:
         cmd_trigger = cmd["trigger"]
@@ -105,7 +124,8 @@ async def faq(fro: str, chan: str, message: list[str]) -> str:
     """Fetch a given FAQ response."""
     key = message[0].lower()
     res = await glob.db.fetch("SELECT callback FROM faq WHERE name = %s", [key])
-    return res["callback"] if res else "No FAQ topics could be found by that name."
+    callback: Optional[str] = res and res["callback"]
+    return callback or "No FAQ topics could be found by that name."
 
 
 @command(trigger="!roll")
@@ -124,7 +144,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
     if not (msg := " ".join(message).strip()):
         return "Guy was going to say @everyone and leave..."
 
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
     await streamList.broadcast("main", serverPackets.notification(msg))
     await audit_logs.send_log(
         userID,
@@ -146,10 +166,10 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
 async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Send a notification message to a specific user."""
     if not (msg := " ".join(message[1:]).strip()):
-        return
+        return None
 
     target = message[0].lower()
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return "Could not find user."
 
     if not (targetToken := await osuToken.get_token_by_user_id(targetID)):
@@ -176,7 +196,7 @@ async def moderated(fro: str, channel_name: str, message: list[str]) -> str:
         # Turn on/off moderated mode
         # NOTE: this will raise exceptions.channelUnknownException if the channel doesn't exist
         await channelList.updateChannel(channel_name, moderated=enable)
-        userID = await userUtils.get_id_from_username(fro)
+        userID = await user_utils.get_id_from_username(fro)
         await audit_logs.send_log(
             userID,
             f"has toggled moderated mode in {channel_name}.",
@@ -207,9 +227,9 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
     message = [m.lower() for m in message]
     target = message[0]
     reason = " ".join(message[1:])
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return "Could not find user"
 
     if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
@@ -244,22 +264,22 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
     """Silence a specified player a specified amount of time."""
     message = [m.lower() for m in message]
     target = message[0]
-    amount = message[1]
+    amount_input = message[1]
     unit = message[2]
 
     if not (reason := " ".join(message[3:]).strip()):
         return "Please provide a valid reason."
 
-    if not amount.isnumeric():
+    if not amount_input.isnumeric():
         return "The amount must be a number."
     else:
-        amount = int(amount)
+        amount = int(amount_input)
 
     # Make sure the user exists
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     # Calculate silence seconds
     if unit == "s":
@@ -281,14 +301,14 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
 
     # Send silence packet to target if he's connected
     targetToken = await tokenList.getTokenFromUsername(
-        userUtils.get_safe_username(target),
+        user_utils.get_safe_username(target),
     )
     if targetToken:
         # user online, silence both in db and with packet
         await osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
     else:
         # User offline, silence user only in db
-        await userUtils.silence(targetID, silenceTime, reason, userID)
+        await user_utils.silence(targetID, silenceTime, reason, userID)
 
     # Log message
     msg = f"{target} has been silenced for: {reason}."
@@ -304,7 +324,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) silenced {target} for {reason}.",
     )
@@ -325,9 +345,9 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
-    if not (targetID := await userUtils.get_id_from_safe_username(target)):
+    if not (targetID := await user_utils.get_id_from_safe_username(target)):
         return f"{target}: user not found."
 
     # Send new silence end packet to user if he's online
@@ -336,7 +356,7 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
         await osuToken.silence(targetToken["token_id"], 0, "", userID)
     else:
         # Target offline, remove silence in db
-        await userUtils.silence(targetID, 0, "", userID)
+        await user_utils.silence(targetID, 0, "", userID)
         await audit_logs.send_log(userID, f"has unsilenced {target}")
         await audit_logs.send_log_as_discord_webhook(
             message="\n".join(
@@ -349,7 +369,7 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
             discord_channel="ac_general",
         )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) unsilenced {target} for {reason}",
     )
@@ -369,17 +389,16 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    username = await chat.fixUsernameForBancho(fro)
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     if not reason:
         return "Please specify a reason for the ban!"
 
     # Set allowed to 0
-    await userUtils.ban(targetID)
+    await user_utils.ban(targetID)
 
     # Send ban packet to the user if he's online
     if targetToken := await osuToken.get_token_by_user_id(targetID):
@@ -400,9 +419,9 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
-        f"{username} ({userID}) banned for: {reason}",
+        f"{fro} ({userID}) banned for: {reason}",
     )
     return f"{target} has been banned."
 
@@ -420,13 +439,13 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     # Set allowed to 1
-    await userUtils.unban(targetID)
+    await user_utils.unban(targetID)
 
     await audit_logs.send_log(userID, f"has unbanned {target}")
     await audit_logs.send_log_as_discord_webhook(
@@ -440,7 +459,7 @@ async def unban(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) unbanned for: {reason}",
     )
@@ -460,16 +479,16 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     if not reason:
         return "Please specify a reason for the restriction!"
 
     # Put this user in restricted mode
-    await userUtils.restrict(targetID)
+    await user_utils.restrict(targetID)
 
     # Send restricted mode packet to this user if he's online
     if targetToken := await osuToken.get_token_by_user_id(targetID):
@@ -490,7 +509,7 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) restricted for: {reason}",
     )
@@ -510,15 +529,15 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
     reason = " ".join(message[1:])
 
     # Make sure the user exists
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target}: user not found."
 
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     if not reason:
         return "Please specify a reason for the unrestriction!"
 
-    await userUtils.unrestrict(targetID)
+    await user_utils.unrestrict(targetID)
 
     await audit_logs.send_log(userID, f"has unrestricted {target}")
     await audit_logs.send_log_as_discord_webhook(
@@ -532,7 +551,7 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) unrestricted for: {reason}",
     )
@@ -680,13 +699,30 @@ async def systemStatus(fro: str, chan: str, message: list[str]) -> str:
     return "\n".join(msg)
 
 
-async def getPPMessage(userID: int, just_data: bool = False) -> Any:
+@overload
+async def getPPMessage(
+    userID: int,
+    just_data: Literal[False] = False,
+) -> Optional[str]: ...
+
+
+@overload
+async def getPPMessage(
+    userID: int,
+    just_data: Literal[True] = ...,
+) -> Any: ...
+
+
+async def getPPMessage(
+    userID: int,
+    just_data: bool = False,
+) -> Union[Optional[str], Any]:
     if not (token := await osuToken.get_token_by_user_id(userID)):
-        return
+        return None
 
     current_info = token["last_np"]
     if current_info is None:
-        return
+        return None
 
     currentMap = current_info["beatmap_id"]
     currentMods = current_info["mods"]
@@ -701,7 +737,7 @@ async def getPPMessage(userID: int, just_data: bool = False) -> Any:
         )
     except:
         logger.exception(
-            "Failed to retrieve PP from LESS API",
+            "Failed to retrieve PP from score-service API",
             extra={
                 "user_id": userID,
                 "beatmap_id": currentMap,
@@ -802,13 +838,9 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
         try:
             spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         except exceptions.wrongChannelException:
-            spectatorHostUserID = None
             return "This command is only usable when either spectating a user, or playing multiplayer."
 
-        spectatorHostToken = await tokenList.getTokenFromUserID(
-            spectatorHostUserID,
-            ignoreIRC=True,
-        )
+        spectatorHostToken = await tokenList.getTokenFromUserID(spectatorHostUserID)
         if not spectatorHostToken:
             return "The spectator host is offline."
 
@@ -836,14 +868,13 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
 async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # don't document this, don't want it showing up in !help
     if not (token := await tokenList.getTokenFromUsername(fro)):
-        return
+        return None
 
     # MapDL trigger for #spect_
     if chan.startswith("#spect_"):
         spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
         spectatorHostToken = await tokenList.getTokenFromUserID(
             spectatorHostUserID,
-            ignoreIRC=True,
         )
         return (
             await _get_beatmap_download_embed(spectatorHostToken["beatmap_id"])
@@ -853,7 +884,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     # Run the command in PM only
     if chan.startswith("#"):
-        return
+        return None
 
     npmsg = " ".join(message[1:])
 
@@ -891,10 +922,10 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
     """Get the pp values for the last /np'ed map, with specified mods."""
     # Run the command in PM only
     if chan.startswith("#"):
-        return
+        return None
 
     if not (token := await tokenList.getTokenFromUsername(fro)):
-        return
+        return None
 
     if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
@@ -951,12 +982,12 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 #    try:
 #        # Run the command in PM only
 #        if chan.startswith("#"):
-#            return
+#            return  None
 #
 #        # Get token and user ID
 #        token = await  tokenList.getTokenFromUsername(fro)
 #        if not token:
-#            return
+#            return  None
 #        userID = token.userID
 #
 #        # Make sure the user has triggered the bot with /np command
@@ -984,7 +1015,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Show information about your most recently submitted score."""
     if not (token := await tokenList.getTokenFromUsername(fro)):
-        return
+        return None
 
     if token["autopilot"]:
         table = "scores_ap"
@@ -1104,9 +1135,8 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
 
         # Get username, report reason and report info
         target, reason, additionalInfo = result.groups()
-        target = await chat.fixUsernameForBancho(target)
-        userID = await userUtils.get_id_from_username(fro)
-        targetID = await userUtils.get_id_from_username(target)
+        userID = await user_utils.get_id_from_username(fro)
+        targetID = await user_utils.get_id_from_username(target)
 
         # Make sure the user exists
         if not targetID:
@@ -1129,7 +1159,7 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
         await glob.db.execute(
             "INSERT INTO reports (id, from_uid, to_uid, reason, chatlog, time) VALUES (NULL, %s, %s, %s, %s, %s)",
             [
-                await userUtils.get_id_from_username(fro),
+                await user_utils.get_id_from_username(fro),
                 targetID,
                 f"{reason} - ingame {f'({additionalInfo})' if additionalInfo else ''}",
                 chatlog,
@@ -1163,55 +1193,10 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
     finally:
         if msg:
             if token := await tokenList.getTokenFromUsername(fro):
-                if token["irc"]:
-                    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-                    assert aika_token is not None
-                    await chat.sendMessage(
-                        token_id=aika_token["token_id"],
-                        to=fro,
-                        message=msg,
-                    )
-                else:
-                    await osuToken.enqueue(
-                        token["token_id"],
-                        serverPackets.notification(msg),
-                    )
-
-
-@command(trigger="!vdiscord", syntax="<discord_user_id>", hidden=True)
-async def linkDiscord(fro: str, chan: str, message: list[str]) -> str:
-    # NOTE: not documented on purpose
-    discordID = message[0]
-
-    if not discordID.isnumeric() or len(discordID) not in range(21, 23):
-        return "Invalid syntax, please use !linkosu in Akatsuki's Discord server first."
-
-    discordID = int(discordID) >> (0o14 - 1)  # get rid of the mess lol
-    userID = await userUtils.get_id_from_username(fro)  # aika side for a tad of secrecy
-
-    # Check if their osu! account already has a discord link.
-    if await glob.db.fetch("SELECT 1 FROM aika_akatsuki WHERE osu_id = %s", [userID]):
-        return "Your osu! account has already been linked to a Discord account."
-
-    res = await glob.db.fetch(
-        "SELECT osu_id FROM aika_akatsuki WHERE discordid = %s",
-        [discordID],
-    )
-
-    if res is None or res["osu_id"] is None:
-        return "Please use !linkosu in Akatsuki's Discord server first."
-    elif res["osu_id"] > 0:
-        return (
-            "That discord account has already been linked to another Akatsuki account."
-        )
-
-    # Checks passed, they're ready to be linked.
-    await glob.db.execute(
-        "UPDATE aika_akatsuki SET osu_id = %s WHERE discordid = %s",
-        [userID, discordID],
-    )
-
-    return "Your discord account has been successfully linked."
+                await osuToken.enqueue(
+                    token["token_id"],
+                    serverPackets.notification(msg),
+                )
 
 
 @command(
@@ -1225,20 +1210,20 @@ async def freeze(fro: str, chan: str, message: list[str]) -> str:
     target = message[0].lower()
     reason = " ".join(message[1:])
 
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return "That user does not exist"
 
-    if await userUtils.get_freeze_restriction_date(targetID):
+    if await user_utils.get_freeze_restriction_date(targetID):
         return "That user is already frozen."
 
     if not reason:
         return f"Please specify your reason to freeze {target}."
 
-    await userUtils.freeze(
+    await user_utils.freeze(
         targetID,
-        author_user_id=await userUtils.get_id_from_username(fro),
+        author_user_id=await user_utils.get_id_from_username(fro),
     )
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
     await audit_logs.send_log(userID, f"has froze {target}")
     await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
@@ -1251,7 +1236,7 @@ async def freeze(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(targetID, f"{fro} ({userID}) froze {target}")
+    await user_utils.append_cm_notes(targetID, f"{fro} ({userID}) froze {target}")
     return f"Froze {target}."
 
 
@@ -1266,17 +1251,17 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     target = message[0].lower()
     reason = " ".join(message[1:])
 
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return "That user does not exist"
 
-    if not await userUtils.get_freeze_restriction_date(targetID):
+    if not await user_utils.get_freeze_restriction_date(targetID):
         return "That user is not frozen."
 
     if not reason:
         return f"Please specify a reason to unfreeze {target}."
 
-    userID = await userUtils.get_id_from_username(fro)
-    await userUtils.unfreeze(targetID, author_user_id=userID)
+    userID = await user_utils.get_id_from_username(fro)
+    await user_utils.unfreeze(targetID, author_user_id=userID)
     await audit_logs.send_log(userID, f"unfroze {target}")
     await audit_logs.send_log_as_discord_webhook(
         message="\n".join(
@@ -1289,7 +1274,7 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
         discord_channel="ac_general",
     )
 
-    await userUtils.append_cm_notes(targetID, f"{fro} ({userID}) unfroze {target}")
+    await user_utils.append_cm_notes(targetID, f"{fro} ({userID}) unfroze {target}")
     return f"Unfroze {target}."
 
 
@@ -1338,19 +1323,19 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     """Change your own username."""
     # For premium members to change their own usernames
     newUsername = " ".join(message)
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     if not chatbot.USERNAME_REGEX.match(newUsername) or (
         " " in newUsername and "_" in newUsername
     ):
         return "Invalid username."
 
-    newUsernameSafe = userUtils.get_safe_username(newUsername)
+    newUsernameSafe = user_utils.get_safe_username(newUsername)
 
-    if userUtils.get_id_from_safe_username(newUsernameSafe):
+    if user_utils.get_id_from_safe_username(newUsernameSafe):
         return "That username is already in use."
 
-    await userUtils.change_username(userID, newUsername)
+    await user_utils.change_username(userID, newUsername)
 
     notif_pkt = serverPackets.notification(
         "\n".join(
@@ -1368,7 +1353,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
             token["token_id"],
         )
 
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         userID,
         f"Username changed (self): '{fro}' -> '{newUsername}'.",
     )
@@ -1393,7 +1378,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     message = [m.lower() for m in message]
 
     if not (token := await tokenList.getTokenFromUsername(fro)):
-        return
+        return None
 
     if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
@@ -1480,7 +1465,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     prev_status_emoji_id = status_to_emoji_id(res["ranked"])
 
     # Get the nominator profile URL just once
-    nominator_profile_url = userUtils.get_profile_url(token["user_id"])
+    nominator_profile_url = user_utils.get_profile_url(token["user_id"])
 
     # Get the last /np'd Beatmap ID
     last_np_map_id = token["last_np"]["beatmap_id"]
@@ -1517,9 +1502,9 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
-        token_id=aika_token["token_id"],
-        to="#announce",
+    await chat.send_message(
+        sender_token_id=aika_token["token_id"],
+        recipient_name="#announce",
         message=f"[{nominator_profile_url} {fro}] has {status_readable} {beatmap_url}",
     )
     return "Success - it can take up to 60 seconds to see a change on the leaderboards (due to caching limitations)."
@@ -1535,9 +1520,9 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
-        token_id=aika_token["token_id"],
-        to="#announce",
+    await chat.send_message(
+        sender_token_id=aika_token["token_id"],
+        recipient_name="#announce",
         message=" ".join(message),
     )
     return "Announcement successfully sent."
@@ -1545,8 +1530,8 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
 
 @command(trigger="!playtime", hidden=False)
 async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
-    user_id = await userUtils.get_id_from_username(fro)
-    total_playtime = await userUtils.get_playtime_total(user_id)
+    user_id = await user_utils.get_id_from_username(fro)
+    total_playtime = await user_utils.get_playtime_total(user_id)
     readable_time = generalUtils.secondsToReadable(total_playtime)
     return (
         f"{fro}: Your total osu!Akatsuki playtime (all gamemodes) is: {readable_time}."
@@ -1569,14 +1554,14 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     if bit not in range(4):
         return "Invalid bit."
 
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return "That user does not exist."
 
     if not reason:
         return "Please specify the reason for your whitelist request."
 
     # Get command executioner's ID
-    userID = await userUtils.get_id_from_username(fro)
+    userID = await user_utils.get_id_from_username(fro)
 
     # If target user is online, update their token's whitelist bit
     targetToken = await tokenList.getTokenFromUserID(targetID)
@@ -1586,7 +1571,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
             whitelist=bit,
         )
 
-    await userUtils.update_whitelist_status(targetID, bit)
+    await user_utils.update_whitelist_status(targetID, bit)
 
     await audit_logs.send_log(
         userID,
@@ -1602,7 +1587,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
         ),
         discord_channel="ac_general",
     )
-    await userUtils.append_cm_notes(
+    await user_utils.append_cm_notes(
         targetID,
         f"{fro} ({userID}) has set {target}'s Whitelist Status to {bit}. Reason: {reason}",
     )
@@ -1613,18 +1598,18 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 async def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Get the nominator for the last /np'ed map."""
     if not (token := await tokenList.getTokenFromUsername(fro)):
-        return
+        return None
 
     if token["last_np"] is None:
         return "Please give me a beatmap first with /np command."
 
-    if not (res := await userUtils.get_map_nominator(token["last_np"]["beatmap_id"])):
+    if not (res := await user_utils.get_map_nominator(token["last_np"]["beatmap_id"])):
         return "That map isn't stored in our database."
     elif not res["rankedby"]:
         return "Our logs sadly do not go back far enough to find this data."
 
     status_readable = {0: "unranked", 2: "ranked", 5: "loved"}[res["ranked"]]
-    rankedby = await userUtils.get_profile_url_osu_chat_embed(res["rankedby"])
+    rankedby = await user_utils.get_profile_url_osu_chat_embed(res["rankedby"])
 
     return f'{res["song_name"]} was {status_readable} by: {rankedby}.'
 
@@ -1639,7 +1624,7 @@ def competitionMap(fro: str, chan: str, message: list[str]) -> str:
         'WHERE end_time > UNIX_TIMESTAMP()')):
         return 'There are currently no active contests.'
 
-    return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(await userUtils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
+    return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(await user_utils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
 
 def announceContest(fro: str, chan: str, message: list[str]) -> None:
     await streamList.broadcast("main", serverPackets.notification('\n'.join([
@@ -1653,15 +1638,15 @@ def announceContest(fro: str, chan: str, message: list[str]) -> None:
 @command(trigger="!overwrite", hidden=True)
 async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     """Force your latest score to overwrite. (NOTE: this is possibly destructive)"""
-    userID = await userUtils.get_id_from_username(
+    userID = await user_utils.get_id_from_username(
         fro,
-    )  # TODO: rewrite this command as well..
-    user_privs = await userUtils.get_privileges(userID)
+    )
+    user_privs = await user_utils.get_privileges(userID)
 
     if not user_privs & privileges.USER_DONOR:
         return "The overwrite command is only available to Akatsuki supporters."
 
-    if not (ratelimit := await userUtils.get_remaining_overwrite_wait(userID)):
+    if not (ratelimit := await user_utils.get_remaining_overwrite_wait(userID)):
         await glob.db.execute(
             "UPDATE users SET previous_overwrite = 1 WHERE id = %s",
             [userID],
@@ -1693,26 +1678,26 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     _user_token = await osuToken.get_token_by_username(fro)
     if _user_token is None:
-        return
+        return None
 
     if (
         chan != "#multiplayer"
         and not chan.startswith("#mp_")
         and chan.lower() != glob.BOT_NAME.lower()
     ):
-        return  # command used only on #multiplayer channels or bot PMs
+        return None  # command used only on #multiplayer channels or bot PMs
 
-    async def mpAddRefer(user_token: osuToken.Token):
+    async def mpAddRefer(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
@@ -1732,15 +1717,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpRemoveRefer(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
@@ -1763,19 +1748,19 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpListRefer(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         ref_usernames: list[str] = []
         for ref_id in referees:
-            username = await userUtils.get_username_from_id(ref_id)
+            username = await user_utils.get_username_from_id(ref_id)
             assert username is not None
             ref_usernames.append(username)
 
@@ -1806,17 +1791,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             is_tourney=True,
         )
 
-        if user_token["irc"]:
-            await chat.joinChannel(  # join channel
-                token_id=user_token["token_id"],
-                channel_name=f"#mp_{multiplayer_match['match_id']}",
-                force=True,
-            )
-        else:
-            await osuToken.joinMatch(
-                user_token["token_id"],
-                multiplayer_match["match_id"],
-            )
+        await osuToken.joinMatch(
+            user_token["token_id"],
+            multiplayer_match["match_id"],
+        )
 
         await match.setHost(multiplayer_match["match_id"], user_token["user_id"])
         await match.sendUpdates(multiplayer_match["match_id"])
@@ -1825,15 +1803,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpClose(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         await matchList.disposeMatch(multiplayer_match["match_id"])
         return (
@@ -1842,15 +1820,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpLock(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.update_match(multiplayer_match["match_id"], is_locked=True)
@@ -1859,15 +1837,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpUnlock(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.update_match(multiplayer_match["match_id"], is_locked=False)
@@ -1876,15 +1854,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpSize(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if (
             len(message) < 2
@@ -1903,7 +1881,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpForce(user_token: osuToken.Token) -> Optional[str]:
         if not (user_token["privileges"] & privileges.ADMIN_CAKER):
-            return
+            return None
 
         if len(message) != 3 or not message[2].isnumeric():
             return "Incorrect syntax: !mp force <user> <matchID>"
@@ -1911,7 +1889,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         matchID = int(message[2])
 
-        userToken = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
+        userToken = await tokenList.getTokenFromUsername(username)
         if not userToken:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -1923,15 +1901,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpMove(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if (
             len(message) < 3
@@ -1946,7 +1924,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         newSlotID = int(message[2])
 
-        target_token = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
+        target_token = await tokenList.getTokenFromUsername(username)
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -1965,15 +1943,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpHost(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
@@ -2002,15 +1980,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpClearHost(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.removeHost(multiplayer_match["match_id"], rm_referee=False)
@@ -2019,15 +1997,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpStart(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async def _start() -> bool:
             assert multiplayer_match is not None
@@ -2035,9 +2013,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
             assert aika_token is not None
             if not await match.start(multiplayer_match["match_id"]):
-                await chat.sendMessage(
-                    token_id=aika_token["token_id"],
-                    to=chan,
+                await chat.send_message(
+                    sender_token_id=aika_token["token_id"],
+                    recipient_name=chan,
                     message=(
                         "Couldn't start match. Make sure there are enough players and "
                         "teams are valid. The match has been unlocked."
@@ -2045,9 +2023,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 )
                 return True  # Failed to start
             else:
-                await chat.sendMessage(
-                    token_id=aika_token["token_id"],
-                    to=chan,
+                await chat.send_message(
+                    sender_token_id=aika_token["token_id"],
+                    recipient_name=chan,
                     message="Have fun!",
                 )
 
@@ -2096,9 +2074,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 if not t % 10 or t <= 5:
                     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                     assert aika_token is not None
-                    await chat.sendMessage(
-                        token_id=aika_token["token_id"],
-                        to=chan,
+                    await chat.send_message(
+                        sender_token_id=aika_token["token_id"],
+                        recipient_name=chan,
                         message=f"Match starts in {t} seconds.",
                     )
 
@@ -2134,7 +2112,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         if not startTime:
             if await _start():
-                return
+                return None
             return "Starting match"
         else:
             multiplayer_match = await match.update_match(
@@ -2157,11 +2135,11 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpInvite(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
@@ -2172,7 +2150,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not username:
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        target_token = await tokenList.getTokenFromUsername(username, ignoreIRC=True)
+        target_token = await tokenList.getTokenFromUsername(username)
         if not target_token:
             raise exceptions.invalidUserException(
                 "That user is not connected to Akatsuki right now.",
@@ -2196,15 +2174,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpMap(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if (
             len(message) < 2
@@ -2250,15 +2228,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpSet(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if (
             len(message) < 2
@@ -2320,17 +2298,17 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Match settings have been updated!"
 
-    async def mpAbort(user_token: osuToken.Token):
+    async def mpAbort(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             await match.abort(multiplayer_match["match_id"])
@@ -2339,15 +2317,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpKick(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
@@ -2380,15 +2358,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpPassword(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             password = "" if len(message) < 2 or not message[1].strip() else message[1]
@@ -2400,15 +2378,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         user_token: osuToken.Token,
     ) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
             password = secrets.token_hex(16)
@@ -2418,15 +2396,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpMods(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) != 2 or len(message[1]) % 2:
             raise exceptions.invalidArgumentsException(
@@ -2490,15 +2468,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpTeam(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) < 3:
             raise exceptions.invalidArgumentsException(
@@ -2540,15 +2518,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpSettings(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         single = False if len(message) < 2 else message[1].strip().lower() == "single"
         msg: list[str] = ["PLAYERS IN THIS MATCH "]
@@ -2608,15 +2586,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpScoreV(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         referees = await match.get_referees(multiplayer_match["match_id"])
         if user_token["user_id"] not in referees:
-            return
+            return None
 
         if len(message) < 2 or message[1] not in {"1", "2"}:
             raise exceptions.invalidArgumentsException(
@@ -2644,11 +2622,11 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mp_link(user_token: osuToken.Token) -> Optional[str]:
         if not user_token["match_id"]:
-            return
+            return None
 
         multiplayer_match = await match.get_match(user_token["match_id"])
         if multiplayer_match is None:
-            return
+            return None
 
         mp_message = await match.get_match_history_message(
             multiplayer_match["match_id"],
@@ -2656,7 +2634,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return mp_message
 
     try:
-        subcommands = {
+        subcommands: dict[str, Callable[[osuToken.Token], Awaitable[Optional[str]]]] = {
             "addref": mpAddRefer,
             "rmref": mpRemoveRefer,
             "listref": mpListRefer,
@@ -2710,10 +2688,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 #    if not (message := ' '.join(message[1:]).strip()):
 #        return 'Invalid message.'
 #
-#    if not (targetID := await userUtils.getIDSafe(target)):
+#    if not (targetID := await user_utils.getIDSafe(target)):
 #        return f'{target}: user not found.'
 #
-#    userToken = await osuToken.get_token_by_user_id(targetID, ignoreIRC=True, _all=False)
+#    userToken = await osuToken.get_token_by_user_id(targetID, _all=False)
 #    userToken.enqueue(serverPackets.rtx(message))
 #    return ':box_flushed:'
 
@@ -2730,10 +2708,10 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
         return "I'll need a user to perform the command on.."
 
     target = message[0]
-    if not (targetID := await userUtils.get_id_from_username(target)):
+    if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target} not found."
 
-    userToken = await tokenList.getTokenFromUserID(targetID, ignoreIRC=True, _all=False)
+    userToken = await tokenList.getTokenFromUserID(targetID, _all=False)
     assert userToken is not None
 
     packet_data = serverPackets.invalidChatMessage(target)

@@ -6,7 +6,7 @@ from objects import streamList
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Send spectator frames to every spectator
     streamName = f"spect/{userToken['user_id']}"
     await streamList.broadcast(

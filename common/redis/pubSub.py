@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from typing import TypedDict
+
 import redis.asyncio as redis
 
 from common.log import logger
 from common.redis import generalPubSubHandler
+
+
+class RedisMessage(TypedDict):
+    type: str
+    pattern: bytes | None
+    channel: bytes | None
+    data: bytes | None
 
 
 class listener:
@@ -34,7 +43,7 @@ class listener:
         self.redis_connection = redis_connection
         self.handlers = handlers
 
-    async def processItem(self, item):
+    async def processItem(self, item: RedisMessage) -> None:
         """
         Processes a pubSub item by calling channel's handler
 
@@ -44,28 +53,29 @@ class listener:
         if item["type"] == "message":
             # Process the message only if the channel has received a message
             # Decode the message
-            item["channel"] = item["channel"].decode("utf-8")
+            assert item["channel"] is not None
+            channel = item["channel"].decode()
 
             # Make sure the handler exists
-            if item["channel"] in self.handlers:
-                if "cached_stats" not in item["channel"]:
+            if channel in self.handlers:
+                if "cached_stats" not in channel:
                     logger.info(
                         "Handling redis pubsub item",
                         extra={
-                            "channel": item["channel"],
+                            "channel": channel,
                             "data": item["data"],
                         },
                     )
 
                 if isinstance(
-                    self.handlers[item["channel"]],
+                    self.handlers[channel],
                     generalPubSubHandler.generalPubSubHandler,
                 ):
                     # Handler class
-                    await self.handlers[item["channel"]].handle(item["data"])
+                    await self.handlers[channel].handle(item["data"])
                 # else:
                 #     # Function
-                #     await self.handlers[item["channel"]](item["data"])
+                #     await self.handlers[channel](item["data"])
 
     async def run(self):
         """

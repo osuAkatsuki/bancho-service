@@ -5,7 +5,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, _):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Update cache and send new stats
     await osuToken.updateCachedStats(userToken["token_id"])
     await osuToken.enqueue(

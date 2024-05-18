@@ -5,7 +5,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     await osuToken.update_token(
         userToken["token_id"],
         block_non_friends_dm=clientPackets.blockDM(rawPacketData)["value"] != 0,

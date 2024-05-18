@@ -4,8 +4,17 @@ from objects import match
 from objects.osuToken import Token
 from objects.redisLock import redisLock
 
+# NOTE: This is invoked not directly from mainHandler, but rather from
+# the matchNoBeatmapEvent and matchHasBeatmapEvent event handlers, to
+# allow for more code reuse.
 
-async def handle(userToken: Token, _, has_beatmap: bool):
+
+async def handle(
+    userToken: Token,
+    rawPacketData: bytes,
+    *,
+    has_beatmap: bool,
+) -> None:
     # Make sure we are in a match
     if userToken["match_id"] is None:
         return

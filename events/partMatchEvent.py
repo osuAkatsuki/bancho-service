@@ -9,7 +9,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, _=None):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     matchID = userToken["match_id"]
     if matchID is None:
         return

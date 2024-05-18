@@ -13,7 +13,7 @@ from objects import tokenList
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     try:
         # Start spectating packet
         packetData = clientPackets.startSpectating(rawPacketData)

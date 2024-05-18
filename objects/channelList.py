@@ -59,19 +59,13 @@ async def loadChannels() -> None:
 
 
 async def getChannelNames() -> set[str]:
-    """
-    Get all channels from channels list
-    :return: list of channels
-    """
+    """Get all channel names from redis."""
     raw_channel_names: set[bytes] = await glob.redis.smembers("bancho:channels")
     return {name.decode() for name in raw_channel_names}
 
 
 async def getChannel(channel_name: str) -> Optional[Channel]:
-    """
-    Get all channels from channels list
-    :return: list of channels
-    """
+    """Get a channel from redis."""
     raw_channel = await glob.redis.get(f"bancho:channels:{channel_name}")
     if raw_channel is None:
         return None
@@ -79,10 +73,7 @@ async def getChannel(channel_name: str) -> Optional[Channel]:
 
 
 async def getChannels() -> list[Channel]:
-    """
-    Get all channels from channels list
-    :return: list of channels
-    """
+    """Get all channels from redis."""
     channels = []
     for channel_name in await getChannelNames():
         channel = await getChannel(channel_name)
@@ -163,10 +154,10 @@ async def removeChannel(name: str) -> None:
     for token_id in await stream.get_client_token_ids(f"chat/{name}"):
         token = await osuToken.get_token(token_id)
         if token is not None:
-            await chat.partChannel(
+            await chat.part_channel(
                 channel_name=name,
                 token_id=token_id,
-                kick=True,
+                notify_user_of_kick=True,
             )
 
     # Make the chatbot leave the channel, if it was a member

@@ -4,22 +4,8 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
-import orjson
 
-
-def shape(d: dict) -> dict:
-    """
-    Returns a shape of a dictionary.
-    Used to check if two dictionaries have the same structure
-
-    :param d: dictionary
-    :return: `d`'s shape
-    """
-    if isinstance(d, dict):
-        return {k: shape(d[k]) for k in d}
-
-
-class wrongStructureError(Exception):
+class WrongStructureError(Exception):
     pass
 
 
@@ -28,26 +14,24 @@ class generalPubSubHandler(ABC):
 
     def __init__(self) -> None:
         self.structure = {}
-        self.type = "json"
+        self.type = "int"
         self.strict = True
 
     @abstractmethod
-    async def handle(self, userID): ...
+    async def handle(self, raw_data: bytes) -> None: ...
 
-    def parseData(self, data: bytes) -> Any:
+    def parseData(self, raw_data: bytes) -> Any:
         """
         Parse received data
 
         :param data: received data, as bytes array
         :return: parsed data or None if it's invalid
         """
-        if self.type == "json":
-            data = orjson.loads(data.decode("utf-8"))
-            if shape(data) != shape(self.structure) and self.strict:
-                raise wrongStructureError()
-        elif self.type == "int":
-            data = int(data.decode("utf-8"))
+        if self.type == "int":
+            data = int(raw_data.decode("utf-8"))
         elif self.type == "int_list":
-            data = [int(i) for i in data.decode().split(",")]
+            data = [int(i) for i in raw_data.decode().split(",")]
+        else:
+            raise NotImplementedError("Unknown data type")
 
         return data

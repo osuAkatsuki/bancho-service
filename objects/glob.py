@@ -15,7 +15,6 @@ import settings
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
-    from irc.ircserver import Server as IRCServer
     from objects.banchoConfig import banchoConfig
     from objects.dbPool import DBPool
 
@@ -26,7 +25,6 @@ application = None
 db: DBPool
 redis: Redis
 banchoConf: banchoConfig
-ircServer: IRCServer
 
 restarting = False
 

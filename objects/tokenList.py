@@ -5,7 +5,7 @@ from typing import Optional
 from typing import overload
 
 from common.log import logger
-from common.ripple import userUtils
+from common.ripple import user_utils
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
@@ -14,7 +14,6 @@ from objects import osuToken
 async def addToken(
     user_id: int,
     ip: str = "",
-    irc: bool = False,
     utc_offset: int = 0,
     tournament: bool = False,
     block_non_friends_dm: bool = False,
@@ -25,7 +24,6 @@ async def addToken(
 
     :param userID: user id associated to that token
     :param ip: ip address of the client
-    :param irc: if True, set this token as IRC client
     :param timeOffset: the time offset from UTC for this user. Default: 0.
     :param tournament: if True, flag this client as a tournement client. Default: True.
     :return: token object
@@ -43,7 +41,6 @@ async def addToken(
         res["whitelist"],
         ip,
         utc_offset,
-        irc,
         tournament,
         block_non_friends_dm,
         amplitude_device_id,
@@ -103,7 +100,6 @@ async def getUserIDFromToken(token_id: str) -> Optional[int]:
 @overload
 async def getTokenFromUserID(
     userID: int,
-    ignoreIRC: bool = ...,
     _all: Literal[False] = False,
 ) -> Optional[osuToken.Token]: ...
 
@@ -111,21 +107,18 @@ async def getTokenFromUserID(
 @overload
 async def getTokenFromUserID(
     userID: int,
-    ignoreIRC: bool = ...,
     _all: Literal[True] = ...,
 ) -> list[osuToken.Token]: ...
 
 
 async def getTokenFromUserID(
     userID: int,
-    ignoreIRC: bool = False,
     _all: bool = False,
 ):
     """
     Get token from a user ID
 
     :param userID: user ID to find
-    :param ignoreIRC: if True, consider bancho clients only and skip IRC clients
     :param _all: if True, return a list with all clients that match given username, otherwise return
                 only the first occurrence.
     :return: False if not found, token object if found
@@ -134,8 +127,6 @@ async def getTokenFromUserID(
     ret = []
     for value in await osuToken.get_tokens():
         if value["user_id"] == userID:
-            if ignoreIRC and value["irc"]:
-                continue
             if _all:
                 ret.append(value)
             else:
@@ -149,7 +140,6 @@ async def getTokenFromUserID(
 @overload
 async def getTokenFromUsername(
     username: str,
-    ignoreIRC: bool = ...,
     _all: Literal[False] = ...,
 ) -> Optional[osuToken.Token]: ...
 
@@ -157,33 +147,28 @@ async def getTokenFromUsername(
 @overload
 async def getTokenFromUsername(
     username: str,
-    ignoreIRC: bool = ...,
     _all: Literal[True] = ...,
 ) -> list[osuToken.Token]: ...
 
 
 async def getTokenFromUsername(
     username: str,
-    ignoreIRC: bool = False,
     _all: bool = False,
 ):
     """
     Get an osuToken object from an username
 
     :param username: normal username or safe username
-    :param ignoreIRC: if True, consider bancho clients only and skip IRC clients
     :param _all: if True, return a list with all clients that match given username, otherwise return
                 only the first occurrence.
     :return: osuToken object or None
     """
-    username = userUtils.get_safe_username(username)
+    username = user_utils.get_safe_username(username)
 
     # Make sure the token exists
     ret = []
     for value in await osuToken.get_tokens():
-        if userUtils.get_safe_username(value["username"]) == username:
-            if ignoreIRC and value["irc"]:
-                continue
+        if user_utils.get_safe_username(value["username"]) == username:
             if _all:
                 ret.append(value)
             else:

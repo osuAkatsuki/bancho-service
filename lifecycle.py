@@ -72,31 +72,15 @@ async def startup() -> None:
     if settings.DEBUG:
         logger.info("Server running in debug mode")
 
-    # start irc server if configured
-    # XXX: the irc server is currently not functional.
-    # Ticket: https://osuakatsuki.atlassian.net/browse/AKAT-451
-    # if settings.IRC_ENABLE:
-    #     logger.info(
-    #         "IRC server listening on tcp port",
-    #         extra={"port": settings.IRC_PORT},
-    #     )
-    #     asyncio.create_task(ircserver.main(port=settings.IRC_PORT))
-
 
 async def shutdown() -> None:
     logger.info(
         "Shutting down all services for selected component",
         extra={"component": settings.APP_COMPONENT},
     )
-    # XXX: the irc server is currently not functional.
-    # Ticket: https://osuakatsuki.atlassian.net/browse/AKAT-451
-    # if settings.IRC_ENABLE:
-    #     logger.info("Closing IRC server")
-    #     glob.ircServer.close()
-    #     logger.info("Closed IRC server")
 
     logger.info("Closing connection to redis")
-    await glob.redis.aclose()
+    await glob.redis.close()
     logger.info("Closed connection to redis")
 
     logger.info("Closing connection(s) to MySQL")

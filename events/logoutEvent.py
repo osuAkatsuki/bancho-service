@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import time
+from typing import Optional
 
 import orjson
 from amplitude import BaseEvent
 
-import settings
 from common.log import logger
 from constants import serverPackets
 from helpers import countryHelper
@@ -16,12 +16,16 @@ from objects import tokenList
 from objects.osuToken import Token
 
 
-async def handle(token: Token, _=None, deleteToken: bool = True):
+async def handle(
+    token: Token,
+    rawPacketData: Optional[bytes] = None,
+    deleteToken: bool = True,
+) -> None:
     # Big client meme here. If someone logs out and logs in right after,
     # the old logout packet will still be in the queue and will be sent to
     # the server, so we accept logout packets sent at least 2 seconds after login
     # if the user logs out before 2 seconds, he will be disconnected later with timeout check
-    if not (time.time() - token["login_time"] >= 2 or token["irc"]):
+    if not (time.time() - token["login_time"] >= 2):
         return
 
     # Stop spectating
@@ -41,10 +45,6 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
     # Enqueue our disconnection to everyone else
     await streamList.broadcast("main", serverPackets.userLogout(token["user_id"]))
 
-    # Disconnect from IRC if needed
-    if settings.IRC_ENABLE and token["irc"]:
-        await glob.ircServer.forceDisconnection(token["username"])
-
     # Delete token
     if deleteToken:
         await tokenList.deleteToken(token["token_id"])
@@ -59,6 +59,8 @@ async def handle(token: Token, _=None, deleteToken: bool = True):
         f"ripple:change_username_pending:{token['user_id']}",
     )
     if newUsername:
+        assert isinstance(newUsername, bytes)
+
         logger.info(
             "Sending username change request",
             {

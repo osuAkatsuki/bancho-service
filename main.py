@@ -8,6 +8,7 @@ import signal
 import sys
 import traceback
 from datetime import datetime
+from types import FrameType
 from typing import Optional
 
 import tornado.gen
@@ -32,7 +33,7 @@ from objects import glob
 from objects import streamList
 
 
-def dump_thread_stacks():
+def dump_thread_stacks() -> None:
     try:
         os.mkdir("stacktraces")
     except FileExistsError:
@@ -45,7 +46,7 @@ def dump_thread_stacks():
             print("\n", file=f)
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: Optional[FrameType] = None) -> None:
     dump_thread_stacks()
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     signal.default_int_handler(signum, frame)
@@ -117,9 +118,9 @@ async def main() -> int:
             logger.info("Closed HTTP connections")
 
         if settings.MASTER_PROCESS:
-            logger.info("Disconnecting from IRC")
+            logger.info("Disconnecting Chatbot")
             await chatbot.disconnect()
-            logger.info("Disconnected from IRC")
+            logger.info("Disconnected Chatbot")
 
         await lifecycle.shutdown()
 

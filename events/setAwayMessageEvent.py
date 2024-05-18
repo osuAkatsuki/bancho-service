@@ -8,7 +8,7 @@ from objects import osuToken
 from objects.osuToken import Token
 
 
-async def handle(userToken: Token, rawPacketData: bytes):
+async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Read packet data
     packetData = clientPackets.setAwayMessage(rawPacketData)
 
