@@ -460,13 +460,3 @@ def parse_from_osu_api(
 
     return maps
 
-
-async def increment_playcount(beatmap: Beatmap, passcount: bool = True) -> None:
-    beatmap.plays += 1
-    if passcount:
-        beatmap.passes += 1
-
-    await glob.db.execute(
-        "UPDATE beatmaps SET passcount = :pass, playcount = :play WHERE beatmap_md5 = :md5",
-        {"play": beatmap.plays, "pass": beatmap.passes, "md5": beatmap.md5},
-    )
