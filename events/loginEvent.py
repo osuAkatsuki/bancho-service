@@ -224,11 +224,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
-                aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-                assert aika_token is not None
+                chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+                assert chatbot_token is not None
 
                 await chat.send_message(
-                    sender_token_id=aika_token["token_id"],
+                    sender_token_id=chatbot_token["token_id"],
                     recipient_name=username,
                     message="\n".join(
                         [

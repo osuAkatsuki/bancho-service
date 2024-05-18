@@ -306,12 +306,12 @@ async def _handle_private_bot_response(
     if response is None:
         return
 
-    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-    assert aika_token is not None
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    assert chatbot_token is not None
 
     # chatbot's response
     await _unicast_private_message(
-        sender_token=aika_token,
+        sender_token=chatbot_token,
         recipient_token=sender_token,
         message=response["response"],
     )
@@ -329,8 +329,8 @@ async def _handle_public_bot_response(
         channel_name=recipient_name,
     )
 
-    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-    assert aika_token is not None
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    assert chatbot_token is not None
 
     # Response is only visible to user and some staff members
     if chatbot_response is not None and chatbot_response["hidden"]:
@@ -356,7 +356,7 @@ async def _handle_public_bot_response(
         # chatbot's response
         recipient_token_ids.add(sender_token["token_id"])
         await _multicast_public_message(
-            sender_token=aika_token,
+            sender_token=chatbot_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=chatbot_response["response"],
@@ -376,7 +376,7 @@ async def _handle_public_bot_response(
     # Broadcast the chatbot's response, if any
     if chatbot_response is not None:
         await _broadcast_public_message(
-            sender_token=aika_token,
+            sender_token=chatbot_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=chatbot_response["response"],

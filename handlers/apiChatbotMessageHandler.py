@@ -25,11 +25,11 @@ class handler(AsyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
-            aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-            assert aika_token is not None
+            chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+            assert chatbot_token is not None
 
             await chatHelper.send_message(
-                sender_token_id=aika_token["token_id"],
+                sender_token_id=chatbot_token["token_id"],
                 recipient_name=(
                     self.get_argument("to").encode().decode("utf-8", "replace")
                 ),

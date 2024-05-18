@@ -702,10 +702,10 @@ async def allPlayersCompleted(match_id: int) -> None:
         multiplayer_match["is_tourney"]
         and channel_name in await channelList.getChannelNames()
     ):
-        aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-        assert aika_token is not None
+        chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+        assert chatbot_token is not None
         await chat.send_message(
-            sender_token_id=aika_token["token_id"],
+            sender_token_id=chatbot_token["token_id"],
             recipient_name=channel_name,
             message="Match has just finished.",
         )
@@ -1442,10 +1442,10 @@ async def sendReadyStatus(match_id: int) -> None:
 
         message = " ".join(message)
 
-    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-    assert aika_token is not None
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    assert chatbot_token is not None
     await chat.send_message(
-        sender_token_id=aika_token["token_id"],
+        sender_token_id=chatbot_token["token_id"],
         recipient_name=channel_name,
         message=message,
     )
