@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
+MAXIMUM_MESSAGE_LENGTH = 1000
+
+
 class ChatMessageError(str, Enum):
     UNKNOWN_CHANNEL = "UNKNOWN_CHANNEL"
     NO_CHANNEL_MEMBERSHIP = "NO_CHANNEL_MEMBERSHIP"
@@ -331,7 +334,7 @@ async def _handle_public_bot_response(
 
     # Response is only visible to user and some staff members
     if chatbot_response is not None and chatbot_response["hidden"]:
-        enqueue_to = {  # I hate this part so much
+        recipient_token_ids = {
             t["token_id"]
             for t in await osuToken.get_tokens()
             if (
@@ -347,22 +350,21 @@ async def _handle_public_bot_response(
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=message,
-            recipient_token_ids=list(enqueue_to),
+            recipient_token_ids=list(recipient_token_ids),
         )
 
         # chatbot's response
-        enqueue_to.add(sender_token["token_id"])
+        recipient_token_ids.add(sender_token["token_id"])
         await _multicast_public_message(
             sender_token=aika_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=chatbot_response["response"],
-            recipient_token_ids=list(enqueue_to),
+            recipient_token_ids=list(recipient_token_ids),
         )
         return
 
-    # There are 2 cases here: no response from chatbot
-    # or response from chatbot visible to everyone eg. !roll
+    # Broadcast the user's message
     await osuToken.addMessageInBuffer(sender_token["token_id"], channel_name, message)
     await _broadcast_public_message(  # user's message
         sender_token=sender_token,
@@ -371,7 +373,8 @@ async def _handle_public_bot_response(
         message=message,
     )
 
-    if chatbot_response is not None:  # chatbot's response
+    # Broadcast the chatbot's response, if any
+    if chatbot_response is not None:
         await _broadcast_public_message(
             sender_token=aika_token,
             channel_name=channel_name,
@@ -788,12 +791,9 @@ async def send_message(
         )
         return ChatMessageError.INVALID_MESSAGE_CONTENT
 
-    # enforce a maximum message length
-    if len(message) > 1024:
-        message = f"{message[:1024]}... (truncated)"
-
-    # We don't want people to do shit like ()[Aika].
-    message = message.replace("()[", "[")
+    # Enforce a maximum message length
+    if len(message) > MAXIMUM_MESSAGE_LENGTH:
+        message = f"{message[:MAXIMUM_MESSAGE_LENGTH]}... (truncated)"
 
     # There are 3 types: bot interactions, public messages and private messages
     is_channel = recipient_name.startswith("#")
