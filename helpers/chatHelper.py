@@ -316,13 +316,19 @@ async def _multicast_public_message(
     )
 
 
-def _is_command_message(message: str) -> bool:
+def _is_chatbot_interaction_message(message: str) -> bool:
     return message.startswith("!") or message.startswith("\x01")
 
 
-def _bot_can_observe_message(recipient_name: str) -> bool:
+def _chatbot_can_observe_message(recipient_name: str) -> bool:
     is_channel = recipient_name.startswith("#")
     return is_channel or recipient_name == CHATBOT_USER_NAME
+
+
+def _is_chatbot_interaction(message: str, recipient_name: str) -> bool:
+    return _is_chatbot_interaction_message(message) and _chatbot_can_observe_message(
+        recipient_name
+    )
 
 
 async def _handle_public_message(
@@ -438,12 +444,8 @@ async def _handle_public_message(
         )
     ]
 
-    is_chatbot_interaction = _bot_can_observe_message(
-        recipient_name,
-    ) and _is_command_message(message)
-
     chatbot_response: ChatbotResponse | None = None
-    if is_chatbot_interaction:
+    if _is_chatbot_interaction(message, recipient_name):
         if message.startswith("!report"):
             recipient_name = CHATBOT_USER_NAME
 
@@ -586,11 +588,7 @@ async def _handle_private_message(
             message=f"\x01ACTION is away: {recipient_token['away_message']}\x01",
         )
 
-    is_chatbot_interaction = _bot_can_observe_message(
-        recipient_name,
-    ) and _is_command_message(message)
-
-    if is_chatbot_interaction:
+    if _is_chatbot_interaction(message, recipient_name):
         chatbot_response = await chatbot.query(
             sender_token["username"],
             recipient_name,
