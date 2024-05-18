@@ -12,9 +12,10 @@ sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 import lifecycle
 from common import exception_handling
 from common.log import logging_config
-from objects import matchList, slot, match
+from objects import match
+from objects import matchList
+from objects import slot
 from objects.redisLock import redisLock
-
 
 FIVE_MINUTES = 60 * 5
 
