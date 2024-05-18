@@ -286,7 +286,7 @@ async def enqueue_public_limited_message(
         fro_id=user_token["user_id"],
     )
 
-    await streamList.broadcast_limited(
+    await streamList.multicast(
         f"chat/{channel_name}",
         packet,
         send_to,
