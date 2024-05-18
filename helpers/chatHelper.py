@@ -236,14 +236,14 @@ def _get_client_and_server_channel_names(
         client_channel_name = "#spectator"
 
     elif channel_name == "#multiplayer":
-        server_channel_name = f"#multi_{user_token['match_id']}"
+        server_channel_name = f"#mp_{user_token['match_id']}"
         client_channel_name = "#multiplayer"
 
     elif channel_name.startswith("#spect_"):
         server_channel_name = channel_name
         client_channel_name = "#spectator"
 
-    elif channel_name.startswith("#multi_"):
+    elif channel_name.startswith("#mp_"):
         server_channel_name = channel_name
         client_channel_name = "#multiplayer"
     else:
@@ -442,6 +442,7 @@ async def _handle_public_message(
                 "sender_username": sender_token["username"],
                 "sender_user_id": sender_token["user_id"],
                 "recipient_name": recipient_name,
+                "bot_responded": chatbot_response is not None,
             },
         )
 
