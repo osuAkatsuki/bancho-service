@@ -212,16 +212,16 @@ def _should_audit_log_message(message: str) -> bool:
     return message in settings.AUDIT_LOG_MESSAGE_KEYWORDS
 
 
-class ChannelViewpointNames(TypedDict):
+class ContextualChannelNames(TypedDict):
     server_name: str
     client_name: str
 
 
-def _get_client_and_server_channel_names(
+def _get_contextual_channel_names(
     channel_name: str,
     *,
     user_token: osuToken.Token,
-) -> ChannelViewpointNames:
+) -> ContextualChannelNames:
     """\
     Find the channel names from the perspective
     of both the client and the server.
@@ -274,7 +274,7 @@ async def _unicast_private_message(
 async def _broadcast_public_message(
     *,
     sender_token: osuToken.Token,
-    channel_names: ChannelViewpointNames,
+    channel_names: ContextualChannelNames,
     message: str,
 ) -> None:
     packet = serverPackets.sendMessage(
@@ -295,7 +295,7 @@ async def _broadcast_public_message(
 async def _multicast_public_message(
     *,
     sender_token: osuToken.Token,
-    channel_names: ChannelViewpointNames,
+    channel_names: ContextualChannelNames,
     message: str,
     recipient_token_ids: list[str],
 ) -> None:
@@ -328,7 +328,7 @@ async def _handle_public_message(
     recipient_name: str,
     message: str,
 ) -> Optional[ChatMessageError]:
-    channel_names = _get_client_and_server_channel_names(
+    channel_names = _get_contextual_channel_names(
         channel_name=recipient_name,
         user_token=sender_token,
     )
@@ -647,7 +647,7 @@ async def _handle_message_from_chatbot(
     is_channel = recipient_name.startswith("#")
 
     if is_channel:
-        channel_names = _get_client_and_server_channel_names(
+        channel_names = _get_contextual_channel_names(
             channel_name=recipient_name,
             user_token=chatbot_token,
         )
