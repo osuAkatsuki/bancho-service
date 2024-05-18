@@ -619,10 +619,11 @@ async def _handle_private_message(
         recipient_token["token_id"],
         sender_token["user_id"],
     ):
+        assert recipient_token["away_message"] is not None  # checked by awayCheck()
         await _unicast_private_message(
             sender_token=recipient_token,
             recipient_token=sender_token,
-            message=f"\x01ACTION is away: {recipient_token['away_message'] or ''}\x01",
+            message=f"\x01ACTION is away: {recipient_token['away_message']}\x01",
         )
 
     await _unicast_private_message(
