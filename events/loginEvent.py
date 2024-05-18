@@ -228,8 +228,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 assert aika_token is not None
 
                 await chat.send_message(
-                    token_id=aika_token["token_id"],
-                    send_to=username,
+                    sender_token_id=aika_token["token_id"],
+                    recipient_name=username,
                     message="\n".join(
                         [
                             f"Your account has been frozen",  # "Your account has been frozen{freeze_str}"

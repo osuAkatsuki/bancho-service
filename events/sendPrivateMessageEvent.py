@@ -12,8 +12,8 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Send private message packet
     packetData = clientPackets.sendPrivateMessage(rawPacketData)
     await chat.send_message(
-        token_id=userToken["token_id"],
-        send_to=packetData["to"],
+        sender_token_id=userToken["token_id"],
+        recipient_name=packetData["to"],
         message=packetData["message"],
     )
 
