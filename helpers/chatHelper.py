@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
+from typing import TypedDict
 
 import settings
 from common.constants import privileges
@@ -360,7 +361,7 @@ async def _handle_public_message(
         return ChatMessageError.INSUFFICIENT_PRIVILEGES
 
     if channel_names["server_name"] not in await osuToken.get_joined_channels(
-        sender_token["token_id"]
+        sender_token["token_id"],
     ):
         logger.warning(
             "User attempted to send a message to a channel they are not in",
@@ -420,7 +421,7 @@ async def _handle_public_message(
         return ChatMessageError.INSUFFICIENT_PRIVILEGES
 
     is_chatbot_interaction = _bot_can_observe_message(
-        recipient_name
+        recipient_name,
     ) and _is_command_message(message)
 
     chatbot_response: chatbot.CommandResponse | None = None
@@ -599,7 +600,7 @@ async def _handle_private_message(
         )
 
     is_chatbot_interaction = _bot_can_observe_message(
-        recipient_name
+        recipient_name,
     ) and _is_command_message(message)
 
     if is_chatbot_interaction:
