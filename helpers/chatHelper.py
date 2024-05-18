@@ -828,15 +828,15 @@ async def send_message(
             message=audit_log_message,
             discord_channel="ac_confidential",
         )
-    else:
-        logger.info(
-            "User sent a chat message",
-            extra={
-                "sender_token_id": sender_token_id,
-                "sender_username": sender_token["username"],
-                "sender_user_id": sender_token["user_id"],
-                "recipient_name": recipient_name,
-            },
-        )
+
+    logger.info(
+        "User sent a chat message",
+        extra={
+            "sender_token_id": sender_token_id,
+            "sender_username": sender_token["username"],
+            "sender_user_id": sender_token["user_id"],
+            "recipient_name": recipient_name,
+        },
+    )
 
     return response
