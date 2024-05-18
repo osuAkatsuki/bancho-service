@@ -762,7 +762,7 @@ async def sendMessage(
         )
         return ChatMessageError.INVALID_MESSAGE_CONTENT
 
-    # optimise message
+    # enforce a maximum message length
     if len(message) > 1024:
         message = f"{message[:1024]}... (truncated)"
 
