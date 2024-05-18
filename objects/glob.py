@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from objects.dbPool import DBPool
 
 
-BOT_NAME = "Aika"
 http_client = httpx.AsyncClient()
 application = None
 db: DBPool

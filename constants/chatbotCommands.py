@@ -26,6 +26,7 @@ from common.ripple import scoreUtils
 from common.ripple import user_utils
 from common.web import discord
 from constants import CHATBOT_USER_ID
+from constants import CHATBOT_USER_NAME
 from constants import exceptions
 from constants import matchModModes
 from constants import matchScoringTypes
@@ -1057,7 +1058,7 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
         else f'{data["max_combo"]:,}x/{data["fc"]:,}x'
     )
 
-    msg = [f"{fro} |"] if chan == glob.BOT_NAME else []
+    msg = [f"{fro} |"] if chan == CHATBOT_USER_NAME else []
     msg.append("[https://osu.ppy.sh/beatmapsets/{bsid}#{bid} {sn}]".format(**data))
 
     if data["play_mode"] != gameModes.STD:
@@ -1688,7 +1689,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if (
         chan != "#multiplayer"
         and not chan.startswith("#mp_")
-        and chan.lower() != glob.BOT_NAME.lower()
+        and chan.lower() != CHATBOT_USER_NAME.lower()
     ):
         return None  # command used only on #multiplayer channels or bot PMs
 
@@ -2171,7 +2172,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             target_token["token_id"],
             serverPackets.notification(
                 "Please accept the invite you've just received from "
-                f"{glob.BOT_NAME} to enter your tourney match.",
+                f"{CHATBOT_USER_NAME} to enter your tourney match.",
             ),
         )
 

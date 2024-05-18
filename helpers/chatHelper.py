@@ -9,11 +9,11 @@ from common.log import audit_logs
 from common.log import logger
 from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
+from constants import CHATBOT_USER_NAME
 from constants import exceptions
 from constants import serverPackets
 from objects import channelList
 from objects import chatbot
-from objects import glob
 from objects import osuToken
 from objects import stream
 from objects import streamList
@@ -384,7 +384,7 @@ async def handle_interaction_with_bot(
     message: str,
 ) -> Optional[ChatMessageError]:
     if message.startswith("!report"):
-        recipient_name = glob.BOT_NAME
+        recipient_name = CHATBOT_USER_NAME
 
     response = await chatbot.query(
         sender_token["username"],
@@ -706,7 +706,7 @@ def _is_command_message(message: str) -> bool:
 
 def _bot_can_observe_message(recipient_name: str) -> bool:
     is_channel = recipient_name.startswith("#")
-    return is_channel or recipient_name == glob.BOT_NAME
+    return is_channel or recipient_name == CHATBOT_USER_NAME
 
 
 async def send_message(

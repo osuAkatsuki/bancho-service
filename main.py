@@ -21,6 +21,7 @@ import settings
 from common import exception_handling
 from common.log import logger
 from common.log import logging_config
+from constants import CHATBOT_USER_NAME
 from handlers import apiChatbotMessageHandler
 from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
@@ -73,7 +74,7 @@ async def main() -> int:
 
             logger.info(
                 "Connecting the in-game chat bot",
-                extra={"bot_name": glob.BOT_NAME},
+                extra={"bot_name": CHATBOT_USER_NAME},
             )
 
             await chatbot.connect()
