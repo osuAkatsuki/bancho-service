@@ -274,19 +274,18 @@ async def _unicast_private_message(
 async def _broadcast_public_message(
     *,
     sender_token: osuToken.Token,
-    server_channel_name: str,
-    client_channel_name: str,
+    channel_names: ChannelViewpointNames,
     message: str,
 ) -> None:
     packet = serverPackets.sendMessage(
         fro=sender_token["username"],
-        to=client_channel_name,
+        to=channel_names["client_name"],
         message=message,
         fro_id=sender_token["user_id"],
     )
 
     await streamList.broadcast(
-        f"chat/{server_channel_name}",
+        f"chat/{channel_names['server_name']}",
         packet,
         # We do not wish to send the packet to ourselves
         excluded_token_ids=[sender_token["token_id"]],
@@ -296,20 +295,19 @@ async def _broadcast_public_message(
 async def _multicast_public_message(
     *,
     sender_token: osuToken.Token,
-    server_channel_name: str,
-    client_channel_name: str,
+    channel_names: ChannelViewpointNames,
     message: str,
     recipient_token_ids: list[str],
 ) -> None:
     packet = serverPackets.sendMessage(
         fro=sender_token["username"],
-        to=client_channel_name,
+        to=channel_names["client_name"],
         message=message,
         fro_id=sender_token["user_id"],
     )
 
     await streamList.multicast(
-        stream_name=f"chat/{server_channel_name}",
+        stream_name=f"chat/{channel_names['server_name']}",
         data=packet,
         recipient_token_ids=recipient_token_ids,
     )
@@ -480,8 +478,7 @@ async def _handle_public_message(
     # Send the user's message
     await _multicast_public_message(
         sender_token=sender_token,
-        server_channel_name=channel_names["server_name"],
-        client_channel_name=channel_names["client_name"],
+        channel_names=channel_names,
         message=message,
         recipient_token_ids=recipient_token_ids,
     )
@@ -496,8 +493,7 @@ async def _handle_public_message(
         # Send the chatbot's response
         await _multicast_public_message(
             sender_token=chatbot_token,
-            server_channel_name=channel_names["server_name"],
-            client_channel_name=channel_names["client_name"],
+            channel_names=channel_names,
             message=chatbot_response["response"],
             recipient_token_ids=recipient_token_ids,
         )
@@ -671,8 +667,7 @@ async def _handle_message_from_chatbot(
 
         await _broadcast_public_message(
             sender_token=chatbot_token,
-            server_channel_name=channel_names["server_name"],
-            client_channel_name=channel_names["client_name"],
+            channel_names=channel_names,
             message=message,
         )
 
