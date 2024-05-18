@@ -431,7 +431,7 @@ async def _handle_public_message(
 
         chatbot_response = await chatbot.query(
             sender_token["username"],
-            recipient_name,
+            channel_names["server_name"],
             message,
         )
 
