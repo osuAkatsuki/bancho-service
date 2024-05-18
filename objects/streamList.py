@@ -11,140 +11,106 @@ def make_key() -> str:
 
 
 async def getStreams() -> set[str]:
-    """
-    Returns a list of all streams
-
-    :return:
-    """
+    """Returns a list of all streams."""
     raw_streams: set[bytes] = await glob.redis.smembers(make_key())
     return {stream.decode() for stream in raw_streams}
 
 
 async def stream_exists(name: str) -> bool:
-    """
-    Check if a stream exists
-
-    :param name: stream name
-    :return:
-    """
+    """Check if a stream exists."""
     return await glob.redis.sismember(make_key(), name) == 1
 
 
-async def add(name: str) -> None:
-    """
-    Create a new stream list if it doesn't already exist
-
-    :param name: stream name
-    :return:
-    """
-    if await stream_exists(name):
+async def add(stream_name: str) -> None:
+    """Create a new stream if it doesn't already exist."""
+    if await stream_exists(stream_name):
         logging.warning(
             "Could not add stream which already exists",
-            extra={"stream": name},
+            extra={"stream_name": stream_name},
         )
         return
 
-    await glob.redis.sadd(make_key(), name)
+    await glob.redis.sadd(make_key(), stream_name)
 
 
-async def join(name: str, token_id: str) -> None:
-    """
-    Add a client to a stream
-
-    :param name: stream name
-    :param client: client (osuToken) object
-    :param token: client uuid string
-    :return:
-    """
-
-    if not await stream_exists(name):
+async def join(stream_name: str, token_id: str) -> None:
+    """Add a client to a stream."""
+    if not await stream_exists(stream_name):
         logging.warning(
             "Could not join stream which does not exist",
-            extra={"stream": name, "token": token_id},
+            extra={"stream_name": stream_name, "token_id": token_id},
         )
         return
 
-    await stream.add_client(name, token_id)
+    await stream.add_client(stream_name, token_id)
 
 
-async def leave(
-    name: str,
-    token_id: str,
-) -> None:
-    """
-    Remove a client from a stream
-
-    :param name: stream name
-    :param client: client (osuToken) object
-    :param token: client uuid string
-    :return:
-    """
-
-    if not await stream_exists(name):
+async def leave(stream_name: str, token_id: str) -> None:
+    """Remove a client from a stream."""
+    if not await stream_exists(stream_name):
         logging.warning(
             "Could not leave stream which does not exist",
-            extra={"stream": name, "token": token_id},
+            extra={"stream_name": stream_name, "token_id": token_id},
         )
         return
 
-    await stream.remove_client(name, token_id)
+    await stream.remove_client(stream_name, token_id)
 
 
-async def broadcast(name: str, data: bytes, but: list[str] = []) -> None:
-    """
-    Send some data to all clients in a stream
+async def broadcast(
+    stream_name: str,
+    data: bytes,
+    *,
+    excluded_token_ids: list[str] | None = None,
+) -> None:
+    """Send some data to all clients in a stream."""
+    if excluded_token_ids is None:
+        excluded_token_ids = []
 
-    :param name: stream name
-    :param data: data to send
-    :param but: array of tokens to ignore. Default: None (send to everyone)
-    :return:
-    """
-
-    if not await stream_exists(name):
+    if not await stream_exists(stream_name):
         logging.warning(
             "Could not broadcast to stream which does not exist",
-            extra={"stream": name},
+            extra={"stream_name": stream_name},
         )
         return
 
-    await stream.broadcast_data(name, data, but)
+    await stream.broadcast_data(
+        stream_name=stream_name,
+        data=data,
+        excluded_token_ids=excluded_token_ids,
+    )
 
 
-async def multicast(name: str, data: bytes, users: list[str]) -> None:
-    """
-    Send some data to specific clients in a stream
-
-    :param name: stream name
-    :param data: data to send
-    :param users: array of tokens to broadcast to
-    :return:
-    """
-
-    if not await stream_exists(name):
+async def multicast(
+    stream_name: str,
+    data: bytes,
+    *,
+    recipient_token_ids: list[str],
+) -> None:
+    """Send some data to a set of specific clients in a stream."""
+    if not await stream_exists(stream_name):
         logging.warning(
             "Could not multicast to stream which does not exist",
-            extra={"stream": name},
+            extra={"stream_name": stream_name},
         )
         return
 
-    await stream.multicast_data(name, data, users)
+    await stream.multicast_data(
+        stream_name,
+        data,
+        recipient_token_ids=recipient_token_ids,
+    )
 
 
-async def dispose(name: str) -> None:
-    """
-    Removes an existing stream and kicks every user in it.
-
-    :param name: name of the stream
-    :return:
-    """
-
-    if not await stream_exists(name):
+async def dispose(stream_name: str) -> None:
+    """Removes an existing stream and kicks every user in it."""
+    if not await stream_exists(stream_name):
         logging.warning(
             "Could not dispose stream which does not exist",
-            extra={"stream": name},
+            extra={"stream_name": stream_name},
         )
         return
 
-    await stream.dispose(name)
+    await stream.dispose(stream_name)
 
-    await glob.redis.srem(make_key(), name)
+    await glob.redis.srem(make_key(), stream_name)

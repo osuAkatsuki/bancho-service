@@ -12,7 +12,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     await streamList.broadcast(
         streamName,
         serverPackets.spectatorFrames(rawPacketData[7:]),
-        but=[userToken["token_id"]],
+        excluded_token_ids=[userToken["token_id"]],
     )
 
     logger.debug(

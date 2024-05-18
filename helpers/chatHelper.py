@@ -254,7 +254,6 @@ async def _broadcast_public_message(
     channel_name: str,
     client_channel_name: str,
     message: str,
-    but: list[str] = [],
 ) -> None:
     packet = serverPackets.sendMessage(
         fro=sender_token["username"],
@@ -266,7 +265,8 @@ async def _broadcast_public_message(
     await streamList.broadcast(
         f"chat/{channel_name}",
         packet,
-        but=but,
+        # We do not wish to send the packet to ourselves
+        excluded_token_ids=[sender_token["token_id"]],
     )
 
 
@@ -275,8 +275,12 @@ async def _multicast_public_message(
     channel_name: str,
     client_channel_name: str,
     message: str,
-    send_to: list[str] = [],
+    *,
+    recipient_token_ids: list[str] | None = None,
 ) -> None:
+    if recipient_token_ids is None:
+        recipient_token_ids = []
+
     packet = serverPackets.sendMessage(
         fro=sender_token["username"],
         to=client_channel_name,
@@ -285,9 +289,9 @@ async def _multicast_public_message(
     )
 
     await streamList.multicast(
-        f"chat/{channel_name}",
-        packet,
-        send_to,
+        stream_name=f"chat/{channel_name}",
+        data=packet,
+        recipient_token_ids=recipient_token_ids,
     )
 
 
@@ -343,7 +347,7 @@ async def _handle_public_bot_response(
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=message,
-            send_to=list(enqueue_to),
+            recipient_token_ids=list(enqueue_to),
         )
 
         # chatbot's response
@@ -353,7 +357,7 @@ async def _handle_public_bot_response(
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=chatbot_response["response"],
-            send_to=list(enqueue_to),
+            recipient_token_ids=list(enqueue_to),
         )
         return
 
@@ -365,7 +369,6 @@ async def _handle_public_bot_response(
         channel_name=channel_name,
         client_channel_name=client_channel_name,
         message=message,
-        but=[sender_token["token_id"]],
     )
 
     if chatbot_response is not None:  # chatbot's response
@@ -395,9 +398,9 @@ async def _handle_interaction_with_bot(
     logger.info(
         "User triggered chatbot interaction",
         extra={
-            "token_id": sender_token["token_id"],
-            "username": sender_token["username"],
-            "user_id": sender_token["user_id"],
+            "sender_token_id": sender_token["token_id"],
+            "sender_username": sender_token["username"],
+            "sender_user_id": sender_token["user_id"],
             "recipient_name": recipient_name,
         },
     )
@@ -435,9 +438,9 @@ async def _handle_public_message(
         logger.warning(
             "User attempted to send a message to an unknown channel",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "channel_name": channel_name,
             },
         )
@@ -447,9 +450,9 @@ async def _handle_public_message(
         logger.warning(
             "User attempted to send a message to a moderated channel",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "channel_name": channel_name,
             },
         )
@@ -459,9 +462,9 @@ async def _handle_public_message(
         logger.warning(
             "User attempted to send a message to a channel they are not in",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "channel_name": channel_name,
             },
         )
@@ -474,9 +477,9 @@ async def _handle_public_message(
         logger.warning(
             "User attempted to send a message to a premium channel without premium permissions",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "channel_name": channel_name,
             },
         )
@@ -489,9 +492,9 @@ async def _handle_public_message(
         logger.warning(
             "User attempted to send a message to a supporter channel without supporter permissions",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "channel_name": channel_name,
             },
         )
@@ -507,9 +510,9 @@ async def _handle_public_message(
         logger.warning(
             "User attempted to send a message to a non-public channel without permissions",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "channel_name": channel_name,
             },
         )
@@ -521,7 +524,6 @@ async def _handle_public_message(
         channel_name=channel_name,
         client_channel_name=client_channel_name,
         message=message,
-        but=[sender_token["token_id"]],
     )
     return None
 
@@ -535,12 +537,12 @@ async def _handle_private_message(
     recipient_token = await tokenList.getTokenFromUsername(recipient_name)
     if recipient_token is None:
         logger.warning(
-            "User attempted to send a message to an unknown user",
+            "User attempted to send a message to an unknown recipient",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
-                "recipient_name": recipient_name,
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_username": recipient_name,
             },
         )
         return ChatMessageError.USER_NOT_FOUND
@@ -549,10 +551,11 @@ async def _handle_private_message(
         logger.warning(
             "User attempted to send a message to a tournament client",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
-                "recipient_name": recipient_name,
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_username": recipient_token["username"],
+                "recipient_user_id": recipient_token["user_id"],
             },
         )
         return ChatMessageError.USER_NOT_FOUND
@@ -566,10 +569,10 @@ async def _handle_private_message(
         logger.warning(
             "User tried to send a message to a silenced user",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
-                "recipient_username": recipient_token["username"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_token["username"],
                 "recipient_user_id": recipient_token["user_id"],
             },
         )
@@ -579,10 +582,10 @@ async def _handle_private_message(
         logger.warning(
             "User attempted to send a message to a restricted user",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
-                "recipient_username": recipient_token["username"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_token["username"],
                 "recipient_user_id": recipient_token["user_id"],
             },
         )
@@ -600,9 +603,9 @@ async def _handle_private_message(
         logger.warning(
             "User tried to send a message to a user that is blocking non-friends dms",
             extra={
-                "token_id": sender_token["token_id"],
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "recipient_username": recipient_token["username"],
                 "recipient_user_id": recipient_token["user_id"],
             },
@@ -628,9 +631,9 @@ async def _handle_private_message(
     return None
 
 
-async def _handle_bot_message(
+async def _handle_message_from_chatbot(
     *,
-    sender_token: osuToken.Token,
+    chatbot_token: osuToken.Token,
     recipient_name: str,
     message: str,
 ) -> Optional[ChatMessageError]:
@@ -638,52 +641,51 @@ async def _handle_bot_message(
 
     if is_channel:
         channel_name, client_channel_name = _get_client_channel_and_channel(
-            user_token=sender_token,
+            user_token=chatbot_token,
             channel_name=recipient_name,
         )
 
         channel = await channelList.getChannel(channel_name)
         if channel is None:
             logger.warning(
-                "User attempted to send a message to an unknown channel",
+                "Chatbot attempted to send a message to an unknown channel",
                 extra={
-                    "token_id": sender_token["token_id"],
-                    "username": sender_token["username"],
-                    "user_id": sender_token["user_id"],
+                    "chatbot_token_id": chatbot_token["token_id"],
+                    "chatbot_username": chatbot_token["username"],
+                    "chatbot_user_id": chatbot_token["user_id"],
                     "channel_name": channel_name,
                 },
             )
             return ChatMessageError.UNKNOWN_CHANNEL
 
         await osuToken.addMessageInBuffer(
-            sender_token["token_id"],
+            chatbot_token["token_id"],
             channel_name,
             message,
         )
         await _broadcast_public_message(
-            sender_token=sender_token,
+            sender_token=chatbot_token,
             channel_name=channel_name,
             client_channel_name=client_channel_name,
             message=message,
-            but=[sender_token["token_id"]],
         )
 
     else:
         recipient_token = await tokenList.getTokenFromUsername(recipient_name)
         if recipient_token is None:
             logger.warning(
-                "User attempted to send a message to an unknown user",
+                "Chatbot attempted to send a message to an unknown recipient",
                 extra={
-                    "token_id": sender_token["token_id"],
-                    "username": sender_token["username"],
-                    "user_id": sender_token["user_id"],
-                    "recipient": recipient_name,
+                    "chatbot_token_id": chatbot_token["token_id"],
+                    "chatbot_username": chatbot_token["username"],
+                    "chatbot_user_id": chatbot_token["user_id"],
+                    "recipient_username": recipient_name,
                 },
             )
             return ChatMessageError.USER_NOT_FOUND
 
         await _unicast_private_message(
-            sender_token=sender_token,
+            sender_token=chatbot_token,
             recipient_token=recipient_token,
             message=message,
         )
@@ -691,9 +693,9 @@ async def _handle_bot_message(
     logger.info(
         "Chatbot sent a message",
         extra={
-            "token_id": sender_token["token_id"],
-            "username": sender_token["username"],
-            "user_id": sender_token["user_id"],
+            "chatbot_token_id": chatbot_token["token_id"],
+            "chatbot_username": chatbot_token["username"],
+            "chatbot_user_id": chatbot_token["user_id"],
             "recipient_name": recipient_name,
         },
     )
@@ -719,13 +721,13 @@ async def send_message(
     if sender_token is None:
         logger.warning(
             "User tried to send message but they are not connected to server",
-            extra={"token_id": sender_token_id},
+            extra={"sender_token_id": sender_token_id},
         )
         return ChatMessageError.USER_NOT_FOUND
 
     if sender_token["user_id"] == CHATBOT_USER_ID:
-        return await _handle_bot_message(
-            sender_token=sender_token,
+        return await _handle_message_from_chatbot(
+            chatbot_token=sender_token,
             recipient_name=recipient_name,
             message=message,
         )
@@ -734,9 +736,9 @@ async def send_message(
         logger.warning(
             "User tried to send message but they are connected from tournament client",
             extra={
-                "token_id": sender_token_id,
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "recipient_name": recipient_name,
             },
         )
@@ -746,9 +748,9 @@ async def send_message(
         logger.warning(
             "User tried to send message but they are in restricted mode",
             extra={
-                "token_id": sender_token_id,
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "recipient_name": recipient_name,
             },
         )
@@ -766,9 +768,9 @@ async def send_message(
         logger.warning(
             "User tried to send message during silence",
             extra={
-                "token_id": sender_token_id,
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "recipient_name": recipient_name,
             },
         )
@@ -778,9 +780,9 @@ async def send_message(
         logger.warning(
             "User tried to send an empty message",
             extra={
-                "token_id": sender_token_id,
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "recipient_name": recipient_name,
             },
         )
@@ -830,9 +832,9 @@ async def send_message(
         logger.info(
             "User sent a chat message",
             extra={
-                "token_id": sender_token_id,
-                "username": sender_token["username"],
-                "user_id": sender_token["user_id"],
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
                 "recipient_name": recipient_name,
             },
         )
