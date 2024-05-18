@@ -1082,7 +1082,7 @@ async def setRestricted(token_id: str) -> None:
 
     aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
+    await chat.send_message(
         token_id=aika_token["token_id"],
         send_to=token["username"],
         message="Your account is currently in restricted mode. Please visit Akatsuki's website for more information.",
@@ -1102,7 +1102,7 @@ async def resetRestricted(token_id: str) -> None:
 
     aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
+    await chat.send_message(
         token_id=aika_token["token_id"],
         send_to=token["username"],
         message="Your account has been unrestricted! Please log in again.",

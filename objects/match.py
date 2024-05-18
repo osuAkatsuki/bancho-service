@@ -704,7 +704,7 @@ async def allPlayersCompleted(match_id: int) -> None:
     ):
         aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
         assert aika_token is not None
-        await chat.sendMessage(
+        await chat.send_message(
             token_id=aika_token["token_id"],
             send_to=channel_name,
             message="Match has just finished.",
@@ -1119,7 +1119,7 @@ async def invite(match_id: int, fro: int, to: int) -> None:
 
     # Aika is too busy
     if to == CHATBOT_USER_ID:
-        await chat.sendMessage(
+        await chat.send_message(
             token_id=toToken["token_id"],
             send_to=froToken["username"],
             message="I'd love to join your match, but I've got a job to do!.",
@@ -1135,7 +1135,7 @@ async def invite(match_id: int, fro: int, to: int) -> None:
         "Come join my multiplayer match: "
         f'"[osump://{multiplayer_match["match_id"]}/{pw_safe} {multiplayer_match["match_name"]}]"'
     )
-    await chat.sendMessage(
+    await chat.send_message(
         token_id=froToken["token_id"],
         send_to=toToken["username"],
         message=message,
@@ -1444,7 +1444,7 @@ async def sendReadyStatus(match_id: int) -> None:
 
     aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
     assert aika_token is not None
-    await chat.sendMessage(
+    await chat.send_message(
         token_id=aika_token["token_id"],
         send_to=channel_name,
         message=message,

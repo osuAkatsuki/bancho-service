@@ -688,7 +688,7 @@ async def handle_bot_message(
     return None
 
 
-async def sendMessage(
+async def send_message(
     token_id: str,
     send_to: str,
     message: str,

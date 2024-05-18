@@ -227,7 +227,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
                 assert aika_token is not None
 
-                await chat.sendMessage(
+                await chat.send_message(
                     token_id=aika_token["token_id"],
                     send_to=username,
                     message="\n".join(
