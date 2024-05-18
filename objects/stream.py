@@ -75,7 +75,7 @@ async def multicast_data(
     *,
     recipient_token_ids: list[str],
 ) -> None:
-    """Send some data to specific clients connected to this stream."""
+    """Send some data to specific clients who are also connected to this stream."""
     client_token_ids = await get_client_token_ids(stream_name)
 
     for token_id in client_token_ids:
