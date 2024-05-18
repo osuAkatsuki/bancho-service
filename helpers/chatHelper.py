@@ -327,7 +327,7 @@ def _chatbot_can_observe_message(recipient_name: str) -> bool:
 
 def _is_chatbot_interaction(message: str, recipient_name: str) -> bool:
     return _is_chatbot_interaction_message(message) and _chatbot_can_observe_message(
-        recipient_name
+        recipient_name,
     )
 
 
