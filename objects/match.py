@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from typing import Optional
 from typing import TypedDict
 
@@ -99,7 +99,7 @@ async def create_match(
     match_id = await insert_match(match_name, match_history_private)
     await insert_match_event(match_id, MatchEvents.MATCH_CREATION, user_id=host_user_id)
 
-    await glob.redis.sadd("bancho:matches", match_id)  # type: ignore
+    await glob.redis.sadd("bancho:matches", match_id)
     for slot_id in range(16):
         await slot.create_slot(match_id, slot_id)
     match: Match = {
@@ -129,7 +129,7 @@ async def create_match(
 
 
 async def get_match_ids() -> set[int]:
-    raw_match_ids = await glob.redis.smembers("bancho:matches")  # type: ignore
+    raw_match_ids = await glob.redis.smembers("bancho:matches")
     return {int(match_id) for match_id in raw_match_ids}
 
 
@@ -138,7 +138,7 @@ async def get_match(match_id: int) -> Optional[Match]:
     if raw_match is None:
         return None
 
-    return orjson.loads(raw_match)
+    return cast(Match, orjson.loads(raw_match))
 
 
 async def update_match(
@@ -164,7 +164,7 @@ async def update_match(
 ) -> Optional[Match]:
     match = await get_match(match_id)
     if match is None:
-        return
+        return None
 
     if match_name is not None and match["match_name"] != match_name:
         await update_match_name(match_id, match_name)
@@ -212,7 +212,7 @@ async def update_match(
 
 async def delete_match(match_id: int) -> None:
     # TODO: should we throw error when no match exists?
-    await glob.redis.srem("bancho:matches", match_id)  # type: ignore
+    await glob.redis.srem("bancho:matches", match_id)
     await glob.redis.delete(make_key(match_id))
 
     # TODO: should devs have to do this separately?
@@ -315,7 +315,9 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     assert multiplayer_match is not None
 
     if multiplayer_match["host_user_id"] != -1:
-        old_host = await tokenList.getTokenFromUserID(multiplayer_match["host_user_id"])
+        old_host = await osuToken.get_token_by_user_id(
+            multiplayer_match["host_user_id"]
+        )
         assert old_host is not None
 
         if not osuToken.is_staff(old_host["privileges"]):
@@ -587,7 +589,7 @@ async def playerSkip(match_id: int, user_id: int) -> None:
         await allPlayersSkipped(match_id)
 
 
-async def allPlayersSkipped(match_id):
+async def allPlayersSkipped(match_id: int) -> None:
     """
     Send allPlayersSkipped packet to every playing usr in match
 
@@ -702,7 +704,7 @@ async def allPlayersCompleted(match_id: int) -> None:
         multiplayer_match["is_tourney"]
         and channel_name in await channelList.getChannelNames()
     ):
-        chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+        chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
         assert chatbot_token is not None
         await chat.send_message(
             sender_token_id=chatbot_token["token_id"],
@@ -745,6 +747,8 @@ async def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
     for slot_id, _slot in enumerate(slots):
         if _slot["user_id"] == user_id:
             return slot_id
+
+    return None
 
 
 async def userJoin(match_id: int, token_id: str) -> bool:
@@ -1103,22 +1107,16 @@ async def playerFailed(match_id: int, user_id: int) -> None:
     )
 
 
-async def invite(match_id: int, fro: int, to: int) -> None:
-    """
-    Fro invites to in this match.
-
-    :param fro: sender userID
-    :param to: receiver userID
-    :return:
-    """
+async def invite(match_id: int, sender_user_id: int, recipient_user_id: int) -> None:
+    """One user currently in a match, invites another user to the match."""
     # Get tokens
-    froToken = await tokenList.getTokenFromUserID(fro, _all=False)
-    toToken = await tokenList.getTokenFromUserID(to, _all=False)
+    froToken = await osuToken.get_token_by_user_id(sender_user_id)
+    toToken = await osuToken.get_token_by_user_id(recipient_user_id)
     if not froToken or not toToken:
         return
 
     # Aika is too busy
-    if to == CHATBOT_USER_ID:
+    if recipient_user_id == CHATBOT_USER_ID:
         await chat.send_message(
             sender_token_id=toToken["token_id"],
             recipient_name=froToken["username"],
@@ -1436,13 +1434,11 @@ async def sendReadyStatus(match_id: int) -> None:
     if totalUsers == 0:
         message = "The match is now empty."
     else:
-        message = [f"{readyUsers} users ready out of {totalUsers}."]
+        message = f"{readyUsers} users ready out of {totalUsers}."
         if totalUsers == readyUsers:
-            message.append("All users ready!")
+            message += " All users ready!"
 
-        message = " ".join(message)
-
-    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     assert chatbot_token is not None
     await chat.send_message(
         sender_token_id=chatbot_token["token_id"],
@@ -1458,14 +1454,14 @@ async def add_referee(match_id: int, user_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    await glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)  # type: ignore
+    await glob.redis.sadd(f"bancho:matches:{match_id}:referees", user_id)
 
 
 async def get_referees(match_id: int) -> set[int]:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    raw_referees: set[bytes] = await glob.redis.smembers(  # type: ignore
+    raw_referees: set[bytes] = await glob.redis.smembers(
         f"bancho:matches:{match_id}:referees",
     )
     referees = {int(referee) for referee in raw_referees}
@@ -1477,7 +1473,7 @@ async def remove_referee(match_id: int, user_id: int) -> None:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
-    await glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)  # type: ignore
+    await glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)
 
 
 async def set_match_frame(

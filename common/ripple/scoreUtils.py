@@ -10,9 +10,7 @@ from objects import glob
 from objects import osuToken
 
 
-async def overwritePreviousScore(
-    userID: int,
-) -> Optional[str]:  # written pretty horribly, redo one day
+async def overwritePreviousScore(userID: int) -> Optional[str]:
     """
     Update a users previous score to overwrite all of their other scores, no matter what.
     The ratelimit has already been checked in the case of the !overwrite command.
@@ -41,15 +39,18 @@ async def overwritePreviousScore(
     )
 
     if not (relax or vanilla):
-        return  # No scores?
-    elif not relax:
-        table = "scores"
-    elif not vanilla:
-        table = "scores_relax"
-    else:
-        table = "scores_relax" if relax["time"] > vanilla["time"] else "scores"
+        return None  # No scores?
 
-    mode = relax["play_mode"] if table == "scores_relax" else vanilla["play_mode"]
+    if relax and not vanilla:
+        table = "scores_relax"
+        mode = relax["play_mode"]
+    elif vanilla and not relax:
+        table = "scores"
+        mode = vanilla["play_mode"]
+    else:
+        assert vanilla and relax
+        table = "scores_relax" if relax["time"] > vanilla["time"] else "scores"
+        mode = relax["play_mode"] if table == "scores_relax" else vanilla["play_mode"]
 
     # Select the users newest completed=2 score
     new_best_score = await glob.db.fetch(
@@ -59,6 +60,7 @@ async def overwritePreviousScore(
         "ORDER BY {0}.time DESC LIMIT 1".format(table),
         [userID, mode],
     )
+    assert new_best_score is not None
 
     # Set their previous completed scores on the map to completed = 2.
     old_best_score = await glob.db.fetch(
@@ -67,6 +69,7 @@ async def overwritePreviousScore(
         "AND userid = %s AND play_mode = %s",
         [new_best_score["beatmap_md5"], userID, mode],
     )
+    assert old_best_score is not None
 
     await glob.db.execute(
         f"UPDATE {table} SET completed = 2 "
@@ -104,7 +107,7 @@ async def overwritePreviousScore(
         )
 
     # Return song_name for the command to send back to the user
-    return new_best_score["song_name"]
+    return str(new_best_score["song_name"])
 
 
 def readableMods(m: int) -> str:

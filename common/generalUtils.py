@@ -1,6 +1,7 @@
 from __future__ import annotations
+from typing import Optional
 
-from common.constants import mods
+from common.constants import mods as Mods
 
 
 def secondsToReadable(seconds: int) -> str:
@@ -27,43 +28,30 @@ def stringToBool(s: str) -> bool:
 
 
 def getRank(
+    *,
     gameMode: int,
-    __mods: int,
+    mods: int,
     acc: float,
     c300: int,
     c100: int,
     c50: int,
     cmiss: int,
-    *,
-    score_=None,
 ) -> str:
     """
     Return a string with rank/grade for a given score.
     Used mainly for tillerino
 
     :param gameMode: game mode number
-    :param __mods: mods value
+    :param mods: mods value
     :param acc: accuracy
     :param c300: 300 hit count
     :param c100: 100 hit count
     :param c50: 50 hit count
     :param cmiss: misses count
-    :param score_: score object. Optional.
     :return: rank/grade string
     """
-    if score_:
-        return getRank(
-            score_.gameMode,
-            score_.mods,
-            score_.accuracy,
-            score_.c300,
-            score_.c100,
-            score_.c50,
-            score_.cMiss,
-        )
-
     total = c300 + c100 + c50 + cmiss
-    hdfl = (__mods & (mods.HIDDEN | mods.FLASHLIGHT)) > 0
+    hdfl = (mods & (Mods.HIDDEN | Mods.FLASHLIGHT)) > 0
 
     if gameMode == 0:
         # osu!

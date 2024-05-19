@@ -1,20 +1,14 @@
 from __future__ import annotations
 
 from common.log import logger
-from common.redis import generalPubSubHandler
+from common.redis.pubsubs import AbstractPubSubHandler
 from common.ripple import user_utils
 from objects import osuToken
-from objects import tokenList
 
 
-class handler(generalPubSubHandler.generalPubSubHandler):
-    def __init__(self) -> None:
-        super().__init__()
-        self.type = "int"
-
+class UnbanPubSubHandler(AbstractPubSubHandler):
     async def handle(self, raw_data: bytes) -> None:
-        if (userID := super().parseData(raw_data)) is None:
-            return
+        userID = int(raw_data.decode("utf-8"))
 
         logger.info(
             "Handling unban event for user",
@@ -23,7 +17,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
 
         await user_utils.recalculate_and_update_first_place_scores(userID)
 
-        if not (targetToken := await tokenList.getTokenFromUserID(userID)):
+        if not (targetToken := await osuToken.get_token_by_user_id(userID)):
             logger.error(
                 "Failed to find user by id in update stats pubsub handler",
                 extra={"user_id": userID},

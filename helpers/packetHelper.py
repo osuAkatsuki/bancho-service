@@ -108,7 +108,10 @@ PKT_HDR_START = struct.Struct("<Hx")
 PKT_HDR_END = struct.Struct("<I")
 
 
-def buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
+def buildPacket(
+    packet_id: int,
+    packet_data: tuple[tuple[Any, int], ...] = (),
+) -> bytes:
     """
     Builds a packet
 
@@ -116,9 +119,9 @@ def buildPacket(__packet: int, __packetData: tuple = ()) -> bytes:
     :param __packetData: packet structure [[data, dataType], [data, dataType], ...]
     :return: packet bytes
     """
-    packetData = bytearray(PKT_HDR_START.pack(__packet))
+    packetData = bytearray(PKT_HDR_START.pack(packet_id))
 
-    for i in __packetData:
+    for i in packet_data:
         packetData += packData(i[0], i[1])
 
     packetData[3:3] = PKT_HDR_END.pack(len(packetData) - 3)

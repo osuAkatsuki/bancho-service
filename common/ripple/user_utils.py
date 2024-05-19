@@ -28,7 +28,7 @@ async def get_playtime_total(user_id: int) -> int:
         """,
         [user_id],
     )
-    return res["total_playtime"] if res else 0
+    return res["total_playtime"] if res else 0  # type: ignore[no-any-return]
 
 
 async def update_whitelist_status(user_id: int, new_value: int) -> None:
@@ -85,7 +85,14 @@ async def get_user_stats(
         return None
 
     stats["global_rank"] = await get_global_rank(user_id, game_mode, relax_ap)
-    return stats
+    return {
+        "ranked_score": stats["ranked_score"],
+        "avg_accuracy": stats["avg_accuracy"],
+        "playcount": stats["playcount"],
+        "total_score": stats["total_score"],
+        "pp": stats["pp"],
+        "global_rank": stats["global_rank"],
+    }
 
 
 async def get_id_from_safe_username(safe_username: str) -> Optional[int]:
@@ -193,7 +200,7 @@ async def get_user_pp_for_mode(
         """,
         [user_id, game_mode + mode_offset],
     )
-    return result[f"pp"] if result else 0
+    return result["pp"] if result else 0  # type: ignore[no-any-return]
 
 
 async def is_not_banned_or_restricted(user_id: int) -> bool:
@@ -253,7 +260,7 @@ async def ban(user_id: int) -> None:
     )
 
     # Notify bancho about the ban
-    await glob.redis.publish("peppy:ban", user_id)
+    await glob.redis.publish("peppy:ban", str(user_id))
 
 
 async def unban(user_id: int) -> None:
@@ -266,7 +273,7 @@ async def unban(user_id: int) -> None:
         [privileges.USER_NORMAL | privileges.USER_PUBLIC, user_id],
     )
 
-    await glob.redis.publish("peppy:unban", user_id)
+    await glob.redis.publish("peppy:unban", str(user_id))
 
 
 async def restrict(user_id: int) -> None:
@@ -282,7 +289,7 @@ async def restrict(user_id: int) -> None:
     )
 
     # Notify bancho about this ban
-    await glob.redis.publish("peppy:ban", user_id)
+    await glob.redis.publish("peppy:ban", str(user_id))
 
 
 async def unrestrict(user_id: int) -> None:
@@ -325,7 +332,7 @@ async def get_privileges(user_id: int) -> int:
         [user_id],
     )
 
-    return result["privileges"] if result else 0
+    return result["privileges"] if result else 0  # type: ignore[no-any-return]
 
 
 async def get_freeze_restriction_date(user_id: int) -> int:
@@ -334,7 +341,7 @@ async def get_freeze_restriction_date(user_id: int) -> int:
         "SELECT frozen FROM users WHERE id = %s",
         [user_id],
     )
-    return result["frozen"] if result else 0
+    return result["frozen"] if result else 0  # type: ignore[no-any-return]
 
 
 async def freeze(user_id: int, *, author_user_id: int = CHATBOT_USER_ID) -> None:
@@ -405,7 +412,7 @@ async def get_absolute_silence_end(user_id: int) -> int:
         "SELECT silence_end FROM users WHERE id = %s",
         [user_id],
     )
-    return rec["silence_end"]
+    return rec["silence_end"] if rec else 0  # type: ignore[no-any-return]
 
 
 async def get_remaining_silence_time(user_id: int) -> int:
@@ -503,7 +510,7 @@ async def getCountry(user_id: int) -> str:
         "SELECT country FROM users WHERE id = %s",
         [user_id],
     )
-    return rec["country"]
+    return rec["country"] if rec else "XX"  # type: ignore[no-any-return]
 
 
 async def set_country(user_id: int, country: str) -> None:
@@ -772,12 +779,14 @@ async def authorize_login_and_activate_new_account(
         return True
 
 
-async def has_verified_with_any_hardware(user_id: int):
+async def has_verified_with_any_hardware(user_id: int) -> bool:
     """Checks if a user has verified their account with any hardware."""
-    return await glob.db.fetch(
-        "SELECT id FROM hw_user WHERE userid = %s AND activated = 1",
-        [user_id],
-    )
+    return (
+        await glob.db.fetch(
+            "SELECT 1 FROM hw_user WHERE userid = %s AND activated = 1",
+            [user_id],
+        )
+    ) is not None
 
 
 async def get_absolute_donor_expiry_time(user_id: int) -> int:
@@ -786,7 +795,7 @@ async def get_absolute_donor_expiry_time(user_id: int) -> int:
         "SELECT donor_expire FROM users WHERE id = %s",
         [user_id],
     )
-    return data["donor_expire"] if data else 0
+    return data["donor_expire"] if data else 0  # type: ignore[no-any-return]
 
 
 class InvalidUsernameError(Exception):
@@ -894,7 +903,7 @@ async def get_remaining_overwrite_wait(user_id: int) -> int:
         [user_id],
     )
     assert rec is not None
-    return rec["previous_overwrite"]
+    return rec["previous_overwrite"]  # type: ignore[no-any-return]
 
 
 async def remove_first_place(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, cast
 from typing import TypedDict
 
 import orjson
@@ -70,7 +70,7 @@ async def getChannel(channel_name: str) -> Optional[Channel]:
     raw_channel = await glob.redis.get(f"bancho:channels:{channel_name}")
     if raw_channel is None:
         return None
-    return orjson.loads(raw_channel)
+    return cast(Channel, orjson.loads(raw_channel))
 
 
 async def getChannels() -> list[Channel]:
@@ -124,7 +124,7 @@ async def addChannel(
         ),
     )
     # Make the chatbot join the channel
-    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     if chatbot_token:
         try:
             await osuToken.joinChannel(chatbot_token["token_id"], name)
@@ -162,7 +162,7 @@ async def removeChannel(name: str) -> None:
             )
 
     # Make the chatbot leave the channel, if it was a member
-    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     if chatbot_token:
         try:
             await osuToken.partChannel(chatbot_token["token_id"], name)

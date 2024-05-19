@@ -8,7 +8,7 @@ from common.web.requestsManager import AsyncRequestHandler
 from constants import CHATBOT_USER_ID
 from constants import exceptions
 from helpers import chatHelper
-from objects import tokenList
+from objects import osuToken, tokenList
 
 
 class handler(AsyncRequestHandler):
@@ -25,7 +25,7 @@ class handler(AsyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
-            chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+            chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
             assert chatbot_token is not None
 
             await chatHelper.send_message(

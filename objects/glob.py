@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from typing import Optional
 
 import httpx
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 http_client = httpx.AsyncClient()
 application = None
 db: DBPool
-redis: Redis
+redis: Redis[Any]
 banchoConf: banchoConfig
 
 restarting = False

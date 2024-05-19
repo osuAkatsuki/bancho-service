@@ -224,7 +224,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
 
             if freeze_timestamp > current_time:  # We are warning the user
-                chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+                chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
                 assert chatbot_token is not None
 
                 await chat.send_message(

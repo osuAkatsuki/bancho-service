@@ -38,7 +38,7 @@ def _log(
     stack_info: bool = False,
     stacklevel: int = 1,
     extra: Optional[Mapping[str, object]] = None,
-):
+) -> None:
     log_context = LOG_CONTEXT.get()
     if log_context is None:
         log_context = {}
@@ -47,8 +47,8 @@ def _log(
         extra = dict(extra) if extra is not None else {}
         extra.update(log_context)
     logging.log(
-        level=logging.getLevelName(levelname),
-        msg=msg,
+        logging.getLevelName(levelname),
+        msg,
         *args,
         exc_info=exc_info,
         stack_info=stack_info,

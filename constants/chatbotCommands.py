@@ -125,15 +125,17 @@ async def faq(fro: str, chan: str, message: list[str]) -> str:
     """Fetch a given FAQ response."""
     key = message[0].lower()
     res = await glob.db.fetch("SELECT callback FROM faq WHERE name = %s", [key])
-    callback: Optional[str] = res and res["callback"]
-    return callback or "No FAQ topics could be found by that name."
+    if res is None:
+        return "No FAQ topics could be found by that name."
+    return res["callback"]  # type: ignore[no-any-return]
 
 
 @command(trigger="!roll")
 async def roll(fro: str, chan: str, message: list[str]) -> str:
-    maxPoints = (  # Cap !roll to 32767
-        len(message) and message[0].isnumeric() and min(int(message[0]), 32767)
-    ) or 100
+    if message and message[0].isnumeric():
+        maxPoints = min(int(message[0]), 32767)
+    else:
+        maxPoints = 100
 
     points = random.randrange(maxPoints)
     return f"{fro} rolls {points} points!"
@@ -233,7 +235,7 @@ async def kick(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(target)):
         return "Could not find user"
 
-    if not (tokens := await tokenList.getTokenFromUserID(targetID, _all=True)):
+    if not (tokens := await osuToken.get_all_tokens_by_user_id(targetID)):
         return "Target not online."
 
     if not reason:
@@ -301,9 +303,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
         return "Invalid silence time. Max silence time is 4 weeks."
 
     # Send silence packet to target if he's connected
-    targetToken = await tokenList.getTokenFromUsername(
-        user_utils.get_safe_username(target),
-    )
+    targetToken = await osuToken.get_token_by_username(target)
     if targetToken:
         # user online, silence both in db and with packet
         await osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
@@ -841,7 +841,7 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
         except exceptions.wrongChannelException:
             return "This command is only usable when either spectating a user, or playing multiplayer."
 
-        spectatorHostToken = await tokenList.getTokenFromUserID(spectatorHostUserID)
+        spectatorHostToken = await osuToken.get_token_by_user_id(spectatorHostUserID)
         if not spectatorHostToken:
             return "The spectator host is offline."
 
@@ -868,13 +868,13 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
 )
 async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
     # don't document this, don't want it showing up in !help
-    if not (token := await tokenList.getTokenFromUsername(fro)):
+    if not (token := await osuToken.get_token_by_username(fro)):
         return None
 
     # MapDL trigger for #spect_
     if chan.startswith("#spect_"):
         spectatorHostUserID = channelList.getSpectatorHostUserIDFromChannel(chan)
-        spectatorHostToken = await tokenList.getTokenFromUserID(
+        spectatorHostToken = await osuToken.get_token_by_user_id(
             spectatorHostUserID,
         )
         return (
@@ -925,7 +925,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
     if chan.startswith("#"):
         return None
 
-    if not (token := await tokenList.getTokenFromUsername(fro)):
+    if not (token := await osuToken.get_token_by_username(fro)):
         return None
 
     if token["last_np"] is None:
@@ -986,7 +986,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 #            return  None
 #
 #        # Get token and user ID
-#        token = await  tokenList.getTokenFromUsername(fro)
+#        token = await  osuToken.get_token_by_username(fro)
 #        if not token:
 #            return  None
 #        userID = token.userID
@@ -1015,7 +1015,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 @command(trigger="!last", hidden=False)
 async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Show information about your most recently submitted score."""
-    if not (token := await tokenList.getTokenFromUsername(fro)):
+    if not (token := await osuToken.get_token_by_username(fro)):
         return None
 
     if token["autopilot"]:
@@ -1040,13 +1040,13 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
 
     rank = (
         generalUtils.getRank(
-            data["play_mode"],
-            data["mods"],
-            data["accuracy"],
-            data["300_count"],
-            data["100_count"],
-            data["50_count"],
-            data["misses_count"],
+            gameMode=data["play_mode"],
+            mods=data["mods"],
+            acc=data["accuracy"],
+            c300=data["300_count"],
+            c100=data["100_count"],
+            c50=data["50_count"],
+            cmiss=data["misses_count"],
         )
         if data["completed"] != 0
         else "F"
@@ -1353,7 +1353,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
         ),
     )
 
-    for token in await tokenList.getTokenFromUserID(userID, _all=True):
+    for token in await osuToken.get_all_tokens_by_user_id(userID):
         await osuToken.enqueue(token["token_id"], notif_pkt)
         await osuToken.kick(
             token["token_id"],
@@ -1383,7 +1383,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
     #         !map <rank/unrank/love> <set/map>
     message = [m.lower() for m in message]
 
-    if not (token := await tokenList.getTokenFromUsername(fro)):
+    if not (token := await osuToken.get_token_by_username(fro)):
         return None
 
     if token["last_np"] is None:
@@ -1506,7 +1506,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
             f'beatmap [https://osu.ppy.sh/beatmaps/{rank_id} {res["song_name"]}]'
         )
 
-    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     assert chatbot_token is not None
     await chat.send_message(
         sender_token_id=chatbot_token["token_id"],
@@ -1524,7 +1524,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 )
 async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
-    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     assert chatbot_token is not None
     await chat.send_message(
         sender_token_id=chatbot_token["token_id"],
@@ -1570,7 +1570,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     userID = await user_utils.get_id_from_username(fro)
 
     # If target user is online, update their token's whitelist bit
-    targetToken = await tokenList.getTokenFromUserID(targetID)
+    targetToken = await osuToken.get_token_by_user_id(targetID)
     if targetToken is not None:
         targetToken = await osuToken.update_token(
             token_id=targetToken["token_id"],
@@ -1603,7 +1603,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 @command(trigger="!whoranked", hidden=True)
 async def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
     """Get the nominator for the last /np'ed map."""
-    if not (token := await tokenList.getTokenFromUsername(fro)):
+    if not (token := await osuToken.get_token_by_username(fro)):
         return None
 
     if token["last_np"] is None:
@@ -1895,7 +1895,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         matchID = int(message[2])
 
-        userToken = await tokenList.getTokenFromUsername(username)
+        userToken = await osuToken.get_token_by_username(username)
         if not userToken:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -1930,7 +1930,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         username = message[1]
         newSlotID = int(message[2])
 
-        target_token = await tokenList.getTokenFromUsername(username)
+        target_token = await osuToken.get_token_by_username(username)
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -1968,7 +1968,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not username:
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        target_token = await tokenList.getTokenFromUsername(username)
+        target_token = await osuToken.get_token_by_username(username)
         if not target_token:
             raise exceptions.userNotFoundException("No such user.")
 
@@ -2016,7 +2016,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         async def _start() -> bool:
             assert multiplayer_match is not None
 
-            chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+            chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
             assert chatbot_token is not None
             if not await match.start(multiplayer_match["match_id"]):
                 await chat.send_message(
@@ -2078,7 +2078,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 await _start()
             else:
                 if not t % 10 or t <= 5:
-                    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+                    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
                     assert chatbot_token is not None
                     await chat.send_message(
                         sender_token_id=chatbot_token["token_id"],
@@ -2156,7 +2156,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         if not username:
             raise exceptions.invalidArgumentsException("Please provide a username.")
 
-        target_token = await tokenList.getTokenFromUsername(username)
+        target_token = await osuToken.get_token_by_username(username)
         if not target_token:
             raise exceptions.invalidUserException(
                 "That user is not connected to Akatsuki right now.",
@@ -2164,8 +2164,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         await match.invite(
             multiplayer_match["match_id"],
-            fro=CHATBOT_USER_ID,
-            to=target_token["user_id"],
+            sender_user_id=CHATBOT_USER_ID,
+            recipient_user_id=target_token["user_id"],
         )
 
         await osuToken.enqueue(
@@ -2717,7 +2717,7 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target} not found."
 
-    userToken = await tokenList.getTokenFromUserID(targetID, _all=False)
+    userToken = await osuToken.get_token_by_user_id(targetID)
     assert userToken is not None
 
     packet_data = serverPackets.invalidChatMessage(target)

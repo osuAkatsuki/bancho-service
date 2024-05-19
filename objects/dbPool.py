@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 from typing import cast
 
 import aiomysql
@@ -12,7 +12,7 @@ class DBPool:
     def __init__(self) -> None:
         self._pool: Optional[aiomysql.Pool] = None
 
-    async def start(self):
+    async def start(self) -> None:
         self._pool = cast(
             aiomysql.Pool,
             await aiomysql.create_pool(
@@ -26,32 +26,34 @@ class DBPool:
             ),
         )
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self._pool is not None:
             self._pool.close()
             await self._pool.wait_closed()
 
-    async def fetchAll(self, *args, **kwargs):
+    async def fetchAll(self, *args: Any, **kwargs: Any) -> list[dict[str, Any]]:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(*args, **kwargs)
-                return await cur.fetchall()
+                return [dict(rec) for rec in await cur.fetchall()]
 
-    async def fetch(self, *args, **kwargs):
+    async def fetch(self, *args: Any, **kwargs: Any) -> Optional[dict[str, Any]]:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(*args, **kwargs)
-                return await cur.fetchone()
+                rec = await cur.fetchone()
+                return dict(rec) if rec is not None else None
 
-    async def execute(self, *args, **kwargs):
+    async def execute(self, *args: Any, **kwargs: Any) -> int:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(*args, **kwargs)
                 await conn.commit()
-                return cur.lastrowid
+                # TODO: can this return None?
+                return int(cur.lastrowid)

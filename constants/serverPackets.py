@@ -162,7 +162,7 @@ async def userPanel(userID: int, force: bool = False) -> bytes:
         return BOT_PRESENCE
 
     # Connected and restricted check
-    userToken = await tokenList.getTokenFromUserID(userID)
+    userToken = await osuToken.get_token_by_user_id(userID)
     if not userToken or (osuToken.is_restricted(userToken["privileges"]) and not force):
         return b""
 
@@ -223,7 +223,7 @@ async def userStats(userID: int, force: bool = False) -> bytes:
         return BOT_STATS
 
     # Get userID's token from tokens list
-    userToken = await tokenList.getTokenFromUserID(userID)
+    userToken = await osuToken.get_token_by_user_id(userID)
     if userToken is None:
         return b""
 

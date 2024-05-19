@@ -1,25 +1,25 @@
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import redis.asyncio as redis
 
 from common.log import logger
-from common.redis import generalPubSubHandler
+from common.redis import pubsubs
 
 
 class RedisMessage(TypedDict):
     type: str
     pattern: bytes | None
     channel: bytes | None
-    data: bytes | None
+    data: bytes
 
 
 class listener:
     def __init__(
         self,
-        redis_connection: redis.Redis,
-        handlers: dict[str, generalPubSubHandler.generalPubSubHandler],
+        redis_connection: redis.Redis[Any],
+        handlers: dict[str, pubsubs.AbstractPubSubHandler],
     ):
         """
         Initialize a set of redis pubSub listeners
@@ -69,7 +69,7 @@ class listener:
 
                 if isinstance(
                     self.handlers[channel],
-                    generalPubSubHandler.generalPubSubHandler,
+                    pubsubs.AbstractPubSubHandler,
                 ):
                     # Handler class
                     await self.handlers[channel].handle(item["data"])
@@ -77,7 +77,7 @@ class listener:
                 #     # Function
                 #     await self.handlers[channel](item["data"])
 
-    async def run(self):
+    async def run(self) -> None:
         """
         Listen for data on incoming channels and process it.
         Runs forever.

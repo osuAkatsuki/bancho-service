@@ -5,14 +5,14 @@ from typing import Optional
 from amplitude import BaseEvent
 from amplitude import EventOptions
 from amplitude import Identify
+import orjson
 
 from common.constants import actions
 from common.log import logger
-from common.redis import generalPubSubHandler
+from common.redis.pubsubs import AbstractPubSubHandler
 from common.ripple import user_utils
 from objects import glob
 from objects import osuToken
-from objects import tokenList
 
 
 async def handleUsernameChange(
@@ -98,14 +98,10 @@ async def handleUsernameChange(
         )
 
 
-class handler(generalPubSubHandler.generalPubSubHandler):
-    def __init__(self) -> None:
-        super().__init__()
-        self.structure = {"userID": 0, "newUsername": ""}
-
+class ChangeUsernamePubSubHandler(AbstractPubSubHandler):
     async def handle(self, raw_data: bytes) -> None:
-        if not (data := super().parseData(raw_data)):
-            return
+        data = orjson.loads(raw_data)
+        assert data.keys() == {"userID", "newUsername"}
 
         logger.info(
             "Handling change username for user",
@@ -116,7 +112,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
         )
 
         # Get the user's token
-        if (targetToken := await tokenList.getTokenFromUserID(data["userID"])) is None:
+        if (targetToken := await osuToken.get_token_by_user_id(data["userID"])) is None:
             # If the user is offline change username immediately
             await handleUsernameChange(data["userID"], data["newUsername"])
         else:

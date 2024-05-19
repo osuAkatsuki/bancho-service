@@ -1,19 +1,16 @@
 from __future__ import annotations
 
+import orjson
+
 from common.log import logger
-from common.redis import generalPubSubHandler
+from common.redis.pubsubs import AbstractPubSubHandler
 from objects import osuToken
-from objects import tokenList
 
 
-class handler(generalPubSubHandler.generalPubSubHandler):
-    def __init__(self) -> None:
-        super().__init__()
-        self.structure = {"userID": 0, "reason": ""}
-
+class DisconnectPubSubHandler(AbstractPubSubHandler):
     async def handle(self, raw_data: bytes) -> None:
-        if (data := super().parseData(raw_data)) is None:
-            return
+        data = orjson.loads(raw_data)
+        assert data.keys() == {"userID", "reason"}
 
         logger.info(
             "Handling disconnect event for user",
@@ -23,7 +20,7 @@ class handler(generalPubSubHandler.generalPubSubHandler):
             },
         )
 
-        if targetToken := await tokenList.getTokenFromUserID(data["userID"]):
+        if targetToken := await osuToken.get_token_by_user_id(data["userID"]):
             await osuToken.kick(targetToken["token_id"], data["reason"], "pubsub_kick")
 
         logger.info(

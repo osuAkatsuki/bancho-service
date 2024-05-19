@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 from common.log import logger
-from common.redis import generalPubSubHandler
+from common.redis.pubsubs import AbstractPubSubHandler
 from common.ripple import user_utils
 
 
-class handler(generalPubSubHandler.generalPubSubHandler):
-    def __init__(self) -> None:
-        super().__init__()
-        self.type = "int_list"
-
+class WipePubSubHandler(AbstractPubSubHandler):
     async def handle(self, raw_data: bytes) -> None:
-        userID, rx, gm = super().parseData(raw_data)
-        if any(i is None for i in (userID, rx, gm)):
-            return
+        userID, rx, gm = [int(i) for i in raw_data.decode().split(",")]
 
         logger.info(
             "Handling wipe event for user",

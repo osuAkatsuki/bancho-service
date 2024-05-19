@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Union
 from typing import Optional
 from typing import overload
 
@@ -34,7 +34,7 @@ async def addToken(
     )
     assert res is not None
 
-    token = await osuToken.create_token(
+    original_token = await osuToken.create_token(
         user_id,
         res["username"],
         res["privileges"],
@@ -46,11 +46,11 @@ async def addToken(
         amplitude_device_id,
     )
 
-    await osuToken.updateCachedStats(token["token_id"])
+    await osuToken.updateCachedStats(original_token["token_id"])
 
-    await osuToken.joinStream(token["token_id"], "main")
+    await osuToken.joinStream(original_token["token_id"], "main")
 
-    token = await osuToken.get_token(token["token_id"])
+    token = await osuToken.get_token(original_token["token_id"])
     assert token is not None
 
     await glob.redis.set(
@@ -92,91 +92,9 @@ async def getUserIDFromToken(token_id: str) -> Optional[int]:
     """
     token = await osuToken.get_token(token_id)
     if token is None:
-        return
+        return None
 
     return token["user_id"]
-
-
-@overload
-async def getTokenFromUserID(
-    userID: int,
-    _all: Literal[False] = False,
-) -> Optional[osuToken.Token]: ...
-
-
-@overload
-async def getTokenFromUserID(
-    userID: int,
-    _all: Literal[True] = ...,
-) -> list[osuToken.Token]: ...
-
-
-async def getTokenFromUserID(
-    userID: int,
-    _all: bool = False,
-):
-    """
-    Get token from a user ID
-
-    :param userID: user ID to find
-    :param _all: if True, return a list with all clients that match given username, otherwise return
-                only the first occurrence.
-    :return: False if not found, token object if found
-    """
-    # Make sure the token exists
-    ret = []
-    for value in await osuToken.get_tokens():
-        if value["user_id"] == userID:
-            if _all:
-                ret.append(value)
-            else:
-                return value
-
-    # Return full list or None if not found
-    if _all:
-        return ret
-
-
-@overload
-async def getTokenFromUsername(
-    username: str,
-    _all: Literal[False] = ...,
-) -> Optional[osuToken.Token]: ...
-
-
-@overload
-async def getTokenFromUsername(
-    username: str,
-    _all: Literal[True] = ...,
-) -> list[osuToken.Token]: ...
-
-
-async def getTokenFromUsername(
-    username: str,
-    _all: bool = False,
-):
-    """
-    Get an osuToken object from an username
-
-    :param username: normal username or safe username
-    :param _all: if True, return a list with all clients that match given username, otherwise return
-                only the first occurrence.
-    :return: osuToken object or None
-    """
-    username = user_utils.get_safe_username(username)
-
-    # Make sure the token exists
-    ret = []
-    for value in await osuToken.get_tokens():
-        if user_utils.get_safe_username(value["username"]) == username:
-            if _all:
-                ret.append(value)
-            else:
-                return value
-
-    # Return full list or None if not found
-    if _all:
-        return ret
 
 
 async def deleteOldTokens(userID: int) -> None:
@@ -225,23 +143,3 @@ async def enqueueAll(packet: bytes) -> None:
     """
     for token_id in await osuToken.get_token_ids():
         await osuToken.enqueue(token_id, packet)
-
-
-def tokenExists(
-    username: Optional[str] = None,
-    userID: Optional[int] = None,
-) -> bool:
-    """
-    Check if a token exists
-    Use username or userid, not both at the same time.
-
-    :param username: Optional.
-    :param userID: Optional.
-    :return: True if it exists, otherwise False
-    """
-    if userID is not None:
-        return getTokenFromUserID(userID) is not None
-    elif username is not None:
-        return getTokenFromUsername(username) is not None
-    else:
-        raise RuntimeError("You must provide either a username or a userID")
