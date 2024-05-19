@@ -14,6 +14,8 @@ from amplitude import Config as AmplitudeConfig
 import settings
 
 if TYPE_CHECKING:
+    import tornado.web
+
     from redis.asyncio import Redis
 
     from objects.banchoConfig import banchoConfig
@@ -21,7 +23,7 @@ if TYPE_CHECKING:
 
 
 http_client = httpx.AsyncClient()
-application = None
+application: Optional[tornado.web.Application] = None
 db: DBPool
 redis: Redis[Any]
 banchoConf: banchoConfig
