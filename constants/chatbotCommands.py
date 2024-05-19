@@ -130,10 +130,13 @@ async def faq(fro: str, chan: str, message: list[str]) -> str:
     return res["callback"]  # type: ignore[no-any-return]
 
 
+MAX_ROLL = 1_000_000
+
+
 @command(trigger="!roll")
 async def roll(fro: str, chan: str, message: list[str]) -> str:
     if message and message[0].isnumeric():
-        maxPoints = min(int(message[0]), 32767)
+        maxPoints = min(int(message[0]), MAX_ROLL)
     else:
         maxPoints = 100
 
