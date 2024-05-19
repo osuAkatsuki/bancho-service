@@ -505,7 +505,7 @@ async def remove_friend(user_id: int, friend_user_id: int) -> None:
     )
 
 
-async def getCountry(user_id: int) -> str:
+async def get_iso_country_code(user_id: int) -> str:
     """Get a user's ISO 3166-1 alpha-2 country code."""
     rec = await glob.db.fetch(
         "SELECT country FROM users WHERE id = %s",
@@ -514,11 +514,11 @@ async def getCountry(user_id: int) -> str:
     return rec["country"] if rec else "XX"  # type: ignore[no-any-return]
 
 
-async def set_country(user_id: int, country: str) -> None:
+async def set_iso_country_code(user_id: int, iso_country_code: str) -> None:
     """Update a user's country code."""
     await glob.db.execute(
         "UPDATE users SET country = %s WHERE id = %s",
-        [country, user_id],
+        [iso_country_code, user_id],
     )
 
 
@@ -642,14 +642,14 @@ async def associate_user_with_hwids_and_restrict_if_multiaccounting(
                 continue
 
             # Get the total numbers of logins
-            total = await glob.db.fetch(
+            user_hwids_count_rec = await glob.db.fetch(
                 "SELECT COUNT(*) AS count FROM hw_user WHERE userid = %s",
                 [user_id],
             )
             # and make sure it is valid
-            if not total:
+            if not user_hwids_count_rec:
                 continue
-            total = total["count"]
+            total = user_hwids_count_rec["count"]
 
             # Calculate 10% of total
             if i["occurencies"] >= (total * 10) / 100:
@@ -859,7 +859,7 @@ async def remove_from_leaderboard(user_id: int) -> None:
 
     Removes listings across all game modes.
     """
-    country = (await getCountry(user_id)).lower()
+    country = (await get_iso_country_code(user_id)).lower()
     for board in ("leaderboard", "relaxboard"):
         for mode in ("std", "taiko", "ctb", "mania"):
             await glob.redis.zrem(f"ripple:{board}:{mode}", str(user_id))
@@ -872,7 +872,7 @@ async def remove_from_specified_leaderboard(
     mode: int,
     relax: int,
 ) -> None:
-    country = (await getCountry(user_id)).lower()
+    country = (await get_iso_country_code(user_id)).lower()
 
     board = {
         0: "leaderboard",

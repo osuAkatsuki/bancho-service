@@ -8,7 +8,7 @@ import tornado.web
 from common.log import logger
 
 
-class AsyncRequestHandler(tornado.web.RequestHandler):
+class AsyncRequestHandler(tornado.web.RequestHandler):  # type: ignore[misc]
     """A thin wrapper around tornado.web.RequestHandler to add some useful methods."""
 
     def prepare(self) -> None:
@@ -17,11 +17,11 @@ class AsyncRequestHandler(tornado.web.RequestHandler):
 
     def getRequestIP(self) -> Optional[str]:
         if "CF-Connecting-IP" in self.request.headers:
-            return self.request.headers.get("CF-Connecting-IP")
+            return str(self.request.headers.get("CF-Connecting-IP"))
         elif "X-Forwarded-For" in self.request.headers:
-            return self.request.headers.get("X-Forwarded-For")
+            return str(self.request.headers.get("X-Forwarded-For"))
         else:
-            return self.request.remote_ip
+            return str(self.request.remote_ip)
 
     def checkArguments(self, required: list[str]) -> bool:
         return all(a in self.request.arguments for a in required)

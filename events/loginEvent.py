@@ -44,7 +44,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
     responseData = bytearray()
 
     # Get client ip of the incoming request
-    requestIP = web_handler.getRequestIP()
+    request_ip_address = web_handler.getRequestIP()
+    if not request_ip_address:
+        logger.warning("Failed to resolve a request IP for a login request")
+        return responseTokenString, responseData
 
     # Split POST body so we can get username/password/hardware data
     loginData = web_handler.request.body.decode()[:-1].split("\n")
@@ -161,7 +164,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         )
 
         # Log user IP
-        await user_utils.associate_user_with_ip(userID, requestIP)
+        await user_utils.associate_user_with_ip(userID, request_ip_address)
 
         if shouldBan:
             await user_utils.ban(userID)
@@ -185,7 +188,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         userToken = await tokenList.addToken(
             userID,
-            ip=requestIP,
+            ip=request_ip_address,
             utc_offset=utc_offset,
             tournament=isTournament,
             block_non_friends_dm=block_non_friends_dm,
@@ -468,23 +471,26 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     await serverPackets.userPanel(token["user_id"]),
                 )
 
-        # Get location and country from ip.zxq.co or database.
-        if settings.LOCALIZE_ENABLE:
-            # Get location and country from IP
-            countryLetters, (latitude, longitude) = locationHelper.getGeoloc(requestIP)
-            country = countryHelper.getCountryID(countryLetters)
-        else:
-            countryLetters = "XX"
-            latitude = longitude = 0.0
-            country = 0
+        # Get location and country from client ip address
+        geolocation = await locationHelper.resolve_ip_geolocation(request_ip_address)
 
         # Set location and country
-        await osuToken.setLocation(userToken["token_id"], latitude, longitude)
-        await osuToken.update_token(userToken["token_id"], country=country)
+        await osuToken.setLocation(
+            userToken["token_id"],
+            geolocation["latitude"],
+            geolocation["longitude"],
+        )
+        await osuToken.update_token(
+            userToken["token_id"],
+            country=geolocation["osu_country_code"],
+        )
 
         # Set country in db if user has no country (first bancho login)
-        if await user_utils.getCountry(userID) == "XX":
-            await user_utils.set_country(userID, countryLetters)
+        if await user_utils.get_iso_country_code(userID) == "XX":
+            await user_utils.set_iso_country_code(
+                userID,
+                geolocation["iso_country_code"],
+            )
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
@@ -502,10 +508,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                         "login_time": userToken["login_time"],
                         "source": "bancho-service",
                     },
-                    location_lat=latitude,
-                    location_lng=longitude,
-                    ip=requestIP,
-                    country=countryLetters,
+                    location_lat=geolocation["latitude"],
+                    location_lng=geolocation["longitude"],
+                    ip=request_ip_address,
+                    country=geolocation["iso_country_code"],
                 ),
             )
 
@@ -522,20 +528,20 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                             "login_time": userToken["login_time"],
                             "source": "bancho-service",
                         },
-                        location_lat=latitude,
-                        location_lng=longitude,
-                        ip=requestIP,
-                        country=countryLetters,
+                        location_lat=geolocation["latitude"],
+                        location_lng=geolocation["longitude"],
+                        ip=request_ip_address,
+                        country=geolocation["iso_country_code"],
                     ),
                 )
 
         if glob.amplitude is not None:
             identify_obj = Identify()
             identify_obj.set("username", userToken["username"])
-            identify_obj.set("location_lat", latitude)
-            identify_obj.set("location_lng", longitude)
-            identify_obj.set("ip", requestIP)
-            identify_obj.set("country", countryLetters)
+            identify_obj.set("location_lat", geolocation["latitude"])
+            identify_obj.set("location_lng", geolocation["longitude"])
+            identify_obj.set("ip", request_ip_address)
+            identify_obj.set("country", geolocation["iso_country_code"])
             glob.amplitude.identify(
                 identify_obj,
                 EventOptions(
@@ -618,12 +624,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 "Invalid bancho login request",
                 extra={
                     "reason": "insufficient_post_data",
-                    "ip": requestIP,
+                    "ip": request_ip_address,
                 },
             )
 
             await audit_logs.send_log_as_discord_webhook(
-                message=f"Invalid bancho login request from **{requestIP}** (insufficient POST data)",
+                message=f"Invalid bancho login request from **{request_ip_address}** (insufficient POST data)",
                 discord_channel="ac_confidential",
             )
 

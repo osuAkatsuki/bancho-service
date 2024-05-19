@@ -32,15 +32,15 @@ def uleb128Encode(num: int) -> bytearray:
     return arr
 
 
-def uleb128Decode(num: bytes) -> list[int]:
+def uleb128Decode(num: bytes) -> tuple[int, int]:
     """
     Decode a uleb128 to int
 
     :param num: encoded uleb128 int
-    :return: (total, length)
+    :return: (value, length)
     """
     shift = 0
-    arr = [0, 0]  # total, length
+    arr = [0, 0]  # value, length
 
     while True:
         b = num[arr[1]]
@@ -52,7 +52,7 @@ def uleb128Decode(num: bytes) -> list[int]:
 
         shift += 7
 
-    return arr
+    return (arr[0], arr[1])
 
 
 _default_packs = {
@@ -76,7 +76,8 @@ def packData(__data: Any, dataType: int) -> bytes:
     :param dataType: data type
     :return: packed bytes
     """
-    if dataType == dataTypes.BBYTES:  # current mood
+    if dataType == dataTypes.BBYTES:
+        assert isinstance(__data, bytes)
         return __data
 
     data = bytearray()  # data to return
@@ -148,7 +149,7 @@ def readPacketData(
     :return: {data, end}
     """
     # Read packet ID (first 2 bytes)
-    data = {}
+    data: dict[str, Any] = {}
 
     # Skip packet ID and packet length if needed
     start = end = 7 if has_packet_header else 0
@@ -171,10 +172,10 @@ def readPacketData(
             # Check empty string
             if stream[start] != 0:
                 # real string; \x0b[uleb][string]
-                length = uleb128Decode(stream[start + 1 :])
-                end = start + length[0] + length[1] + 1
+                uleb_val, uleb_len = uleb128Decode(stream[start + 1 :])
+                end = start + uleb_val + uleb_len + 1
 
-                data[i[0]] = stream[start + 1 + length[1] : end].decode()
+                data[i[0]] = stream[start + 1 + uleb_len : end].decode()
             else:
                 # empty string; \x00
                 data[i[0]] = ""

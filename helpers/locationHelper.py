@@ -1,59 +1,57 @@
 from __future__ import annotations
 
 from json import loads
+from typing import TypedDict
 from urllib.request import urlopen
+
+import httpx
 
 import settings
 from common.log import logger
+from helpers import countryHelper
+from objects import glob
+
+API_CALL_TIMEOUT = 3
 
 
-def getCountry(ip: str) -> str:
-    """
-    Get country from IP address using geoip api
+class Geolocation(TypedDict):
+    iso_country_code: str  # iso-3166-1 alpha-2
+    osu_country_code: int
+    latitude: float
+    longitude: float
 
-    :param ip: IP address
-    :return: country code. XX if invalid.
-    """
+
+def unknown_geolocation() -> Geolocation:
+    return {
+        "iso_country_code": "XX",
+        "osu_country_code": 0,
+        "latitude": 0,
+        "longitude": 0,
+    }
+
+
+async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
+    if not settings.LOCALIZE_ENABLE:
+        return unknown_geolocation()
+
     try:
-        # Try to get country from Pikolo Aul's Go-Sanic ip API
-        result = loads(
-            urlopen(f"{settings.LOCALIZE_IP_API_URL}/{ip}", timeout=3).read().decode(),
-        )["country"]
-        return result.upper()
+        response = await glob.http_client.get(
+            f"{settings.LOCALIZE_IP_API_URL}/{ip_address}",
+            timeout=API_CALL_TIMEOUT,
+        )
+        response.raise_for_status()
+        json = response.json()
+        country = json["country"]
+        loc = json["loc"].split(",")
+        return {
+            "iso_country_code": country,
+            "osu_country_code": countryHelper.getCountryID(country),
+            "latitude": float(loc[0]),
+            "longitude": float(loc[1]),
+        }
     except:
         logger.exception(
-            "An error occurred while resolving ip geolocation",
-            extra={"ip": ip},
+            f"Failed to resolve geolocation for {ip_address}",
+            extra={"ip_address": ip_address},
         )
-        return "XX"
-
-
-def getLocation(ip: str) -> tuple[float, float]:
-    """
-    Get latitude and longitude from IP address using geoip api
-
-    :param ip: IP address
-    :return: (latitude, longitude)
-    """
-    try:
-        # Try to get position from Pikolo Aul's Go-Sanic ip API
-        result = loads(
-            urlopen(f"{settings.LOCALIZE_IP_API_URL}/{ip}", timeout=3).read().decode(),
-        )["loc"].split(",")
-        return float(result[0]), float(result[1])
-    except:
-        logger.exception("Error in get position", extra={"ip": ip})
-        return 0.0, 0.0
-
-
-def getGeoloc(ip: str) -> tuple[str, tuple[float, float]]:
-    # both functions in one cuz why are they even split lol
-    try:
-        result = loads(
-            urlopen(f"{settings.LOCALIZE_IP_API_URL}/{ip}", timeout=3).read().decode(),
-        )
-        country = result["country"]
-        loc = result["loc"].split(",")
-        return (country, (float(loc[0]), float(loc[1])))  # lat, lon
-    except:
-        return ("XX", (0.0, 0.0))
+        return unknown_geolocation()
