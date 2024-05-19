@@ -488,10 +488,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
             extra={"num_bytes": len(data), "token_id": token_id},
         )
 
-    await glob.redis.lpush(
-        f"{make_key(token_id)}:packet_queue",
-        orjson.dumps(list(data)),
-    )
+    await glob.redis.lpush(f"{make_key(token_id)}:packet_queue", data)
 
 
 async def dequeue(token_id: str) -> bytes:
@@ -510,7 +507,7 @@ async def dequeue(token_id: str) -> bytes:
 
     raw_packets.reverse()  # redis returns backwards
 
-    return b"".join([bytes(orjson.loads(raw_packet)) for raw_packet in raw_packets])
+    return b"".join(raw_packets)
 
 
 async def joinChannel(token_id: str, channel_name: str) -> None:
