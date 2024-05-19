@@ -8,7 +8,7 @@ import tornado.web
 from common.log import logger
 
 
-class AsyncRequestHandler(tornado.web.RequestHandler):  # type: ignore[misc]
+class AsyncRequestHandler(tornado.web.RequestHandler):
     """A thin wrapper around tornado.web.RequestHandler to add some useful methods."""
 
     def prepare(self) -> None:
