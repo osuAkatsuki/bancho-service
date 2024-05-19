@@ -6,6 +6,7 @@ from time import strftime
 from time import time
 from typing import Optional
 from typing import TypedDict
+from typing import cast
 from uuid import uuid4
 
 import orjson
@@ -194,17 +195,15 @@ async def get_token(token_id: str) -> Optional[Token]:
     token = await glob.redis.get(make_key(token_id))
     if token is None:
         return None
-    return orjson.loads(token)
+    return cast(Token, orjson.loads(token))
 
 
 async def get_tokens() -> list[Token]:
     # TODO: use an iterative approach for these, provide a generator api
     # to allow callers to reduce memory usage and improve performance.
     # (If callers really want all the data, they can exhaust the iterator)
-    return [
-        orjson.loads(token)
-        for token in (await glob.redis.hgetall("bancho:tokens:json")).values()
-    ]
+    raw_tokens = (await glob.redis.hgetall("bancho:tokens:json")).values()
+    return cast(list[Token], [orjson.loads(token) for token in raw_tokens])
 
 
 # TODO: get_limited_tokens with a more basic model
@@ -219,6 +218,8 @@ async def get_token_by_user_id(user_id: int) -> Optional[Token]:
     if token is not None:
         return token
 
+    return None
+
 
 async def get_token_by_username(username: str) -> Optional[Token]:
     token_id: Optional[bytes] = await glob.redis.get(
@@ -230,6 +231,18 @@ async def get_token_by_username(username: str) -> Optional[Token]:
     token = await get_token(token_id.decode())
     if token is not None:
         return token
+
+    return None
+
+
+async def get_all_tokens_by_user_id(user_id: int) -> list[Token]:
+    tokens = await get_tokens()
+    return [token for token in tokens if token["user_id"] == user_id]
+
+
+async def get_all_tokens_by_username(username: str) -> list[Token]:
+    tokens = await get_tokens()
+    return [token for token in tokens if token["username"] == username]
 
 
 class MissingType:
@@ -443,14 +456,14 @@ async def add_message_to_history(token_id: str, message: str) -> None:
 # (set[userid]) bancho:tokens:{token_id}:sent_away_messages
 
 
-async def get_sent_away_messages(token_id: str) -> set[str]:
+async def get_users_whove_seen_away_message(token_id: str) -> set[int]:
     raw_messages: set[bytes] = await glob.redis.smembers(
         f"{make_key(token_id)}:sent_away_messages",
     )
-    return {raw_message.decode() for raw_message in raw_messages}
+    return {int(raw_message.decode()) for raw_message in raw_messages}
 
 
-async def add_sent_away_message(token_id: str, user_id: int) -> None:
+async def add_user_whos_seen_away_message(token_id: str, user_id: int) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:sent_away_messages", user_id)
 
 
@@ -1196,9 +1209,13 @@ async def awayCheck(token_id: str, user_id: int) -> bool:
     if token is None:
         return False
 
-    if not token["away_message"] or user_id in await get_sent_away_messages(token_id):
+    if not token["away_message"]:
         return False
-    await add_sent_away_message(token_id, user_id)
+
+    if user_id in await get_users_whove_seen_away_message(token_id):
+        return False
+
+    await add_user_whos_seen_away_message(token_id, user_id)
     return True
 
 

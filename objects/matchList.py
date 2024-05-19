@@ -10,9 +10,9 @@ from constants import matchTeamTypes
 from constants import serverPackets
 from objects import channelList
 from objects import match
+from objects import osuToken
 from objects import slot
 from objects import streamList
-from objects import tokenList
 
 
 def make_key() -> str:
@@ -97,7 +97,7 @@ async def disposeMatch(match_id: int) -> None:
     assert len(slots) == 16
 
     for _slot in slots:
-        _token = await tokenList.getTokenFromUserID(_slot["user_id"])
+        _token = await osuToken.get_token_by_user_id(_slot["user_id"])
         if _token is not None:
             await match.userLeft(
                 match_id,
@@ -174,6 +174,8 @@ async def matchExists(matchID: int) -> bool:
 async def getMatchByID(match_id: int) -> Optional[match.Match]:
     if await matchExists(match_id):
         return await match.get_match(match_id)
+
+    return None
 
 
 # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.

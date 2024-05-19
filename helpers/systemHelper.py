@@ -108,7 +108,7 @@ async def getSystemInfo() -> dict[str, Any]:
 
     :return: ["unix", "connectedUsers", "webServer", "cpuUsage", "totalMemory", "usedMemory", "loadAverage"]
     """
-    data = {
+    data: dict[str, Any] = {
         "unix": runningUnderUnix(),
         "connectedUsers": await osuToken.get_online_players_count(),
         "matches": len(await match.get_match_ids()),

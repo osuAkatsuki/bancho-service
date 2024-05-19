@@ -9,7 +9,6 @@ from constants import clientPackets
 from constants import exceptions
 from objects import glob
 from objects import osuToken
-from objects import tokenList
 from objects.osuToken import Token
 
 
@@ -35,7 +34,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
             return
 
         # Get host token
-        targetToken = await tokenList.getTokenFromUserID(packetData["userID"])
+        targetToken = await osuToken.get_token_by_user_id(packetData["userID"])
         if targetToken is None:
             raise exceptions.tokenNotFoundException
 

@@ -18,7 +18,6 @@ from objects import chatbot
 from objects import osuToken
 from objects import stream
 from objects import streamList
-from objects import tokenList
 from objects.chatbot import ChatbotResponse
 
 if TYPE_CHECKING:
@@ -488,7 +487,7 @@ async def _handle_public_message(
     )
 
     if chatbot_response is not None:
-        chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+        chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
         assert chatbot_token is not None
 
         # We want to send the chatbot's response to the initial sender
@@ -511,7 +510,7 @@ async def _handle_private_message(
     recipient_name: str,
     message: str,
 ) -> Optional[SendMessageError]:
-    recipient_token = await tokenList.getTokenFromUsername(recipient_name)
+    recipient_token = await osuToken.get_token_by_username(recipient_name)
     if recipient_token is None:
         logger.warning(
             "User attempted to send a message to an unknown recipient",
@@ -595,7 +594,7 @@ async def _handle_private_message(
             message,
         )
         if chatbot_response is not None:
-            chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+            chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
             assert chatbot_token is not None
 
             # chatbot's response
@@ -660,7 +659,7 @@ async def _handle_message_from_chatbot(
         )
 
     else:
-        recipient_token = await tokenList.getTokenFromUsername(recipient_name)
+        recipient_token = await osuToken.get_token_by_username(recipient_name)
         if recipient_token is None:
             logger.warning(
                 "Chatbot attempted to send a message to an unknown recipient",

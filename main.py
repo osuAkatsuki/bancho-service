@@ -90,7 +90,9 @@ async def main() -> int:
             (r"/api/v1/fokabotMessage", apiChatbotMessageHandler.handler),
         ]
         logger.info("Starting HTTP server")
-        glob.application = tornado.web.Application(API_ENDPOINTS)
+        glob.application = tornado.web.Application(
+            handlers=API_ENDPOINTS,  # type: ignore[arg-type]
+        )
         http_server = tornado.httpserver.HTTPServer(glob.application)
         http_server.listen(settings.APP_PORT)
         logger.info(

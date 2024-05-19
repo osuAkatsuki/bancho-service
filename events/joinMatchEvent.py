@@ -70,6 +70,6 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
                 location_lat=userToken["latitude"],
                 location_lng=userToken["longitude"],
                 ip=userToken["ip"],
-                country=countryHelper.getCountryLetters(userToken["country"]),
+                country=countryHelper.osu_code_to_iso_code(userToken["country"]),
             ),
         )

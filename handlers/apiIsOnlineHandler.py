@@ -6,7 +6,7 @@ from typing import Any
 from common.ripple import user_utils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
-from objects import tokenList
+from objects import osuToken
 
 
 class handler(AsyncRequestHandler):
@@ -35,12 +35,12 @@ class handler(AsyncRequestHandler):
                 if username:
                     data["result"] = (
                         True
-                        if await tokenList.getTokenFromUsername(username)
+                        if await osuToken.get_token_by_username(username)
                         else False
                     )
                 elif userID:
                     data["result"] = (
-                        True if await tokenList.getTokenFromUserID(userID) else False
+                        True if await osuToken.get_token_by_user_id(userID) else False
                     )
                 else:
                     raise NotImplementedError("Unknown error")

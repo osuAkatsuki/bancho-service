@@ -13,7 +13,7 @@ from common import exception_handling
 from common.log import logger
 from common.log import logging_config
 from common.redis import pubSub
-from common.redis.generalPubSubHandler import generalPubSubHandler
+from common.redis.pubsubs import AbstractPubSubHandler
 from objects import glob
 from pubSubHandlers import banHandler
 from pubSubHandlers import changeUsernameHandler
@@ -24,15 +24,15 @@ from pubSubHandlers import updateSilenceHandler
 from pubSubHandlers import updateStatsHandler
 from pubSubHandlers import wipeHandler
 
-PUBSUB_HANDLERS: dict[str, generalPubSubHandler] = {
-    "peppy:ban": banHandler.handler(),
-    "peppy:unban": unbanHandler.handler(),
-    "peppy:silence": updateSilenceHandler.handler(),
-    "peppy:disconnect": disconnectHandler.handler(),
-    "peppy:notification": notificationHandler.handler(),
-    "peppy:change_username": changeUsernameHandler.handler(),
-    "peppy:update_cached_stats": updateStatsHandler.handler(),
-    "peppy:wipe": wipeHandler.handler(),
+PUBSUB_HANDLERS: dict[str, AbstractPubSubHandler] = {
+    "peppy:ban": banHandler.BanPubSubHandler(),
+    "peppy:unban": unbanHandler.UnbanPubSubHandler(),
+    "peppy:silence": updateSilenceHandler.UpdateSilencePubSubHandler(),
+    "peppy:disconnect": disconnectHandler.DisconnectPubSubHandler(),
+    "peppy:notification": notificationHandler.NotificationPubSubHandler(),
+    "peppy:change_username": changeUsernameHandler.ChangeUsernamePubSubHandler(),
+    "peppy:update_cached_stats": updateStatsHandler.UpdateStatsPubSubHandler(),
+    "peppy:wipe": wipeHandler.WipePubSubHandler(),
 }
 
 

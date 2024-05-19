@@ -4,6 +4,7 @@ from typing import Literal
 from typing import Optional
 from typing import TypedDict
 from typing import Union
+from typing import cast
 
 import orjson
 
@@ -52,7 +53,7 @@ async def get_slot(match_id: int, slot_id: int) -> Optional[Slot]:
     slot = await glob.redis.get(make_key(match_id, slot_id))
     if slot is None:
         return None
-    return orjson.loads(slot)
+    return cast(Slot, orjson.loads(slot))
 
 
 async def get_slots(match_id: int) -> list[Slot]:
@@ -62,7 +63,7 @@ async def get_slots(match_id: int) -> list[Slot]:
     for raw_slot in raw_slots:
         assert raw_slot is not None
         slots.append(orjson.loads(raw_slot))
-    return slots
+    return cast(list[Slot], slots)
 
 
 async def update_slot(

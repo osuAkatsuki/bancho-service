@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING
+from typing import Any
 from typing import Optional
 
 import httpx
@@ -13,6 +14,7 @@ from amplitude import Config as AmplitudeConfig
 import settings
 
 if TYPE_CHECKING:
+    import tornado.web
     from redis.asyncio import Redis
 
     from objects.banchoConfig import banchoConfig
@@ -20,9 +22,9 @@ if TYPE_CHECKING:
 
 
 http_client = httpx.AsyncClient()
-application = None
+application: Optional[tornado.web.Application] = None
 db: DBPool
-redis: Redis
+redis: Redis[Any]
 banchoConf: banchoConfig
 
 restarting = False

@@ -33,7 +33,7 @@ NOW_PLAYING_REGEX = re.compile(
 
 async def connect() -> None:
     async with redisLock(f"bancho:locks:aika"):
-        token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+        token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
         if token is not None:
             return
 
@@ -56,7 +56,7 @@ async def connect() -> None:
 
 async def disconnect() -> None:
     async with redisLock(f"bancho:locks:aika"):
-        token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+        token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
         assert token is not None
 
         await tokenList.deleteToken(token["token_id"])
@@ -109,29 +109,14 @@ async def query(
                 "hidden": True,
             }
 
-        async def handle_command(cmd, fro, chan, msg):
-            try:
-                resp = await cmd["callback"](fro, chan, msg)
-            except Exception as e:
-                return e
-
-            return resp
-
-        if cmd["callback"]:
-            resp = await handle_command(cmd, fro, chan, message_split[1:])
-            if isinstance(resp, Exception):
-                raise resp
-        else:
-            resp = cmd["response"]
-
-        if not resp:
+        command_response = await cmd["callback"](fro, chan, message_split[1:])
+        if not command_response:
             return None
 
-        resp = [resp]
         if user_privileges & privileges.ADMIN_CAKER:
-            resp.append(f"Elapsed: {(time() - start_time) * 1000:.3f}ms")
+            command_response += f"| Elapsed: {(time() - start_time) * 1000:.3f}ms"
 
-        return {"response": " | ".join(resp), "hidden": cmd["hidden"]}
+        return {"response": command_response, "hidden": cmd["hidden"]}
 
     # No commands triggered
     return None
