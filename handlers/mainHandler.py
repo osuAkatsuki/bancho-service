@@ -6,7 +6,7 @@ import random
 import struct
 import time
 from collections.abc import Awaitable
-from typing import Callable
+from collections.abc import Callable
 from uuid import UUID
 
 import amplitude

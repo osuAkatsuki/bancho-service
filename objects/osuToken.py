@@ -60,18 +60,18 @@ class Token(TypedDict):
     # messages_buffer: list[str]
     block_non_friends_dm: bool
     # spectators: list[osuToken.Token]
-    spectating_token_id: Optional[str]
-    spectating_user_id: Optional[int]
+    spectating_token_id: str | None
+    spectating_user_id: int | None
     # spectator_lock: RLock
     latitude: float
     longitude: float
     # joinedChannels: list[str]
     ip: str
     country: int
-    away_message: Optional[str]
+    away_message: str | None
     # sent_away_messages: list[int]
-    match_id: Optional[int]
-    last_np: Optional[LastNp]
+    match_id: int | None
+    last_np: LastNp | None
     silence_end_time: int
     protocol_version: int
     # packet_queue: list[int]
@@ -94,7 +94,7 @@ class Token(TypedDict):
     global_rank: int
     pp: int
 
-    amplitude_device_id: Optional[str]
+    amplitude_device_id: str | None
 
 
 def safeUsername(username: str) -> str:
@@ -125,7 +125,7 @@ async def create_token(
     utc_offset: int,
     tournament: bool,
     block_non_friends_dm: bool,
-    amplitude_device_id: Optional[str],
+    amplitude_device_id: str | None,
 ) -> Token:
     token_id = str(uuid4())
     creation_time = time()
@@ -191,7 +191,7 @@ async def get_online_players_count() -> int:
     return await glob.redis.hlen("bancho:tokens:json")
 
 
-async def get_token(token_id: str) -> Optional[Token]:
+async def get_token(token_id: str) -> Token | None:
     token = await glob.redis.get(make_key(token_id))
     if token is None:
         return None
@@ -209,8 +209,8 @@ async def get_tokens() -> list[Token]:
 # TODO: get_limited_tokens with a more basic model
 
 
-async def get_token_by_user_id(user_id: int) -> Optional[Token]:
-    token_id: Optional[bytes] = await glob.redis.get(f"bancho:tokens:ids:{user_id}")
+async def get_token_by_user_id(user_id: int) -> Token | None:
+    token_id: bytes | None = await glob.redis.get(f"bancho:tokens:ids:{user_id}")
     if token_id is None:
         return None
 
@@ -221,8 +221,8 @@ async def get_token_by_user_id(user_id: int) -> Optional[Token]:
     return None
 
 
-async def get_token_by_username(username: str) -> Optional[Token]:
-    token_id: Optional[bytes] = await glob.redis.get(
+async def get_token_by_username(username: str) -> Token | None:
+    token_id: bytes | None = await glob.redis.get(
         f"bancho:tokens:names:{safeUsername(username)}",
     )
     if token_id is None:
@@ -258,43 +258,43 @@ MISSING = MissingType()
 async def update_token(
     token_id: str,
     # user_id: Optional[int] = None,
-    username: Optional[str] = None,
-    privileges: Optional[int] = None,
-    whitelist: Optional[int] = None,
-    kicked: Optional[bool] = None,
+    username: str | None = None,
+    privileges: int | None = None,
+    whitelist: int | None = None,
+    kicked: bool | None = None,
     # login_time: Optional[float] = None,
-    ping_time: Optional[float] = None,
+    ping_time: float | None = None,
     # utc_offset: Optional[int] = None,
     # tournament: Optional[bool] = None,
-    block_non_friends_dm: Optional[bool] = None,
-    spectating_token_id: Union[Optional[str], MissingType] = MISSING,
-    spectating_user_id: Union[Optional[int], MissingType] = MISSING,
-    latitude: Optional[float] = None,
-    longitude: Optional[float] = None,
-    ip: Optional[str] = None,  # ?
-    country: Optional[int] = None,
-    away_message: Union[Optional[str], MissingType] = MISSING,
-    match_id: Union[Optional[int], MissingType] = MISSING,
-    last_np: Union[Optional[LastNp], MissingType] = MISSING,
-    silence_end_time: Optional[int] = None,
-    protocol_version: Optional[int] = None,
-    spam_rate: Optional[int] = None,
-    action_id: Optional[int] = None,
-    action_text: Optional[str] = None,
-    action_md5: Optional[str] = None,
-    action_mods: Optional[int] = None,
-    game_mode: Optional[int] = None,
-    relax: Optional[bool] = None,
-    autopilot: Optional[bool] = None,
-    beatmap_id: Optional[int] = None,
-    ranked_score: Optional[int] = None,
-    accuracy: Optional[float] = None,
-    playcount: Optional[int] = None,
-    total_score: Optional[int] = None,
-    global_rank: Optional[int] = None,
-    pp: Optional[int] = None,
-    amplitude_device_id: Optional[str] = None,
-) -> Optional[Token]:
+    block_non_friends_dm: bool | None = None,
+    spectating_token_id: str | None | MissingType = MISSING,
+    spectating_user_id: int | None | MissingType = MISSING,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    ip: str | None = None,  # ?
+    country: int | None = None,
+    away_message: str | None | MissingType = MISSING,
+    match_id: int | None | MissingType = MISSING,
+    last_np: LastNp | None | MissingType = MISSING,
+    silence_end_time: int | None = None,
+    protocol_version: int | None = None,
+    spam_rate: int | None = None,
+    action_id: int | None = None,
+    action_text: str | None = None,
+    action_md5: str | None = None,
+    action_mods: int | None = None,
+    game_mode: int | None = None,
+    relax: bool | None = None,
+    autopilot: bool | None = None,
+    beatmap_id: int | None = None,
+    ranked_score: int | None = None,
+    accuracy: float | None = None,
+    playcount: int | None = None,
+    total_score: int | None = None,
+    global_rank: int | None = None,
+    pp: int | None = None,
+    amplitude_device_id: str | None = None,
+) -> Token | None:
     token = await get_token(token_id)
     if token is None:
         return None
@@ -928,7 +928,7 @@ async def kick(
 
 async def silence(
     token_id: str,
-    seconds: Optional[int] = None,
+    seconds: int | None = None,
     reason: str = "",
     author: int = CHATBOT_USER_ID,
 ) -> None:

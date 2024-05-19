@@ -76,7 +76,7 @@ async def query(
     fro: str,
     chan: str,
     message: str,
-) -> Optional[ChatbotResponse]:
+) -> ChatbotResponse | None:
     """
     Check if a message has triggered chatbot
 

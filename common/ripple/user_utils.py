@@ -61,7 +61,7 @@ async def get_user_stats(
     user_id: int,
     game_mode: int,
     relax_ap: int,
-) -> Optional[UserStatsResponse]:
+) -> UserStatsResponse | None:
     """Get all user stats for the given game mode."""
 
     # Get stats
@@ -96,7 +96,7 @@ async def get_user_stats(
     }
 
 
-async def get_id_from_safe_username(safe_username: str) -> Optional[int]:
+async def get_id_from_safe_username(safe_username: str) -> int | None:
     """Get user ID from a safe username."""
     result = await glob.db.fetch(
         "SELECT id FROM users WHERE username_safe = %s",
@@ -105,7 +105,7 @@ async def get_id_from_safe_username(safe_username: str) -> Optional[int]:
     return result["id"] if result else None
 
 
-async def get_map_nominator(beatmap_id: int) -> Optional[Any]:
+async def get_map_nominator(beatmap_id: int) -> Any | None:
     """Get the user who ranked a map by beatmapID."""
     res = await glob.db.fetch(
         "SELECT song_name, ranked, rankedby FROM beatmaps WHERE beatmap_id = %s",
@@ -148,7 +148,7 @@ async def get_id_from_username(username: str) -> int:
     return int(user_id)
 
 
-async def get_username_from_id(user_id: int) -> Optional[str]:
+async def get_username_from_id(user_id: int) -> str | None:
     """Get a user's username by id."""
 
     result = await glob.db.fetch(
@@ -745,7 +745,7 @@ async def authorize_login_and_activate_new_account(
 
         # Get original user_id and username (lowest ID)
         originalUserID = match[0]["userid"]
-        originalUsername: Optional[str] = await get_username_from_id(originalUserID)
+        originalUsername: str | None = await get_username_from_id(originalUserID)
 
         # Ban this user and append notes
         await ban(user_id)  # this removes the USER_PENDING_VERIFICATION flag too
@@ -910,8 +910,8 @@ async def get_remaining_overwrite_wait(user_id: int) -> int:
 async def remove_first_place(
     user_id: int,
     # Filter params
-    akat_mode: Optional[int] = None,
-    game_mode: Optional[int] = None,
+    akat_mode: int | None = None,
+    game_mode: int | None = None,
 ) -> None:
     # Go through all of the users first place scores.
     # If we find a better play, transfer the #1 to them,
@@ -1021,7 +1021,7 @@ async def get_profile_url_osu_chat_embed(
     user_id: int,
     *,
     include_clan: bool = False,
-) -> Optional[str]:
+) -> str | None:
     profile_embed = (
         f"({await get_username_from_id(user_id)})[{get_profile_url(user_id)}]"
     )

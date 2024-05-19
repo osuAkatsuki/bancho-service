@@ -6,11 +6,10 @@ from contextvars import ContextVar
 from types import TracebackType
 from typing import Any
 from typing import Optional
+from typing import TypeAlias
 from typing import Union
 
-from typing_extensions import TypeAlias
-
-LOG_CONTEXT: ContextVar[Optional[dict[str, Any]]] = ContextVar(
+LOG_CONTEXT: ContextVar[dict[str, Any] | None] = ContextVar(
     "LOG_CONTEXT",
     default=None,
 )
@@ -37,7 +36,7 @@ def _log(
     exc_info: ExcInfoType = None,
     stack_info: bool = False,
     stacklevel: int = 1,
-    extra: Optional[Mapping[str, object]] = None,
+    extra: Mapping[str, object] | None = None,
 ) -> None:
     log_context = LOG_CONTEXT.get()
     if log_context is None:
@@ -63,7 +62,7 @@ def debug(
     exc_info: ExcInfoType = None,
     stack_info: bool = False,
     stacklevel: int = 1,
-    extra: Optional[Mapping[str, object]] = None,
+    extra: Mapping[str, object] | None = None,
 ) -> None:
     return _log(
         "DEBUG",
@@ -82,7 +81,7 @@ def info(
     exc_info: ExcInfoType = None,
     stack_info: bool = False,
     stacklevel: int = 1,
-    extra: Optional[Mapping[str, object]] = None,
+    extra: Mapping[str, object] | None = None,
 ) -> None:
     return _log(
         "INFO",
@@ -100,7 +99,7 @@ def warning(
     exc_info: ExcInfoType = None,
     stack_info: bool = False,
     stacklevel: int = 1,
-    extra: Optional[Mapping[str, object]] = None,
+    extra: Mapping[str, object] | None = None,
 ) -> None:
     return _log(
         "WARNING",
@@ -118,7 +117,7 @@ def error(
     exc_info: ExcInfoType = None,
     stack_info: bool = False,
     stacklevel: int = 1,
-    extra: Optional[Mapping[str, object]] = None,
+    extra: Mapping[str, object] | None = None,
 ) -> None:
     return _log(
         "ERROR",
@@ -136,7 +135,7 @@ def exception(
     exc_info: ExcInfoType = True,
     stack_info: bool = False,
     stacklevel: int = 1,
-    extra: Optional[Mapping[str, object]] = None,
+    extra: Mapping[str, object] | None = None,
 ) -> None:
     return _log(
         "ERROR",

@@ -18,7 +18,7 @@ from objects import osuToken
 async def handleUsernameChange(
     userID: int,
     newUsername: str,
-    targetToken: Optional[osuToken.Token] = None,
+    targetToken: osuToken.Token | None = None,
 ) -> None:
     try:
         oldUsername = await user_utils.get_username_from_id(userID)

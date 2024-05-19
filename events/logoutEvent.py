@@ -18,7 +18,7 @@ from objects.osuToken import Token
 
 async def handle(
     token: Token,
-    rawPacketData: Optional[bytes] = None,
+    rawPacketData: bytes | None = None,
     deleteToken: bool = True,
 ) -> None:
     # Big client meme here. If someone logs out and logs in right after,

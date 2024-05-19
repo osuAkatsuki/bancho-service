@@ -10,7 +10,7 @@ from objects import glob
 from objects import osuToken
 
 
-async def overwritePreviousScore(userID: int) -> Optional[str]:
+async def overwritePreviousScore(userID: int) -> str | None:
     """
     Update a users previous score to overwrite all of their other scores, no matter what.
     The ratelimit has already been checked in the case of the !overwrite command.

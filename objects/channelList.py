@@ -65,7 +65,7 @@ async def getChannelNames() -> set[str]:
     return {name.decode() for name in raw_channel_names}
 
 
-async def getChannel(channel_name: str) -> Optional[Channel]:
+async def getChannel(channel_name: str) -> Channel | None:
     """Get a channel from redis."""
     raw_channel = await glob.redis.get(f"bancho:channels:{channel_name}")
     if raw_channel is None:
@@ -181,11 +181,11 @@ async def removeChannel(name: str) -> None:
 
 async def updateChannel(
     name: str,
-    description: Optional[str] = None,
-    public_read: Optional[bool] = None,
-    public_write: Optional[bool] = None,
-    instance: Optional[bool] = None,
-    moderated: Optional[bool] = None,
+    description: str | None = None,
+    public_read: bool | None = None,
+    public_write: bool | None = None,
+    instance: bool | None = None,
+    moderated: bool | None = None,
 ) -> None:
     """
     Updates a channel

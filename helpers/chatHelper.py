@@ -55,7 +55,7 @@ async def join_channel(
     :param allow_instance_channels: whether to allow game clients to join #spect_ and #mp_ channels
     :return: None
     """
-    token: Optional[osuToken.Token] = None
+    token: osuToken.Token | None = None
 
     try:
         token = await osuToken.get_token(token_id)
@@ -125,7 +125,7 @@ async def part_channel(
     :param allow_instance_channels: whether to allow game clients to part #spect_ and #mp_ channels
     :return: None
     """
-    token: Optional[osuToken.Token] = None
+    token: osuToken.Token | None = None
 
     try:
         # Make sure the client is not drunk and sends partChannel when closing a PM tab
@@ -335,7 +335,7 @@ async def _handle_public_message(
     sender_token: osuToken.Token,
     recipient_name: str,
     message: str,
-) -> Optional[SendMessageError]:
+) -> SendMessageError | None:
     channel_names = _get_contextual_channel_names(
         channel_name=recipient_name,
         user_token=sender_token,
@@ -509,7 +509,7 @@ async def _handle_private_message(
     sender_token: osuToken.Token,
     recipient_name: str,
     message: str,
-) -> Optional[SendMessageError]:
+) -> SendMessageError | None:
     recipient_token = await osuToken.get_token_by_username(recipient_name)
     if recipient_token is None:
         logger.warning(
@@ -630,7 +630,7 @@ async def _handle_message_from_chatbot(
     chatbot_token: osuToken.Token,
     recipient_name: str,
     message: str,
-) -> Optional[SendMessageError]:
+) -> SendMessageError | None:
     is_channel = recipient_name.startswith("#")
 
     if is_channel:
@@ -695,7 +695,7 @@ async def send_message(
     sender_token_id: str,
     recipient_name: str,
     message: str,
-) -> Optional[SendMessageError]:
+) -> SendMessageError | None:
     sender_token = await osuToken.get_token(sender_token_id)
     if sender_token is None:
         logger.warning(

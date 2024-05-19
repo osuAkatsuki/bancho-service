@@ -14,7 +14,7 @@ class redisLock:
     def __init__(self, key: str) -> None:
         self.key = key
 
-    async def _try_acquire(self, expiry: int) -> Optional[bool]:
+    async def _try_acquire(self, expiry: int) -> bool | None:
         return await glob.redis.set(self.key, "1", ex=expiry, nx=True)
 
     async def acquire(
@@ -33,8 +33,8 @@ class redisLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         await self.release()
