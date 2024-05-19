@@ -5,8 +5,8 @@ import random
 import secrets
 import time
 from collections.abc import Awaitable
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 from typing import Literal
 from typing import Optional
 from typing import TypedDict
@@ -68,7 +68,7 @@ CommandCallable = Callable[[str, str, list[str]], Awaitable[Optional[str]]]
 class Command(TypedDict):
     trigger: str
     privileges: int
-    syntax: Optional[str]
+    syntax: str | None
     hidden: bool
     callback: CommandCallable
 
@@ -82,7 +82,7 @@ commands: list[Command] = []
 def command(
     trigger: str,
     privs: int = privileges.USER_NORMAL,
-    syntax: Optional[str] = None,
+    syntax: str | None = None,
     hidden: bool = False,
 ) -> Callable[[CommandCallable], CommandCallable]:
     def wrapper(f: CommandCallable) -> CommandCallable:
@@ -169,7 +169,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
     syntax="<username> <message>",
     hidden=True,
 )
-async def alertUser(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def alertUser(fro: str, chan: str, message: list[str]) -> str | None:
     """Send a notification message to a specific user."""
     if not (msg := " ".join(message[1:]).strip()):
         return None
@@ -707,7 +707,7 @@ async def systemStatus(fro: str, chan: str, message: list[str]) -> str:
 async def getPPMessage(
     userID: int,
     just_data: Literal[False] = False,
-) -> Optional[str]: ...
+) -> str | None: ...
 
 
 @overload
@@ -720,7 +720,7 @@ async def getPPMessage(
 async def getPPMessage(
     userID: int,
     just_data: bool = False,
-) -> Union[Optional[str], Any]:
+) -> str | None | Any:
     if not (token := await osuToken.get_token_by_user_id(userID)):
         return None
 
@@ -869,7 +869,7 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
     trigger="\x01ACTION is listening to",
     hidden=True,
 )
-async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
     # don't document this, don't want it showing up in !help
     if not (token := await osuToken.get_token_by_username(fro)):
         return None
@@ -922,7 +922,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
 
 @command(trigger="!with", syntax="<mods>", hidden=True)
-async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def tillerinoMods(fro: str, chan: str, message: list[str]) -> str | None:
     """Get the pp values for the last /np'ed map, with specified mods."""
     # Run the command in PM only
     if chan.startswith("#"):
@@ -1016,7 +1016,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 
 
 @command(trigger="!last", hidden=False)
-async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def tillerinoLast(fro: str, chan: str, message: list[str]) -> str | None:
     """Show information about your most recently submitted score."""
     if not (token := await osuToken.get_token_by_username(fro)):
         return None
@@ -1379,7 +1379,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
     syntax="<rank/love/unrank> <set/map>",
     hidden=True,
 )
-async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     """Edit the ranked status of the last /np'ed map."""
     # Rank, unrank, and love maps with a single command.
     # Syntax: /np
@@ -1604,7 +1604,7 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!whoranked", hidden=True)
-async def getMapNominator(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def getMapNominator(fro: str, chan: str, message: list[str]) -> str | None:
     """Get the nominator for the last /np'ed map."""
     if not (token := await osuToken.get_token_by_username(fro)):
         return None
@@ -1682,7 +1682,7 @@ async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
 
 
 @command(trigger="!mp", syntax="<subcommand>", hidden=False)
-async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
+async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
     """Contains many multiplayer subcommands (TODO: document them as well)."""
 
     _user_token = await osuToken.get_token_by_username(fro)
@@ -1696,7 +1696,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     ):
         return None  # command used only on #multiplayer channels or bot PMs
 
-    async def mpAddRefer(user_token: osuToken.Token) -> Optional[str]:
+    async def mpAddRefer(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1724,7 +1724,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         await match.add_referee(multiplayer_match["match_id"], target_token["user_id"])
         return f"Added {target_token['username']} to referees"
 
-    async def mpRemoveRefer(user_token: osuToken.Token) -> Optional[str]:
+    async def mpRemoveRefer(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1755,7 +1755,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         )
         return f"Removed {target_token['username']} from referees"
 
-    async def mpListRefer(user_token: osuToken.Token) -> Optional[str]:
+    async def mpListRefer(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1776,7 +1776,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         refs = ", ".join(ref_usernames)
         return f"Referees for this match: {refs}"
 
-    async def mpMake(user_token: osuToken.Token) -> Optional[str]:
+    async def mpMake(user_token: osuToken.Token) -> str | None:
         if user_token["match_id"] is not None:
             return "You are already in a match."
 
@@ -1810,7 +1810,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"Tourney match #{multiplayer_match['match_id']} created!"
 
-    async def mpClose(user_token: osuToken.Token) -> Optional[str]:
+    async def mpClose(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1827,7 +1827,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             f"Multiplayer match #{multiplayer_match['match_id']} disposed successfully."
         )
 
-    async def mpLock(user_token: osuToken.Token) -> Optional[str]:
+    async def mpLock(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1844,7 +1844,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "This match has been locked."
 
-    async def mpUnlock(user_token: osuToken.Token) -> Optional[str]:
+    async def mpUnlock(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1861,7 +1861,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "This match has been unlocked."
 
-    async def mpSize(user_token: osuToken.Token) -> Optional[str]:
+    async def mpSize(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1888,7 +1888,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"Match size changed to {matchSize}."
 
-    async def mpForce(user_token: osuToken.Token) -> Optional[str]:
+    async def mpForce(user_token: osuToken.Token) -> str | None:
         if not (user_token["privileges"] & privileges.ADMIN_CAKER):
             return None
 
@@ -1908,7 +1908,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Joined match."
 
-    async def mpMove(user_token: osuToken.Token) -> Optional[str]:
+    async def mpMove(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1950,7 +1950,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else "You can't use that slot: it's either already occupied by someone else or locked."
         )
 
-    async def mpHost(user_token: osuToken.Token) -> Optional[str]:
+    async def mpHost(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1987,7 +1987,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             else f"Couldn't give host to {username}."
         )
 
-    async def mpClearHost(user_token: osuToken.Token) -> Optional[str]:
+    async def mpClearHost(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2004,7 +2004,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Host has been removed from this match."
 
-    async def mpStart(user_token: osuToken.Token) -> Optional[str]:
+    async def mpStart(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2142,7 +2142,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 "or you might receive a penalty."
             )
 
-    async def mpInvite(user_token: osuToken.Token) -> Optional[str]:
+    async def mpInvite(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2181,7 +2181,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"An invite to this match has been sent to {username}."
 
-    async def mpMap(user_token: osuToken.Token) -> Optional[str]:
+    async def mpMap(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2235,7 +2235,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Match map has been updated."
 
-    async def mpSet(user_token: osuToken.Token) -> Optional[str]:
+    async def mpSet(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2307,7 +2307,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Match settings have been updated!"
 
-    async def mpAbort(user_token: osuToken.Token) -> Optional[str]:
+    async def mpAbort(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2324,7 +2324,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Match aborted!"
 
-    async def mpKick(user_token: osuToken.Token) -> Optional[str]:
+    async def mpKick(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2365,7 +2365,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"{target_token['username']} has been kicked from the match."
 
-    async def mpPassword(user_token: osuToken.Token) -> Optional[str]:
+    async def mpPassword(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2385,7 +2385,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
     async def mpRandomPassword(
         user_token: osuToken.Token,
-    ) -> Optional[str]:
+    ) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2403,7 +2403,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Match password has been randomized."
 
-    async def mpMods(user_token: osuToken.Token) -> Optional[str]:
+    async def mpMods(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2475,7 +2475,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "Match mods have been updated!"
 
-    async def mpTeam(user_token: osuToken.Token) -> Optional[str]:
+    async def mpTeam(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2525,7 +2525,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"{target_token['username']} is now in {colour} team"
 
-    async def mpSettings(user_token: osuToken.Token) -> Optional[str]:
+    async def mpSettings(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2593,7 +2593,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return "".join(msg).rstrip(" | " if single else "\n")
 
-    async def mpScoreV(user_token: osuToken.Token) -> Optional[str]:
+    async def mpScoreV(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2626,10 +2626,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
 
         return f"Match scoring type set to scorev{message[1]}."
 
-    async def mpHelp(_: osuToken.Token) -> Optional[str]:
+    async def mpHelp(_: osuToken.Token) -> str | None:
         return f"Supported multiplayer subcommands: <{' | '.join(subcommands.keys())}>."
 
-    async def mp_link(user_token: osuToken.Token) -> Optional[str]:
+    async def mp_link(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -2643,7 +2643,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         return mp_message
 
     try:
-        subcommands: dict[str, Callable[[osuToken.Token], Awaitable[Optional[str]]]] = {
+        subcommands: dict[str, Callable[[osuToken.Token], Awaitable[str | None]]] = {
             "addref": mpAddRefer,
             "rmref": mpRemoveRefer,
             "listref": mpListRefer,

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 http_client = httpx.AsyncClient()
-application: Optional[tornado.web.Application] = None
+application: tornado.web.Application | None = None
 db: DBPool
 redis: Redis[Any]
 banchoConf: banchoConfig
@@ -35,7 +35,7 @@ latestBuild = 0
 groupPrivileges: dict[str, int] = {}
 bcrypt_cache: dict[bytes, bytes] = {}
 
-amplitude: Optional[Amplitude] = None
+amplitude: Amplitude | None = None
 if settings.AMPLITUDE_API_KEY:
     amplitude = Amplitude(
         settings.AMPLITUDE_API_KEY,

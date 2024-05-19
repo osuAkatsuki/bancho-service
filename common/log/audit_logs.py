@@ -64,7 +64,7 @@ async def send_log_as_discord_webhook(message: str, discord_channel: str) -> Non
 async def send_log(
     user_id: int,
     message: str,
-    discord_channel: Optional[str] = None,
+    discord_channel: str | None = None,
     admin: str = "Aika",
 ) -> None:
     """

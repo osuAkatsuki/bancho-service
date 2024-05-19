@@ -20,7 +20,7 @@ repos:
     rev: v3.15.2
     hooks:
     -   id: pyupgrade
-        args: [--py39-plus, --keep-runtime-typing]
+        args: [--py311-plus, --keep-runtime-typing]
 -   repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
@@ -37,4 +37,4 @@ repos:
         additional_dependencies: [black==24.4.2]
 
 default_language_version:
-    python: python3.9
+    python: python3.11

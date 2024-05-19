@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.11
 from __future__ import annotations
 
 import asyncio
@@ -47,7 +47,7 @@ def dump_thread_stacks() -> None:
             print("\n", file=f)
 
 
-def signal_handler(signum: int, frame: Optional[FrameType] = None) -> None:
+def signal_handler(signum: int, frame: FrameType | None = None) -> None:
     dump_thread_stacks()
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     signal.default_int_handler(signum, frame)
@@ -57,7 +57,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 async def main() -> int:
-    http_server: Optional[tornado.httpserver.HTTPServer] = None
+    http_server: tornado.httpserver.HTTPServer | None = None
     try:
         # TODO: do we need this anymore now with stateless design?
         # (not using filesystem anymore for things like .data/)

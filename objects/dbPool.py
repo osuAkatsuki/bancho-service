@@ -11,7 +11,7 @@ import settings
 
 class DBPool:
     def __init__(self) -> None:
-        self._pool: Optional[aiomysql.Pool] = None
+        self._pool: aiomysql.Pool | None = None
 
     async def start(self) -> None:
         self._pool = cast(
@@ -40,7 +40,7 @@ class DBPool:
                 await cur.execute(*args, **kwargs)
                 return [dict(rec) for rec in await cur.fetchall()]
 
-    async def fetch(self, *args: Any, **kwargs: Any) -> Optional[dict[str, Any]]:
+    async def fetch(self, *args: Any, **kwargs: Any) -> dict[str, Any] | None:
         assert self._pool is not None, "DBPool not started"
 
         async with self._pool.acquire() as conn:

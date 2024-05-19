@@ -17,7 +17,7 @@ class Slot(TypedDict):
     status: int  # slotStatuses.FREE
     team: int  # matchTeams.NO_TEAM
     user_id: int  # -1 # TODO: why -1 instead of None
-    user_token: Optional[str]  # string of osutoken
+    user_token: str | None  # string of osutoken
     mods: int
     loaded: bool
     skip: bool
@@ -27,7 +27,7 @@ class Slot(TypedDict):
     passed: bool
 
 
-def make_key(match_id: int, slot_id: Union[int, Literal["*"]]) -> str:
+def make_key(match_id: int, slot_id: int | Literal["*"]) -> str:
     return f"bancho:matches:{match_id}:slots:{slot_id}"
 
 
@@ -49,7 +49,7 @@ async def create_slot(match_id: int, slot_id: int) -> Slot:
     return slot
 
 
-async def get_slot(match_id: int, slot_id: int) -> Optional[Slot]:
+async def get_slot(match_id: int, slot_id: int) -> Slot | None:
     slot = await glob.redis.get(make_key(match_id, slot_id))
     if slot is None:
         return None
@@ -69,18 +69,18 @@ async def get_slots(match_id: int) -> list[Slot]:
 async def update_slot(
     match_id: int,
     slot_id: int,
-    status: Optional[int] = None,
-    team: Optional[int] = None,
-    user_id: Optional[int] = None,
-    user_token: Optional[str] = "",
-    mods: Optional[int] = None,
-    loaded: Optional[bool] = None,
-    skip: Optional[bool] = None,
-    complete: Optional[bool] = None,
-    score: Optional[int] = None,
-    failed: Optional[bool] = None,
-    passed: Optional[bool] = None,
-) -> Optional[Slot]:
+    status: int | None = None,
+    team: int | None = None,
+    user_id: int | None = None,
+    user_token: str | None = "",
+    mods: int | None = None,
+    loaded: bool | None = None,
+    skip: bool | None = None,
+    complete: bool | None = None,
+    score: int | None = None,
+    failed: bool | None = None,
+    passed: bool | None = None,
+) -> Slot | None:
     slot = await get_slot(match_id, slot_id)
     if slot is None:
         return None

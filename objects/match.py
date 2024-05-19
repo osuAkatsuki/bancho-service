@@ -134,7 +134,7 @@ async def get_match_ids() -> set[int]:
     return {int(match_id) for match_id in raw_match_ids}
 
 
-async def get_match(match_id: int) -> Optional[Match]:
+async def get_match(match_id: int) -> Match | None:
     raw_match = await glob.redis.get(make_key(match_id))
     if raw_match is None:
         return None
@@ -144,25 +144,25 @@ async def get_match(match_id: int) -> Optional[Match]:
 
 async def update_match(
     match_id: int,
-    match_name: Optional[str] = None,
-    match_password: Optional[str] = None,
-    beatmap_id: Optional[int] = None,
-    beatmap_name: Optional[str] = None,
-    beatmap_md5: Optional[str] = None,
-    game_mode: Optional[int] = None,
-    host_user_id: Optional[int] = None,
-    mods: Optional[int] = None,
-    match_scoring_type: Optional[int] = None,
-    match_team_type: Optional[int] = None,
-    match_mod_mode: Optional[int] = None,
-    seed: Optional[int] = None,
-    is_tourney: Optional[bool] = None,
-    is_locked: Optional[bool] = None,
-    is_starting: Optional[bool] = None,
-    is_in_progress: Optional[bool] = None,
-    creation_time: Optional[float] = None,
-    game_id: Optional[int] = None,
-) -> Optional[Match]:
+    match_name: str | None = None,
+    match_password: str | None = None,
+    beatmap_id: int | None = None,
+    beatmap_name: str | None = None,
+    beatmap_md5: str | None = None,
+    game_mode: int | None = None,
+    host_user_id: int | None = None,
+    mods: int | None = None,
+    match_scoring_type: int | None = None,
+    match_team_type: int | None = None,
+    match_mod_mode: int | None = None,
+    seed: int | None = None,
+    is_tourney: bool | None = None,
+    is_locked: bool | None = None,
+    is_starting: bool | None = None,
+    is_in_progress: bool | None = None,
+    creation_time: float | None = None,
+    game_id: int | None = None,
+) -> Match | None:
     match = await get_match(match_id)
     if match is None:
         return None
@@ -389,14 +389,14 @@ async def removeHost(match_id: int, rm_referee: bool = True) -> None:
 async def setSlot(
     match_id: int,
     slot_id: int,
-    status: Optional[int] = None,
-    team: Optional[int] = None,
-    user_id: Optional[int] = None,
-    user_token: Optional[str] = "",  # TODO: need to refactor stuff for this
-    mods: Optional[int] = None,
-    loaded: Optional[bool] = None,
-    skip: Optional[bool] = None,
-    complete: Optional[bool] = None,
+    status: int | None = None,
+    team: int | None = None,
+    user_id: int | None = None,
+    user_token: str | None = "",  # TODO: need to refactor stuff for this
+    mods: int | None = None,
+    loaded: bool | None = None,
+    skip: bool | None = None,
+    complete: bool | None = None,
 ) -> slot.Slot:
     _slot = await slot.get_slot(match_id, slot_id)
     assert _slot is not None
@@ -736,7 +736,7 @@ async def resetSlots(match_id: int) -> None:
             )
 
 
-async def getUserSlotID(match_id: int, user_id: int) -> Optional[int]:
+async def getUserSlotID(match_id: int, user_id: int) -> int | None:
     """
     Get slot ID occupied by userID
 
@@ -1156,7 +1156,7 @@ async def countUsers(match_id: int) -> int:
 async def changeTeam(
     match_id: int,
     user_id: int,
-    new_team: Optional[int] = None,
+    new_team: int | None = None,
 ) -> None:
     """
     Change userID's team
@@ -1664,8 +1664,8 @@ async def update_match_name(match_id: int, match_name: str) -> None:
 async def insert_match_event(
     match_id: int,
     event_type: MatchEvents,
-    game_id: Optional[int] = None,
-    user_id: Optional[int] = None,
+    game_id: int | None = None,
+    user_id: int | None = None,
 ) -> None:
     await glob.db.execute(
         """

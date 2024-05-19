@@ -171,7 +171,7 @@ async def matchExists(matchID: int) -> bool:
     return matchID in await match.get_match_ids()
 
 
-async def getMatchByID(match_id: int) -> Optional[match.Match]:
+async def getMatchByID(match_id: int) -> match.Match | None:
     if await matchExists(match_id):
         return await match.get_match(match_id)
 
@@ -179,5 +179,5 @@ async def getMatchByID(match_id: int) -> Optional[match.Match]:
 
 
 # this is the duplicate of channelList.getMatchFromChannel. I don't know where to put this function actually. Maybe it's better to be here.
-async def getMatchFromChannel(chan: str) -> Optional[match.Match]:
+async def getMatchFromChannel(chan: str) -> match.Match | None:
     return await getMatchByID(await channelList.getMatchIDFromChannel(chan))

@@ -400,7 +400,7 @@ async def createMatch(match_id: int) -> bytes:
     return packetHelper.buildPacket(packetIDs.server_newMatch, matchData)
 
 
-async def updateMatch(match_id: int, censored: bool = False) -> Optional[bytes]:
+async def updateMatch(match_id: int, censored: bool = False) -> bytes | None:
     # Get match binary data and build packet
     multiplayer_match = await match.get_match(match_id)
     if multiplayer_match is None:

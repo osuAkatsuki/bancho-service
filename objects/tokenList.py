@@ -14,7 +14,7 @@ async def addToken(
     utc_offset: int = 0,
     tournament: bool = False,
     block_non_friends_dm: bool = False,
-    amplitude_device_id: Optional[str] = None,
+    amplitude_device_id: str | None = None,
 ) -> osuToken.Token:
     """
     Add a token object to tokens list
@@ -80,7 +80,7 @@ async def deleteToken(token_id: str) -> None:
     )
 
 
-async def getUserIDFromToken(token_id: str) -> Optional[int]:
+async def getUserIDFromToken(token_id: str) -> int | None:
     """
     Get user ID from a token
 
