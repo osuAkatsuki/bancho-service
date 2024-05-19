@@ -17,6 +17,8 @@ from common.constants import gameModes
 from common.constants import privileges
 from common.log import logger
 from common.ripple import user_utils
+from common.types import UNSET
+from common.types import Unset
 from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
@@ -245,15 +247,6 @@ async def get_all_tokens_by_username(username: str) -> list[Token]:
     return [token for token in tokens if token["username"] == username]
 
 
-class MissingType:
-    pass
-
-
-from typing import Union
-
-MISSING = MissingType()
-
-
 # TODO: the things that can actually be Optional need to have different defaults
 async def update_token(
     token_id: str,
@@ -267,15 +260,15 @@ async def update_token(
     # utc_offset: Optional[int] = None,
     # tournament: Optional[bool] = None,
     block_non_friends_dm: bool | None = None,
-    spectating_token_id: str | None | MissingType = MISSING,
-    spectating_user_id: int | None | MissingType = MISSING,
+    spectating_token_id: str | None | Unset = UNSET,
+    spectating_user_id: int | None | Unset = UNSET,
     latitude: float | None = None,
     longitude: float | None = None,
     ip: str | None = None,  # ?
     country: int | None = None,
-    away_message: str | None | MissingType = MISSING,
-    match_id: int | None | MissingType = MISSING,
-    last_np: LastNp | None | MissingType = MISSING,
+    away_message: str | None | Unset = UNSET,
+    match_id: int | None | Unset = UNSET,
+    last_np: LastNp | None | Unset = UNSET,
     silence_end_time: int | None = None,
     protocol_version: int | None = None,
     spam_rate: int | None = None,
@@ -311,9 +304,9 @@ async def update_token(
         token["ping_time"] = ping_time
     if block_non_friends_dm is not None:
         token["block_non_friends_dm"] = block_non_friends_dm
-    if not isinstance(spectating_token_id, MissingType):
+    if not isinstance(spectating_token_id, Unset):
         token["spectating_token_id"] = spectating_token_id
-    if not isinstance(spectating_user_id, MissingType):
+    if not isinstance(spectating_user_id, Unset):
         token["spectating_user_id"] = spectating_user_id
     if latitude is not None:
         token["latitude"] = latitude
@@ -323,11 +316,11 @@ async def update_token(
         token["ip"] = ip
     if country is not None:
         token["country"] = country
-    if not isinstance(away_message, MissingType):
+    if not isinstance(away_message, Unset):
         token["away_message"] = away_message
-    if not isinstance(match_id, MissingType):
+    if not isinstance(match_id, Unset):
         token["match_id"] = match_id
-    if not isinstance(last_np, MissingType):
+    if not isinstance(last_np, Unset):
         token["last_np"] = last_np
     if silence_end_time is not None:
         token["silence_end_time"] = silence_end_time
