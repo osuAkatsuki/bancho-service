@@ -986,7 +986,7 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> Optional[str
 #            return  None
 #
 #        # Get token and user ID
-#        token = await  osuToken.get_token_by_username(fro)
+#        token = await osuToken.get_token_by_username(fro)
 #        if not token:
 #            return  None
 #        userID = token.userID
