@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from constants import CHATBOT_USER_ID
+from constants import CHATBOT_USER_NAME
 from constants import clientPackets
 from constants import serverPackets
-from objects import glob
 from objects import osuToken
 from objects.osuToken import Token
 
@@ -27,7 +27,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     await osuToken.enqueue(
         userToken["token_id"],
         serverPackets.sendMessage(
-            fro=glob.BOT_NAME,
+            fro=CHATBOT_USER_NAME,
             to=userToken["username"],
             message=chatbot_response,
             fro_id=CHATBOT_USER_ID,

@@ -8,6 +8,7 @@ import orjson
 
 from common.log import logger
 from constants import CHATBOT_USER_ID
+from constants import CHATBOT_USER_NAME
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
@@ -130,7 +131,7 @@ async def addChannel(
         except exceptions.userAlreadyInChannelException:
             logger.warning(
                 "User already in public chat channel",
-                extra={"username": glob.BOT_NAME, "channel_name": name},
+                extra={"username": CHATBOT_USER_NAME, "channel_name": name},
             )
 
     logger.info("Created chat channel in redis", extra={"channel_name": name})

@@ -41,6 +41,8 @@ MIRROR_URL = os.environ["MIRROR_URL"]
 
 DEBUG = os.environ["DEBUG"] == "1"
 
+AUDIT_LOG_MESSAGE_KEYWORDS = os.environ["AUDIT_LOG_MESSAGE_KEYWORDS"].split(",")
+
 LOCALIZE_ENABLE = os.environ["LOCALIZE_ENABLE"] == "1"
 LOCALIZE_IP_API_URL = os.environ["LOCALIZE_IP_API_URL"]
 

@@ -62,7 +62,7 @@ async def disconnect() -> None:
         await tokenList.deleteToken(token["token_id"])
 
 
-class CommandResponse(TypedDict):
+class ChatbotResponse(TypedDict):
     response: str
     hidden: bool
 
@@ -76,7 +76,7 @@ async def query(
     fro: str,
     chan: str,
     message: str,
-) -> Optional[CommandResponse]:
+) -> Optional[ChatbotResponse]:
     """
     Check if a message has triggered chatbot
 

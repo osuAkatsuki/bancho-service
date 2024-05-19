@@ -1,25 +1,45 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING
+from typing import TypedDict
 
-from common.constants import mods
+import settings
 from common.constants import privileges
 from common.log import audit_logs
 from common.log import logger
 from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
+from constants import CHATBOT_USER_NAME
 from constants import exceptions
 from constants import serverPackets
 from objects import channelList
 from objects import chatbot
-from objects import glob
 from objects import osuToken
 from objects import stream
 from objects import streamList
 from objects import tokenList
+from objects.chatbot import ChatbotResponse
 
 if TYPE_CHECKING:
     from typing import Optional
+
+
+MAXIMUM_MESSAGE_LENGTH = 1000
+
+
+class SendMessageError(str, Enum):
+    UNKNOWN_CHANNEL = "UNKNOWN_CHANNEL"
+    NO_CHANNEL_MEMBERSHIP = "NO_CHANNEL_MEMBERSHIP"
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    SENDER_CLIENT_STREAM_UNSUPPORTED = "SENDER_CLIENT_STREAM_UNSUPPORTED"
+    RECIPIENT_CLIENT_STREAM_UNSUPPORTED = "RECIPIENT_CLIENT_STREAM_UNSUPPORTED"
+    INSUFFICIENT_PRIVILEGES = "INSUFFICIENT_PRIVILEGES"
+    SENDER_SILENCED = "SENDER_SILENCED"
+    SENDER_RESTRICTED = "SENDER_RESTRICTED"
+    RECIPIENT_RESTRICTED = "RECIPIENT_RESTRICTED"
+    BLOCKED_BY_RECIPIENT = "BLOCKED_BY_RECIPIENT"
+    INVALID_MESSAGE_CONTENT = "INVALID_MESSAGE_CONTENT"
 
 
 async def join_channel(
@@ -31,8 +51,8 @@ async def join_channel(
     """
     Join a channel
 
+    :param channel_name: channel name
     :param token: user token object of user that joins the channel.
-    :param channel: channel name
     :param allow_instance_channels: whether to allow game clients to join #spect_ and #mp_ channels
     :return: None
     """
@@ -100,7 +120,7 @@ async def part_channel(
     """
     Part a channel
 
-    :param channel: channel name
+    :param channel_name: channel name
     :param token_id: user token object of user that parts the channel.
     :param notify_user_of_kick: if True, channel tab will be closed on client. Used when leaving lobby.
     :param allow_instance_channels: whether to allow game clients to part #spect_ and #mp_ channels
@@ -190,468 +210,609 @@ async def part_channel(
         return None
 
 
-gamer_ids = [
-    [99, 104, 101, 97, 116, 32],
-    [99, 104, 101, 97, 116, 105, 110, 103],
-    [97, 113, 110],
-    [97, 113, 117, 105, 108, 97],
-    [32, 104, 113],
-    [97, 105, 110, 117],
-    [109, 117, 108, 116, 105, 97, 99, 99],
-    [109, 112, 103, 104],
-    [107, 97, 119, 97, 116, 97],
-    [104, 97, 99, 107],
-    [109, 97, 112, 108, 101],
-]
+def _should_audit_log_message(message: str) -> bool:
+    return message in settings.AUDIT_LOG_MESSAGE_KEYWORDS
 
 
-async def send_message(
+class ContextualChannelNames(TypedDict):
+    server_name: str  # e.g. #mp_123
+    client_name: str  # e.g. #multiplayer
+
+
+def _get_contextual_channel_names(
+    channel_name: str,
+    *,
+    user_token: osuToken.Token,
+) -> ContextualChannelNames:
+    """\
+    Find the channel names from the perspective
+    of both the client and the server.
+    """
+    if channel_name == "#spectator":
+        if user_token["spectating_user_id"] is None:
+            spectating_user_id = user_token["user_id"]
+        else:
+            spectating_user_id = user_token["spectating_user_id"]
+
+        server_channel_name = f"#spect_{spectating_user_id}"
+        client_channel_name = "#spectator"
+
+    elif channel_name == "#multiplayer":
+        server_channel_name = f"#mp_{user_token['match_id']}"
+        client_channel_name = "#multiplayer"
+
+    elif channel_name.startswith("#spect_"):
+        server_channel_name = channel_name
+        client_channel_name = "#spectator"
+
+    elif channel_name.startswith("#mp_"):
+        server_channel_name = channel_name
+        client_channel_name = "#multiplayer"
+    else:
+        server_channel_name = channel_name
+        client_channel_name = channel_name
+
+    return {
+        "server_name": server_channel_name,
+        "client_name": client_channel_name,
+    }
+
+
+async def _unicast_private_message(
+    *,
+    sender_token: osuToken.Token,
+    recipient_token: osuToken.Token,
+    message: str,
+) -> None:
+    packet = serverPackets.sendMessage(
+        fro=sender_token["username"],
+        to=recipient_token["username"],
+        message=message,
+        fro_id=sender_token["user_id"],
+    )
+    await osuToken.enqueue(recipient_token["token_id"], packet)
+
+
+async def _broadcast_public_message(
+    *,
+    sender_token: osuToken.Token,
+    channel_names: ContextualChannelNames,
+    message: str,
+) -> None:
+    packet = serverPackets.sendMessage(
+        fro=sender_token["username"],
+        to=channel_names["client_name"],
+        message=message,
+        fro_id=sender_token["user_id"],
+    )
+
+    await streamList.broadcast(
+        f"chat/{channel_names['server_name']}",
+        packet,
+        # We don't send the packet to the sender because
+        # their game already displays what they sent
+        excluded_token_ids=[sender_token["token_id"]],
+    )
+
+
+async def _multicast_public_message(
+    *,
+    sender_token: osuToken.Token,
+    channel_names: ContextualChannelNames,
+    message: str,
+    recipient_token_ids: list[str],
+) -> None:
+    packet = serverPackets.sendMessage(
+        fro=sender_token["username"],
+        to=channel_names["client_name"],
+        message=message,
+        fro_id=sender_token["user_id"],
+    )
+
+    await streamList.multicast(
+        stream_name=f"chat/{channel_names['server_name']}",
+        data=packet,
+        recipient_token_ids=recipient_token_ids,
+    )
+
+
+def _is_chatbot_interaction_message(message: str) -> bool:
+    return message.startswith("!") or message.startswith("\x01")
+
+
+def _chatbot_can_observe_message(recipient_name: str) -> bool:
+    is_channel = recipient_name.startswith("#")
+    return is_channel or recipient_name == CHATBOT_USER_NAME
+
+
+def _is_chatbot_interaction(message: str, recipient_name: str) -> bool:
+    return _is_chatbot_interaction_message(message) and _chatbot_can_observe_message(
+        recipient_name,
+    )
+
+
+async def _handle_public_message(
+    *,
+    sender_token: osuToken.Token,
     recipient_name: str,
     message: str,
-    sender_token_id: str,
-) -> None:
-    """
-    Send a message to osu!bancho
+) -> Optional[SendMessageError]:
+    channel_names = _get_contextual_channel_names(
+        channel_name=recipient_name,
+        user_token=sender_token,
+    )
 
-    :param recipient_name: receiver channel (if starts with #) or username
-    :param message: text of the message
-    :param sender_token_id: sender token object.
-    :return: None
-    """
-    userToken: Optional[osuToken.Token] = None
+    channel = await channelList.getChannel(channel_names["server_name"])
+    if channel is None:
+        logger.warning(
+            "User attempted to send a message to an unknown channel",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+            },
+        )
+        return SendMessageError.UNKNOWN_CHANNEL
 
-    try:
-        userToken = await osuToken.get_token(sender_token_id)
-        if userToken is None:
-            raise exceptions.userNotFoundException()
+    if channel["moderated"] and not osuToken.is_staff(sender_token["privileges"]):
+        logger.warning(
+            "User attempted to send a message to a moderated channel",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+            },
+        )
+        return SendMessageError.INSUFFICIENT_PRIVILEGES
 
-        # Make sure this is not a tournament client
-        if userToken["tournament"]:
-            raise exceptions.userTournamentException()
+    if channel_names["server_name"] not in await osuToken.get_joined_channels(
+        sender_token["token_id"],
+    ):
+        logger.warning(
+            "User attempted to send a message to a channel they are not in",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+            },
+        )
+        return SendMessageError.NO_CHANNEL_MEMBERSHIP
 
-        # Make sure the user is not in restricted mode
-        if osuToken.is_restricted(userToken["privileges"]):
-            raise exceptions.userRestrictedException()
+    if (
+        channel_names["client_name"] == "#premium"
+        and sender_token["privileges"] & privileges.USER_PREMIUM == 0
+    ):
+        logger.warning(
+            "User attempted to send a message to a premium channel without premium permissions",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+            },
+        )
+        return SendMessageError.INSUFFICIENT_PRIVILEGES
 
-        # Make sure the user is not silenced
-        if await osuToken.isSilenced(userToken["token_id"]):
-            raise exceptions.userSilencedException()
+    if (
+        channel_names["client_name"] == "#supporter"
+        and sender_token["privileges"] & privileges.USER_DONOR == 0
+    ):
+        logger.warning(
+            "User attempted to send a message to a supporter channel without supporter permissions",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+            },
+        )
+        return SendMessageError.INSUFFICIENT_PRIVILEGES
 
-        # Redirect !report to chatbot
-        if message.startswith("!report"):
-            recipient_name = glob.BOT_NAME
+    if (
+        not channel["public_write"]
+        and channel_names["client_name"] not in {"#multiplayer", "#spectator"}
+        and not osuToken.is_staff(sender_token["privileges"])
+    ):
+        logger.warning(
+            "User attempted to send a message to a non-public channel without permissions",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+            },
+        )
+        return SendMessageError.INSUFFICIENT_PRIVILEGES
 
-        # Determine internal name if needed
-        # (toclient is used clientwise for #multiplayer and #spectator channels)
-        toClient = recipient_name
-        if recipient_name == "#spectator":
-            if userToken["spectating_user_id"] is None:
-                s = userToken["user_id"]
-            else:
-                s = userToken["spectating_user_id"]
-            recipient_name = f"#spect_{s}"
-        elif recipient_name == "#multiplayer":
-            recipient_name = f"#mp_{userToken['match_id']}"
-        elif recipient_name.startswith("#spect_"):
-            toClient = "#spectator"
-        elif recipient_name.startswith("#mp_"):
-            toClient = "#multiplayer"
+    await osuToken.addMessageInBuffer(
+        sender_token["token_id"],
+        channel_names["server_name"],
+        message,
+    )
 
-        isChannel = recipient_name[0] == "#"
-
-        # Make sure the message is valid
-        if not message.strip():
-            raise exceptions.invalidArgumentsException()
-
-        # Truncate really long messages
-        if len(message) > 1024 and userToken["user_id"] != CHATBOT_USER_ID:
-            message = f"{message[:1024]}... (truncated)"
-
-        action_msg = message.startswith("\x01ACTION")
-
-        # Send the message
-        if isChannel:
-            # CHANNEL
-            # Make sure the channel exists
-            channel = await channelList.getChannel(recipient_name)
-            if channel is None:
-                raise exceptions.channelUnknownException()
-
-            # Make sure the channel is not in moderated mode
-            if channel["moderated"] and not osuToken.is_staff(userToken["privileges"]):
-                raise exceptions.channelModeratedException()
-
-            # Make sure we are in the channel
-            if recipient_name not in await osuToken.get_joined_channels(
-                userToken["token_id"],
-            ):
-                raise exceptions.userNotInChannelException()
-
-            # Make sure we have write permissions.
-
-            # premium requires premium
-            if (
-                recipient_name == "#premium"
-                and userToken["privileges"] & privileges.USER_PREMIUM == 0
-            ):
-                raise exceptions.channelNoPermissionsException()
-
-            # supporter requires supporter
-            if (
-                recipient_name == "#supporter"
-                and userToken["privileges"] & privileges.USER_DONOR == 0
-            ):
-                raise exceptions.channelNoPermissionsException()
-
-            # non-public channels (except multiplayer) require staff or bot
-            if (
-                not channel["public_write"]
-                and not (
-                    recipient_name.startswith("#mp_")
-                    or recipient_name.startswith("#spect_")
-                )
-            ) and not (
-                osuToken.is_staff(userToken["privileges"])
-                or userToken["user_id"] == CHATBOT_USER_ID
-            ):
-                raise exceptions.channelNoPermissionsException()
-
-            # Check message for commands
-            if not action_msg:
-                chatbot_response = await chatbot.query(
-                    userToken["username"],
-                    recipient_name,
-                    message,
-                )
-            else:
-                chatbot_response = None
-
-                # check for /np (rly bad lol)
-                npmsg = " ".join(message.split(" ")[2:])
-
-                match = chatbot.NOW_PLAYING_REGEX.match(npmsg)
-
-                if match is None:  # should always match?
-                    logger.error(
-                        "Error parsing /np message",
-                        extra={"chat_message": npmsg},
-                    )
-                    return None
-
-                mods_int = 0
-                if match["mods"] is not None:
-                    for _mods in match["mods"][1:].split(" "):
-                        mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
-
-                # Get beatmap id from URL
-                beatmap_id = int(match["bid"])
-
-                # Return tillerino message
-                userToken = await osuToken.update_token(
-                    userToken["token_id"],
-                    last_np={
-                        "beatmap_id": beatmap_id,
-                        "mods": mods_int,
-                        "accuracy": -1.0,
-                    },
-                )
-                assert userToken is not None
-
-            msg_packet = serverPackets.sendMessage(
-                fro=userToken["username"],
-                to=toClient,
-                message=message,
-                fro_id=userToken["user_id"],
-            )
-
-            if chatbot_response:
-                logger.info(
-                    "Chatbot interaction",
-                    extra={
-                        "username": userToken["username"],
-                        "user_id": userToken["user_id"],
-                        "channel_name": recipient_name,
-                        "user_message": message,
-                        "chatbot_response": chatbot_response,
-                    },
-                )
-
-                if chatbot_response["hidden"]:  # Send to user & gmt+
-                    send_to = {
-                        t["token_id"]
-                        for t in await osuToken.get_tokens()  # TODO: use redis
-                        if (
-                            t["token_id"] != userToken["token_id"]
-                            and osuToken.is_staff(t["privileges"])
-                            and t["user_id"] != CHATBOT_USER_ID
-                        )
-                    }
-
-                    # Send their command
-                    await streamList.multicast(
-                        f"chat/{recipient_name}",
-                        msg_packet,
-                        send_to,
-                    )
-
-                    # Send Aika's response
-                    send_to.add(userToken["token_id"])
-                    response_packet = serverPackets.sendMessage(
-                        fro=glob.BOT_NAME,
-                        to=toClient,
-                        message=chatbot_response["response"],
-                        fro_id=CHATBOT_USER_ID,
-                    )
-                    await streamList.multicast(
-                        f"chat/{recipient_name}",
-                        response_packet,
-                        send_to,
-                    )
-                else:  # Send to all streams
-                    await osuToken.addMessageInBuffer(
-                        userToken["token_id"],
-                        recipient_name,
-                        message,
-                    )
-                    await streamList.broadcast(
-                        f"chat/{recipient_name}",
-                        msg_packet,
-                        but=[userToken["token_id"]],
-                    )
-
-                    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-                    assert aika_token is not None
-                    await send_message(
-                        sender_token_id=aika_token["token_id"],
-                        recipient_name=recipient_name,
-                        message=chatbot_response["response"],
-                    )
-            else:
-                await osuToken.addMessageInBuffer(
-                    userToken["token_id"],
-                    recipient_name,
-                    message,
-                )
-                await streamList.broadcast(
-                    f"chat/{recipient_name}",
-                    msg_packet,
-                    but=[userToken["token_id"]],
-                )
-        else:
-            # USER
-            # Make sure recipient user is connected
-            recipient_token = await tokenList.getTokenFromUsername(recipient_name)
-            if recipient_token is None:
-                raise exceptions.userNotFoundException()
-
-            # Make sure the recipient is not a tournament client
-            if recipient_token["tournament"]:
-                raise exceptions.userTournamentException()
-
-            # Notify the sender that the recipient is silenced.
-            if await osuToken.isSilenced(recipient_token["token_id"]):
-                await osuToken.enqueue(
-                    recipient_token["token_id"],
-                    serverPackets.targetSilenced(
-                        to=recipient_name,
-                        fro=userToken["username"],
-                        fro_id=userToken["user_id"],
-                    ),
-                )
-
-            if userToken["username"] != glob.BOT_NAME:
-                # Make sure the recipient is not restricted or we are bot
-                if osuToken.is_restricted(recipient_token["privileges"]):
-                    raise exceptions.userRestrictedException()
-
-                # TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
-                if recipient_token["block_non_friends_dm"] and userToken[
-                    "user_id"
-                ] not in await user_utils.get_friend_user_ids(
-                    recipient_token["user_id"],
-                ):
-                    await osuToken.enqueue(
-                        userToken["token_id"],
-                        serverPackets.targetBlockingDMs(
-                            to=recipient_name,
-                            fro=userToken["username"],
-                            fro_id=userToken["user_id"],
-                        ),
-                    )
-                    raise exceptions.userBlockingDMsException
-
-            # Away check
-            if await osuToken.awayCheck(
-                recipient_token["token_id"],
-                userToken["user_id"],
-            ):
-                await send_message(
-                    recipient_name=userToken["username"],
-                    sender_token_id=recipient_token["token_id"],
-                    message=f"\x01ACTION is away: {recipient_token['away_message'] or ''}\x01",
-                )
-
-            if recipient_name == glob.BOT_NAME:
-                # Check message for commands
-                chatbot_response = await chatbot.query(
-                    userToken["username"],
-                    recipient_name,
-                    message,
-                )
-
-                if chatbot_response:
-                    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-                    assert chatbot_token is not None
-                    await send_message(
-                        sender_token_id=chatbot_token["token_id"],
-                        recipient_name=userToken["username"],
-                        message=chatbot_response["response"],
-                    )
-            else:
-                packet = serverPackets.sendMessage(
-                    fro=userToken["username"],
-                    to=toClient,
-                    message=message,
-                    fro_id=userToken["user_id"],
-                )
-                await osuToken.enqueue(recipient_token["token_id"], packet)
-
-        # Spam protection (ignore staff)
-        if not osuToken.is_staff(userToken["privileges"]):
-            await osuToken.spamProtection(userToken["token_id"])
-
+    recipient_tokens = [
+        token
+        for token in await osuToken.get_tokens()
         if (
-            any([bytes(gid).decode() in message for gid in gamer_ids])
-            and not action_msg
-            and not osuToken.is_staff(userToken["privileges"])
-        ):
-            webhook_channel = "ac_confidential"
-        else:
-            webhook_channel = None
+            # Never send messages to any chatbot sessions
+            token["user_id"] != CHATBOT_USER_ID
+            # Never send our messages to our own session
+            and token["token_id"] != sender_token["token_id"]
+        )
+    ]
 
-        if isChannel:
-            if webhook_channel:
-                await audit_logs.send_log_as_discord_webhook(
-                    message=f"{await osuToken.getMessagesBufferString(userToken['token_id'])}",
-                    discord_channel=webhook_channel,
-                )
-            else:
-                logger.info(
-                    "User sent a chat message",
-                    extra={
-                        "sender": userToken["username"],
-                        "recipeint": recipient_name,
-                        "chat_message": message,
-                    },
-                )
-        else:
-            if webhook_channel:
-                await audit_logs.send_log_as_discord_webhook(
-                    message=f"{userToken['username']} @ {recipient_name}: {message}",
-                    discord_channel=webhook_channel,
-                )
+    chatbot_response: ChatbotResponse | None = None
+    if _is_chatbot_interaction(message, recipient_name):
+        if message.startswith("!report"):
+            recipient_name = CHATBOT_USER_NAME
 
-        return None
-    except exceptions.userSilencedException:
-        assert userToken is not None
-        silence_time_left = await osuToken.getSilenceSecondsLeft(userToken["token_id"])
+        chatbot_response = await chatbot.query(
+            sender_token["username"],
+            channel_names["server_name"],
+            message,
+        )
+
+        logger.info(
+            "User triggered chatbot interaction",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "channel_names": channel_names,
+                "bot_responded": chatbot_response is not None,
+            },
+        )
+
+        if chatbot_response is not None and chatbot_response["hidden"]:
+            # This is a "hidden" response from a chatbot interaction.
+            # This means that only the sender and staff members are
+            # able to see the command invocation and chatbot response.
+            # TODO: "hidden" is more like e.g. "private_interaction".
+            recipient_tokens = [
+                token
+                for token in recipient_tokens
+                if osuToken.is_staff(token["privileges"])
+            ]
+
+    recipient_token_ids = [t["token_id"] for t in recipient_tokens]
+
+    # Send the user's message
+    await _multicast_public_message(
+        sender_token=sender_token,
+        channel_names=channel_names,
+        message=message,
+        recipient_token_ids=recipient_token_ids,
+    )
+
+    if chatbot_response is not None:
+        chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+        assert chatbot_token is not None
+
+        # We want to send the chatbot's response to the initial sender
+        recipient_token_ids.append(sender_token["token_id"])
+
+        # Send the chatbot's response
+        await _multicast_public_message(
+            sender_token=chatbot_token,
+            channel_names=channel_names,
+            message=chatbot_response["response"],
+            recipient_token_ids=recipient_token_ids,
+        )
+
+    return None
+
+
+async def _handle_private_message(
+    *,
+    sender_token: osuToken.Token,
+    recipient_name: str,
+    message: str,
+) -> Optional[SendMessageError]:
+    recipient_token = await tokenList.getTokenFromUsername(recipient_name)
+    if recipient_token is None:
+        logger.warning(
+            "User attempted to send a message to an unknown recipient",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_username": recipient_name,
+            },
+        )
+        return SendMessageError.USER_NOT_FOUND
+
+    if recipient_token["tournament"]:
+        logger.warning(
+            "User attempted to send a message to a tournament client",
+            extra={
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_username": recipient_token["username"],
+                "recipient_user_id": recipient_token["user_id"],
+            },
+        )
+        return SendMessageError.RECIPIENT_CLIENT_STREAM_UNSUPPORTED
+
+    if await osuToken.isSilenced(recipient_token["token_id"]):
         await osuToken.enqueue(
-            userToken["token_id"],
-            serverPackets.silenceEndTime(silence_time_left),
+            sender_token["token_id"],
+            serverPackets.targetSilenced(recipient_token["username"]),
         )
+
+    if osuToken.is_restricted(recipient_token["privileges"]):
         logger.warning(
-            "User tried to send a message during silence",
+            "User attempted to send a message to a restricted user",
             extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_token["username"],
+                "recipient_user_id": recipient_token["user_id"],
             },
         )
-        return None
-    except exceptions.userNotInChannelException:
-        logger.warning(
-            "User tried to send a message to a channel they are not in",
-            extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "channel_name": recipient_name,
-            },
+        return SendMessageError.RECIPIENT_RESTRICTED
+
+    if recipient_token["block_non_friends_dm"] and (
+        sender_token["user_id"]
+        not in await user_utils.get_friend_user_ids(recipient_token["user_id"])
+    ):
+        await osuToken.enqueue(
+            sender_token["token_id"],
+            serverPackets.targetBlockingDMs(recipient_token["username"]),
         )
-        return None
-    except exceptions.channelModeratedException:
-        logger.warning(
-            "User tried to send a message to a moderated channel",
-            extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "channel_name": recipient_name,
-            },
-        )
-        return None
-    except exceptions.channelUnknownException:
-        logger.warning(
-            "User tried to send a message to an unknown channel",
-            extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "channel_name": recipient_name,
-            },
-        )
-        return None
-    except exceptions.channelNoPermissionsException:
-        logger.warning(
-            "User tried to send a message to a channel they have no write permissions",
-            extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "channel_name": recipient_name,
-            },
-        )
-        return None
-    except exceptions.userRestrictedException:
-        # TODO: this is kinda weird that we can't differentiate
-        # between sender and recipient restricted here..
-        logger.warning(
-            "Sender or recipient in messaging interaction were restricted",
-            extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "recipient": recipient_name,
-            },
-        )
-        return None
-    except exceptions.userTournamentException:
-        logger.warning(
-            "User tried to send a message to a tournament client",
-            extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "recipient": recipient_name,
-            },
-        )
-        return None
-    except exceptions.userNotFoundException:
-        logger.warning("User not connected to Bancho.")
-        return None
-    except exceptions.userBlockingDMsException:
+
         logger.warning(
             "User tried to send a message to a user that is blocking non-friends dms",
             extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "recipient": recipient_name,
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_username": recipient_token["username"],
+                "recipient_user_id": recipient_token["user_id"],
             },
         )
-        return None
-    except exceptions.invalidArgumentsException:
-        logger.warning(
-            "User tried to send an invalid message",
+        return SendMessageError.BLOCKED_BY_RECIPIENT
+
+    if await osuToken.awayCheck(
+        recipient_token["token_id"],
+        sender_token["user_id"],
+    ):
+        assert recipient_token["away_message"] is not None  # checked by awayCheck()
+        await _unicast_private_message(
+            sender_token=recipient_token,
+            recipient_token=sender_token,
+            message=f"\x01ACTION is away: {recipient_token['away_message']}\x01",
+        )
+
+    if _is_chatbot_interaction(message, recipient_name):
+        chatbot_response = await chatbot.query(
+            sender_token["username"],
+            recipient_name,
+            message,
+        )
+        if chatbot_response is not None:
+            chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+            assert chatbot_token is not None
+
+            # chatbot's response
+            await _unicast_private_message(
+                sender_token=chatbot_token,
+                recipient_token=sender_token,
+                message=chatbot_response["response"],
+            )
+
+        logger.info(
+            "User triggered chatbot interaction",
             extra={
-                "username": userToken and userToken["username"],
-                "user_id": userToken and userToken["user_id"],
-                "recipient": recipient_name,
+                "sender_token_id": sender_token["token_id"],
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_name,
+                "bot_responded": chatbot_response is not None,
             },
         )
-        return None
-    except:
-        logger.exception("An unhandled exception occurred whle sending a chat message")
-        return None
+
+    else:  # Non-chatbot interaction
+        await _unicast_private_message(
+            sender_token=sender_token,
+            recipient_token=recipient_token,
+            message=message,
+        )
+
+    return None
+
+
+async def _handle_message_from_chatbot(
+    *,
+    chatbot_token: osuToken.Token,
+    recipient_name: str,
+    message: str,
+) -> Optional[SendMessageError]:
+    is_channel = recipient_name.startswith("#")
+
+    if is_channel:
+        channel_names = _get_contextual_channel_names(
+            channel_name=recipient_name,
+            user_token=chatbot_token,
+        )
+
+        channel = await channelList.getChannel(channel_names["server_name"])
+        if channel is None:
+            logger.warning(
+                "Chatbot attempted to send a message to an unknown channel",
+                extra={
+                    "chatbot_token_id": chatbot_token["token_id"],
+                    "chatbot_username": chatbot_token["username"],
+                    "chatbot_user_id": chatbot_token["user_id"],
+                    "channel_names": channel_names,
+                },
+            )
+            return SendMessageError.UNKNOWN_CHANNEL
+
+        await _broadcast_public_message(
+            sender_token=chatbot_token,
+            channel_names=channel_names,
+            message=message,
+        )
+
+    else:
+        recipient_token = await tokenList.getTokenFromUsername(recipient_name)
+        if recipient_token is None:
+            logger.warning(
+                "Chatbot attempted to send a message to an unknown recipient",
+                extra={
+                    "chatbot_token_id": chatbot_token["token_id"],
+                    "chatbot_username": chatbot_token["username"],
+                    "chatbot_user_id": chatbot_token["user_id"],
+                    "recipient_username": recipient_name,
+                },
+            )
+            return SendMessageError.USER_NOT_FOUND
+
+        await _unicast_private_message(
+            sender_token=chatbot_token,
+            recipient_token=recipient_token,
+            message=message,
+        )
+
+    logger.info(
+        "Chatbot sent a message",
+        extra={
+            "chatbot_token_id": chatbot_token["token_id"],
+            "chatbot_username": chatbot_token["username"],
+            "chatbot_user_id": chatbot_token["user_id"],
+            "recipient_name": recipient_name,
+        },
+    )
+    return None
+
+
+async def send_message(
+    *,
+    sender_token_id: str,
+    recipient_name: str,
+    message: str,
+) -> Optional[SendMessageError]:
+    sender_token = await osuToken.get_token(sender_token_id)
+    if sender_token is None:
+        logger.warning(
+            "User tried to send message but they are not connected to server",
+            extra={"sender_token_id": sender_token_id},
+        )
+        return SendMessageError.USER_NOT_FOUND
+
+    # Fast-track for when the chatbot is sending a message.
+    # In this case, we can assume a higher degree of trust.
+    if sender_token["user_id"] == CHATBOT_USER_ID:
+        return await _handle_message_from_chatbot(
+            chatbot_token=sender_token,
+            recipient_name=recipient_name,
+            message=message,
+        )
+
+    if sender_token["tournament"]:
+        logger.warning(
+            "User tried to send message but they are connected from tournament client",
+            extra={
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_name,
+            },
+        )
+        return SendMessageError.SENDER_CLIENT_STREAM_UNSUPPORTED
+
+    if osuToken.is_restricted(sender_token["privileges"]):
+        logger.warning(
+            "User tried to send message but they are in restricted mode",
+            extra={
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_name,
+            },
+        )
+        return SendMessageError.SENDER_RESTRICTED
+
+    if await osuToken.isSilenced(sender_token["token_id"]):
+        silence_time_left = await osuToken.getSilenceSecondsLeft(
+            sender_token["token_id"],
+        )
+        await osuToken.enqueue(
+            sender_token["token_id"],
+            serverPackets.silenceEndTime(silence_time_left),
+        )
+
+        logger.warning(
+            "User tried to send message during silence",
+            extra={
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_name,
+            },
+        )
+        return SendMessageError.SENDER_SILENCED
+
+    if not message.strip():
+        logger.warning(
+            "User tried to send an empty message",
+            extra={
+                "sender_token_id": sender_token_id,
+                "sender_username": sender_token["username"],
+                "sender_user_id": sender_token["user_id"],
+                "recipient_name": recipient_name,
+            },
+        )
+        return SendMessageError.INVALID_MESSAGE_CONTENT
+
+    # Enforce a maximum message length
+    if len(message) > MAXIMUM_MESSAGE_LENGTH:
+        message = f"{message[:MAXIMUM_MESSAGE_LENGTH]}... (truncated)"
+
+    # There are 2 types of message: public (channel) and private (DM)
+    is_channel = recipient_name.startswith("#")
+    if is_channel:
+        response = await _handle_public_message(
+            sender_token=sender_token,
+            recipient_name=recipient_name,
+            message=message,
+        )
+    else:
+        response = await _handle_private_message(
+            sender_token=sender_token,
+            recipient_name=recipient_name,
+            message=message,
+        )
+
+    if isinstance(response, SendMessageError):
+        return response
+
+    if not osuToken.is_staff(sender_token["privileges"]):
+        await osuToken.spamProtection(sender_token["token_id"])
+
+    if _should_audit_log_message(message):
+        audit_log_message = f"{sender_token['username']} @ {recipient_name}: {message}"
+        if is_channel:
+            audit_log_message = await osuToken.getMessagesBufferString(sender_token_id)
+
+        await audit_logs.send_log_as_discord_webhook(
+            message=audit_log_message,
+            discord_channel="ac_confidential",
+        )
+
+    logger.info(
+        "User sent a chat message",
+        extra={
+            "sender_token_id": sender_token_id,
+            "sender_username": sender_token["username"],
+            "sender_user_id": sender_token["user_id"],
+            "recipient_name": recipient_name,
+        },
+    )
+
+    return response

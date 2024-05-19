@@ -26,6 +26,7 @@ from common.ripple import scoreUtils
 from common.ripple import user_utils
 from common.web import discord
 from constants import CHATBOT_USER_ID
+from constants import CHATBOT_USER_NAME
 from constants import exceptions
 from constants import matchModModes
 from constants import matchScoringTypes
@@ -1057,7 +1058,7 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
         else f'{data["max_combo"]:,}x/{data["fc"]:,}x'
     )
 
-    msg = [f"{fro} |"] if chan == glob.BOT_NAME else []
+    msg = [f"{fro} |"] if chan == CHATBOT_USER_NAME else []
     msg.append("[https://osu.ppy.sh/beatmapsets/{bsid}#{bid} {sn}]".format(**data))
 
     if data["play_mode"] != gameModes.STD:
@@ -1191,12 +1192,17 @@ async def report(fro: str, chan: str, message: list[str]) -> None:
     except:
         raise
     finally:
-        if msg:
-            if token := await tokenList.getTokenFromUsername(fro):
-                await osuToken.enqueue(
-                    token["token_id"],
-                    serverPackets.notification(msg),
-                )
+        if not msg:
+            return
+
+        token = await osuToken.get_token_by_username(fro)
+        if token is None:
+            return
+
+        await osuToken.enqueue(
+            token["token_id"],
+            serverPackets.notification(msg),
+        )
 
 
 @command(
@@ -1500,10 +1506,10 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
             f'beatmap [https://osu.ppy.sh/beatmaps/{rank_id} {res["song_name"]}]'
         )
 
-    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-    assert aika_token is not None
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    assert chatbot_token is not None
     await chat.send_message(
-        sender_token_id=aika_token["token_id"],
+        sender_token_id=chatbot_token["token_id"],
         recipient_name="#announce",
         message=f"[{nominator_profile_url} {fro}] has {status_readable} {beatmap_url}",
     )
@@ -1518,10 +1524,10 @@ async def editMap(fro: str, chan: str, message: list[str]) -> Optional[str]:
 )
 async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
-    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-    assert aika_token is not None
+    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+    assert chatbot_token is not None
     await chat.send_message(
-        sender_token_id=aika_token["token_id"],
+        sender_token_id=chatbot_token["token_id"],
         recipient_name="#announce",
         message=" ".join(message),
     )
@@ -1683,7 +1689,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
     if (
         chan != "#multiplayer"
         and not chan.startswith("#mp_")
-        and chan.lower() != glob.BOT_NAME.lower()
+        and chan.lower() != CHATBOT_USER_NAME.lower()
     ):
         return None  # command used only on #multiplayer channels or bot PMs
 
@@ -2010,11 +2016,11 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
         async def _start() -> bool:
             assert multiplayer_match is not None
 
-            aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-            assert aika_token is not None
+            chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+            assert chatbot_token is not None
             if not await match.start(multiplayer_match["match_id"]):
                 await chat.send_message(
-                    sender_token_id=aika_token["token_id"],
+                    sender_token_id=chatbot_token["token_id"],
                     recipient_name=chan,
                     message=(
                         "Couldn't start match. Make sure there are enough players and "
@@ -2024,7 +2030,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 return True  # Failed to start
             else:
                 await chat.send_message(
-                    sender_token_id=aika_token["token_id"],
+                    sender_token_id=chatbot_token["token_id"],
                     recipient_name=chan,
                     message="Have fun!",
                 )
@@ -2072,10 +2078,10 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
                 await _start()
             else:
                 if not t % 10 or t <= 5:
-                    aika_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
-                    assert aika_token is not None
+                    chatbot_token = await tokenList.getTokenFromUserID(CHATBOT_USER_ID)
+                    assert chatbot_token is not None
                     await chat.send_message(
-                        sender_token_id=aika_token["token_id"],
+                        sender_token_id=chatbot_token["token_id"],
                         recipient_name=chan,
                         message=f"Match starts in {t} seconds.",
                     )
@@ -2166,7 +2172,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> Optional[str]:
             target_token["token_id"],
             serverPackets.notification(
                 "Please accept the invite you've just received from "
-                f"{glob.BOT_NAME} to enter your tourney match.",
+                f"{CHATBOT_USER_NAME} to enter your tourney match.",
             ),
         )
 

@@ -198,10 +198,16 @@ async def get_token(token_id: str) -> Optional[Token]:
 
 
 async def get_tokens() -> list[Token]:
+    # TODO: use an iterative approach for these, provide a generator api
+    # to allow callers to reduce memory usage and improve performance.
+    # (If callers really want all the data, they can exhaust the iterator)
     return [
         orjson.loads(token)
         for token in (await glob.redis.hgetall("bancho:tokens:json")).values()
     ]
+
+
+# TODO: get_limited_tokens with a more basic model
 
 
 async def get_token_by_user_id(user_id: int) -> Optional[Token]:
