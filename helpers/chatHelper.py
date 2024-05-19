@@ -19,7 +19,6 @@ from objects import stream
 from objects import streamList
 from objects.chatbot import ChatbotResponse
 
-
 MAXIMUM_MESSAGE_LENGTH = 1000
 
 
