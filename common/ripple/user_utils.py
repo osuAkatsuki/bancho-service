@@ -84,14 +84,15 @@ async def get_user_stats(
         )
         return None
 
-    stats["global_rank"] = await get_global_rank(user_id, game_mode, relax_ap)
+    global_rank = await get_global_rank(user_id, game_mode, relax_ap)
+
     return {
         "ranked_score": stats["ranked_score"],
         "avg_accuracy": stats["avg_accuracy"],
         "playcount": stats["playcount"],
         "total_score": stats["total_score"],
         "pp": stats["pp"],
-        "global_rank": stats["global_rank"],
+        "global_rank": global_rank,
     }
 
 
