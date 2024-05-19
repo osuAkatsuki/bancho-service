@@ -1,5 +1,6 @@
 autoflake
 black
+mypy
 reorder-python-imports
 types-psutil
 types-Pygments
