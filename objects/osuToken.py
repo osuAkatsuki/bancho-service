@@ -496,12 +496,15 @@ async def dequeue(token_id: str) -> bytes:
     if token is None:
         return b""
 
-    raw_packets = await glob.redis.lpop(
-        f"{make_key(token_id)}:packet_queue",
-        2**63 - 1,
-    )
-    if not raw_packets:
-        return b""
+    async with glob.redis.pipeline() as pipe:
+        raw_packets = await pipe.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
+        await pipe.delete(f"{make_key(token_id)}:packet_queue")
+
+        pipeline_results = await pipe.execute()
+
+    raw_packets: list[bytes] = pipeline_results[0]
+
+    raw_packets.reverse()  # redis returns backwards
 
     return b"".join([bytes(orjson.loads(raw_packet)) for raw_packet in raw_packets])
 
