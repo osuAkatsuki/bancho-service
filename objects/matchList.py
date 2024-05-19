@@ -8,8 +8,9 @@ from constants import matchModModes
 from constants import matchScoringTypes
 from constants import matchTeamTypes
 from constants import serverPackets
-from objects import channelList, osuToken
+from objects import channelList
 from objects import match
+from objects import osuToken
 from objects import slot
 from objects import streamList
 from objects import tokenList

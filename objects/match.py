@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 from typing import Optional
 from typing import TypedDict
+from typing import cast
 
 import orjson
 
@@ -316,7 +317,7 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
 
     if multiplayer_match["host_user_id"] != -1:
         old_host = await osuToken.get_token_by_user_id(
-            multiplayer_match["host_user_id"]
+            multiplayer_match["host_user_id"],
         )
         assert old_host is not None
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Literal, Union
+from typing import Literal
 from typing import Optional
+from typing import Union
 from typing import overload
 
 from common.log import logger

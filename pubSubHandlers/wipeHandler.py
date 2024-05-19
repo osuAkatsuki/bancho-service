@@ -7,7 +7,7 @@ from common.ripple import user_utils
 
 class WipePubSubHandler(AbstractPubSubHandler):
     async def handle(self, raw_data: bytes) -> None:
-        userID, rx, gm = [int(i) for i in raw_data.decode().split(",")]
+        userID, rx, gm = (int(i) for i in raw_data.decode().split(","))
 
         logger.info(
             "Handling wipe event for user",

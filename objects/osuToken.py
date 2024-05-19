@@ -4,8 +4,9 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
-from typing import Optional, cast
+from typing import Optional
 from typing import TypedDict
+from typing import cast
 from uuid import uuid4
 
 import orjson

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Optional
 
+import orjson
 from amplitude import BaseEvent
 from amplitude import EventOptions
 from amplitude import Identify
-import orjson
 
 from common.constants import actions
 from common.log import logger

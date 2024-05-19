@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, cast
+from typing import Optional
 from typing import TypedDict
+from typing import cast
 
 import orjson
 
