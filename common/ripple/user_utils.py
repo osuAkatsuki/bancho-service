@@ -810,8 +810,14 @@ async def change_username(user_id: int, new_username: str) -> None:
     new_safe_username = get_safe_username(new_username)
 
     # Make sure this username is not already in use
-    name_exists = await get_id_from_safe_username(new_safe_username)
-    if name_exists:
+    new_username_owner_user_id = await get_id_from_safe_username(new_safe_username)
+    if new_username_owner_user_id == user_id:
+        if new_username == old_username:
+            raise UsernameAlreadyInUseError()
+
+        # pass on the case where the casing or spacing
+        # on the new username is different from the old one
+    elif new_username_owner_user_id is not None:
         raise UsernameAlreadyInUseError()
 
     # Change username
