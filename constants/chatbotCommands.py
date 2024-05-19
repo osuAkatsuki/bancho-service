@@ -10,7 +10,6 @@ from typing import Any
 from typing import Literal
 from typing import Optional
 from typing import TypedDict
-from typing import Union
 from typing import overload
 
 from amplitude import BaseEvent

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal
-from typing import Optional
 from typing import TypedDict
-from typing import Union
 from typing import cast
 
 import orjson

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import orjson
 from amplitude import BaseEvent
 from amplitude import EventOptions

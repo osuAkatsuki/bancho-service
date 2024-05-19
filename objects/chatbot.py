@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from time import time
-from typing import Optional
 from typing import TypedDict
 
 from common.constants import actions

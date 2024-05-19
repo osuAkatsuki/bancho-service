@@ -9,7 +9,6 @@ import sys
 import traceback
 from datetime import datetime
 from types import FrameType
-from typing import Optional
 
 import tornado.gen
 import tornado.httpserver

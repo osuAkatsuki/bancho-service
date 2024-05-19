@@ -5,7 +5,6 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Optional
 
 import httpx
 from amplitude import Amplitude

@@ -4,7 +4,6 @@ import time
 from time import localtime
 from time import strftime
 from typing import Any
-from typing import Optional
 from typing import TypedDict
 
 import bcrypt

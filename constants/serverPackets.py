@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from common.constants import privileges
 from common.ripple import user_utils
 from constants import CHATBOT_USER_ID

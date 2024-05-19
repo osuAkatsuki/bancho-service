@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING
 from typing import TypedDict
 
 import settings
@@ -19,9 +18,6 @@ from objects import osuToken
 from objects import stream
 from objects import streamList
 from objects.chatbot import ChatbotResponse
-
-if TYPE_CHECKING:
-    from typing import Optional
 
 
 MAXIMUM_MESSAGE_LENGTH = 1000
