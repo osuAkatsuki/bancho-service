@@ -483,7 +483,10 @@ async def enqueue(token_id: str, data: bytes) -> None:
         return
 
     if len(data) >= 10 * 10**6:
-        logger.warning(f"Enqueuing {len(data)} bytes for {token_id}")
+        logger.warning(
+            "Enqueuing very large amount of data to token",
+            extra={"num_bytes": len(data), "token_id": token_id},
+        )
 
     await glob.redis.lpush(
         f"{make_key(token_id)}:packet_queue",
