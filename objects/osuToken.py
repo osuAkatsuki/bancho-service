@@ -485,7 +485,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
     if len(data) >= 10 * 10**6:
         logger.warning(f"Enqueuing {len(data)} bytes for {token_id}")
 
-    await glob.redis.rpush(
+    await glob.redis.lpush(
         f"{make_key(token_id)}:packet_queue",
         orjson.dumps(list(data)),
     )
