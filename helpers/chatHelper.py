@@ -18,7 +18,6 @@ from objects import chatbot
 from objects import osuToken
 from objects import stream
 from objects import streamList
-from objects import tokenList
 from objects.chatbot import ChatbotResponse
 
 if TYPE_CHECKING:

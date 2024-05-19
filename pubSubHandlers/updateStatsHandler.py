@@ -4,7 +4,6 @@ from common.log import logger
 from common.redis.pubsubs import AbstractPubSubHandler
 from constants import serverPackets
 from objects import osuToken
-from objects import tokenList
 
 
 class UpdateStatsPubSubHandler(AbstractPubSubHandler):

@@ -9,7 +9,6 @@ from constants import CHATBOT_USER_ID
 from constants import exceptions
 from helpers import chatHelper
 from objects import osuToken
-from objects import tokenList
 
 
 class handler(AsyncRequestHandler):

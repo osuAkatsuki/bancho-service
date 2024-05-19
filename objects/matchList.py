@@ -13,7 +13,6 @@ from objects import match
 from objects import osuToken
 from objects import slot
 from objects import streamList
-from objects import tokenList
 
 
 def make_key() -> str:

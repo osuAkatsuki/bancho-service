@@ -9,7 +9,6 @@ from constants import clientPackets
 from constants import exceptions
 from objects import glob
 from objects import osuToken
-from objects import tokenList
 from objects.osuToken import Token
 
 

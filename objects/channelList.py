@@ -18,7 +18,6 @@ from objects import match
 from objects import osuToken
 from objects import stream
 from objects import streamList
-from objects import tokenList
 
 # bancho:channels
 # bancho:channels:{channel_name}

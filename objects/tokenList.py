@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import Literal
 from typing import Optional
-from typing import Union
-from typing import overload
 
 from common.log import logger
-from common.ripple import user_utils
 from events import logoutEvent
 from objects import glob
 from objects import osuToken

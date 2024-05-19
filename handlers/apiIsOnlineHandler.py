@@ -7,7 +7,6 @@ from common.ripple import user_utils
 from common.web.requestsManager import AsyncRequestHandler
 from constants import exceptions
 from objects import osuToken
-from objects import tokenList
 
 
 class handler(AsyncRequestHandler):
