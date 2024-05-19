@@ -10,7 +10,6 @@ from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
 
-import settings
 from common import generalUtils
 from common.constants import privileges
 from common.log import audit_logs
@@ -21,7 +20,6 @@ from constants import CHATBOT_USER_ID
 from constants import exceptions
 from constants import serverPackets
 from helpers import chatHelper as chat
-from helpers import countryHelper
 from helpers import locationHelper
 from objects import channelList
 from objects import glob

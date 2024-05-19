@@ -81,7 +81,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
                     location_lat=token["latitude"],
                     location_lng=token["longitude"],
                     ip=token["ip"],
-                    country=countryHelper.getCountryLetters(token["country"]),
+                    country=countryHelper.osu_code_to_iso_code(token["country"]),
                 ),
             )
 

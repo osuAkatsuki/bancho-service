@@ -1,7 +1,8 @@
-# TODO: Update countries list
 from __future__ import annotations
 
-countryCodes: dict[str, int] = {
+# NOTE: This list is out of date.
+# At some point, it may be worth an update.
+ISO_TO_OSU_COUNTRY_CODES: dict[str, int] = {
     "IO": 104,
     "PS": 178,
     "LV": 132,
@@ -253,26 +254,14 @@ countryCodes: dict[str, int] = {
     "CL": 46,
     "MH": 138,
 }
+OSU_TO_ISO_COUNTRY_CODES = {v: k for k, v in ISO_TO_OSU_COUNTRY_CODES.items()}
 
 
-def getCountryID(code: str) -> int:
-    """
-    Get osu country ID from country letters
-
-    :param code: country letters (eg: US)
-    :return: country osu code
-    """
-    return countryCodes[code] if code in countryCodes else 0
+def iso_code_to_osu_code(iso_code: str) -> int:
+    """Get osu country code from an iso country code."""
+    return ISO_TO_OSU_COUNTRY_CODES.get(iso_code, 0)
 
 
-def getCountryLetters(code: int) -> str:
-    """
-    Get country letters from osu country ID
-
-    :param code: osu country ID
-    :return: country letters (XX if not found)
-    """
-    for key, value in countryCodes.items():
-        if value == code:
-            return key
-    return "XX"
+def osu_code_to_iso_code(osu_code: int) -> str:
+    """Get iso country code from osu country code."""
+    return OSU_TO_ISO_COUNTRY_CODES.get(osu_code, "XX")

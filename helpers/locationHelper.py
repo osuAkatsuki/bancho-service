@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from json import loads
 from typing import TypedDict
-from urllib.request import urlopen
-
-import httpx
 
 import settings
 from common.log import logger
@@ -45,7 +41,7 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
         loc = json["loc"].split(",")
         return {
             "iso_country_code": country,
-            "osu_country_code": countryHelper.getCountryID(country),
+            "osu_country_code": countryHelper.iso_code_to_osu_code(country),
             "latitude": float(loc[0]),
             "longitude": float(loc[1]),
         }
