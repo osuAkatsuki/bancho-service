@@ -26,72 +26,64 @@ def stringToBool(s: str) -> bool:
     return s in {"True", "true", "1", 1}
 
 
-def getRank(
+def get_score_grade(
     *,
-    gameMode: int,
+    game_mode: int,
     mods: int,
-    acc: float,
-    c300: int,
-    c100: int,
-    c50: int,
-    cmiss: int,
+    accuracy: float,
+    count_300s: int,
+    count_100s: int,
+    count_50s: int,
+    count_misses: int,
 ) -> str:
-    """
-    Return a string with rank/grade for a given score.
-    Used mainly for tillerino
-
-    :param gameMode: game mode number
-    :param mods: mods value
-    :param acc: accuracy
-    :param c300: 300 hit count
-    :param c100: 100 hit count
-    :param c50: 50 hit count
-    :param cmiss: misses count
-    :return: rank/grade string
-    """
-    total = c300 + c100 + c50 + cmiss
+    """Return a string with rank/grade for a given score."""
+    total = count_300s + count_100s + count_50s + count_misses
     hdfl = (mods & (Mods.HIDDEN | Mods.FLASHLIGHT)) > 0
 
-    if gameMode == 0:
+    if game_mode == 0:
         # osu!
-        if acc == 100:
+        if accuracy == 100:
             return "XH" if hdfl else "X"
-        if c300 / total > 0.90 and c50 / total < 0.1 and cmiss == 0:
+        if count_300s / total > 0.90 and count_50s / total < 0.1 and count_misses == 0:
             return "SH" if hdfl else "S"
-        if (c300 / total > 0.80 and cmiss == 0) or (c300 / total > 0.90):
+        if (count_300s / total > 0.80 and count_misses == 0) or (
+            count_300s / total > 0.90
+        ):
             return "A"
-        if (c300 / total > 0.70 and cmiss == 0) or (c300 / total > 0.80):
+        if (count_300s / total > 0.70 and count_misses == 0) or (
+            count_300s / total > 0.80
+        ):
             return "B"
-        if c300 / total > 0.60:
+        if count_300s / total > 0.60:
             return "C"
         return "D"
-    elif gameMode == 1:
+    elif game_mode == 1:
         # TODO: osu!taiko
         return "A"
-    elif gameMode == 2:
+    elif game_mode == 2:
         # osu!catch
-        if acc == 100:
+        if accuracy == 100:
             return "XH" if hdfl else "X"
-        if 98.01 <= acc <= 99.99:
+        if 98.01 <= accuracy <= 99.99:
             return "SH" if hdfl else "S"
-        if 94.01 <= acc <= 98.00:
+        if 94.01 <= accuracy <= 98.00:
             return "A"
-        if 90.01 <= acc <= 94.00:
+        if 90.01 <= accuracy <= 94.00:
             return "B"
-        if 85.01 <= acc <= 90.00:
+        if 85.01 <= accuracy <= 90.00:
             return "C"
         return "D"
-    elif gameMode == 3:
+    elif game_mode == 3:
         # osu!mania
-        if acc == 100:
+        if accuracy == 100:
             return "XH" if hdfl else "X"
-        if acc > 95:
+        if accuracy > 95:
             return "SH" if hdfl else "S"
-        if acc > 90:
+        if accuracy > 90:
             return "A"
-        if acc > 80:
+        if accuracy > 80:
             return "B"
-        if acc > 70:
+        if accuracy > 70:
             return "C"
         return "D"
 

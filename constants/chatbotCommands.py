@@ -1042,14 +1042,14 @@ async def tillerinoLast(fro: str, chan: str, message: list[str]) -> Optional[str
         return "You'll need to submit a score first!"
 
     rank = (
-        generalUtils.getRank(
-            gameMode=data["play_mode"],
+        generalUtils.get_score_grade(
+            game_mode=data["play_mode"],
             mods=data["mods"],
-            acc=data["accuracy"],
-            c300=data["300_count"],
-            c100=data["100_count"],
-            c50=data["50_count"],
-            cmiss=data["misses_count"],
+            accuracy=data["accuracy"],
+            count_300s=data["300_count"],
+            count_100s=data["100_count"],
+            count_50s=data["50_count"],
+            count_misses=data["misses_count"],
         )
         if data["completed"] != 0
         else "F"
