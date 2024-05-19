@@ -498,7 +498,7 @@ async def dequeue(token_id: str) -> bytes:
 
     # Read and remove all packets from the queue atomically
     async with glob.redis.pipeline() as pipe:
-        raw_packets = await pipe.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
+        await pipe.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
         await pipe.delete(f"{make_key(token_id)}:packet_queue")
 
         pipeline_results = await pipe.execute()
