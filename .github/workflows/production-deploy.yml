@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - packet-queue-raw-bytes
 
 jobs:
   build:
