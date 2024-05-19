@@ -15,7 +15,6 @@ import settings
 
 if TYPE_CHECKING:
     import tornado.web
-
     from redis.asyncio import Redis
 
     from objects.banchoConfig import banchoConfig
