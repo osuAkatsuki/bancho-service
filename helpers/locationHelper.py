@@ -25,8 +25,8 @@ def unknown_geolocation() -> Geolocation:
     return {
         "iso_country_code": "XX",
         "osu_country_code": 0,
-        "latitude": 0,
-        "longitude": 0,
+        "latitude": 0.0,
+        "longitude": 0.0,
     }
 
 
