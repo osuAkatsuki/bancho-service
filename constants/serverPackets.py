@@ -163,7 +163,7 @@ async def userPanel(
     *,
     primary_token_user_id: int | None = None,
     token_id: str | None = None,
-    force: bool = False,
+    allow_restricted_users: bool = False,
 ) -> bytes:
     if primary_token_user_id is not None:
         # Lookup by user id; assuming the caller wants primary token
@@ -180,7 +180,7 @@ async def userPanel(
     if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_PRESENCE
 
-    if osuToken.is_restricted(userToken["privileges"]) and not force:
+    if not allow_restricted_users and osuToken.is_restricted(userToken["privileges"]):
         return b""
 
     # Get user data
@@ -239,7 +239,7 @@ async def userStats(
     *,
     primary_token_user_id: int | None = None,
     token_id: str | None = None,
-    force: bool = False,
+    allow_restricted_users: bool = False,
 ) -> bytes:
     if primary_token_user_id is not None:
         # Lookup by user id; assuming the caller wants primary token
@@ -256,7 +256,7 @@ async def userStats(
     if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_STATS
 
-    if not force and (osuToken.is_restricted(userToken["privileges"])):
+    if not allow_restricted_users and osuToken.is_restricted(userToken["privileges"]):
         return b""
 
     # If our PP is over the osu client's cap (32768), we simply send

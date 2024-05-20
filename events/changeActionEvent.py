@@ -98,19 +98,19 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
 
     for spectator in recipients:
         # Force our own packet
-        force = spectator == userToken
+        allow_restricted_users = spectator == userToken
 
         await osuToken.enqueue(
             spectator["token_id"],
             await serverPackets.userPanel(
                 token_id=userToken["token_id"],
-                force=force,
+                allow_restricted_users=allow_restricted_users,
             ),
         )
         await osuToken.enqueue(
             spectator["token_id"],
             await serverPackets.userStats(
                 token_id=userToken["token_id"],
-                force=force,
+                allow_restricted_users=allow_restricted_users,
             ),
         )
