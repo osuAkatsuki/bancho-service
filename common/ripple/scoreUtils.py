@@ -16,7 +16,7 @@ async def overwritePreviousScore(userID: int) -> str | None:
 
     # XXX: a bit of a strange dependency -- means the user needs to be online
     # to overwrite a score, but it's not a huge deal. Worth the analytics.
-    user_token = await osuToken.get_token_by_user_id(userID)
+    user_token = await osuToken.get_primary_token_by_user_id(userID)
     if user_token is None:
         return None
 

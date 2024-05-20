@@ -96,7 +96,7 @@ async def disposeMatch(match_id: int) -> None:
     assert len(slots) == 16
 
     for _slot in slots:
-        _token = await osuToken.get_token_by_user_id(_slot["user_id"])
+        _token = await osuToken.get_primary_token_by_user_id(_slot["user_id"])
         if _token is not None:
             await match.userLeft(
                 match_id,

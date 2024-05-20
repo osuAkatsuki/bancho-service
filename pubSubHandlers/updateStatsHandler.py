@@ -15,7 +15,7 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
             extra={"user_id": userID},
         )
 
-        if not (targetToken := await osuToken.get_token_by_user_id(userID)):
+        if not (targetToken := await osuToken.get_primary_token_by_user_id(userID)):
             logger.error(
                 "Failed to find user by id in update stats pubsub handler",
                 extra={"user_id": userID},

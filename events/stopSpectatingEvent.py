@@ -15,7 +15,7 @@ async def handle(userToken: osuToken.Token, rawPacketData: bytes) -> None:
             return
 
         # Get host token
-        targetToken = await osuToken.get_token_by_user_id(
+        targetToken = await osuToken.get_primary_token_by_user_id(
             userToken["spectating_user_id"],
         )
         if targetToken is None:

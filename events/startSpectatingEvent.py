@@ -34,7 +34,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
             return
 
         # Get host token
-        targetToken = await osuToken.get_token_by_user_id(packetData["userID"])
+        targetToken = await osuToken.get_primary_token_by_user_id(packetData["userID"])
         if targetToken is None:
             raise exceptions.tokenNotFoundException
 

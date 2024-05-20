@@ -17,7 +17,7 @@ class UnbanPubSubHandler(AbstractPubSubHandler):
 
         await user_utils.recalculate_and_update_first_place_scores(userID)
 
-        if not (targetToken := await osuToken.get_token_by_user_id(userID)):
+        if not (targetToken := await osuToken.get_primary_token_by_user_id(userID)):
             logger.error(
                 "Failed to find user by id in update stats pubsub handler",
                 extra={"user_id": userID},

@@ -318,7 +318,7 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     assert multiplayer_match is not None
 
     if multiplayer_match["host_user_id"] != -1:
-        old_host = await osuToken.get_token_by_user_id(
+        old_host = await osuToken.get_primary_token_by_user_id(
             multiplayer_match["host_user_id"],
         )
         assert old_host is not None
@@ -707,7 +707,7 @@ async def allPlayersCompleted(match_id: int) -> None:
         multiplayer_match["is_tourney"]
         and channel_name in await channelList.getChannelNames()
     ):
-        chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+        chatbot_token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
         assert chatbot_token is not None
         await chat.send_message(
             sender_token_id=chatbot_token["token_id"],
@@ -1113,8 +1113,8 @@ async def playerFailed(match_id: int, user_id: int) -> None:
 async def invite(match_id: int, sender_user_id: int, recipient_user_id: int) -> None:
     """One user currently in a match, invites another user to the match."""
     # Get tokens
-    froToken = await osuToken.get_token_by_user_id(sender_user_id)
-    toToken = await osuToken.get_token_by_user_id(recipient_user_id)
+    froToken = await osuToken.get_primary_token_by_user_id(sender_user_id)
+    toToken = await osuToken.get_primary_token_by_user_id(recipient_user_id)
     if not froToken or not toToken:
         return
 
@@ -1441,7 +1441,7 @@ async def sendReadyStatus(match_id: int) -> None:
         if totalUsers == readyUsers:
             message += " All users ready!"
 
-    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert chatbot_token is not None
     await chat.send_message(
         sender_token_id=chatbot_token["token_id"],

@@ -92,7 +92,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     recipients = [userToken]
     spectators = await osuToken.get_spectators(userToken["token_id"])
     for spectator_user_id in spectators:
-        token = await osuToken.get_token_by_user_id(spectator_user_id)
+        token = await osuToken.get_primary_token_by_user_id(spectator_user_id)
         if token is not None:
             recipients.append(token)
 

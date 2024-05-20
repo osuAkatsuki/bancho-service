@@ -92,23 +92,6 @@ async def getUserIDFromToken(token_id: str) -> int | None:
     return token["user_id"]
 
 
-async def deleteOldTokens(userID: int) -> None:
-    """
-    Delete old userID's tokens if found
-
-    :param userID: tokens associated to this user will be deleted
-    :return:
-    """
-    # Delete older tokens
-    delete: list[osuToken.Token] = []
-    for token in await osuToken.get_tokens():
-        if token["user_id"] == userID:
-            delete.append(token)
-
-    for i in delete:
-        await logoutEvent.handle(i)
-
-
 async def multipleEnqueue(packet: bytes, who: list[int], but: bool = False) -> None:
     """
     Enqueue a packet to multiple users

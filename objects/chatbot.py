@@ -35,7 +35,7 @@ NOW_PLAYING_REGEX = re.compile(
 
 async def connect() -> None:
     async with redisLock(f"bancho:locks:aika"):
-        token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+        token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
         if token is not None:
             return
 
@@ -58,7 +58,7 @@ async def connect() -> None:
 
 async def disconnect() -> None:
     async with redisLock(f"bancho:locks:aika"):
-        token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+        token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
         assert token is not None
 
         await tokenList.deleteToken(token["token_id"])

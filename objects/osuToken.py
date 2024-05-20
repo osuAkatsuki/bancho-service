@@ -178,8 +178,11 @@ async def create_token(
     async with glob.redis.pipeline() as pipe:
         await pipe.sadd("bancho:tokens", token_id)
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
-        await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
-        await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
+        if not tournament:
+            await pipe.set(f"bancho:tokens:ids:{user_id}:primary", token_id)
+            await pipe.set(f"bancho:tokens:names:{safe_name}:primary", token_id)
+        await pipe.sadd(f"bancho:tokens:ids:{user_id}", token_id)
+        await pipe.sadd(f"bancho:tokens:names:{safe_name}", token_id)
         await pipe.set(make_key(token_id), orjson.dumps(token))
         await pipe.execute()
 
@@ -213,8 +216,10 @@ async def get_tokens() -> list[Token]:
 # TODO: get_limited_tokens with a more basic model
 
 
-async def get_token_by_user_id(user_id: int) -> Token | None:
-    token_id: bytes | None = await glob.redis.get(f"bancho:tokens:ids:{user_id}")
+async def get_primary_token_by_user_id(user_id: int) -> Token | None:
+    token_id: bytes | None = await glob.redis.get(
+        f"bancho:tokens:ids:{user_id}:primary",
+    )
     if token_id is None:
         return None
 
@@ -225,9 +230,10 @@ async def get_token_by_user_id(user_id: int) -> Token | None:
     return None
 
 
-async def get_token_by_username(username: str) -> Token | None:
+async def get_primary_token_by_username(username: str) -> Token | None:
+    safe_name = safeUsername(username)
     token_id: bytes | None = await glob.redis.get(
-        f"bancho:tokens:names:{safeUsername(username)}",
+        f"bancho:tokens:names:{safe_name}:primary",
     )
     if token_id is None:
         return None
@@ -240,13 +246,18 @@ async def get_token_by_username(username: str) -> Token | None:
 
 
 async def get_all_tokens_by_user_id(user_id: int) -> list[Token]:
-    tokens = await get_tokens()
-    return [token for token in tokens if token["user_id"] == user_id]
+    token_ids = await glob.redis.smembers(f"bancho:tokens:ids:{user_id}")
+    tokens = [await get_token(token_id) for token_id in token_ids]
+    assert all(tokens)
+    return [token for token in tokens if token is not None]
 
 
 async def get_all_tokens_by_username(username: str) -> list[Token]:
-    tokens = await get_tokens()
-    return [token for token in tokens if token["username"] == username]
+    safe_name = safeUsername(username)
+    token_ids = await glob.redis.smembers(f"bancho:tokens:names:{safe_name}")
+    tokens = [await get_token(token_id) for token_id in token_ids]
+    assert all(tokens)
+    return [token for token in tokens if token is not None]
 
 
 # TODO: the things that can actually be Optional need to have different defaults
@@ -375,10 +386,15 @@ async def delete_token(token_id: str) -> None:
     if token is None:
         return
 
+    safe_name = safeUsername(token["username"])
+
     async with glob.redis.pipeline() as pipe:
         await pipe.srem("bancho:tokens", token_id)
-        await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
-        await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
+        await pipe.srem(f"bancho:tokens:ids:{token['user_id']}", token_id)
+        await pipe.srem(f"bancho:tokens:names:{safe_name}", token_id)
+        if not token["tournament"]:
+            await pipe.delete(f"bancho:tokens:ids:{token['user_id']}:primary")
+            await pipe.delete(f"bancho:tokens:names:{safe_name}:primary")
         await pipe.hdel("bancho:tokens:json", token_id)
         await pipe.delete(make_key(token_id))
         await pipe.delete(f"{make_key(token_id)}:channels")
@@ -722,7 +738,7 @@ async def stopSpectating(token_id: str) -> None:
         # and to all other spectators
         spectators = await get_spectators(host_token["token_id"])
         for spectator in spectators:
-            spectator_token = await get_token_by_user_id(spectator)
+            spectator_token = await get_primary_token_by_user_id(spectator)
             if spectator_token is None:
                 continue
 
@@ -825,7 +841,7 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         # maybe not all users are ready.
         await match.sendReadyStatus(multiplayer_match["match_id"])
 
-    bot_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    bot_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert bot_token is not None
 
     mp_message = await match.get_match_history_message(multiplayer_match["match_id"])
@@ -1106,7 +1122,7 @@ async def setRestricted(token_id: str) -> None:
     if token is None:
         return
 
-    aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    aika_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.send_message(
         sender_token_id=aika_token["token_id"],
@@ -1126,7 +1142,7 @@ async def resetRestricted(token_id: str) -> None:
     if token is None:
         return
 
-    aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    aika_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.send_message(
         sender_token_id=aika_token["token_id"],

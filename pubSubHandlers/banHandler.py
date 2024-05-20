@@ -16,7 +16,7 @@ class BanPubSubHandler(AbstractPubSubHandler):
         await user_utils.remove_from_leaderboard(userID)
         await user_utils.remove_first_place(userID)
 
-        if not (targetToken := await osuToken.get_token_by_user_id(userID)):
+        if not (targetToken := await osuToken.get_primary_token_by_user_id(userID)):
             return
 
         targetToken["privileges"] = await user_utils.get_privileges(userID)

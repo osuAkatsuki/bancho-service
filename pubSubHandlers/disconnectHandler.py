@@ -20,7 +20,7 @@ class DisconnectPubSubHandler(AbstractPubSubHandler):
             },
         )
 
-        if targetToken := await osuToken.get_token_by_user_id(data["userID"]):
+        if targetToken := await osuToken.get_primary_token_by_user_id(data["userID"]):
             await osuToken.kick(targetToken["token_id"], data["reason"], "pubsub_kick")
 
         logger.info(

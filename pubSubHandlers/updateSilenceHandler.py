@@ -14,7 +14,7 @@ class UpdateSilencePubSubHandler(AbstractPubSubHandler):
             extra={"user_id": userID},
         )
 
-        if targetToken := await osuToken.get_token_by_user_id(userID):
+        if targetToken := await osuToken.get_primary_token_by_user_id(userID):
             await osuToken.silence(targetToken["token_id"])
 
         logger.info(
