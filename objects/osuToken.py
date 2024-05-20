@@ -967,18 +967,17 @@ async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     if token is None:
         return
 
+    spam_rate = token["spam_rate"]
+    spam_rate += 1
+
     # Increase the spam rate if needed
-    token["spam_rate"] += 1
     if increaseSpamRate:
-        await update_token(
-            token_id,
-            spam_rate=token["spam_rate"],
-        )
+        await update_token(token_id, spam_rate=spam_rate)
 
     ACCEPTABLE_SPAM_RATE = 10
 
     # Silence the user if needed
-    if token["spam_rate"] > ACCEPTABLE_SPAM_RATE:
+    if spam_rate > ACCEPTABLE_SPAM_RATE:
         await silence(token_id, 5 * 60, "Spamming (auto spam protection)")
 
 
