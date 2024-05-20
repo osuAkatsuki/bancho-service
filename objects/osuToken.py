@@ -9,6 +9,7 @@ from typing import cast
 from uuid import uuid4
 
 import orjson
+from amplitude import BaseEvent
 
 from common import channel_utils
 from common.constants import actions
@@ -700,6 +701,30 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
                 serverPackets.fellowSpectatorJoined(token["user_id"]),
             )
 
+    logger.info(
+        "User started spectating another user",
+        extra={
+            "spectator_user_id": token["user_id"],
+            "host_user_id": host_token["user_id"],
+        },
+    )
+
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="start_spectating",
+                user_id=str(token["user_id"]),
+                device_id=token["amplitude_device_id"],
+                event_properties={
+                    "host_user_id": host_token["user_id"],
+                    "host_username": host_token["username"],
+                    "host_country": host_token["country"],
+                    "host_game_mode": host_token["game_mode"],
+                    "source": "bancho-service",
+                },
+            ),
+        )
+
 
 async def stopSpectating(token_id: str) -> None:
     """
@@ -721,6 +746,9 @@ async def stopSpectating(token_id: str) -> None:
         return
 
     host_token = await get_token(token["spectating_token_id"])
+    if host_token is None:
+        return
+
     stream_name = f"spect/{token['spectating_user_id']}"
 
     # Remove us from host's spectators list,
@@ -728,36 +756,32 @@ async def stopSpectating(token_id: str) -> None:
     # and end the spectator left packet to host
     await leaveStream(token_id, stream_name)
 
-    if host_token:
-        await remove_spectator(host_token["token_id"], token["user_id"])
-        await enqueue(
-            host_token["token_id"],
-            serverPackets.removeSpectator(token["user_id"]),
+    await remove_spectator(host_token["token_id"], token["user_id"])
+    await enqueue(
+        host_token["token_id"],
+        serverPackets.removeSpectator(token["user_id"]),
+    )
+
+    fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
+    # and to all other spectators
+    spectators = await get_spectators(host_token["token_id"])
+    for spectator in spectators:
+        spectator_token = await get_primary_token_by_user_id(spectator)
+        if spectator_token is None:
+            continue
+
+        await enqueue(spectator_token["token_id"], fellow_left_packet)
+
+    # If nobody is spectating the host anymore, close #spectator channel
+    # and remove host from spect stream too
+    if not spectators:
+        await chat.part_channel(
+            token_id=host_token["token_id"],
+            channel_name=f"#spect_{host_token['user_id']}",
+            notify_user_of_kick=True,
+            allow_instance_channels=True,
         )
-
-        fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
-        # and to all other spectators
-        spectators = await get_spectators(host_token["token_id"])
-        for spectator in spectators:
-            spectator_token = await get_primary_token_by_user_id(spectator)
-            if spectator_token is None:
-                continue
-
-            await enqueue(spectator_token["token_id"], fellow_left_packet)
-
-        # If nobody is spectating the host anymore, close #spectator channel
-        # and remove host from spect stream too
-        if not spectators:
-            await chat.part_channel(
-                token_id=host_token["token_id"],
-                channel_name=f"#spect_{host_token['user_id']}",
-                notify_user_of_kick=True,
-                allow_instance_channels=True,
-            )
-            await leaveStream(host_token["token_id"], stream_name)
-
-        # Console output
-        # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
+        await leaveStream(host_token["token_id"], stream_name)
 
     # Part #spectator channel
     await chat.part_channel(
@@ -773,6 +797,30 @@ async def stopSpectating(token_id: str) -> None:
         spectating_token_id=None,
         spectating_user_id=None,
     )
+
+    logger.info(
+        "User stopped spectating another user",
+        extra={
+            "spectator_user_id": token["user_id"],
+            "host_user_id": host_token["user_id"],
+        },
+    )
+
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="stop_spectating",
+                user_id=str(token["user_id"]),
+                device_id=token["amplitude_device_id"],
+                event_properties={
+                    "host_user_id": host_token["user_id"],
+                    "host_username": host_token["username"],
+                    "host_country": host_token["country"],
+                    "host_game_mode": host_token["game_mode"],
+                    "source": "bancho-service",
+                },
+            ),
+        )
 
 
 async def updatePingTime(token_id: str) -> None:
@@ -808,7 +856,8 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         return False
 
     # Stop spectating
-    await stopSpectating(token_id)
+    if token["spectating_user_id"] is not None:
+        await stopSpectating(token_id)
 
     # Leave other matches
     if token["match_id"] is not None and token["match_id"] != match_id:

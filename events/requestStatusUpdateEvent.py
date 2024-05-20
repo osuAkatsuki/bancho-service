@@ -10,5 +10,5 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     await osuToken.updateCachedStats(userToken["token_id"])
     await osuToken.enqueue(
         userToken["token_id"],
-        await serverPackets.userStats(userToken["user_id"]),
+        await serverPackets.userStats(token_id=userToken["token_id"]),
     )

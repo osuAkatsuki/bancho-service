@@ -157,7 +157,7 @@ class handler(AsyncRequestHandler):
         requestData = self.request.body
 
         # XXX: temporarily doing some performance monitoring
-        if random.randint(0, 20) == 20:
+        if settings.LOG_CONCURRENCY_REPORTS and random.randint(0, 20) == 20:
             tasks = asyncio.all_tasks()
             logger.info(
                 "Concurrent tasks report",

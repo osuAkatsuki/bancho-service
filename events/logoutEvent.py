@@ -98,10 +98,12 @@ async def handle(
 
     # Console output
     logger.info(
-        "User signed out",
+        "User logged out",
         extra={
             "user_id": token["user_id"],
             "username": token["username"],
-            "ip": token["ip"],
+            "ip_address": token["ip"],
+            "online_users": await osuToken.get_online_players_count(),
+            "is_tournament_client": token["tournament"],
         },
     )

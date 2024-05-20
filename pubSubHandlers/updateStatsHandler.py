@@ -25,7 +25,7 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
         await osuToken.updateCachedStats(targetToken["token_id"])
         await osuToken.enqueue(
             targetToken["token_id"],
-            await serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(primary_token_user_id=userID, force=True),
         )
 
         logger.info(

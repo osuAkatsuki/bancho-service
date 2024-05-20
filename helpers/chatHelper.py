@@ -508,7 +508,7 @@ async def _handle_private_message(
     recipient_token = await osuToken.get_primary_token_by_username(recipient_name)
     if recipient_token is None:
         logger.warning(
-            "User attempted to send a message to an unknown recipient",
+            "User attempted to send a message to an unknown or offline recipient",
             extra={
                 "sender_token_id": sender_token["token_id"],
                 "sender_username": sender_token["username"],
@@ -657,7 +657,7 @@ async def _handle_message_from_chatbot(
         recipient_token = await osuToken.get_primary_token_by_username(recipient_name)
         if recipient_token is None:
             logger.warning(
-                "Chatbot attempted to send a message to an unknown recipient",
+                "Chatbot attempted to send a message to an unknown or offline recipient",
                 extra={
                     "chatbot_token_id": chatbot_token["token_id"],
                     "chatbot_username": chatbot_token["username"],

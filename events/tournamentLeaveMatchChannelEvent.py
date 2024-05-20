@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from common.log import logger
 from constants import clientPackets
 from helpers import chatHelper as chat
 from objects import match
@@ -26,3 +27,11 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     )
 
     await osuToken.update_token(userToken["token_id"], match_id=None)
+
+    logger.info(
+        "Tournament client left multiplayer match",
+        extra={
+            "user_id": userToken["user_id"],
+            "match_id": match_id,
+        },
+    )

@@ -45,11 +45,11 @@ async def connect() -> None:
         await osuToken.update_token(token["token_id"], action_id=actions.IDLE)
         await streamList.broadcast(
             "main",
-            await serverPackets.userPanel(CHATBOT_USER_ID),
+            await serverPackets.userPanel(primary_token_user_id=CHATBOT_USER_ID),
         )
         await streamList.broadcast(
             "main",
-            await serverPackets.userStats(CHATBOT_USER_ID),
+            await serverPackets.userStats(primary_token_user_id=CHATBOT_USER_ID),
         )
 
         for channel_name in await channelList.getChannelNames():

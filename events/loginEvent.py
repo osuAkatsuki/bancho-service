@@ -212,7 +212,9 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 "user_id": userID,
                 "token_id": userToken["token_id"],
                 "username": username,
+                "ip_address": request_ip_address,
                 "online_users": await osuToken.get_online_players_count(),
+                "is_tournament_client": is_tournament_client,
             },
         )
 
@@ -411,11 +413,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userPanel(userID, force=True),
+            await serverPackets.userPanel(token_id=userToken["token_id"], force=True),
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(token_id=userToken["token_id"], force=True),
         )
 
         # Default opened channels.
@@ -481,7 +483,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             if not osuToken.is_restricted(token["privileges"]):
                 await osuToken.enqueue(
                     userToken["token_id"],
-                    await serverPackets.userPanel(token["user_id"]),
+                    await serverPackets.userPanel(token_id=token["token_id"]),
                 )
 
         # Get location and country from client ip address
@@ -509,7 +511,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
-            await streamList.broadcast("main", await serverPackets.userPanel(userID))
+            await streamList.broadcast(
+                "main",
+                await serverPackets.userPanel(token_id=userToken["token_id"]),
+            )
 
         if glob.amplitude is not None:
             glob.amplitude.track(

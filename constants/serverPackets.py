@@ -159,13 +159,28 @@ BOT_PRESENCE = (
 )
 
 
-async def userPanel(userID: int, force: bool = False) -> bytes:
-    if userID == CHATBOT_USER_ID:
+async def userPanel(
+    *,
+    primary_token_user_id: int | None = None,
+    token_id: str | None = None,
+    force: bool = False,
+) -> bytes:
+    if primary_token_user_id is not None:
+        # Lookup by user id; assuming the caller wants primary token
+        userToken = await osuToken.get_primary_token_by_user_id(primary_token_user_id)
+    elif token_id is not None:
+        # Lookup by a specific token id; supporting both primary and non-primary
+        userToken = await osuToken.get_token(token_id)
+    else:
+        raise ValueError("Must provide either primary_token_user_id or token_id")
+
+    if userToken is None:
+        return b""
+
+    if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_PRESENCE
 
-    # Connected and restricted check
-    userToken = await osuToken.get_primary_token_by_user_id(userID)
-    if not userToken or (osuToken.is_restricted(userToken["privileges"]) and not force):
+    if osuToken.is_restricted(userToken["privileges"]) and not force:
         return b""
 
     # Get user data
@@ -198,7 +213,7 @@ async def userPanel(userID: int, force: bool = False) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_userPanel,
         (
-            (userID, dataTypes.SINT32),
+            (userToken["user_id"], dataTypes.SINT32),
             (username, dataTypes.STRING),
             (timezone, dataTypes.BYTE),
             (country, dataTypes.BYTE),
@@ -220,18 +235,29 @@ BOT_STATS = (
 )
 
 
-async def userStats(userID: int, force: bool = False) -> bytes:
-    if userID == CHATBOT_USER_ID:
-        return BOT_STATS
+async def userStats(
+    *,
+    primary_token_user_id: int | None = None,
+    token_id: str | None = None,
+    force: bool = False,
+) -> bytes:
+    if primary_token_user_id is not None:
+        # Lookup by user id; assuming the caller wants primary token
+        userToken = await osuToken.get_primary_token_by_user_id(primary_token_user_id)
+    elif token_id is not None:
+        # Lookup by a specific token id; supporting both primary and non-primary
+        userToken = await osuToken.get_token(token_id)
+    else:
+        raise ValueError("Must provide either primary_token_user_id or token_id")
 
-    # Get userID's token from tokens list
-    userToken = await osuToken.get_primary_token_by_user_id(userID)
     if userToken is None:
         return b""
 
-    if not force:
-        if osuToken.is_restricted(userToken["privileges"]) or userToken["tournament"]:
-            return b""
+    if userToken["user_id"] == CHATBOT_USER_ID:
+        return BOT_STATS
+
+    if not force and (osuToken.is_restricted(userToken["privileges"])):
+        return b""
 
     # If our PP is over the osu client's cap (32768), we simply send
     # our pp value as ranked score instead, and send pp as 0.
@@ -240,7 +266,7 @@ async def userStats(userID: int, force: bool = False) -> bytes:
     return packetHelper.buildPacket(
         packetIDs.server_userStats,
         (
-            (userID, dataTypes.UINT32),
+            (userToken["user_id"], dataTypes.UINT32),
             (userToken["action_id"], dataTypes.BYTE),
             (userToken["action_text"], dataTypes.STRING),
             (userToken["action_md5"], dataTypes.STRING),
