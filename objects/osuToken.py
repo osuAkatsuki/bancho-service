@@ -249,7 +249,7 @@ async def get_primary_token_by_username(username: str) -> Token | None:
 
 async def get_all_tokens_by_user_id(user_id: int) -> list[Token]:
     raw_token_ids: set[bytes] = await glob.redis.smembers(
-        f"bancho:tokens:ids:{user_id}"
+        f"bancho:tokens:ids:{user_id}",
     )
     tokens = [await get_token(token_id.decode()) for token_id in raw_token_ids]
     assert all(tokens)
@@ -259,7 +259,7 @@ async def get_all_tokens_by_user_id(user_id: int) -> list[Token]:
 async def get_all_tokens_by_username(username: str) -> list[Token]:
     safe_name = safeUsername(username)
     raw_token_ids: set[bytes] = await glob.redis.smembers(
-        f"bancho:tokens:names:{safe_name}"
+        f"bancho:tokens:names:{safe_name}",
     )
     tokens = [await get_token(token_id.decode()) for token_id in raw_token_ids]
     assert all(tokens)
