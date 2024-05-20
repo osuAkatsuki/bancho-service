@@ -271,7 +271,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Handle donor expiry, or notify the user if it's upcoming.
         if userToken["privileges"] & privileges.USER_DONOR:
             donor_expiry_timestamp = await user_utils.get_absolute_donor_expiry_time(
-                userID
+                userID,
             )
             premium = userToken["privileges"] & privileges.USER_PREMIUM
             donor_role_name = "premium" if premium else "supporter"
@@ -305,7 +305,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 )
 
                 await audit_logs.send_log(
-                    userID, f"{donor_role_name} subscription expired."
+                    userID, f"{donor_role_name} subscription expired.",
                 )
                 await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID})'s {donor_role_name} subscription has expired.",
@@ -330,7 +330,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 # There's under 7 days left in the donor tag;
                 # Let the user know the expiry time is drawing near
                 expireIn = generalUtils.secondsToReadable(
-                    donor_expiry_timestamp - login_timestamp
+                    donor_expiry_timestamp - login_timestamp,
                 )
                 await osuToken.enqueue(
                     userToken["token_id"],
@@ -385,7 +385,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
         await osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
         await osuToken.enqueue(
-            userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds)
+            userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds),
         )
         await osuToken.enqueue(
             userToken["token_id"],
@@ -409,7 +409,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Default opened channels.
         await chat.join_channel(token_id=userToken["token_id"], channel_name="#osu")
         await chat.join_channel(
-            token_id=userToken["token_id"], channel_name="#announce"
+            token_id=userToken["token_id"], channel_name="#announce",
         )
 
         # Join role-related channels.
