@@ -67,6 +67,7 @@ async def get_slots(match_id: int) -> list[Slot]:
 async def update_slot(
     match_id: int,
     slot_id: int,
+    *,
     status: int | None = None,
     team: int | None = None,
     user_id: int | None = None,

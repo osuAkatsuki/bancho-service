@@ -249,6 +249,7 @@ async def get_all_tokens_by_username(username: str) -> list[Token]:
 # TODO: the things that can actually be Optional need to have different defaults
 async def update_token(
     token_id: str,
+    *,
     # user_id: Optional[int] = None,
     username: str | None = None,
     privileges: int | None = None,
