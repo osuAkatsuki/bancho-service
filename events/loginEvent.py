@@ -231,7 +231,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             if freeze_timestamp > login_timestamp:
                 # The freeze has _not_ expired. Warn the user about it.
                 chatbot_token = await osuToken.get_primary_token_by_user_id(
-                    CHATBOT_USER_ID
+                    CHATBOT_USER_ID,
                 )
                 assert chatbot_token is not None
 

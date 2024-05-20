@@ -844,7 +844,7 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
             return "This command is only usable when either spectating a user, or playing multiplayer."
 
         spectatorHostToken = await osuToken.get_primary_token_by_user_id(
-            spectatorHostUserID
+            spectatorHostUserID,
         )
         if not spectatorHostToken:
             return "The spectator host is offline."
@@ -2088,7 +2088,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             else:
                 if not t % 10 or t <= 5:
                     chatbot_token = await osuToken.get_primary_token_by_user_id(
-                        CHATBOT_USER_ID
+                        CHATBOT_USER_ID,
                     )
                     assert chatbot_token is not None
                     await chat.send_message(
