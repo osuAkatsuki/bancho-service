@@ -30,15 +30,15 @@ async def addToken(
     assert res is not None
 
     original_token = await osuToken.create_token(
-        user_id,
-        res["username"],
-        res["privileges"],
-        res["whitelist"],
-        ip,
-        utc_offset,
-        tournament,
-        block_non_friends_dm,
-        amplitude_device_id,
+        user_id=user_id,
+        username=res["username"],
+        privileges=res["privileges"],
+        whitelist=res["whitelist"],
+        ip=ip,
+        utc_offset=utc_offset,
+        tournament=tournament,
+        block_non_friends_dm=block_non_friends_dm,
+        amplitude_device_id=amplitude_device_id,
     )
 
     await osuToken.updateCachedStats(original_token["token_id"])

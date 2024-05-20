@@ -305,7 +305,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 )
 
                 await audit_logs.send_log(
-                    userID, f"{donor_role_name} subscription expired.",
+                    userID,
+                    f"{donor_role_name} subscription expired.",
                 )
                 await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID})'s {donor_role_name} subscription has expired.",
@@ -385,7 +386,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
         await osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
         await osuToken.enqueue(
-            userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds),
+            userToken["token_id"],
+            serverPackets.silenceEndTime(silenceSeconds),
         )
         await osuToken.enqueue(
             userToken["token_id"],
@@ -409,7 +411,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Default opened channels.
         await chat.join_channel(token_id=userToken["token_id"], channel_name="#osu")
         await chat.join_channel(
-            token_id=userToken["token_id"], channel_name="#announce",
+            token_id=userToken["token_id"],
+            channel_name="#announce",
         )
 
         # Join role-related channels.

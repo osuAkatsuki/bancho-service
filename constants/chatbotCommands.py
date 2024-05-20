@@ -1357,9 +1357,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
 
     for token in await osuToken.get_all_tokens_by_user_id(userID):
         await osuToken.enqueue(token["token_id"], notif_pkt)
-        await osuToken.kick(
-            token["token_id"],
-        )
+        await osuToken.kick(token["token_id"])
 
     await user_utils.append_cm_notes(
         userID,

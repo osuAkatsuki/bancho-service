@@ -118,6 +118,7 @@ def make_key(token_id: str) -> str:
 
 
 async def create_token(
+    *,
     user_id: int,
     username: str,
     privileges: int,
