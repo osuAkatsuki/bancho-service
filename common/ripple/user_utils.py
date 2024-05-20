@@ -594,7 +594,7 @@ async def associate_user_with_hwids_and_restrict_if_multiaccounting(
 
     # Run some HWID checks on that user if he is not restricted
     if settings.SHOULD_ENFORCE_SINGLE_ACCOUNT_POLICY and not await is_restricted(
-        user_id
+        user_id,
     ):
         """
         compare_ids = compare_hwid(user_id, hwid_set[2], hwid_set[3], hwid_set[4])
