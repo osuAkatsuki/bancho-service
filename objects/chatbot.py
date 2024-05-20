@@ -9,7 +9,6 @@ from amplitude import BaseEvent
 from common.constants import actions
 from common.constants import privileges
 from common.log import logger
-from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
 from constants import chatbotCommands
 from constants import serverPackets
@@ -76,19 +75,12 @@ COMMANDS_MAP = {
 
 
 async def query(
-    fro: str,
-    chan: str,
+    *,
+    sender_username: str,
+    recipient_name: str,
     message: str,
 ) -> ChatbotResponse | None:
-    """
-    Check if a message has triggered chatbot
-
-    :param fro: sender username
-    :param chan: channel name (or receiver username)
-    :param message: chat mesage (recieved to this function as a string, but we split into list[str] for commands)
-    :return: chatbot's response or False if no response
-    """
-
+    """A high level API for querying the chatbot to process commands."""
     start_time = time()
     message = message.strip()
 
@@ -97,11 +89,11 @@ async def query(
             continue
 
         # message has triggered a command
-        user_token = await osuToken.get_token_by_username(fro)
+        user_token = await osuToken.get_token_by_username(sender_username)
         if user_token is None:
             logger.warning(
                 "An offline user attempted to use a chatbot command",
-                extra={"username": fro},
+                extra={"username": sender_username},
             )
             return None
 
@@ -117,7 +109,11 @@ async def query(
                 "hidden": True,
             }
 
-        command_response = await cmd["callback"](fro, chan, message_split[1:])
+        command_response = await cmd["callback"](
+            sender_username,
+            recipient_name,
+            message_split[1:],
+        )
         if not command_response:
             return None
 
@@ -134,7 +130,7 @@ async def query(
                     device_id=user_token["amplitude_device_id"],
                     event_properties={
                         "command": cmd["trigger"],
-                        "channel": chan,
+                        "channel": recipient_name,
                         "message": message,
                         "hidden": cmd["hidden"],
                         "time_elapsed_ms": time_elapsed_ms,

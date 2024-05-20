@@ -444,9 +444,9 @@ async def _handle_public_message(
             recipient_name = CHATBOT_USER_NAME
 
         chatbot_response = await chatbot.query(
-            sender_token["username"],
-            channel_names["server_name"],
-            message,
+            sender_username=sender_token["username"],
+            recipient_name=channel_names["server_name"],
+            message=message,
         )
 
         logger.info(
@@ -584,9 +584,9 @@ async def _handle_private_message(
 
     if _is_chatbot_interaction(message, recipient_name):
         chatbot_response = await chatbot.query(
-            sender_token["username"],
-            recipient_name,
-            message,
+            sender_username=sender_token["username"],
+            recipient_name=recipient_name,
+            message=message,
         )
         if chatbot_response is not None:
             chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
