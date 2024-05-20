@@ -956,9 +956,13 @@ async def silence(
     await streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
 
 
-async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
+async def chat_spam_protection(
+    token_id: str,
+    *,
+    increase_spam_rate: bool = True,
+) -> None:
     """
-    Silences the user if is spamming.
+    Silences the user if they are spamming chat messages.
 
     :param increaseSpamRate: set to True if the user has sent a new message. Default: True
     :return:
@@ -970,7 +974,7 @@ async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
     spam_rate = token["spam_rate"]
 
     # Increase the spam rate if needed
-    if increaseSpamRate:
+    if increase_spam_rate:
         spam_rate += 1
         await update_token(token_id, spam_rate=spam_rate)
 
