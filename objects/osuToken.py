@@ -118,6 +118,7 @@ def make_key(token_id: str) -> str:
 
 
 async def create_token(
+    *,
     user_id: int,
     username: str,
     privileges: int,
@@ -172,14 +173,16 @@ async def create_token(
         "amplitude_device_id": amplitude_device_id,
     }
 
-    await glob.redis.sadd("bancho:tokens", token_id)
-    await glob.redis.hset("bancho:tokens:json", token_id, orjson.dumps(token))
-    await glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
-    await glob.redis.set(
-        f"bancho:tokens:names:{safeUsername(token['username'])}",
-        token_id,
-    )
-    await glob.redis.set(make_key(token_id), orjson.dumps(token))
+    safe_name = safeUsername(username)
+
+    async with glob.redis.pipeline() as pipe:
+        await pipe.sadd("bancho:tokens", token_id)
+        await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
+        await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
+        await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
+        await pipe.set(make_key(token_id), orjson.dumps(token))
+        await pipe.execute()
+
     return token
 
 
@@ -358,8 +361,12 @@ async def update_token(
         token["pp"] = pp
     if amplitude_device_id is not None:
         token["amplitude_device_id"] = amplitude_device_id
-    await glob.redis.set(make_key(token_id), orjson.dumps(token))
-    await glob.redis.hset("bancho:tokens:json", token_id, orjson.dumps(token))
+
+    async with glob.redis.pipeline() as pipe:
+        await pipe.set(make_key(token_id), orjson.dumps(token))
+        await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
+        await pipe.execute()
+
     return token
 
 
@@ -368,19 +375,21 @@ async def delete_token(token_id: str) -> None:
     if token is None:
         return
 
-    await glob.redis.srem("bancho:tokens", token_id)
-    await glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
-    await glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
-    await glob.redis.hdel("bancho:tokens:json", token_id)
-    await glob.redis.delete(make_key(token_id))
-    await glob.redis.delete(f"{make_key(token_id)}:channels")
-    await glob.redis.delete(f"{make_key(token_id)}:spectators")
-    await glob.redis.delete(f"{make_key(token_id)}:streams")
-    await glob.redis.delete(f"{make_key(token_id)}:message_history")
-    await glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
+    async with glob.redis.pipeline() as pipe:
+        await pipe.srem("bancho:tokens", token_id)
+        await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
+        await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
+        await pipe.hdel("bancho:tokens:json", token_id)
+        await pipe.delete(make_key(token_id))
+        await pipe.delete(f"{make_key(token_id)}:channels")
+        await pipe.delete(f"{make_key(token_id)}:spectators")
+        await pipe.delete(f"{make_key(token_id)}:streams")
+        await pipe.delete(f"{make_key(token_id)}:message_history")
+        await pipe.delete(f"{make_key(token_id)}:sent_away_messages")
 
-    await glob.redis.delete(f"{make_key(token_id)}:packet_queue")
-    await glob.redis.delete(f"{make_key(token_id)}:processing_lock")
+        await pipe.delete(f"{make_key(token_id)}:packet_queue")
+        await pipe.delete(f"{make_key(token_id)}:processing_lock")
+        await pipe.execute()
 
 
 # joined channels

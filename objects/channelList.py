@@ -107,21 +107,26 @@ async def addChannel(
     if name in channels:
         return
 
+    # TODO: this should really be in the pipeline
     await streamList.add(f"chat/{name}")
-    await glob.redis.sadd("bancho:channels", name)
-    await glob.redis.set(
-        make_key(name),
-        orjson.dumps(
-            {
-                "name": name,
-                "description": description,
-                "public_read": public_read,
-                "public_write": public_write,
-                "instance": instance,
-                "moderated": moderated,
-            },
-        ),
-    )
+
+    async with glob.redis.pipeline() as pipe:
+        await pipe.sadd("bancho:channels", name)
+        await pipe.set(
+            make_key(name),
+            orjson.dumps(
+                {
+                    "name": name,
+                    "description": description,
+                    "public_read": public_read,
+                    "public_write": public_write,
+                    "instance": instance,
+                    "moderated": moderated,
+                },
+            ),
+        )
+        await pipe.execute()
+
     # Make the chatbot join the channel
     chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     if chatbot_token:
@@ -173,8 +178,12 @@ async def removeChannel(name: str) -> None:
             pass
 
     await streamList.dispose(f"chat/{name}")
-    await glob.redis.delete(make_key(name))
-    await glob.redis.srem("bancho:channels", name)
+
+    async with glob.redis.pipeline() as pipe:
+        await pipe.delete(make_key(name))
+        await pipe.srem("bancho:channels", name)
+        await pipe.execute()
+
     logger.info("Deleted channel from redis", extra={"channel_name": name})
 
 

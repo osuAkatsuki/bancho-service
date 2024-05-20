@@ -1357,9 +1357,7 @@ async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
 
     for token in await osuToken.get_all_tokens_by_user_id(userID):
         await osuToken.enqueue(token["token_id"], notif_pkt)
-        await osuToken.kick(
-            token["token_id"],
-        )
+        await osuToken.kick(token["token_id"])
 
     await user_utils.append_cm_notes(
         userID,
@@ -1443,8 +1441,11 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     )
     assert beatmap_md5s is not None
 
-    for md5 in beatmap_md5s:
-        await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+    async with glob.redis.pipeline() as pipe:
+        for md5 in beatmap_md5s:
+            await pipe.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+
+        await pipe.execute()
 
     # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"
