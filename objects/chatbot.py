@@ -4,15 +4,17 @@ import re
 from time import time
 from typing import TypedDict
 
-from common.constants import actions
 from amplitude import BaseEvent
+
+from common.constants import actions
 from common.constants import privileges
 from common.log import logger
 from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
 from constants import chatbotCommands
 from constants import serverPackets
-from objects import channelList, glob
+from objects import channelList
+from objects import glob
 from objects import osuToken
 from objects import streamList
 from objects import tokenList
