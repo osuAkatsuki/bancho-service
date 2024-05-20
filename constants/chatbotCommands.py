@@ -183,7 +183,8 @@ async def alertUser(fro: str, chan: str, message: list[str]) -> str | None:
 
     for target_token in all_target_user_tokens:
         await osuToken.enqueue(
-            target_token["token_id"], serverPackets.notification(msg),
+            target_token["token_id"],
+            serverPackets.notification(msg),
         )
 
     return f"Sent an alert to {target} ({targetID})."
