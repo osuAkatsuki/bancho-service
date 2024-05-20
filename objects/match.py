@@ -1205,19 +1205,16 @@ async def sendUpdates(match_id: int) -> None:
 
     :return:
     """
-    uncensored_data = await serverPackets.updateMatch(match_id)
-    if uncensored_data is not None:
-        stream_name = create_stream_name(match_id)
-        await streamList.broadcast(stream_name, uncensored_data)
 
+    # Send uncensored data to participants of the match
+    uncensored_data = await serverPackets.updateMatch(match_id, censored=False)
+    assert uncensored_data is not None
+    await streamList.broadcast(create_stream_name(match_id), uncensored_data)
+
+    # Send censored data to everyone in the multiplayer lobby
     censored_data = await serverPackets.updateMatch(match_id, censored=True)
-    if censored_data is not None:
-        await streamList.broadcast("lobby", censored_data)
-    else:
-        logger.error(
-            f"Failed to send updates to a multiplayer match",
-            extra={"match_id": match_id},
-        )
+    assert censored_data is not None
+    await streamList.broadcast("lobby", censored_data)
 
 
 async def checkTeams(match_id: int) -> bool:
