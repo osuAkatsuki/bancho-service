@@ -17,16 +17,21 @@ class UnbanPubSubHandler(AbstractPubSubHandler):
 
         await user_utils.recalculate_and_update_first_place_scores(userID)
 
-        if not (targetToken := await osuToken.get_primary_token_by_user_id(userID)):
-            logger.error(
-                "Failed to find user by id in update stats pubsub handler",
-                extra={"user_id": userID},
-            )
-            return
+        new_privileges = await user_utils.get_privileges(userID)
 
-        targetToken["privileges"] = await user_utils.get_privileges(userID)
-        await osuToken.disconnectUserIfBanned(targetToken["token_id"])
-        await osuToken.checkRestricted(targetToken["token_id"])
+        all_user_tokens = await osuToken.get_all_tokens_by_user_id(userID)
+
+        for token in all_user_tokens:
+            maybe_token = await osuToken.update_token(
+                token["token_id"], privileges=new_privileges
+            )
+            assert maybe_token is not None
+            token = maybe_token
+
+            await osuToken.disconnectUserIfBanned(token["token_id"])
+            await osuToken.notify_user_of_or_refresh_restriction_from_db(
+                token["token_id"]
+            )
 
         logger.info(
             "Successfully handled unban event for user",

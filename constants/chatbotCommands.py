@@ -177,10 +177,15 @@ async def alertUser(fro: str, chan: str, message: list[str]) -> str | None:
     if not (targetID := await user_utils.get_id_from_username(target)):
         return "Could not find user."
 
-    if not (targetToken := await osuToken.get_primary_token_by_user_id(targetID)):
+    all_target_user_tokens = await osuToken.get_all_tokens_by_user_id(targetID)
+    if not all_target_user_tokens:
         return "User offline"
 
-    await osuToken.enqueue(targetToken["token_id"], serverPackets.notification(msg))
+    for target_token in all_target_user_tokens:
+        await osuToken.enqueue(
+            target_token["token_id"], serverPackets.notification(msg)
+        )
+
     return f"Sent an alert to {target} ({targetID})."
 
 
@@ -308,7 +313,12 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
     targetToken = await osuToken.get_primary_token_by_username(target)
     if targetToken:
         # user online, silence both in db and with packet
-        await osuToken.silence(targetToken["token_id"], silenceTime, reason, userID)
+        await osuToken.silence_or_refresh_silence_from_db(
+            targetToken["user_id"],
+            seconds=silenceTime,
+            reason=reason,
+            author=userID,
+        )
     else:
         # User offline, silence user only in db
         await user_utils.silence(targetID, silenceTime, reason, userID)
@@ -353,24 +363,25 @@ async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_safe_username(target)):
         return f"{target}: user not found."
 
-    # Send new silence end packet to user if he's online
-    if targetToken := await osuToken.get_primary_token_by_user_id(targetID):
-        # Remove silence in db and ingame
-        await osuToken.silence(targetToken["token_id"], 0, "", userID)
-    else:
-        # Target offline, remove silence in db
-        await user_utils.silence(targetID, 0, "", userID)
-        await audit_logs.send_log(userID, f"has unsilenced {target}")
-        await audit_logs.send_log_as_discord_webhook(
-            message="\n".join(
-                [
-                    f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unsilenced [{target}](https://akatsuki.gg/u/{targetID}).",
-                    f"**Reason**: {reason}",
-                    f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
-                ],
-            ),
-            discord_channel="ac_general",
-        )
+    # Remove silence in db and ingame for all sessions
+    await osuToken.silence_or_refresh_silence_from_db(
+        targetID,
+        seconds=0,
+        reason="",
+        author=userID,
+    )
+
+    await audit_logs.send_log(userID, f"has unsilenced {target}")
+    await audit_logs.send_log_as_discord_webhook(
+        message="\n".join(
+            [
+                f"[{fro}](https://akatsuki.gg/u/{userID}) ({userID}) unsilenced [{target}](https://akatsuki.gg/u/{targetID}).",
+                f"**Reason**: {reason}",
+                f"\n> :bust_in_silhouette: [View this user](https://old.akatsuki.gg/index.php?p=103&id={targetID}) on **Admin Panel**.",
+            ],
+        ),
+        discord_channel="ac_general",
+    )
 
     await user_utils.append_cm_notes(
         targetID,
@@ -404,7 +415,7 @@ async def ban(fro: str, chan: str, message: list[str]) -> str:
     await user_utils.ban(targetID)
 
     # Send ban packet to the user if he's online
-    if targetToken := await osuToken.get_primary_token_by_user_id(targetID):
+    for targetToken in await osuToken.get_all_tokens_by_user_id(targetID):
         await osuToken.enqueue(targetToken["token_id"], serverPackets.loginBanned)
 
     await audit_logs.send_log(
@@ -494,8 +505,8 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     await user_utils.restrict(targetID)
 
     # Send restricted mode packet to this user if he's online
-    if targetToken := await osuToken.get_primary_token_by_user_id(targetID):
-        await osuToken.setRestricted(targetToken["token_id"])
+    for targetToken in await osuToken.get_all_tokens_by_user_id(targetID):
+        await osuToken.notify_user_of_restriction(targetToken["token_id"])
 
     await audit_logs.send_log(
         userID,

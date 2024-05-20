@@ -994,42 +994,43 @@ async def kick(
     )
 
 
-async def silence(
-    token_id: str,
+async def silence_or_refresh_silence_from_db(
+    user_id: int,
+    *,
     seconds: int | None = None,
     reason: str = "",
     author: int = CHATBOT_USER_ID,
 ) -> None:
     """
-    Silences this user (db, packet and token)
+    Silences this user (db, packet and ALL active tokens), or tokens with the value in the db
 
     :param seconds: silence length in seconds. If None, get it from db. Default: None
     :param reason: silence reason. Default: empty string
     :param author: userID of who has silenced the user. Default: CHATBOT_USER_ID (Aika)
     :return:
     """
-    token = await get_token(token_id)
-    if token is None:
-        return
+    all_tokens = await get_all_tokens_by_user_id(user_id)
 
     if seconds is None:
         # Get silence expire from db if needed
-        seconds = await user_utils.get_remaining_silence_time(token["user_id"])
+        seconds = await user_utils.get_remaining_silence_time(user_id)
     else:
-        # Silence in db and token
-        await user_utils.silence(token["user_id"], seconds, reason, author)
+        # Silence in db
+        await user_utils.silence(user_id, seconds, reason, author)
 
-    # Silence token
-    await update_token(
-        token_id,
-        silence_end_time=int(time()) + seconds,
-    )
+    # Silence all token
+    for token in all_tokens:
+        await update_token(
+            token["token_id"],
+            silence_end_time=int(time()) + seconds,
+        )
 
-    # Send silence packet to user
-    await enqueue(token_id, serverPackets.silenceEndTime(seconds))
+        # Send silence packet to user
+        await enqueue(token["token_id"], serverPackets.silenceEndTime(seconds))
 
     # Send silenced packet to everyone else
-    await streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
+    if all_tokens:
+        await streamList.broadcast("main", serverPackets.userSilenced(user_id))
 
 
 async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
@@ -1126,9 +1127,11 @@ async def updateCachedStats(token_id: str) -> None:
     )
 
 
-async def checkRestricted(token_id: str) -> None:
+async def notify_user_of_or_refresh_restriction_from_db(token_id: str) -> None:
     """
-    Check if this token is restricted. If so, send Aika message
+    Check if this token and user in db are restricted.
+    - If the db user is restricted, notify the user via chatbot DM
+    - If the db user is unrestricted and that is a change from the token, unrestrict the user
 
     :return:
     """
@@ -1139,7 +1142,7 @@ async def checkRestricted(token_id: str) -> None:
     old_restricted = is_restricted(token["privileges"])
     restricted = await user_utils.is_restricted(token["user_id"])
     if restricted:
-        await setRestricted(token_id)
+        await notify_user_of_restriction(token_id)
     elif not restricted and old_restricted != restricted:
         await resetRestricted(token_id)
 
@@ -1161,13 +1164,8 @@ async def disconnectUserIfBanned(token_id: str) -> None:
         await logoutEvent.handle(token, deleteToken=False)
 
 
-async def setRestricted(token_id: str) -> None:
-    """
-    Set this token as restricted, send Aika message to user
-    and send offline packet to everyone
-
-    :return:
-    """
+async def notify_user_of_restriction(token_id: str) -> None:
+    """Send a chatbot message to the user to notify them of their restriction."""
     token = await get_token(token_id)
     if token is None:
         return
