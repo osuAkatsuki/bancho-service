@@ -22,14 +22,14 @@ class BanPubSubHandler(AbstractPubSubHandler):
 
         for token in all_user_tokens:
             maybe_token = await osuToken.update_token(
-                token["token_id"], privileges=new_privileges
+                token["token_id"], privileges=new_privileges,
             )
             assert maybe_token is not None
             token = maybe_token
 
             await osuToken.disconnectUserIfBanned(token["token_id"])
             await osuToken.notify_user_of_or_refresh_restriction_from_db(
-                token["token_id"]
+                token["token_id"],
             )
 
         logger.info(
