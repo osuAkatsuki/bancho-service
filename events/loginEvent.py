@@ -331,7 +331,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 # There's under 7 days left in the donor tag;
                 # Let the user know the expiry time is drawing near
                 expireIn = generalUtils.secondsToReadable(
-                    donor_expiry_timestamp - login_timestamp,
+                    int(donor_expiry_timestamp - login_timestamp),
                 )
                 await osuToken.enqueue(
                     userToken["token_id"],
