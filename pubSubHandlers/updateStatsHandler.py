@@ -26,8 +26,8 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
         await osuToken.enqueue(
             targetToken["token_id"],
             await serverPackets.userStats(
-                primary_token_user_id=userID,
-                allow_restricted_users=True,
+                user_id=userID,
+                allow_restricted_tokens=True,
             ),
         )
 

@@ -27,5 +27,5 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         logger.debug("Sending panel for user", extra={"user_slot_num": user_id})
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userPanel(primary_token_user_id=user_id),
+            await serverPackets.userPanel(user_id=user_id),
         )

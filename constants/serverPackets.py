@@ -161,13 +161,17 @@ BOT_PRESENCE = (
 
 async def userPanel(
     *,
-    primary_token_user_id: int | None = None,
+    user_id: int | None = None,
     token_id: str | None = None,
-    allow_restricted_users: bool = False,
+    allow_restricted_tokens: bool = False,
 ) -> bytes:
-    if primary_token_user_id is not None:
+    if user_id is not None:
         # Lookup by user id; assuming the caller wants primary token
-        userToken = await osuToken.get_primary_token_by_user_id(primary_token_user_id)
+        userToken = await osuToken.get_primary_token_by_user_id(user_id)
+        if userToken is None:
+            # (If no primary token exists, fallback to any token)
+            all_user_tokens = await osuToken.get_all_tokens_by_user_id(user_id)
+            userToken = next(iter(all_user_tokens), None)
     elif token_id is not None:
         # Lookup by a specific token id; supporting both primary and non-primary
         userToken = await osuToken.get_token(token_id)
@@ -180,7 +184,7 @@ async def userPanel(
     if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_PRESENCE
 
-    if not allow_restricted_users and osuToken.is_restricted(userToken["privileges"]):
+    if not allow_restricted_tokens and osuToken.is_restricted(userToken["privileges"]):
         return b""
 
     # Get user data
@@ -237,13 +241,17 @@ BOT_STATS = (
 
 async def userStats(
     *,
-    primary_token_user_id: int | None = None,
+    user_id: int | None = None,
     token_id: str | None = None,
-    allow_restricted_users: bool = False,
+    allow_restricted_tokens: bool = False,
 ) -> bytes:
-    if primary_token_user_id is not None:
+    if user_id is not None:
         # Lookup by user id; assuming the caller wants primary token
-        userToken = await osuToken.get_primary_token_by_user_id(primary_token_user_id)
+        userToken = await osuToken.get_primary_token_by_user_id(user_id)
+        if userToken is None:
+            # (If no primary token exists, fallback to any token)
+            all_user_tokens = await osuToken.get_all_tokens_by_user_id(user_id)
+            userToken = next(iter(all_user_tokens), None)
     elif token_id is not None:
         # Lookup by a specific token id; supporting both primary and non-primary
         userToken = await osuToken.get_token(token_id)
@@ -256,7 +264,7 @@ async def userStats(
     if userToken["user_id"] == CHATBOT_USER_ID:
         return BOT_STATS
 
-    if not allow_restricted_users and osuToken.is_restricted(userToken["privileges"]):
+    if not allow_restricted_tokens and osuToken.is_restricted(userToken["privileges"]):
         return b""
 
     # If our PP is over the osu client's cap (32768), we simply send

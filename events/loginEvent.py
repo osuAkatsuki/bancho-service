@@ -417,14 +417,14 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             userToken["token_id"],
             await serverPackets.userPanel(
                 token_id=userToken["token_id"],
-                allow_restricted_users=True,
+                allow_restricted_tokens=True,
             ),
         )
         await osuToken.enqueue(
             userToken["token_id"],
             await serverPackets.userStats(
                 token_id=userToken["token_id"],
-                allow_restricted_users=True,
+                allow_restricted_tokens=True,
             ),
         )
 

@@ -310,19 +310,12 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
     if silenceTime > 0x24EA00:
         return "Invalid silence time. Max silence time is 4 weeks."
 
-    # Send silence packet to target if he's connected
-    targetToken = await osuToken.get_primary_token_by_username(target)
-    if targetToken:
-        # user online, silence both in db and with packet
-        await osuToken.silence_or_refresh_silence_from_db(
-            targetToken["user_id"],
-            seconds=silenceTime,
-            reason=reason,
-            author=userID,
-        )
-    else:
-        # User offline, silence user only in db
-        await user_utils.silence(targetID, silenceTime, reason, userID)
+    await osuToken.silence_or_refresh_silence_from_db(
+        targetID,
+        seconds=silenceTime,
+        reason=reason,
+        author=userID,
+    )
 
     # Log message
     msg = f"{target} has been silenced for: {reason}."
@@ -1591,10 +1584,9 @@ async def editWhitelist(fro: str, chan: str, message: list[str]) -> str:
     userID = await user_utils.get_id_from_username(fro)
 
     # If target user is online, update their token's whitelist bit
-    targetToken = await osuToken.get_primary_token_by_user_id(targetID)
-    if targetToken is not None:
-        targetToken = await osuToken.update_token(
-            token_id=targetToken["token_id"],
+    for target_token in await osuToken.get_all_tokens_by_user_id(targetID):
+        await osuToken.update_token(
+            token_id=target_token["token_id"],
             whitelist=bit,
         )
 
@@ -2740,13 +2732,12 @@ async def crashClient(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(target)):
         return f"{target} not found."
 
-    userToken = await osuToken.get_primary_token_by_user_id(targetID)
-    assert userToken is not None
-
     packet_data = serverPackets.invalidChatMessage(target)
 
-    for _ in range(16):  # takes a few to crash
-        await osuToken.enqueue(userToken["token_id"], packet_data)
+    all_target_user_tokens = await osuToken.get_all_tokens_by_user_id(targetID)
+    for target_token in all_target_user_tokens:
+        for _ in range(16):  # takes a few to crash
+            await osuToken.enqueue(target_token["token_id"], packet_data)
 
     return "deletus"
 
