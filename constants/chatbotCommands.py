@@ -1528,11 +1528,15 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
     """Send a message to the #announce channel."""
     chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
     assert chatbot_token is not None
-    await chat.send_message(
+
+    messaging_error = await chat.send_message(
         sender_token_id=chatbot_token["token_id"],
         recipient_name="#announce",
         message=" ".join(message),
     )
+    if messaging_error is not None:
+        return "Failed to send announcement"
+
     return "Announcement successfully sent."
 
 

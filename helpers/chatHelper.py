@@ -690,7 +690,21 @@ async def send_message(
     sender_token_id: str,
     recipient_name: str,
     message: str,
-) -> SendMessageError | None:
+) -> None | SendMessageError:
+    """
+    A high level API for sending a message to a user or a channel.
+
+    Handles all the necessary checks and sends the message to the recipient, such as:
+    - Checking if the sender is connected to the server
+    - Checking if the sender is in restricted mode
+    - Checking if the sender is silenced
+    - Checking if the sender is using an acceptable client stream
+    - Checking if the message content is valid
+    Among other checks.
+
+    This will return `None` if the sending of the message was successful,
+    or a `SendMessageError` enum value if the sending of the message failed.
+    """
     sender_token = await osuToken.get_token(sender_token_id)
     if sender_token is None:
         logger.warning(

@@ -28,17 +28,20 @@ class handler(AsyncRequestHandler):
             chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
             assert chatbot_token is not None
 
-            await chatHelper.send_message(
+            messaging_error = await chatHelper.send_message(
                 sender_token_id=chatbot_token["token_id"],
                 recipient_name=(
                     self.get_argument("to").encode().decode("utf-8", "replace")
                 ),
                 message=self.get_argument("msg").encode().decode("utf-8", "replace"),
             )
+            if messaging_error is None:
+                statusCode = 200
+                data["message"] = "ok"
+            else:
+                statusCode = 500
+                data["message"] = "Failed to send message"
 
-            # Status code and message
-            statusCode = 200
-            data["message"] = "ok"
         except exceptions.invalidArgumentsException:
             statusCode = 400
             data["message"] = "invalid parameters"

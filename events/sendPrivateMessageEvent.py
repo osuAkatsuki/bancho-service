@@ -11,11 +11,14 @@ from objects.osuToken import Token
 async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Send private message packet
     packetData = clientPackets.sendPrivateMessage(rawPacketData)
-    await chat.send_message(
+
+    messaging_error = await chat.send_message(
         sender_token_id=userToken["token_id"],
         recipient_name=packetData["to"],
         message=packetData["message"],
     )
+    if messaging_error is not None:
+        return None
 
     if glob.amplitude is not None:
         glob.amplitude.track(
