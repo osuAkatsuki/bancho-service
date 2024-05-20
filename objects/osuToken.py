@@ -195,6 +195,7 @@ async def get_token_ids() -> set[str]:
 
 
 async def get_online_players_count() -> int:
+    # TODO: Only count "primary sessions", to avoid double-counting users
     return await glob.redis.hlen("bancho:tokens:json")
 
 
