@@ -89,7 +89,7 @@ async def query(
             continue
 
         # message has triggered a command
-        user_token = await osuToken.get_token_by_username(sender_username)
+        user_token = await osuToken.get_primary_token_by_username(sender_username)
         if user_token is None:
             logger.warning(
                 "An offline user attempted to use a chatbot command",
