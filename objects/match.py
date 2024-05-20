@@ -143,6 +143,7 @@ async def get_match(match_id: int) -> Match | None:
 
 async def update_match(
     match_id: int,
+    *,
     match_name: str | None = None,
     match_password: str | None = None,
     beatmap_id: int | None = None,
