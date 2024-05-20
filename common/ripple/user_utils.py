@@ -847,9 +847,10 @@ async def change_username(user_id: int, new_username: str) -> None:
     )
 
     # Empty redis username cache
-    # TODO: Le pipe woo woo
-    await glob.redis.delete(f"ripple:userid_cache:{old_safe_username}")
-    await glob.redis.delete(f"ripple:change_username_pending:{user_id}")
+    async with glob.redis.pipeline() as pipe:
+        await pipe.delete(f"ripple:userid_cache:{old_safe_username}")
+        await pipe.delete(f"ripple:change_username_pending:{user_id}")
+        await pipe.execute()
 
 
 async def remove_from_leaderboard(user_id: int) -> None:
@@ -859,11 +860,15 @@ async def remove_from_leaderboard(user_id: int) -> None:
     Removes listings across all game modes.
     """
     country = (await get_iso_country_code(user_id)).lower()
-    for board in ("leaderboard", "relaxboard"):
-        for mode in ("std", "taiko", "ctb", "mania"):
-            await glob.redis.zrem(f"ripple:{board}:{mode}", str(user_id))
-            if country and country != "xx":
-                await glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(user_id))
+
+    async with glob.redis.pipeline() as pipe:
+        for board in ("leaderboard", "relaxboard"):
+            for mode in ("std", "taiko", "ctb", "mania"):
+                await pipe.zrem(f"ripple:{board}:{mode}", str(user_id))
+                if country and country != "xx":
+                    await pipe.zrem(f"ripple:{board}:{mode}:{country}", str(user_id))
+
+        await pipe.execute()
 
 
 async def remove_from_specified_leaderboard(
@@ -887,9 +892,12 @@ async def remove_from_specified_leaderboard(
 
     redis_board = f"ripple:{board}:{mode_str}"
 
-    await glob.redis.zrem(redis_board, str(user_id))
-    if country and country != "xx":
-        await glob.redis.zrem(f"{redis_board}:{country}", str(user_id))
+    async with glob.redis.pipeline() as pipe:
+        await pipe.zrem(redis_board, str(user_id))
+        if country and country != "xx":
+            await pipe.zrem(f"{redis_board}:{country}", str(user_id))
+
+        await pipe.execute()
 
 
 async def get_remaining_overwrite_wait(user_id: int) -> int:

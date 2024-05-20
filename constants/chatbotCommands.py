@@ -1443,8 +1443,11 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     )
     assert beatmap_md5s is not None
 
-    for md5 in beatmap_md5s:
-        await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+    async with glob.redis.pipeline() as pipe:
+        for md5 in beatmap_md5s:
+            await pipe.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+
+        await pipe.execute()
 
     # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"

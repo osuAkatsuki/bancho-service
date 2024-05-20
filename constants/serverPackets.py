@@ -97,16 +97,21 @@ def mainMenuIcon(icon: str) -> bytes:
     )
 
 
-def userSupporterGMT(supporter: bool, GMT: bool, tournamentStaff: bool) -> bytes:
-    result = 1
+def userSupporterGMT(
+    *,
+    is_supporter: bool,
+    is_gmt: bool,
+    is_tourney_staff: bool,
+) -> bytes:
+    result = userRanks.PLAYER
 
-    if supporter:
+    if is_supporter:
         result |= userRanks.SUPPORTER
 
-    if GMT:
+    if is_gmt:
         result |= userRanks.BAT
 
-    if tournamentStaff:
+    if is_tourney_staff:
         result |= userRanks.TOURNAMENT_STAFF
 
     return packetHelper.buildPacket(

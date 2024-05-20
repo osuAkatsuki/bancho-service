@@ -41,6 +41,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
     responseTokenString = "ayy"
     responseData = bytearray()
 
+    login_timestamp = time.time()
+
     # Get client ip of the incoming request
     request_ip_address = web_handler.getRequestIP()
     if not request_ip_address:
@@ -215,16 +217,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # For a normal user, this will return 0.
         # For a frozen user, this will return a unix timestamp (the date of their pending restriction).
         freeze_timestamp = await user_utils.get_freeze_restriction_date(userID)
-        current_time = int(time.time())
-
         if freeze_timestamp:
-            if freeze_timestamp == 1:  # Begin the timer.
-                freeze_timestamp = await user_utils.begin_freeze_timer(userID)
+            # The user has an active freeze.
+            # Next, we must determine if it has expired.
 
-            # reason = await user_utils.getFreezeReason(userID)
-            # freeze_str = f" as a result of:\n\n{reason}\n" if reason else ""
-
-            if freeze_timestamp > current_time:  # We are warning the user
+            if freeze_timestamp > login_timestamp:
+                # The freeze has _not_ expired. Warn the user about it.
                 chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
                 assert chatbot_token is not None
 
@@ -233,18 +231,17 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     recipient_name=username,
                     message="\n".join(
                         [
-                            f"Your account has been frozen",  # "Your account has been frozen{freeze_str}"
+                            "Your account has been frozen by Akatsuki staff.",
                             "This is not a restriction, but will lead to one if ignored.",
                             "You are required to submit a liveplay using the (specified criteria)[https://bit.ly/liveplay-criteria]",
                             "If you have any questions or are ready to liveplay, please open a ticket on our (Discord)[https://akatsuki.gg/discord].",
-                            f"Time left until account restriction: {td(seconds = freeze_timestamp - current_time)}.",
+                            f"Time left until account restriction: {td(seconds=freeze_timestamp - login_timestamp)}.",
                         ],
                     ),
                 )
 
-            else:  # We are restricting the user
-                # TODO: perhaps move this to the cron?
-                # right now a user can avoid a resitrction by simply not logging in lol..
+            else:
+                # The user's freeze has expired; restrict them.
                 await user_utils.restrict(userID)
                 await user_utils.unfreeze(
                     userID,
@@ -271,43 +268,47 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     discord_channel="ac_general",
                 )
 
-        # Send message if premium / donor expires soon
-        # This should NOT be done at login, but done by the cron
+        # Handle donor expiry, or notify the user if it's upcoming.
         if userToken["privileges"] & privileges.USER_DONOR:
-            expireDate = await user_utils.get_absolute_donor_expiry_time(userID)
+            donor_expiry_timestamp = await user_utils.get_absolute_donor_expiry_time(
+                userID
+            )
             premium = userToken["privileges"] & privileges.USER_PREMIUM
-            rolename = "premium" if premium else "supporter"
+            donor_role_name = "premium" if premium else "supporter"
 
-            if current_time >= expireDate:
+            if login_timestamp >= donor_expiry_timestamp:
+                # Revoke the user's supporter/premium status
                 await user_utils.set_privileges(
                     userID,
                     userToken["privileges"] - privileges.USER_DONOR
                     | (privileges.USER_PREMIUM if premium else 0),
                 )
 
-                # 36 = supporter, 59 = premium
-                badges = await glob.db.fetchAll(
-                    "SELECT id FROM user_badges WHERE badge IN (59, 36) AND user = %s",
-                    [userID],
-                )
-                if badges:
-                    for (
-                        badge
-                    ) in badges:  # Iterate through user badges, deleting them all
-                        await glob.db.execute(
-                            "DELETE FROM user_badges WHERE id = %s",
-                            [badge["id"]],
-                        )
-
-                # Remove their custom privileges
+                # Delete any supporter/premium badges from the user
                 await glob.db.execute(
-                    "UPDATE users SET can_custom_badge = 0, show_custom_badge = 0 WHERE id = %s",
+                    """\
+                    DELETE FROM user_badges
+                    WHERE user = %s
+                    AND badge IN (59, 36)
+                    """,
                     [userID],
                 )
 
-                await audit_logs.send_log(userID, f"{rolename} subscription expired.")
+                # Remove their custom badge privileges
+                await glob.db.execute(
+                    """\
+                    UPDATE users
+                    SET can_custom_badge = 0, show_custom_badge = 0
+                    WHERE id = %s
+                    """,
+                    [userID],
+                )
+
+                await audit_logs.send_log(
+                    userID, f"{donor_role_name} subscription expired."
+                )
                 await audit_logs.send_log_as_discord_webhook(
-                    message=f"[{username}](https://akatsuki.gg/u/{userID})'s {rolename} subscription has expired.",
+                    message=f"[{username}](https://akatsuki.gg/u/{userID})'s {donor_role_name} subscription has expired.",
                     discord_channel="ac_confidential",
                 )
 
@@ -316,7 +317,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     serverPackets.notification(
                         "\n\n".join(
                             [
-                                f"Your {rolename} tag has expired.",
+                                f"Your {donor_role_name} tag has expired.",
                                 "Whether you continue to support us or not, we'd like to thank you "
                                 "to the moon and back for your support so far - it really means everything to us.",
                                 "- cmyui, and the Akatsuki Team",
@@ -325,32 +326,29 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     ),
                 )
 
-            elif (
-                expireDate - current_time <= 86400 * 7
-            ):  # Notify within 7 days of expiry
-                expireIn = generalUtils.secondsToReadable(expireDate - current_time)
+            elif donor_expiry_timestamp - login_timestamp <= 86400 * 7:
+                # There's under 7 days left in the donor tag;
+                # Let the user know the expiry time is drawing near
+                expireIn = generalUtils.secondsToReadable(
+                    donor_expiry_timestamp - login_timestamp
+                )
                 await osuToken.enqueue(
                     userToken["token_id"],
                     serverPackets.notification(
-                        f"Your {rolename} tag expires in {expireIn}.",
+                        f"Your {donor_role_name} tag expires in {expireIn}.",
                     ),
                 )
 
         # Set silence end UNIX time in token
-        await osuToken.update_token(
+        maybe_token = await osuToken.update_token(
             userToken["token_id"],
             silence_end_time=await user_utils.get_absolute_silence_end(userID),
         )
+        assert maybe_token is not None
+        userToken = maybe_token
 
         # Get only silence remaining seconds
         silenceSeconds = await osuToken.getSilenceSecondsLeft(userToken["token_id"])
-
-        # Get supporter/GMT
-        userGMT = osuToken.is_staff(userToken["privileges"])
-        userTournament = userToken["privileges"] & privileges.USER_TOURNAMENT_STAFF > 0
-
-        # userSupporter = not restricted
-        userSupporter = True
 
         # Server restarting check
         if glob.restarting:
@@ -369,7 +367,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Maintenance check
         if glob.banchoConf.config["banchoMaintenance"]:
-            if not userGMT:
+            if not osuToken.is_staff(userToken["privileges"]):
                 # We are not mod/admin, delete token, send notification and logout
                 await tokenList.deleteToken(responseTokenString)
                 raise exceptions.banchoMaintenanceException()
@@ -387,12 +385,17 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         await osuToken.enqueue(userToken["token_id"], serverPackets.protocolVersion(19))
         await osuToken.enqueue(userToken["token_id"], serverPackets.userID(userID))
         await osuToken.enqueue(
-            userToken["token_id"],
-            serverPackets.silenceEndTime(silenceSeconds),
+            userToken["token_id"], serverPackets.silenceEndTime(silenceSeconds)
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            serverPackets.userSupporterGMT(userSupporter, userGMT, userTournament),
+            serverPackets.userSupporterGMT(
+                is_supporter=True,
+                is_gmt=osuToken.is_staff(userToken["privileges"]),
+                is_tourney_staff=(
+                    userToken["privileges"] & privileges.USER_TOURNAMENT_STAFF > 0
+                ),
+            ),
         )
         await osuToken.enqueue(
             userToken["token_id"],
@@ -406,8 +409,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Default opened channels.
         await chat.join_channel(token_id=userToken["token_id"], channel_name="#osu")
         await chat.join_channel(
-            token_id=userToken["token_id"],
-            channel_name="#announce",
+            token_id=userToken["token_id"], channel_name="#announce"
         )
 
         # Join role-related channels.
@@ -478,10 +480,12 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             geolocation["latitude"],
             geolocation["longitude"],
         )
-        await osuToken.update_token(
+        maybe_token = await osuToken.update_token(
             userToken["token_id"],
             country=geolocation["osu_country_code"],
         )
+        assert maybe_token is not None
+        userToken = maybe_token
 
         # Set country in db if user has no country (first bancho login)
         if await user_utils.get_iso_country_code(userID) == "XX":

@@ -213,8 +213,10 @@ async def update_match(
 
 async def delete_match(match_id: int) -> None:
     # TODO: should we throw error when no match exists?
-    await glob.redis.srem("bancho:matches", match_id)
-    await glob.redis.delete(make_key(match_id))
+    async with glob.redis.pipeline() as pipe:
+        await pipe.srem("bancho:matches", match_id)
+        await pipe.delete(make_key(match_id))
+        await pipe.execute()
 
     # TODO: should devs have to do this separately?
     await slot.delete_slots(match_id)
