@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from common.log import logger
-from events import logoutEvent
 from objects import glob
 from objects import osuToken
 
