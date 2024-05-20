@@ -5,12 +5,14 @@ from time import time
 from typing import TypedDict
 
 from common.constants import actions
+from amplitude import BaseEvent
 from common.constants import privileges
+from common.log import logger
 from common.ripple import user_utils
 from constants import CHATBOT_USER_ID
 from constants import chatbotCommands
 from constants import serverPackets
-from objects import channelList
+from objects import channelList, glob
 from objects import osuToken
 from objects import streamList
 from objects import tokenList
@@ -93,11 +95,16 @@ async def query(
             continue
 
         # message has triggered a command
-        user_id = await user_utils.get_id_from_username(fro)
-        user_privileges = await user_utils.get_privileges(user_id)
+        user_token = await osuToken.get_token_by_username(fro)
+        if user_token is None:
+            logger.warning(
+                "An offline user attempted to use a chatbot command",
+                extra={"username": fro},
+            )
+            return None
 
         # Make sure the user has right permissions
-        if cmd["privileges"] and not user_privileges & cmd["privileges"]:
+        if cmd["privileges"] and not user_token["privileges"] & cmd["privileges"]:
             return None
 
         # Check argument number
@@ -112,8 +119,27 @@ async def query(
         if not command_response:
             return None
 
-        if user_privileges & privileges.ADMIN_CAKER:
+        time_elapsed_ms = (time() - start_time) * 1000
+
+        if user_token["privileges"] & privileges.ADMIN_CAKER:
             command_response += f"| Elapsed: {(time() - start_time) * 1000:.3f}ms"
+
+        if glob.amplitude is not None:
+            glob.amplitude.track(
+                BaseEvent(
+                    event_type="chatbot_command_invocation",
+                    user_id=str(user_token["user_id"]),
+                    device_id=user_token["amplitude_device_id"],
+                    event_properties={
+                        "command": cmd["trigger"],
+                        "channel": chan,
+                        "message": message,
+                        "hidden": cmd["hidden"],
+                        "time_elapsed_ms": time_elapsed_ms,
+                        "source": "bancho-service",
+                    },
+                ),
+            )
 
         return {"response": command_response, "hidden": cmd["hidden"]}
 
