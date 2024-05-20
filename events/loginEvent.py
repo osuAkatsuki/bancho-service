@@ -210,6 +210,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             "User logged in",
             extra={
                 "user_id": userID,
+                "token_id": userToken["token_id"],
                 "username": username,
                 "online_users": await osuToken.get_online_players_count(),
             },
