@@ -821,7 +821,7 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             SELECT beatmap_id
             FROM beatmaps
             WHERE beatmapset_id = %s
-            ORDER BY last_update DESC
+            ORDER BY beatmap_id DESC
             LIMIT 1
             """,
             [beatmapset_id],
