@@ -121,17 +121,20 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             raise exceptions.haxException()
 
         # Only allow a single non-tourney session at a time.
-        # (Perhaps we could support some faster anti-ghosting here,
-        #  although the inactive-session-timeout cronjob handles it)
+        # If the existing session has been inactive for 10s, we'll allow
+        # the new session to replace the existing one (for anti-ghosting)
         is_tournament_client = rgx["stream"] == "tourney"
         if not is_tournament_client:
             existing_primary_token = await osuToken.get_primary_token_by_user_id(userID)
             if existing_primary_token:
-                logger.warning(
-                    "A user attempted to login with multiple primary sessions",
-                    extra={"user_id": userID, "username": username},
-                )
-                raise exceptions.primarySessionAlreadyExistsException()
+                if (time.time() - existing_primary_token[""]) < 10:
+                    await tokenList.deleteOldPrimaryToken(userID)
+                else:
+                    logger.warning(
+                        "A user attempted to login with multiple primary sessions",
+                        extra={"user_id": userID, "username": username},
+                    )
+                    raise exceptions.primarySessionAlreadyExistsException()
 
         """ No login errors! """
 
