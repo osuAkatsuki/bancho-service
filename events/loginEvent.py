@@ -127,7 +127,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not is_tournament_client:
             existing_primary_token = await osuToken.get_primary_token_by_user_id(userID)
             if existing_primary_token:
-                if (time.time() - existing_primary_token["ping_time"]) < 10:
+                if (time.time() - existing_primary_token["ping_time"]) > 10:
                     await tokenList.deleteOldPrimaryToken(userID)
                 else:
                     logger.warning(

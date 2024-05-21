@@ -837,10 +837,7 @@ async def updatePingTime(token_id: str) -> None:
     if token is None:
         return
 
-    await update_token(
-        token_id,
-        ping_time=time(),
-    )
+    await update_token(token_id, ping_time=time())
 
 
 async def joinMatch(token_id: str, match_id: int) -> bool:
