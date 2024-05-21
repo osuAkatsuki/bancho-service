@@ -26,11 +26,6 @@ db: DBPool
 redis: Redis[Any]
 banchoConf: banchoConfig
 
-restarting = False
-
-startTime = int(time.time())
-latestBuild = 0
-
 groupPrivileges: dict[str, int] = {}
 bcrypt_cache: dict[bytes, bytes] = {}
 
