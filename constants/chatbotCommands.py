@@ -790,10 +790,6 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             else None
         )
 
-    # Run the command in PM only
-    if chan.startswith("#"):
-        return None
-
     npmsg = " ".join(message[1:])
 
     match = chatbot.NOW_PLAYING_REGEX.fullmatch(npmsg)
@@ -821,6 +817,10 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             "accuracy": -1.0,
         },
     )
+
+    # Send back pp values only if this is a DM (not a public channel)
+    if chan.startswith("#"):
+        return None
 
     return await getPPMessage(token["user_id"])
 
