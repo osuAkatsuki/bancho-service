@@ -809,8 +809,27 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
         for _mods in match["mods"][1:].split(" "):
             mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
 
-    # Get beatmap id from URL
-    beatmap_id = int(match["bid"])
+    if match["bid"] is not None:
+        # Get beatmap id from URL
+        beatmap_id = int(match["bid"])
+    else:
+        # They /np'ed a map, but no beatmap id is present.
+        # We'll need to use the set id to find a beatmap id.
+        beatmapset_id = int(match["sid"])
+        beatmap_rec = await glob.db.fetch(
+            """
+            SELECT beatmap_id
+            FROM beatmaps
+            WHERE beatmapset_id = %s
+            ORDER BY last_update DESC
+            LIMIT 1
+            """,
+            [beatmapset_id],
+        )
+        if beatmap_rec is None:
+            return "Could not find a beatmap for this beatmapset."
+
+        beatmap_id = beatmap_rec["beatmap_id"]
 
     # Return tillerino message
     await osuToken.update_token(
