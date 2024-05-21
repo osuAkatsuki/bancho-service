@@ -1022,7 +1022,7 @@ async def silence_or_refresh_silence_from_db(
         # Silence in db
         await user_utils.silence(user_id, seconds, reason, author)
 
-    # Silence all token
+    # Silence all of the user's tokens
     for token in all_tokens:
         await update_token(
             token["token_id"],
