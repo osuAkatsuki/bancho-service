@@ -365,19 +365,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         # Get only silence remaining seconds
         silenceSeconds = await osuToken.getSilenceSecondsLeft(userToken["token_id"])
 
-        # Server restarting check
-        if glob.restarting:
-            raise exceptions.banchoRestartingException()
-
         # Send login notification before maintenance message
         if glob.banchoConf.config["loginNotification"]:
             await osuToken.enqueue(
                 userToken["token_id"],
-                serverPackets.notification(
-                    glob.banchoConf.config["loginNotification"].format(
-                        BUILD_VER=glob.latestBuild,
-                    ),
-                ),
+                serverPackets.notification(glob.banchoConf.config["loginNotification"]),
             )
 
         # Maintenance check
@@ -617,12 +609,6 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             responseData.clear()
         responseData += serverPackets.notification(
             "Akatsuki is currently in maintenance mode. Please try to login again later.",
-        )
-        responseData += serverPackets.loginFailed
-    except exceptions.banchoRestartingException:
-        # Bancho is restarting
-        responseData += serverPackets.notification(
-            "Akatsuki is restarting. Try again in a few minutes.",
         )
         responseData += serverPackets.loginFailed
     # except exceptions.need2FAException:

@@ -357,15 +357,8 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     return True
 
 
-async def get_match_history_message(match_id: int) -> str:
-    multiplayer_match = await get_match(match_id)
-    assert multiplayer_match is not None
-
-    message = f"Match history available [https://akatsuki.gg/matches/{multiplayer_match['match_id']} here]."
-    if multiplayer_match["match_history_private"]:
-        message += " This is only visible to participants of this match!"
-
-    return message
+async def get_match_history_url(match_id: int) -> str:
+    return f"https://akatsuki.gg/matches/{match_id}"
 
 
 async def removeHost(match_id: int, rm_referee: bool = True) -> None:
