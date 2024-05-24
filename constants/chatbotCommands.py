@@ -2442,7 +2442,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 "Countdown time must be less than 5 minutes.",
             )
 
-        def _get_countdown_message(t: int, force: bool = False) -> Optional[str]:
+        def _get_countdown_message(t: int, force: bool = False) -> str | None:
             minutes, seconds = divmod(t, 60)
             if minutes > 0 and not seconds:
                 return f"Countdown ends in {minutes} minute(s)"
