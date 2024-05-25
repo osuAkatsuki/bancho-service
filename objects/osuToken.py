@@ -828,7 +828,12 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     bot_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert bot_token is not None
 
-    mp_message = await match.get_match_history_url(multiplayer_match["match_id"])
+    mp_history_url = await match.get_match_history_url(multiplayer_match["match_id"])
+
+    mp_message = f"Match history available [{mp_history_url} here]."
+    if multiplayer_match["match_history_private"]:
+        mp_message += " This is only visible to participants of this match!"
+
     await enqueue(
         token_id,
         serverPackets.sendMessage(
