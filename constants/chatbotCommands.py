@@ -2392,7 +2392,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             return None
 
         mp_history_url = await match.get_match_history_url(
-            multiplayer_match["match_id"]
+            multiplayer_match["match_id"],
         )
 
         message = f"Match history available [{mp_history_url} here]."
