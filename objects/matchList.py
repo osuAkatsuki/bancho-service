@@ -57,6 +57,7 @@ async def createMatch(
         is_tourney=is_tourney,
         is_locked=False,
         is_starting=False,
+        is_timer_running=False,
         is_in_progress=False,
         creation_time=time(),
         current_game_id=0,
