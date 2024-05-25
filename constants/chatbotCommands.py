@@ -2460,7 +2460,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             assert chatbot_token is not None
 
             multi_match = await match.get_match(multiplayer_match["match_id"])
-            assert multi_match is not None
+            if multi_match is None:
+                return  # the match is gone
 
             if not multi_match["is_timer_running"]:
                 return
