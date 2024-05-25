@@ -363,8 +363,18 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     return True
 
 
-async def get_match_history_url(match_id: int) -> str:
+def get_match_history_url(match_id: int) -> str:
     return f"https://akatsuki.gg/matches/{match_id}"
+
+
+def get_match_history_message(match_id: int, is_history_private: bool) -> str:
+    mp_history_link = get_match_history_url(match_id)
+
+    message = f"Match history available [{mp_history_link} here]."
+    if is_history_private:
+        message += " This is only visible to participants of this match!"
+
+    return message
 
 
 async def removeHost(match_id: int, rm_referee: bool = True) -> None:

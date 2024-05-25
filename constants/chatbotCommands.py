@@ -2391,13 +2391,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         if multiplayer_match is None:
             return None
 
-        mp_history_url = match.get_match_history_url(multiplayer_match["match_id"])
-
-        message = f"Match history available [{mp_history_url} here]."
-        if multiplayer_match["match_history_private"]:
-            message += " This is only visible to participants of this match!"
-
-        return message
+        return match.get_match_history_message(
+            multiplayer_match["match_id"], multiplayer_match["match_history_private"],
+        )
 
     async def mp_timer(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
