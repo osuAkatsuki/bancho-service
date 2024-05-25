@@ -2391,7 +2391,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         if multiplayer_match is None:
             return None
 
-        mp_history_url = match.get_match_history_url(multiplayer_match["match_id"])
+        mp_history_url = await match.get_match_history_url(
+            multiplayer_match["match_id"]
+        )
 
         message = f"Match history available [{mp_history_url} here]."
         if multiplayer_match["match_history_private"]:
