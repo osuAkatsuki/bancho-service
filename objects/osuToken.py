@@ -829,7 +829,7 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     assert bot_token is not None
 
     mp_message = match.get_match_history_message(
-        multiplayer_match["match_id"], multiplayer_match["match_history_private"]
+        multiplayer_match["match_id"], multiplayer_match["match_history_private"],
     )
 
     await enqueue(

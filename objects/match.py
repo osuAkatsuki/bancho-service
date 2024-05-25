@@ -366,6 +366,7 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
 def get_match_history_url(match_id: int) -> str:
     return f"https://akatsuki.gg/matches/{match_id}"
 
+
 def get_match_history_message(match_id: int, is_history_private: bool) -> str:
     mp_history_link = get_match_history_url(match_id)
 
