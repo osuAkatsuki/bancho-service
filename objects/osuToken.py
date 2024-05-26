@@ -895,7 +895,10 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     bot_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert bot_token is not None
 
-    mp_message = await match.get_match_history_url(multiplayer_match["match_id"])
+    mp_message = match.get_match_history_message(
+        multiplayer_match["match_id"], multiplayer_match["match_history_private"],
+    )
+
     await enqueue(
         token_id,
         serverPackets.sendMessage(

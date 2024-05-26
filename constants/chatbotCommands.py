@@ -797,10 +797,6 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             else None
         )
 
-    # Run the command in PM only
-    if chan.startswith("#"):
-        return None
-
     npmsg = " ".join(message[1:])
 
     match = chatbot.NOW_PLAYING_REGEX.fullmatch(npmsg)
@@ -816,8 +812,27 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
         for _mods in match["mods"][1:].split(" "):
             mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
 
-    # Get beatmap id from URL
-    beatmap_id = int(match["bid"])
+    if match["bid"] is not None:
+        # Get beatmap id from URL
+        beatmap_id = int(match["bid"])
+    else:
+        # They /np'ed a map, but no beatmap id is present.
+        # We'll need to use the set id to find a beatmap id.
+        beatmapset_id = int(match["sid"])
+        beatmap_rec = await glob.db.fetch(
+            """
+            SELECT beatmap_id
+            FROM beatmaps
+            WHERE beatmapset_id = %s
+            ORDER BY beatmap_id DESC
+            LIMIT 1
+            """,
+            [beatmapset_id],
+        )
+        if beatmap_rec is None:
+            return "Could not find a beatmap for this beatmapset."
+
+        beatmap_id = beatmap_rec["beatmap_id"]
 
     # Return tillerino message
     await osuToken.update_token(
@@ -828,6 +843,10 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             "accuracy": -1.0,
         },
     )
+
+    # Send back pp values only if this is a DM (not a public channel)
+    if chan.startswith("#"):
+        return None
 
     return await getPPMessage(token["user_id"])
 
@@ -2380,13 +2399,114 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         if multiplayer_match is None:
             return None
 
-        mp_history_url = match.get_match_history_url(multiplayer_match["match_id"])
+        return match.get_match_history_message(
+            multiplayer_match["match_id"], multiplayer_match["match_history_private"],
+        )
 
-        message = f"Match history available [{mp_history_url} here]."
-        if multiplayer_match["match_history_private"]:
-            message += " This is only visible to participants of this match!"
+    async def mp_timer(user_token: osuToken.Token) -> str | None:
+        if not user_token["match_id"]:
+            return None
 
-        return message
+        multiplayer_match = await match.get_match(user_token["match_id"])
+        if multiplayer_match is None:
+            return None
+
+        referees = await match.get_referees(multiplayer_match["match_id"])
+        if user_token["user_id"] not in referees:
+            return None
+
+        if len(message) < 2:
+            raise exceptions.invalidArgumentsException(
+                "Incorrect syntax: !mp timer <time (in seconds)/stop>.",
+            )
+
+        if message[1] == "stop":
+            await match.update_match(
+                multiplayer_match["match_id"],
+                is_timer_running=False,
+            )
+            return "Countdown stopped."
+
+        if multiplayer_match["is_timer_running"]:
+            return "A countdown is already running."
+
+        if not message[1].isnumeric():
+            raise exceptions.invalidArgumentsException(
+                "Incorrect syntax: !mp timer <time (in seconds)/stop>.",
+            )
+        countdown_time = int(message[1])
+
+        if countdown_time < 1:
+            raise exceptions.invalidArgumentsException(
+                "Countdown time must be at least 1 second.",
+            )
+
+        if countdown_time > 300:  # 5 mins
+            raise exceptions.invalidArgumentsException(
+                "Countdown time must be less than 5 minutes.",
+            )
+
+        def _get_countdown_message(t: int, force: bool = False) -> str | None:
+            minutes, seconds = divmod(t, 60)
+            if minutes > 0 and not seconds:
+                return f"Countdown ends in {minutes} minute(s)"
+
+            _, unit_digit = divmod(seconds, 10)
+            if force or (
+                not minutes and seconds <= 30 and (not unit_digit or seconds <= 5)
+            ):
+                return f"Countdown ends in {seconds} second(s)"
+
+            return None
+
+        async def _decreaseTimer(t: int) -> None:
+            chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+            assert chatbot_token is not None
+
+            multi_match = await match.get_match(multiplayer_match["match_id"])
+            if multi_match is None:
+                return  # the match is gone
+
+            if not multi_match["is_timer_running"]:
+                return
+
+            if t <= 0:
+                await match.update_match(
+                    multiplayer_match["match_id"],
+                    is_timer_running=False,
+                )
+                await chat.send_message(
+                    sender_token_id=chatbot_token["token_id"],
+                    recipient_name=chan,
+                    message=f"Countdown finished.",
+                )
+                return
+
+            message = _get_countdown_message(t)
+            if message:
+                await chat.send_message(
+                    sender_token_id=chatbot_token["token_id"],
+                    recipient_name=chan,
+                    message=message,
+                )
+
+            loop = asyncio.get_running_loop()
+            loop.call_later(
+                1.00,
+                lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+            )
+
+        await match.update_match(
+            multiplayer_match["match_id"],
+            is_timer_running=True,
+        )
+
+        loop = asyncio.get_running_loop()
+        loop.call_later(
+            1.00,
+            lambda: asyncio.create_task(_decreaseTimer(countdown_time - 1)),
+        )
+        return _get_countdown_message(countdown_time, True)
 
     try:
         subcommands: dict[str, Callable[[osuToken.Token], Awaitable[str | None]]] = {
@@ -2415,6 +2535,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             "scorev": mpScoreV,
             "help": mpHelp,
             "link": mp_link,
+            "timer": mp_timer,
         }
 
         requestedSubcommand = message[0].lower().strip()

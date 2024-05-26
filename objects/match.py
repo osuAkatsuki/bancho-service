@@ -52,6 +52,7 @@ class Match(TypedDict):
     is_tourney: bool
     is_locked: bool
     is_starting: bool
+    is_timer_running: bool
     is_in_progress: bool
     creation_time: float
 
@@ -87,6 +88,7 @@ async def create_match(
     is_tourney: bool,
     is_locked: bool,
     is_starting: bool,
+    is_timer_running: bool,
     is_in_progress: bool,
     creation_time: float,
     current_game_id: int,
@@ -119,6 +121,7 @@ async def create_match(
         "is_tourney": is_tourney,
         "is_locked": is_locked,
         "is_starting": is_starting,
+        "is_timer_running": is_timer_running,
         "is_in_progress": is_in_progress,
         "creation_time": creation_time,
         "match_history_private": match_history_private,
@@ -159,6 +162,7 @@ async def update_match(
     is_tourney: bool | None = None,
     is_locked: bool | None = None,
     is_starting: bool | None = None,
+    is_timer_running: bool | None = None,
     is_in_progress: bool | None = None,
     creation_time: float | None = None,
     game_id: int | None = None,
@@ -200,6 +204,8 @@ async def update_match(
         match["is_locked"] = is_locked
     if is_starting is not None:
         match["is_starting"] = is_starting
+    if is_timer_running is not None:
+        match["is_timer_running"] = is_timer_running
     if is_in_progress is not None:
         match["is_in_progress"] = is_in_progress
     if creation_time is not None:
@@ -357,8 +363,18 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     return True
 
 
-async def get_match_history_url(match_id: int) -> str:
+def get_match_history_url(match_id: int) -> str:
     return f"https://akatsuki.gg/matches/{match_id}"
+
+
+def get_match_history_message(match_id: int, is_history_private: bool) -> str:
+    mp_history_link = get_match_history_url(match_id)
+
+    message = f"Match history available [{mp_history_link} here]."
+    if is_history_private:
+        message += " This is only visible to participants of this match!"
+
+    return message
 
 
 async def removeHost(match_id: int, rm_referee: bool = True) -> None:
