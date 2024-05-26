@@ -1861,11 +1861,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         slots = await slot.get_slots(multiplayer_match["match_id"])
         assert len(slots) == 16
 
-        for slot_id, _slot in enumerate(slots):
+        for _slot in slots:
             if _slot["status"] != slotStatuses.READY and _slot["user_token"]:
                 someoneNotReady = True
-                if force:
-                    await match.toggleSlotReady(multiplayer_match["match_id"], slot_id)
 
         if someoneNotReady and not force:
             return (

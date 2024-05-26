@@ -1300,12 +1300,13 @@ async def start(match_id: int) -> bool:
     slots = await slot.get_slots(match_id)
     assert len(slots) == 16
 
+    playing_token_ids: list[str] = []
     for slot_id, _slot in enumerate(slots):
         if _slot["user_token"] is None:
             continue
 
         user_token = await osuToken.get_token(_slot["user_token"])
-        if user_token is not None:
+        if user_token is not None and _slot["status"] != slotStatuses.NO_MAP:
             await slot.update_slot(
                 match_id,
                 slot_id,
@@ -1316,11 +1317,13 @@ async def start(match_id: int) -> bool:
             )
 
             await osuToken.joinStream(user_token["token_id"], playing_stream_name)
+            playing_token_ids.append(user_token["token_id"])
 
     # Send match start packet
-    await streamList.broadcast(
+    await streamList.multicast(
         playing_stream_name,
         await serverPackets.matchStart(match_id),
+        recipient_token_ids=playing_token_ids,
     )
 
     game_id = await insert_match_game(
