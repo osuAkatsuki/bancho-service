@@ -2392,7 +2392,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             return None
 
         return match.get_match_history_message(
-            multiplayer_match["match_id"], multiplayer_match["match_history_private"],
+            multiplayer_match["match_id"],
+            multiplayer_match["match_history_private"],
         )
 
     async def mp_timer(user_token: osuToken.Token) -> str | None:
