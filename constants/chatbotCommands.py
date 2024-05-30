@@ -114,7 +114,7 @@ def command(
 @command(trigger="!speedrun start", hidden=False)
 async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
-    if user_id == 4528:
+    if user_id not in {1001, 4528}:
         return "u may not taste my delicious lettuce"
 
     game_mode = 0  # TODO
@@ -132,7 +132,7 @@ async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
 @command(trigger="!speedrun end", hidden=False)
 async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
-    if user_id == 4528:
+    if user_id not in {1001, 4528}:
         return "u may not taste my delicious lettuce"
 
     game_mode = 0  # TODO
