@@ -79,12 +79,6 @@ async def end_user_speedrun(user_id: int, game_mode: int) -> SpeedrunResults | N
     speedrun_scores = await get_active_speedrun_scores(user_id, game_mode)
     assert speedrun_scores is not None
 
-    if not speedrun_scores:
-        return SpeedrunResults(
-            speedrun=speedrun,
-            scores=speedrun_scores,
-        )
-
     if speedrun.score_type is ScoreType.WEIGHTED_PP:
         score_value = sum(
             rec["score_value"] * 0.95 ** (rec["score_rank"] - 1) for rec in recs
