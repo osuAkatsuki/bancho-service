@@ -119,6 +119,13 @@ async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
 
     game_mode = 0  # TODO
 
+    active_speedrun = await speedrunning.get_active_user_speedrun(
+        user_id=user_id,
+        game_mode=game_mode,
+    )
+    if active_speedrun:
+        return "Speedrun already in progress."
+
     # TODO: cronjob to auto clean these up
     user_speedrun = await speedrunning.create_user_speedrun(
         user_id=user_id,
