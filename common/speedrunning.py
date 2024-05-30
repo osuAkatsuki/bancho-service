@@ -186,19 +186,19 @@ async def get_active_speedrun_scores(user_id: int) -> list[SpeedrunScore] | None
         SELECT
             {score_read_param} AS value,
             DENSE_RANK() OVER (
-                PARTITION BY scores.userid
-                ORDER BY scores.pp DESC
+                PARTITION BY {scores_table}.userid
+                ORDER BY {scores_table}.pp DESC
             ) AS score_rank,
-            scores.mods,
+            {scores_table}.mods,
             beatmaps.beatmap_id,
             beatmaps.song_name
-        FROM {scores_table} scores
-        JOIN users ON scores.userid = users.id
-        JOIN beatmaps ON scores.beatmap_md5 = beatmaps.beatmap_md5
-        WHERE scores.userid = %s
-        AND scores.play_mode = %s
-        AND scores.time BETWEEN %s AND %s
-        AND scores.completed = 3
+        FROM {scores_table}
+        JOIN users ON {scores_table}.userid = users.id
+        JOIN beatmaps ON {scores_table}.beatmap_md5 = beatmaps.beatmap_md5
+        WHERE {scores_table}.userid = %s
+        AND {scores_table}.play_mode = %s
+        AND {scores_table}.time BETWEEN %s AND %s
+        AND {scores_table}.completed = 3
         AND users.privileges & 1
         AND beatmaps.ranked IN (2, 3)
         ORDER BY {score_read_param} DESC
