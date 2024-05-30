@@ -183,9 +183,7 @@ async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
         return "You must first run"
 
     best_speedrun = max(user_speedruns, key=lambda s: s.score_value)
-    return (
-        f"Your best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
-    )
+    return f"Your best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
 
 
 @command(trigger="!help", hidden=True)
