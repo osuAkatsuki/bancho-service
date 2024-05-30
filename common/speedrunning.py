@@ -71,6 +71,8 @@ async def end_user_speedrun(user_id: int, game_mode) -> UserSpeedrun | None:
 
     game_mode = 0  # TODO support others
     score_value = await get_active_speedrun_score(user_id, game_mode)
+    assert score_value is not None
+    speedrun.score_value = score_value
 
     await glob.db.execute(
         f"""
