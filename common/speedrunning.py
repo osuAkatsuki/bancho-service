@@ -205,7 +205,7 @@ async def get_active_speedrun_scores(user_id: int) -> list[SpeedrunScore] | None
         """,
         [
             user_id,
-            speedrun.game_mode,
+            speedrun.game_mode % 4,
             speedrun_starts_at.timestamp(),
             speedrun_ends_at.timestamp(),
         ],
