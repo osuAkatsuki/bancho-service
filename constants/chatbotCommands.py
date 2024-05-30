@@ -184,7 +184,7 @@ async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
 
     best_speedrun = max(user_speedruns, key=lambda s: s.score_value)
     return (
-        f"Best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
+        f"Your best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
     )
 
 
