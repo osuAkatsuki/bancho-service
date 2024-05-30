@@ -166,6 +166,28 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     return ret[:-1]
 
 
+@command("!speedrun best", hidden=False)
+async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await user_utils.get_id_from_username(fro)
+    if user_id not in {1001, 4528}:
+        return "u may not taste my delicious lettuce"
+
+    game_mode = 0
+    user_speedruns = await speedrunning.get_user_speedruns(
+        user_id=user_id,
+        game_mode=game_mode,
+        score_type=speedrunning.ScoreType.WEIGHTED_PP,
+        timeframe=speedrunning.SpeedrunTimeframe.TEN_MINUTES,
+    )
+    if not user_speedruns:
+        return "You must first run"
+
+    best_speedrun = max(user_speedruns, key=lambda s: s.score_value)
+    return (
+        f"Best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
+    )
+
+
 @command(trigger="!help", hidden=True)
 async def _help(fro: str, chan: str, message: list[str]) -> str:
     """Show all documented commands the player can access."""

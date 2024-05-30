@@ -218,3 +218,40 @@ async def get_active_speedrun_scores(
         )
         for rec in recs
     ]
+
+
+async def get_user_speedruns(
+    user_id: int,
+    game_mode: int,
+    score_type: ScoreType,
+    timeframe: SpeedrunTimeframe,
+) -> list[UserSpeedrun]:
+    res = await glob.db.fetchAll(
+        f"""
+        SELECT {READ_PARAMS}
+        FROM user_speedruns
+        WHERE user_id = %s
+        AND game_mode = %s
+        AND score_type = %s
+        AND timeframe = %s
+        AND ended_at IS NOT NULL
+        AND cancelled_at IS NULL
+        ORDER BY score_value DESC
+        """,
+        [user_id, game_mode, score_type, timeframe],
+    )
+
+    return [
+        UserSpeedrun(
+            id=rec["id"],
+            user_id=rec["user_id"],
+            game_mode=rec["game_mode"],
+            timeframe=SpeedrunTimeframe(rec["timeframe"]),
+            score_type=ScoreType(rec["score_type"]),
+            score_value=rec["score_value"],
+            started_at=rec["started_at"],
+            ended_at=rec["ended_at"],
+            cancelled_at=rec["cancelled_at"],
+        )
+        for rec in res
+    ]
