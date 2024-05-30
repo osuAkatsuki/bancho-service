@@ -184,10 +184,10 @@ async def get_active_speedrun_scores(
         SELECT
             {score_read_param} AS value,
             DENSE_RANK() OVER (
-                PARTITION BY userid
-                ORDER BY pp DESC
+                PARTITION BY scores.userid
+                ORDER BY scores.pp DESC
             ) AS score_rank,
-            score.mods,
+            scores.mods,
             beatmaps.beatmap_id,
             beatmaps.song_name
         FROM scores
