@@ -137,11 +137,18 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
 
     game_mode = 0  # TODO
 
-    user_speedrun = await speedrunning.end_user_speedrun(user_id, game_mode)
-    if user_speedrun is None:
+    speedrun_results = await speedrunning.end_user_speedrun(user_id, game_mode)
+    if speedrun_results is None:
         return "No speedrun in progress."
 
-    return f"Speedrun ended! Total score: {user_speedrun.score_value} in {user_speedrun.timeframe}"
+    speedrun = speedrun_results.speedrun
+    scores = speedrun_results.scores
+
+    ret = f"Speedrun ended! Total score: {speedrun.score_value:,.2f} in {speedrun.timeframe}\n"
+    for score in scores:
+        ret += f"{score.song_name}: {score.score_value:,.2f}\n"
+
+    return ret[:-1]
 
 
 @command(trigger="!help", hidden=True)
