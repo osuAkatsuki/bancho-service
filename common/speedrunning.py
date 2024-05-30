@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from datetime import timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -128,17 +129,20 @@ async def get_active_speedrun_score(user_id: int, game_mode: int) -> int | None:
         raise NotImplementedError()
 
     if speedrun.timeframe is SpeedrunTimeframe.TEN_MINUTES:
-        interval = "10 minute"
+        interval = timedelta(minutes=10)
     elif speedrun.timeframe is SpeedrunTimeframe.ONE_HOUR:
-        interval = "1 hour"
+        interval = timedelta(hours=1)
     elif speedrun.timeframe is SpeedrunTimeframe.ONE_DAY:
-        interval = "1 day"
+        interval = timedelta(days=1)
     elif speedrun.timeframe is SpeedrunTimeframe.ONE_WEEK:
-        interval = "1 week"
+        interval = timedelta(weeks=1)
     else:
         raise NotImplementedError()
 
     # TODO: rx/ap
+
+    speedrun_starts_at = speedrun.started_at
+    speedrun_ends_at = speedrun_starts_at + interval
 
     recs = await glob.db.fetchAll(
         f"""
@@ -150,16 +154,19 @@ async def get_active_speedrun_score(user_id: int, game_mode: int) -> int | None:
             ) AS score_rank
         FROM scores
         JOIN users ON scores.userid = users.id
-        JOIN beatmaps ON scores.beatmap_md5 = beatmaps.md5
-        WHERE scores.speedrun_id = %s
-        AND scores.time >= (NOW() - INTERVAL %s)
+        JOIN beatmaps ON scores.beatmap_md5 = beatmaps.beatmap_md5
+        WHERE scores.time BETWEEN %s AND %s
         AND scores.completed = 3
         AND scores.play_mode = %s
         AND users.privileges & 1
         AND beatmaps.ranked IN (2, 3)
         ORDER BY {score_read_param} DESC
         """,
-        [speedrun.id, interval, game_mode],
+        [
+            speedrun_starts_at.timestamp(),
+            speedrun_ends_at.timestamp(),
+            game_mode,
+        ],
     )
     if speedrun.score_type is ScoreType.WEIGHTED_PP:
         score_value = sum(
