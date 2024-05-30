@@ -81,7 +81,8 @@ async def end_user_speedrun(user_id: int, game_mode: int) -> SpeedrunResults | N
 
     if speedrun.score_type is ScoreType.WEIGHTED_PP:
         score_value = sum(
-            rec["score_value"] * 0.95 ** (rec["score_rank"] - 1) for rec in recs
+            score.score_value * 0.95 ** (score.score_rank - 1)
+            for score in speedrun_scores
         )
         score_value += 416.6667 * (1 - 0.9994 ** len(speedrun_scores))
     elif speedrun.score_type is ScoreType.WEIGHTED_SCORE:
