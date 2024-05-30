@@ -54,7 +54,7 @@ async def create_user_speedrun(
         f"""
         INSERT INTO user_speedruns
         (user_id, game_mode, timeframe, score_type, score_value, started_at)
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """,
         [user_id, game_mode, timeframe, ScoreType.WEIGHTED_PP, 0, datetime.now()],
     )
