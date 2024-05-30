@@ -151,9 +151,17 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     speedrun = speedrun_results.speedrun
     scores = speedrun_results.scores
 
+    def get_beatmap_url(beatmap_id: int) -> str:
+        return f"https://osu.ppy.sh/beatmaps/{beatmap_id}"
+
+    def get_url_embed(url: str, text: str) -> str:
+        return f"[{url} {text}]"
+
     ret = f"Speedrun ended! Total score: {speedrun.score_value:,.2f} in {speedrun.timeframe}\n"
     for score in scores:
-        ret += f"{score.song_name}: {score.score_value:,.2f}\n"
+        beatmap_url = get_beatmap_url(score.beatmap_id)
+        mods_str = f" +{scoreUtils.readableMods(score.mods)}" if score.mods else ""
+        ret += f"{get_url_embed(beatmap_url, score.song_name)}: {score.value:,.2f}{mods_str}\n"
 
     return ret[:-1]
 
