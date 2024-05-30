@@ -155,17 +155,19 @@ async def get_active_speedrun_score(user_id: int, game_mode: int) -> int | None:
         FROM scores
         JOIN users ON scores.userid = users.id
         JOIN beatmaps ON scores.beatmap_md5 = beatmaps.beatmap_md5
-        WHERE scores.time BETWEEN %s AND %s
-        AND scores.completed = 3
+        WHERE scores.userid = %s
         AND scores.play_mode = %s
+        AND scores.time BETWEEN %s AND %s
+        AND scores.completed = 3
         AND users.privileges & 1
         AND beatmaps.ranked IN (2, 3)
         ORDER BY {score_read_param} DESC
         """,
         [
+            user_id,
+            game_mode,
             speedrun_starts_at.timestamp(),
             speedrun_ends_at.timestamp(),
-            game_mode,
         ],
     )
     if speedrun.score_type is ScoreType.WEIGHTED_PP:
