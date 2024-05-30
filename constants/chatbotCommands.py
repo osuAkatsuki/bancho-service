@@ -111,9 +111,11 @@ def command(
     return wrapper
 
 
-@command(trigger="!speedrun start", hidden=True)
+@command(trigger="!speedrun start", hidden=False)
 async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
+    if user_id == 4528:
+        return "u may not taste my delicious lettuce"
 
     game_mode = 0  # TODO
 
@@ -127,9 +129,11 @@ async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
     return f"Speedrun started! ID: {user_speedrun.id}"
 
 
-@command(trigger="!speedrun end", hidden=True)
+@command(trigger="!speedrun end", hidden=False)
 async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
+    if user_id == 4528:
+        return "u may not taste my delicious lettuce"
 
     game_mode = 0  # TODO
 
@@ -137,7 +141,7 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     if user_speedrun is None:
         return "No speedrun in progress."
 
-    return "Speedrun ended!"
+    return f"Speedrun ended! Total score: {user_speedrun.score_value} in {user_speedrun.timeframe}"
 
 
 @command(trigger="!help", hidden=True)
