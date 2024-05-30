@@ -20,6 +20,7 @@ from common import generalUtils
 from common import job_scheduling
 from common import performance_utils
 from common import profiling
+from common import speedrunning
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
@@ -27,6 +28,7 @@ from common.log import audit_logs
 from common.log import logger
 from common.ripple import scoreUtils
 from common.ripple import user_utils
+from common.speedrunning import SpeedrunTimeframe
 from common.web import discord
 from constants import CHATBOT_USER_ID
 from constants import CHATBOT_USER_NAME
@@ -107,6 +109,35 @@ def command(
         return f
 
     return wrapper
+
+
+@command(trigger="!speedrun start", hidden=True)
+async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await user_utils.get_id_from_username(fro)
+
+    game_mode = 0  # TODO
+
+    # TODO: cronjob to auto clean these up
+    user_speedrun = await speedrunning.create_user_speedrun(
+        user_id=user_id,
+        game_mode=game_mode,
+        timeframe=SpeedrunTimeframe.TEN_MINUTES,
+    )
+
+    return f"Speedrun started! ID: {user_speedrun.id}"
+
+
+@command(trigger="!speedrun end", hidden=True)
+async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await user_utils.get_id_from_username(fro)
+
+    game_mode = 0  # TODO
+
+    user_speedrun = await speedrunning.end_user_speedrun(user_id, game_mode)
+    if user_speedrun is None:
+        return "No speedrun in progress."
+
+    return "Speedrun ended!"
 
 
 @command(trigger="!help", hidden=True)
