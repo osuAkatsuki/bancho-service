@@ -111,18 +111,26 @@ def command(
     return wrapper
 
 
+# !speedrun start <10m/1h/1d/1w> <mode> <score_type>
+
+
 @command(trigger="!speedrun start", hidden=False)
 async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
     if user_id not in {1001, 4528}:
         return "u may not taste my delicious lettuce"
 
-    game_mode = 0  # TODO
+    try:
+        _, timeframe_str, mode_str, score_type_str = message
+        timeframe = speedrunning.SpeedrunTimeframe(timeframe_str)
+        score_type = speedrunning.ScoreType(score_type_str)
+        game_mode = int(mode_str)
+    except ValueError:
+        return (
+            "Invalid syntax. Usage: !speedrun start <10m/1h/1d/1w> <mode> <score_type>"
+        )
 
-    active_speedrun = await speedrunning.get_active_user_speedrun(
-        user_id=user_id,
-        game_mode=game_mode,
-    )
+    active_speedrun = await speedrunning.get_active_user_speedrun(user_id)
     if active_speedrun:
         return "Speedrun already in progress."
 
@@ -130,7 +138,8 @@ async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_speedrun = await speedrunning.create_user_speedrun(
         user_id=user_id,
         game_mode=game_mode,
-        timeframe=SpeedrunTimeframe.TEN_MINUTES,
+        timeframe=timeframe,
+        score_type=score_type,
     )
 
     return f"Speedrun started! ID: {user_speedrun.id}"
@@ -142,9 +151,7 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     if user_id not in {1001, 4528}:
         return "u may not taste my delicious lettuce"
 
-    game_mode = 0  # TODO
-
-    speedrun_results = await speedrunning.end_user_speedrun(user_id, game_mode)
+    speedrun_results = await speedrunning.end_active_user_speedrun(user_id)
     if speedrun_results is None:
         return "No speedrun in progress."
 
@@ -172,12 +179,19 @@ async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
     if user_id not in {1001, 4528}:
         return "u may not taste my delicious lettuce"
 
-    game_mode = 0
+    try:
+        _, mode_str, score_type_str, timeframe_str = message
+        game_mode = int(mode_str)
+        score_type = speedrunning.ScoreType(score_type_str)
+        timeframe = speedrunning.SpeedrunTimeframe(timeframe_str)
+    except ValueError:
+        return "Invalid syntax. Usage: !speedrun best <mode> <score_type>"
+
     user_speedruns = await speedrunning.get_user_speedruns(
         user_id=user_id,
         game_mode=game_mode,
-        score_type=speedrunning.ScoreType.WEIGHTED_PP,
-        timeframe=speedrunning.SpeedrunTimeframe.TEN_MINUTES,
+        score_type=score_type,
+        timeframe=timeframe,
     )
     if not user_speedruns:
         return "You must first run"
