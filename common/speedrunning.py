@@ -186,7 +186,7 @@ async def get_active_speedrun_scores(
             DENSE_RANK() OVER (
                 PARTITION BY userid
                 ORDER BY pp DESC
-            ) AS rank,
+            ) AS score_rank,
             score.mods,
             beatmaps.beatmap_id,
             beatmaps.song_name
@@ -211,7 +211,7 @@ async def get_active_speedrun_scores(
     return [
         SpeedrunScore(
             value=rec["value"],
-            rank=rec["rank"],
+            rank=rec["score_rank"],
             mods=rec["mods"],
             beatmap_id=rec["beatmap_id"],
             song_name=rec["song_name"],
