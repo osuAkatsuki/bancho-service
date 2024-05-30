@@ -20,10 +20,10 @@ class ScoreType(StrEnum):
 class SpeedrunTimeframe(StrEnum):
     """The timeframe that the user is speedrunning."""
 
-    TEN_MINUTES = "ten_minutes"
-    ONE_HOUR = "one_hour"
-    ONE_DAY = "one_day"
-    ONE_WEEK = "one_week"
+    TEN_MINUTES = "10m"
+    ONE_HOUR = "1h"
+    ONE_DAY = "1d"
+    ONE_WEEK = "1w"
 
 
 @dataclass
@@ -50,6 +50,7 @@ async def create_user_speedrun(
     user_id: int,
     game_mode: int,
     timeframe: SpeedrunTimeframe,
+    score_type: ScoreType,
 ) -> UserSpeedrun:
     await glob.db.execute(
         f"""
@@ -57,9 +58,9 @@ async def create_user_speedrun(
         (user_id, game_mode, timeframe, score_type, score_value, started_at)
         VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        [user_id, game_mode, timeframe, ScoreType.WEIGHTED_PP, 0, datetime.now()],
+        [user_id, game_mode, timeframe, score_type, 0, datetime.now()],
     )
-    speedrun = await get_active_user_speedrun(user_id, game_mode)
+    speedrun = await get_active_user_speedrun(user_id)
     assert speedrun is not None
     return speedrun
 
@@ -70,13 +71,12 @@ class SpeedrunResults:
     scores: list[SpeedrunScore]
 
 
-async def end_user_speedrun(user_id: int, game_mode: int) -> SpeedrunResults | None:
-    speedrun = await get_active_user_speedrun(user_id, game_mode)
+async def end_active_user_speedrun(user_id: int) -> SpeedrunResults | None:
+    speedrun = await get_active_user_speedrun(user_id)
     if speedrun is None:
         return None
 
-    game_mode = 0  # TODO support others
-    speedrun_scores = await get_active_speedrun_scores(user_id, game_mode)
+    speedrun_scores = await get_active_speedrun_scores(user_id)
     assert speedrun_scores is not None
 
     if speedrun.score_type is ScoreType.WEIGHTED_PP:
@@ -100,9 +100,8 @@ async def end_user_speedrun(user_id: int, game_mode: int) -> SpeedrunResults | N
         WHERE user_id = %s
         AND ended_at IS NULL
         AND cancelled_at IS NULL
-        AND game_mode = %s
         """,
-        [score_value, datetime.now(), user_id, game_mode],
+        [score_value, datetime.now(), user_id],
     )
     return SpeedrunResults(
         speedrun=speedrun,
@@ -110,17 +109,16 @@ async def end_user_speedrun(user_id: int, game_mode: int) -> SpeedrunResults | N
     )
 
 
-async def get_active_user_speedrun(user_id: int, game_mode: int) -> UserSpeedrun | None:
+async def get_active_user_speedrun(user_id: int) -> UserSpeedrun | None:
     res = await glob.db.fetch(
         f"""
         SELECT {READ_PARAMS}
         FROM user_speedruns
         WHERE user_id = %s
-        AND game_mode = %s
         AND ended_at IS NULL
         AND cancelled_at IS NULL
         """,
-        [user_id, game_mode],
+        [user_id],
     )
 
     if res is None:
@@ -148,11 +146,8 @@ class SpeedrunScore:
     song_name: str
 
 
-async def get_active_speedrun_scores(
-    user_id: int,
-    game_mode: int,
-) -> list[SpeedrunScore] | None:
-    speedrun = await get_active_user_speedrun(user_id, game_mode)
+async def get_active_speedrun_scores(user_id: int) -> list[SpeedrunScore] | None:
+    speedrun = await get_active_user_speedrun(user_id)
     if speedrun is None:
         return None
 
@@ -174,10 +169,17 @@ async def get_active_speedrun_scores(
     else:
         raise NotImplementedError()
 
-    # TODO: rx/ap
-
     speedrun_starts_at = speedrun.started_at
     speedrun_ends_at = speedrun_starts_at + interval
+
+    if speedrun.game_mode in range(0, 4):
+        scores_table = "scores"
+    elif speedrun.game_mode in range(4, 8):
+        scores_table = "scores_rx"
+    elif speedrun.game_mode in range(8, 12):
+        scores_table = "scores_ap"
+    else:
+        raise NotImplementedError()
 
     recs = await glob.db.fetchAll(
         f"""
@@ -190,7 +192,7 @@ async def get_active_speedrun_scores(
             scores.mods,
             beatmaps.beatmap_id,
             beatmaps.song_name
-        FROM scores
+        FROM {scores_table} scores
         JOIN users ON scores.userid = users.id
         JOIN beatmaps ON scores.beatmap_md5 = beatmaps.beatmap_md5
         WHERE scores.userid = %s
@@ -203,7 +205,7 @@ async def get_active_speedrun_scores(
         """,
         [
             user_id,
-            game_mode,
+            speedrun.game_mode,
             speedrun_starts_at.timestamp(),
             speedrun_ends_at.timestamp(),
         ],
