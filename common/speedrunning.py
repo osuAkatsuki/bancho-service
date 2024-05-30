@@ -175,7 +175,7 @@ async def get_active_speedrun_scores(user_id: int) -> list[SpeedrunScore] | None
     if speedrun.game_mode in range(0, 4):
         scores_table = "scores"
     elif speedrun.game_mode in range(4, 8):
-        scores_table = "scores_rx"
+        scores_table = "scores_relax"
     elif speedrun.game_mode in range(8, 12):
         scores_table = "scores_ap"
     else:

@@ -111,6 +111,14 @@ def command(
     return wrapper
 
 
+def get_beatmap_url(beatmap_id: int) -> str:
+    return f"https://osu.ppy.sh/beatmaps/{beatmap_id}"
+
+
+def get_url_embed(url: str, text: str) -> str:
+    return f"[{url} {text}]"
+
+
 # !speedrun start <10m/1h/1d/1w> <mode> <score_type>
 
 
@@ -158,12 +166,6 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     speedrun = speedrun_results.speedrun
     scores = speedrun_results.scores
 
-    def get_beatmap_url(beatmap_id: int) -> str:
-        return f"https://osu.ppy.sh/beatmaps/{beatmap_id}"
-
-    def get_url_embed(url: str, text: str) -> str:
-        return f"[{url} {text}]"
-
     ret = f"Speedrun ended! Total score: {speedrun.score_value:,.2f} in {speedrun.timeframe}\n"
     for score in scores:
         beatmap_url = get_beatmap_url(score.beatmap_id)
@@ -180,12 +182,14 @@ async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
         return "u may not taste my delicious lettuce"
 
     try:
-        _, mode_str, score_type_str, timeframe_str = message
+        _, timeframe_str, mode_str, score_type_str = message
+        timeframe = speedrunning.SpeedrunTimeframe(timeframe_str)
         game_mode = int(mode_str)
         score_type = speedrunning.ScoreType(score_type_str)
-        timeframe = speedrunning.SpeedrunTimeframe(timeframe_str)
     except ValueError:
-        return "Invalid syntax. Usage: !speedrun best <mode> <score_type>"
+        return (
+            "Invalid syntax. Usage: !speedrun best <10m/1h/1d/1w> <mode> <score_type>"
+        )
 
     user_speedruns = await speedrunning.get_user_speedruns(
         user_id=user_id,
