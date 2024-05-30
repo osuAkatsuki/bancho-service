@@ -81,12 +81,11 @@ async def end_user_speedrun(user_id: int, game_mode: int) -> SpeedrunResults | N
 
     if speedrun.score_type is ScoreType.WEIGHTED_PP:
         score_value = sum(
-            score.score_value * 0.95 ** (score.score_rank - 1)
-            for score in speedrun_scores
+            score.value * 0.95 ** (score.rank - 1) for score in speedrun_scores
         )
         score_value += 416.6667 * (1 - 0.9994 ** len(speedrun_scores))
     elif speedrun.score_type is ScoreType.WEIGHTED_SCORE:
-        score_value = sum(score.score_value for score in speedrun_scores)
+        score_value = sum(score.value for score in speedrun_scores)
     else:
         raise NotImplementedError()
 
@@ -142,8 +141,10 @@ async def get_active_user_speedrun(user_id: int, game_mode: int) -> UserSpeedrun
 
 @dataclass
 class SpeedrunScore:
-    score_value: int
-    score_rank: int
+    value: int
+    rank: int
+    mods: int
+    beatmap_id: int
     song_name: str
 
 
@@ -181,11 +182,13 @@ async def get_active_speedrun_scores(
     recs = await glob.db.fetchAll(
         f"""
         SELECT
-            {score_read_param} AS score_value,
+            {score_read_param} AS value,
             DENSE_RANK() OVER (
                 PARTITION BY userid
                 ORDER BY pp DESC
-            ) AS score_rank,
+            ) AS rank,
+            score.mods,
+            beatmaps.beatmap_id,
             beatmaps.song_name
         FROM scores
         JOIN users ON scores.userid = users.id
@@ -207,8 +210,10 @@ async def get_active_speedrun_scores(
     )
     return [
         SpeedrunScore(
-            score_value=rec["score_value"],
-            score_rank=rec["score_rank"],
+            value=rec["value"],
+            rank=rec["rank"],
+            mods=rec["mods"],
+            beatmap_id=rec["beatmap_id"],
             song_name=rec["song_name"],
         )
         for rec in recs
