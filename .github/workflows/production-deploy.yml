@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - speedruns
 
 jobs:
   build:
