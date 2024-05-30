@@ -64,7 +64,7 @@ async def create_user_speedrun(
     return speedrun
 
 
-async def end_user_speedrun(user_id: int, game_mode) -> UserSpeedrun | None:
+async def end_user_speedrun(user_id: int, game_mode: int) -> UserSpeedrun | None:
     speedrun = await get_active_user_speedrun(user_id, game_mode)
     if speedrun is None:
         return None
