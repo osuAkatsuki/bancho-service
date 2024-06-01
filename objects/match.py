@@ -1500,7 +1500,8 @@ async def set_match_frame(
     assert user_slot is not None
 
     match_frame = decoded_frame_data | {
-        "mods": user_slot["mods"] + multiplayer_match["mods"],  # Add shared mods
+        "mods": user_slot["mods"]
+        | multiplayer_match["mods"],  # Merge match mods and user mods
         "passed": user_slot["passed"],
         "team": user_slot["team"],
         "mode": multiplayer_match["game_mode"],
