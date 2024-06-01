@@ -1196,9 +1196,11 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     if message[1] not in {"set", "map"}:
         return "Scope must either be set or map."
 
-    status_to_int: Callable[[str], int] = lambda s: {"love": 5, "rank": 2, "unrank": 0}[
-        s
-    ]
+    status_to_int: Callable[[str], int] = lambda s: {
+        "love": 5,
+        "rank": 2,
+        "unrank": 0,
+    }[s]
     status_to_readable: Callable[[int], str] = lambda s: {
         5: "Loved",
         2: "Ranked",
