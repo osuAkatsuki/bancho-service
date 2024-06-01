@@ -6,7 +6,6 @@ from collections.abc import Coroutine
 from collections.abc import Generator
 from typing import Any
 from typing import TypeVar
-from typing import Union
 
 T = TypeVar("T")
 
