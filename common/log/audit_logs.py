@@ -4,8 +4,8 @@ import asyncio
 
 import httpx
 
-from common import job_scheduling
 import settings
+from common import job_scheduling
 from common.log import logger
 from common.ripple import user_utils
 from common.web.discord import Webhook

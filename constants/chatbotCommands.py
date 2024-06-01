@@ -15,7 +15,8 @@ from typing import overload
 from amplitude import BaseEvent
 
 import settings
-from common import generalUtils, job_scheduling
+from common import generalUtils
+from common import job_scheduling
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges

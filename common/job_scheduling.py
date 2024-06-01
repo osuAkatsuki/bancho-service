@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Coroutine
+from collections.abc import Generator
 from typing import Any
-from typing import Coroutine
-from typing import Generator
 from typing import TypeVar
 from typing import Union
 
@@ -14,10 +14,10 @@ ACTIVE_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def schedule_job(
-    coro: Union[
-        Generator[Any, None, T],
-        Coroutine[Any, Any, T],
-    ],
+    coro: (
+        Generator[Any, None, T] |
+        Coroutine[Any, Any, T]
+    ),
 ) -> None:
     """\
     Run a coroutine to run in the background.
