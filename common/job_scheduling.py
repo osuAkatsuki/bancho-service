@@ -14,10 +14,7 @@ ACTIVE_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def schedule_job(
-    coro: (
-        Generator[Any, None, T] |
-        Coroutine[Any, Any, T]
-    ),
+    coro: Generator[Any, None, T] | Coroutine[Any, Any, T],
 ) -> None:
     """\
     Run a coroutine to run in the background.
