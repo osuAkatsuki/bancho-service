@@ -1,5 +1,6 @@
 aiomysql
 amplitude-analytics
+amplitude-experiment
 bcrypt
 certifi
 cryptography
