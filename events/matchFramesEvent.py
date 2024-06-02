@@ -3,10 +3,10 @@ from __future__ import annotations
 from constants import clientPackets
 from constants import serverPackets
 from objects import match
+from objects import osuToken
 from objects import slot
 from objects import streamList
 from objects.osuToken import Token
-from objects.redisLock import redisLock
 
 
 async def handle(userToken: Token, rawPacketData: bytes) -> None:
@@ -23,15 +23,25 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         return
 
     # Change slot id in packetData
-    slot_id = await match.getUserSlotID(
-        multiplayer_match["match_id"],
-        userToken["user_id"],
-    )
-    assert slot_id is not None
+    # TODO: Once match_slot_id is 100% available in production tokens,
+    #       we should be able to decommission the use of `getUserSlotID()`
+    match_slot_id = userToken.get("match_slot_id")
+    if match_slot_id is None:
+        match_slot_id = await match.getUserSlotID(
+            multiplayer_match["match_id"],
+            userToken["user_id"],
+        )
+        assert match_slot_id is not None
+        maybe_token = await osuToken.update_token(
+            userToken["token_id"],
+            match_slot_id=match_slot_id,
+        )
+        assert maybe_token is not None
+        userToken = maybe_token
 
     await match.set_match_frame(
         multiplayer_match["match_id"],
-        slot_id,
+        match_slot_id,
         packetData,
     )
 
@@ -39,7 +49,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     user_failed = packetData["currentHp"] == 254
     await slot.update_slot(
         multiplayer_match["match_id"],
-        slot_id,
+        match_slot_id,
         score=packetData["totalScore"],
         failed=user_failed,
     )
@@ -47,5 +57,5 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Enqueue frames to who's playing
     await streamList.broadcast(
         match.create_playing_stream_name(multiplayer_match["match_id"]),
-        serverPackets.matchFrames(slot_id, rawPacketData),
+        serverPackets.matchFrames(match_slot_id, rawPacketData),
     )

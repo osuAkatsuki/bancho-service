@@ -4,6 +4,7 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
+from typing import NotRequired
 from typing import TypedDict
 from typing import cast
 from uuid import uuid4
@@ -72,6 +73,10 @@ class Token(TypedDict):
     away_message: str | None
     # sent_away_messages: list[int]
     match_id: int | None
+
+    # TODO: Make required once 100% available in production
+    match_slot_id: NotRequired[int | None]
+
     last_np: LastNp | None
     silence_end_time: int
     protocol_version: int
@@ -152,6 +157,7 @@ async def create_token(
         "country": 0,
         "away_message": None,
         "match_id": None,
+        "match_slot_id": None,
         "last_np": None,
         "silence_end_time": 0,
         "protocol_version": 0,
@@ -271,6 +277,7 @@ async def update_token(
     country: int | None = None,
     away_message: str | None | Unset = UNSET,
     match_id: int | None | Unset = UNSET,
+    match_slot_id: int | None | Unset = UNSET,
     last_np: LastNp | None | Unset = UNSET,
     silence_end_time: int | None = None,
     protocol_version: int | None = None,
@@ -323,6 +330,8 @@ async def update_token(
         token["away_message"] = away_message
     if not isinstance(match_id, Unset):
         token["match_id"] = match_id
+    if not isinstance(match_slot_id, Unset):
+        token["match_slot_id"] = match_slot_id
     if not isinstance(last_np, Unset):
         token["last_np"] = last_np
     if silence_end_time is not None:
@@ -798,7 +807,8 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         await leaveMatch(token_id)
 
     # Try to join match
-    if not await match.userJoin(multiplayer_match["match_id"], token_id):
+    match_slot_id = await match.userJoin(multiplayer_match["match_id"], token_id)
+    if match_slot_id is None:
         await enqueue(token_id, serverPackets.matchJoinFail)
         return False
 
@@ -806,6 +816,7 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     await update_token(
         token_id,
         match_id=match_id,
+        match_slot_id=match_slot_id,
     )
     await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
     await chat.join_channel(
@@ -878,6 +889,7 @@ async def leaveMatch(token_id: str) -> None:
     await update_token(
         token_id,
         match_id=None,
+        match_slot_id=None,
     )
 
     # Make sure the match exists

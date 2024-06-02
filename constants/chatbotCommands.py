@@ -1709,6 +1709,13 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 newSlotID,
             )
 
+            maybe_token = await osuToken.update_token(
+                target_token["token_id"],
+                match_slot_id=newSlotID,
+            )
+            assert maybe_token is not None
+            target_token = maybe_token
+
         return (
             f"{target_token['username']} moved to slot {newSlotID}."
             if success

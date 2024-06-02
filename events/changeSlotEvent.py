@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from constants import clientPackets
 from objects import match
+from objects import osuToken
 from objects.osuToken import Token
 from objects.redisLock import redisLock
 
@@ -23,3 +24,10 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
             userToken["user_id"],
             packetData["slotID"],
         )
+
+        maybe_token = await osuToken.update_token(
+            userToken["token_id"],
+            match_slot_id=packetData["slotID"],
+        )
+        assert maybe_token is not None
+        userToken = maybe_token
