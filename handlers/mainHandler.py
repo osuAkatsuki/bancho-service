@@ -237,9 +237,7 @@ class handler(AsyncRequestHandler):
                                 device_id=None,
                                 event_properties={
                                     "packet_id": packetIDs.get_packet_name(packetID),
-                                    "_user_id": (
-                                        userToken["user_id"] if userToken else None
-                                    ),
+                                    "_user_id": userToken["user_id"],
                                     "time_elapsed_ms": time_elapsed_ms,
                                 },
                             ),

@@ -1147,8 +1147,10 @@ async def notify_user_of_or_refresh_restriction_from_db(token_id: str) -> None:
     old_restricted = is_restricted(token["privileges"])
     restricted = await user_utils.is_restricted(token["user_id"])
     if restricted:
+        # Is restricted; notify them of restriction
         await notify_user_of_restriction(token_id)
-    elif not restricted and old_restricted != restricted:
+    elif old_restricted:
+        # Was previously restricted; notify them of unrestriction
         await resetRestricted(token_id)
 
 
