@@ -19,9 +19,8 @@ from common.log import logging_config
 from constants import CHATBOT_USER_ID
 from events import logoutEvent
 from objects import osuToken
-from objects.redisLock import redisLock
 
-OSU_MAX_PING_INTERVAL = 300  # seconds
+CRON_RUN_INTERVAL = 10 * 60  # seconds
 
 SHUTDOWN_EVENT: asyncio.Event | None = None
 
@@ -36,7 +35,7 @@ signal.signal(signal.SIGTERM, handle_shutdown_event)
 
 
 async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
-    oldest_ping_time = int(time.time()) - OSU_MAX_PING_INTERVAL
+    oldest_ping_time = int(time.time()) - CRON_RUN_INTERVAL
 
     if (
         token["ping_time"] < oldest_ping_time
@@ -90,7 +89,7 @@ async def main() -> int:
             try:
                 await asyncio.wait_for(
                     SHUTDOWN_EVENT.wait(),
-                    timeout=OSU_MAX_PING_INTERVAL,
+                    timeout=CRON_RUN_INTERVAL,
                 )
             except TimeoutError:
                 pass
