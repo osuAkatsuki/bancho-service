@@ -971,7 +971,6 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
                 AND scores_first.mode = %s
                 AND scores_first.rx = %s
-
                 """,
                 [score["beatmap_md5"], score["play_mode"], rx],
             )
