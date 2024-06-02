@@ -64,9 +64,16 @@ async def broadcast_data(
 
     client_token_ids = await get_client_token_ids(stream_name)
 
-    for token_id in client_token_ids:
-        if token_id not in excluded_token_ids:
-            await osuToken.enqueue(token_id, data)
+    async with glob.redis.pipeline() as pipe:
+        for token_id in client_token_ids:
+            if token_id not in excluded_token_ids:
+                await osuToken.enqueue(
+                    token_id,
+                    data,
+                    pipeline_for_reuse=pipe,
+                )
+
+        await pipe.execute()
 
 
 async def multicast_data(

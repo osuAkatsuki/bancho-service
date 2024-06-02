@@ -4,12 +4,14 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
+from typing import Any
 from typing import NotRequired
 from typing import TypedDict
 from typing import cast
 from uuid import uuid4
 
 import orjson
+from redis.asyncio.client import Pipeline
 
 from common import channel_utils
 from common.constants import actions
@@ -492,7 +494,12 @@ def is_restricted(token_privileges: int) -> bool:
 #####
 
 
-async def enqueue(token_id: str, data: bytes) -> None:
+async def enqueue(
+    token_id: str,
+    data: bytes,
+    *,
+    pipeline_for_reuse: Pipeline[Any] | None = None,
+) -> None:
     """
     Add bytes (packets) to queue
 
@@ -512,7 +519,10 @@ async def enqueue(token_id: str, data: bytes) -> None:
             extra={"num_bytes": len(data), "token_id": token_id},
         )
 
-    await glob.redis.lpush(f"{make_key(token_id)}:packet_queue", data)
+    await (pipeline_for_reuse or glob.redis).lpush(
+        f"{make_key(token_id)}:packet_queue",
+        data,
+    )
 
 
 async def dequeue(token_id: str) -> bytes:
