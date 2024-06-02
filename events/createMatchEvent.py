@@ -13,7 +13,6 @@ from objects import matchList
 from objects import osuToken
 from objects.redisLock import redisLock
 
-
 MATCH_CREATION_DISABLED = True  # TODO: hook this up to an amplitude FF
 
 
@@ -103,7 +102,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
             (
                 serverPackets.matchJoinFail
                 + serverPackets.notification(
-                    "Match creation is disabled. Please try again later!"
+                    "Match creation is disabled. Please try again later!",
                 )
             ),
         )
