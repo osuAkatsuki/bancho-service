@@ -4,7 +4,8 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
-from typing import Any, NotRequired
+from typing import Any
+from typing import NotRequired
 from typing import TypedDict
 from typing import cast
 from uuid import uuid4
