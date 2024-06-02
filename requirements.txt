@@ -1,5 +1,6 @@
 aiomysql
 amplitude-analytics
+amplitude-experiment
 bcrypt
 certifi
 cryptography
@@ -12,4 +13,3 @@ PyYAML
 redis
 tornado
 typing_extensions
-amplitude-experiment
