@@ -92,19 +92,25 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     recipients = [userToken]
     spectators = await osuToken.get_spectators(userToken["token_id"])
     for spectator_user_id in spectators:
-        token = await osuToken.get_token_by_user_id(spectator_user_id)
+        token = await osuToken.get_primary_token_by_user_id(spectator_user_id)
         if token is not None:
             recipients.append(token)
 
     for spectator in recipients:
         # Force our own packet
-        force = spectator == userToken
+        allow_restricted_tokens = spectator == userToken
 
         await osuToken.enqueue(
             spectator["token_id"],
-            await serverPackets.userPanel(userToken["user_id"], force),
+            await serverPackets.userPanel(
+                token_id=userToken["token_id"],
+                allow_restricted_tokens=allow_restricted_tokens,
+            ),
         )
         await osuToken.enqueue(
             spectator["token_id"],
-            await serverPackets.userStats(userToken["user_id"], force),
+            await serverPackets.userStats(
+                token_id=userToken["token_id"],
+                allow_restricted_tokens=allow_restricted_tokens,
+            ),
         )

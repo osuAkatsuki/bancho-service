@@ -8,6 +8,7 @@ from typing import TypedDict
 
 import bcrypt
 
+import settings
 from common.constants import gameModes
 from common.constants import privileges
 from common.log import audit_logs
@@ -574,7 +575,9 @@ async def associate_user_with_hwids_and_restrict_if_multiaccounting(
     username = await get_username_from_id(user_id)
 
     # Run some HWID checks on that user if he is not restricted
-    if not await is_restricted(user_id):
+    if settings.SHOULD_ENFORCE_SINGLE_ACCOUNT_POLICY and not await is_restricted(
+        user_id,
+    ):
         # Get the list of banned or restricted users that have logged in from this or similar HWID hash set
         if hwid_set[2] == "b4ec3c4334a0249dae95c284ec5983df":
             # Running under wine, check by unique id
@@ -713,7 +716,7 @@ async def authorize_login_and_activate_new_account(
             },
         )
 
-    if match:
+    if settings.SHOULD_ENFORCE_SINGLE_ACCOUNT_POLICY and match:
         # This is a multiaccount, restrict other account and ban this account
 
         # Get original user_id and username (lowest ID)

@@ -15,7 +15,7 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
             extra={"user_id": userID},
         )
 
-        if not (targetToken := await osuToken.get_token_by_user_id(userID)):
+        if not (targetToken := await osuToken.get_primary_token_by_user_id(userID)):
             logger.error(
                 "Failed to find user by id in update stats pubsub handler",
                 extra={"user_id": userID},
@@ -25,7 +25,10 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
         await osuToken.updateCachedStats(targetToken["token_id"])
         await osuToken.enqueue(
             targetToken["token_id"],
-            await serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(
+                user_id=userID,
+                allow_restricted_tokens=True,
+            ),
         )
 
         logger.info(

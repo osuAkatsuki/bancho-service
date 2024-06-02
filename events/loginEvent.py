@@ -125,6 +125,22 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             )
             raise exceptions.haxException()
 
+        # Only allow a single non-tourney session at a time.
+        # If the existing session has been inactive for 10s, we'll allow
+        # the new session to replace the existing one (for anti-ghosting)
+        is_tournament_client = rgx["stream"] == "tourney"
+        if not is_tournament_client:
+            existing_primary_token = await osuToken.get_primary_token_by_user_id(userID)
+            if existing_primary_token:
+                if (time.time() - existing_primary_token["ping_time"]) > 10:
+                    await tokenList.deleteOldPrimaryToken(userID)
+                else:
+                    logger.warning(
+                        "A user attempted to login with multiple primary sessions",
+                        extra={"user_id": userID, "username": username},
+                    )
+                    raise exceptions.primarySessionAlreadyExistsException()
+
         """ No login errors! """
 
         # Verify this user (if pending activation)
@@ -175,9 +191,6 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             await user_utils.ban(userID)
             raise exceptions.loginBannedException()
 
-        # Delete old tokens for that user and generate a new one
-        isTournament = rgx["stream"] == "tourney"
-
         if clientData[4] == "dcfcd07e645d245babe887e5e2daa016":
             # NOTE: this is the result of `md5(md5("0"))`.
             # The osu! client will send this sometimes because WMI
@@ -188,14 +201,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         else:
             amplitude_device_id = hashlib.sha1(clientData[4].encode()).hexdigest()
 
-        if not isTournament:
-            await tokenList.deleteOldTokens(userID)
-
         userToken = await tokenList.addToken(
             userID,
             ip=request_ip_address,
             utc_offset=utc_offset,
-            tournament=isTournament,
+            tournament=is_tournament_client,
             block_non_friends_dm=block_non_friends_dm,
             amplitude_device_id=amplitude_device_id,
         )
@@ -208,13 +218,18 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             "User logged in",
             extra={
                 "user_id": userID,
+                "token_id": userToken["token_id"],
                 "username": username,
+                "ip_address": request_ip_address,
                 "online_users": await osuToken.get_online_players_count(),
+                "is_tournament_client": is_tournament_client,
             },
         )
 
         # Check restricted mode (and eventually send message)
-        await osuToken.checkRestricted(userToken["token_id"])
+        await osuToken.notify_user_of_or_refresh_restriction_from_db(
+            userToken["token_id"],
+        )
 
         """ osu!Akatuki account freezing. """
 
@@ -228,7 +243,9 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
             if freeze_timestamp > login_timestamp:
                 # The freeze has _not_ expired. Warn the user about it.
-                chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+                chatbot_token = await osuToken.get_primary_token_by_user_id(
+                    CHATBOT_USER_ID,
+                )
                 assert chatbot_token is not None
 
                 await chat.send_message(
@@ -398,11 +415,17 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userPanel(userID, force=True),
+            await serverPackets.userPanel(
+                token_id=userToken["token_id"],
+                allow_restricted_tokens=True,
+            ),
         )
         await osuToken.enqueue(
             userToken["token_id"],
-            await serverPackets.userStats(userID, force=True),
+            await serverPackets.userStats(
+                token_id=userToken["token_id"],
+                allow_restricted_tokens=True,
+            ),
         )
 
         # Default opened channels.
@@ -468,7 +491,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             if not osuToken.is_restricted(token["privileges"]):
                 await osuToken.enqueue(
                     userToken["token_id"],
-                    await serverPackets.userPanel(token["user_id"]),
+                    await serverPackets.userPanel(token_id=token["token_id"]),
                 )
 
         # Get location and country from client ip address
@@ -496,7 +519,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
-            await streamList.broadcast("main", await serverPackets.userPanel(userID))
+            await streamList.broadcast(
+                "main",
+                await serverPackets.userPanel(token_id=userToken["token_id"]),
+            )
 
         if glob.amplitude is not None:
             glob.amplitude.track(
@@ -561,6 +587,13 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         responseData += serverPackets.loginFailed
         responseData += serverPackets.notification(
             "Akatsuki: You have entered an incorrect username or password. Please check your credentials and try again!",
+        )
+    except exceptions.primarySessionAlreadyExistsException:
+        # The user attempted to login from multiple non-tournament osu! clients
+        # (we don't use enqueue because we don't have a token since login has failed)
+        responseData += serverPackets.loginFailed
+        responseData += serverPackets.notification(
+            "Akatsuki: You are already logged in. Please log out and try again!",
         )
     except exceptions.invalidArgumentsException:
         # Invalid POST data

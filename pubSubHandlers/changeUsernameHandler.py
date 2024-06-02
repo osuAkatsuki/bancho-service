@@ -110,7 +110,9 @@ class ChangeUsernamePubSubHandler(AbstractPubSubHandler):
         )
 
         # Get the user's token
-        if (targetToken := await osuToken.get_token_by_user_id(data["userID"])) is None:
+        if (
+            targetToken := await osuToken.get_primary_token_by_user_id(data["userID"])
+        ) is None:
             # If the user is offline change username immediately
             await handleUsernameChange(data["userID"], data["newUsername"])
         else:

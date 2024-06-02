@@ -21,7 +21,7 @@ class NotificationPubSubHandler(AbstractPubSubHandler):
             },
         )
 
-        if targetToken := await osuToken.get_token_by_user_id(data["userID"]):
+        if targetToken := await osuToken.get_primary_token_by_user_id(data["userID"]):
             await osuToken.enqueue(
                 targetToken["token_id"],
                 serverPackets.notification(data["message"]),

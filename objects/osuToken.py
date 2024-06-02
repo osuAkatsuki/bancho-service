@@ -9,6 +9,7 @@ from typing import cast
 from uuid import uuid4
 
 import orjson
+from amplitude import BaseEvent
 
 from common import channel_utils
 from common.constants import actions
@@ -178,8 +179,11 @@ async def create_token(
     async with glob.redis.pipeline() as pipe:
         await pipe.sadd("bancho:tokens", token_id)
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
-        await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
-        await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
+        if not tournament:
+            await pipe.set(f"bancho:tokens:ids:{user_id}:primary", token_id)
+            await pipe.set(f"bancho:tokens:names:{safe_name}:primary", token_id)
+        await pipe.sadd(f"bancho:tokens:ids:{user_id}", token_id)
+        await pipe.sadd(f"bancho:tokens:names:{safe_name}", token_id)
         await pipe.set(make_key(token_id), orjson.dumps(token))
         await pipe.execute()
 
@@ -192,6 +196,7 @@ async def get_token_ids() -> set[str]:
 
 
 async def get_online_players_count() -> int:
+    # TODO: Only count "primary sessions", to avoid double-counting users
     return await glob.redis.hlen("bancho:tokens:json")
 
 
@@ -213,8 +218,10 @@ async def get_tokens() -> list[Token]:
 # TODO: get_limited_tokens with a more basic model
 
 
-async def get_token_by_user_id(user_id: int) -> Token | None:
-    token_id: bytes | None = await glob.redis.get(f"bancho:tokens:ids:{user_id}")
+async def get_primary_token_by_user_id(user_id: int) -> Token | None:
+    token_id: bytes | None = await glob.redis.get(
+        f"bancho:tokens:ids:{user_id}:primary",
+    )
     if token_id is None:
         return None
 
@@ -225,9 +232,10 @@ async def get_token_by_user_id(user_id: int) -> Token | None:
     return None
 
 
-async def get_token_by_username(username: str) -> Token | None:
+async def get_primary_token_by_username(username: str) -> Token | None:
+    safe_name = safeUsername(username)
     token_id: bytes | None = await glob.redis.get(
-        f"bancho:tokens:names:{safeUsername(username)}",
+        f"bancho:tokens:names:{safe_name}:primary",
     )
     if token_id is None:
         return None
@@ -240,13 +248,22 @@ async def get_token_by_username(username: str) -> Token | None:
 
 
 async def get_all_tokens_by_user_id(user_id: int) -> list[Token]:
-    tokens = await get_tokens()
-    return [token for token in tokens if token["user_id"] == user_id]
+    raw_token_ids: set[bytes] = await glob.redis.smembers(
+        f"bancho:tokens:ids:{user_id}",
+    )
+    tokens = [await get_token(token_id.decode()) for token_id in raw_token_ids]
+    assert all(tokens)
+    return [token for token in tokens if token is not None]
 
 
 async def get_all_tokens_by_username(username: str) -> list[Token]:
-    tokens = await get_tokens()
-    return [token for token in tokens if token["username"] == username]
+    safe_name = safeUsername(username)
+    raw_token_ids: set[bytes] = await glob.redis.smembers(
+        f"bancho:tokens:names:{safe_name}",
+    )
+    tokens = [await get_token(token_id.decode()) for token_id in raw_token_ids]
+    assert all(tokens)
+    return [token for token in tokens if token is not None]
 
 
 # TODO: the things that can actually be Optional need to have different defaults
@@ -375,10 +392,15 @@ async def delete_token(token_id: str) -> None:
     if token is None:
         return
 
+    safe_name = safeUsername(token["username"])
+
     async with glob.redis.pipeline() as pipe:
         await pipe.srem("bancho:tokens", token_id)
-        await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
-        await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
+        await pipe.srem(f"bancho:tokens:ids:{token['user_id']}", token_id)
+        await pipe.srem(f"bancho:tokens:names:{safe_name}", token_id)
+        if not token["tournament"]:
+            await pipe.delete(f"bancho:tokens:ids:{token['user_id']}:primary")
+            await pipe.delete(f"bancho:tokens:names:{safe_name}:primary")
         await pipe.hdel("bancho:tokens:json", token_id)
         await pipe.delete(make_key(token_id))
         await pipe.delete(f"{make_key(token_id)}:channels")
@@ -683,6 +705,30 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
                 serverPackets.fellowSpectatorJoined(token["user_id"]),
             )
 
+    logger.info(
+        "User started spectating another user",
+        extra={
+            "spectator_user_id": token["user_id"],
+            "host_user_id": host_token["user_id"],
+        },
+    )
+
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="start_spectating",
+                user_id=str(token["user_id"]),
+                device_id=token["amplitude_device_id"],
+                event_properties={
+                    "host_user_id": host_token["user_id"],
+                    "host_username": host_token["username"],
+                    "host_country": host_token["country"],
+                    "host_game_mode": host_token["game_mode"],
+                    "source": "bancho-service",
+                },
+            ),
+        )
+
 
 async def stopSpectating(token_id: str) -> None:
     """
@@ -704,6 +750,9 @@ async def stopSpectating(token_id: str) -> None:
         return
 
     host_token = await get_token(token["spectating_token_id"])
+    if host_token is None:
+        return
+
     stream_name = f"spect/{token['spectating_user_id']}"
 
     # Remove us from host's spectators list,
@@ -711,36 +760,32 @@ async def stopSpectating(token_id: str) -> None:
     # and end the spectator left packet to host
     await leaveStream(token_id, stream_name)
 
-    if host_token:
-        await remove_spectator(host_token["token_id"], token["user_id"])
-        await enqueue(
-            host_token["token_id"],
-            serverPackets.removeSpectator(token["user_id"]),
+    await remove_spectator(host_token["token_id"], token["user_id"])
+    await enqueue(
+        host_token["token_id"],
+        serverPackets.removeSpectator(token["user_id"]),
+    )
+
+    fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
+    # and to all other spectators
+    spectators = await get_spectators(host_token["token_id"])
+    for spectator in spectators:
+        spectator_token = await get_primary_token_by_user_id(spectator)
+        if spectator_token is None:
+            continue
+
+        await enqueue(spectator_token["token_id"], fellow_left_packet)
+
+    # If nobody is spectating the host anymore, close #spectator channel
+    # and remove host from spect stream too
+    if not spectators:
+        await chat.part_channel(
+            token_id=host_token["token_id"],
+            channel_name=f"#spect_{host_token['user_id']}",
+            notify_user_of_kick=True,
+            allow_instance_channels=True,
         )
-
-        fellow_left_packet = serverPackets.fellowSpectatorLeft(token["user_id"])
-        # and to all other spectators
-        spectators = await get_spectators(host_token["token_id"])
-        for spectator in spectators:
-            spectator_token = await get_token_by_user_id(spectator)
-            if spectator_token is None:
-                continue
-
-            await enqueue(spectator_token["token_id"], fellow_left_packet)
-
-        # If nobody is spectating the host anymore, close #spectator channel
-        # and remove host from spect stream too
-        if not spectators:
-            await chat.part_channel(
-                token_id=host_token["token_id"],
-                channel_name=f"#spect_{host_token['user_id']}",
-                notify_user_of_kick=True,
-                allow_instance_channels=True,
-            )
-            await leaveStream(host_token["token_id"], stream_name)
-
-        # Console output
-        # log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
+        await leaveStream(host_token["token_id"], stream_name)
 
     # Part #spectator channel
     await chat.part_channel(
@@ -757,6 +802,30 @@ async def stopSpectating(token_id: str) -> None:
         spectating_user_id=None,
     )
 
+    logger.info(
+        "User stopped spectating another user",
+        extra={
+            "spectator_user_id": token["user_id"],
+            "host_user_id": host_token["user_id"],
+        },
+    )
+
+    if glob.amplitude is not None:
+        glob.amplitude.track(
+            BaseEvent(
+                event_type="stop_spectating",
+                user_id=str(token["user_id"]),
+                device_id=token["amplitude_device_id"],
+                event_properties={
+                    "host_user_id": host_token["user_id"],
+                    "host_username": host_token["username"],
+                    "host_country": host_token["country"],
+                    "host_game_mode": host_token["game_mode"],
+                    "source": "bancho-service",
+                },
+            ),
+        )
+
 
 async def updatePingTime(token_id: str) -> None:
     """
@@ -768,10 +837,7 @@ async def updatePingTime(token_id: str) -> None:
     if token is None:
         return
 
-    await update_token(
-        token_id,
-        ping_time=time(),
-    )
+    await update_token(token_id, ping_time=time())
 
 
 async def joinMatch(token_id: str, match_id: int) -> bool:
@@ -791,7 +857,8 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         return False
 
     # Stop spectating
-    await stopSpectating(token_id)
+    if token["spectating_user_id"] is not None:
+        await stopSpectating(token_id)
 
     # Leave other matches
     if token["match_id"] is not None and token["match_id"] != match_id:
@@ -825,7 +892,7 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         # maybe not all users are ready.
         await match.sendReadyStatus(multiplayer_match["match_id"])
 
-    bot_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    bot_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert bot_token is not None
 
     mp_message = match.get_match_history_message(
@@ -932,42 +999,43 @@ async def kick(
     )
 
 
-async def silence(
-    token_id: str,
+async def silence_or_refresh_silence_from_db(
+    user_id: int,
+    *,
     seconds: int | None = None,
     reason: str = "",
     author: int = CHATBOT_USER_ID,
 ) -> None:
     """
-    Silences this user (db, packet and token)
+    Silences this user (db, packet and ALL active tokens), or tokens with the value in the db
 
     :param seconds: silence length in seconds. If None, get it from db. Default: None
     :param reason: silence reason. Default: empty string
     :param author: userID of who has silenced the user. Default: CHATBOT_USER_ID (Aika)
     :return:
     """
-    token = await get_token(token_id)
-    if token is None:
-        return
+    all_tokens = await get_all_tokens_by_user_id(user_id)
 
     if seconds is None:
         # Get silence expire from db if needed
-        seconds = await user_utils.get_remaining_silence_time(token["user_id"])
+        seconds = await user_utils.get_remaining_silence_time(user_id)
     else:
-        # Silence in db and token
-        await user_utils.silence(token["user_id"], seconds, reason, author)
+        # Silence in db
+        await user_utils.silence(user_id, seconds, reason, author)
 
-    # Silence token
-    await update_token(
-        token_id,
-        silence_end_time=int(time()) + seconds,
-    )
+    # Silence all of the user's tokens
+    for token in all_tokens:
+        await update_token(
+            token["token_id"],
+            silence_end_time=int(time()) + seconds,
+        )
 
-    # Send silence packet to user
-    await enqueue(token_id, serverPackets.silenceEndTime(seconds))
+        # Send silence packet to user
+        await enqueue(token["token_id"], serverPackets.silenceEndTime(seconds))
 
     # Send silenced packet to everyone else
-    await streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
+    if all_tokens:
+        await streamList.broadcast("main", serverPackets.userSilenced(user_id))
 
 
 async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:
@@ -1064,9 +1132,11 @@ async def updateCachedStats(token_id: str) -> None:
     )
 
 
-async def checkRestricted(token_id: str) -> None:
+async def notify_user_of_or_refresh_restriction_from_db(token_id: str) -> None:
     """
-    Check if this token is restricted. If so, send Aika message
+    Check if this token and user in db are restricted.
+    - If the db user is restricted, notify the user via chatbot DM
+    - If the db user is unrestricted and that is a change from the token, unrestrict the user
 
     :return:
     """
@@ -1078,7 +1148,7 @@ async def checkRestricted(token_id: str) -> None:
     restricted = await user_utils.is_restricted(token["user_id"])
     if restricted:
         # Is restricted; notify them of restriction
-        await setRestricted(token_id)
+        await notify_user_of_restriction(token_id)
     elif old_restricted:
         # Was previously restricted; notify them of unrestriction
         await resetRestricted(token_id)
@@ -1101,18 +1171,13 @@ async def disconnectUserIfBanned(token_id: str) -> None:
         await logoutEvent.handle(token, deleteToken=False)
 
 
-async def setRestricted(token_id: str) -> None:
-    """
-    Set this token as restricted, send Aika message to user
-    and send offline packet to everyone
-
-    :return:
-    """
+async def notify_user_of_restriction(token_id: str) -> None:
+    """Send a chatbot message to the user to notify them of their restriction."""
     token = await get_token(token_id)
     if token is None:
         return
 
-    aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    aika_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.send_message(
         sender_token_id=aika_token["token_id"],
@@ -1132,7 +1197,7 @@ async def resetRestricted(token_id: str) -> None:
     if token is None:
         return
 
-    aika_token = await get_token_by_user_id(CHATBOT_USER_ID)
+    aika_token = await get_primary_token_by_user_id(CHATBOT_USER_ID)
     assert aika_token is not None
     await chat.send_message(
         sender_token_id=aika_token["token_id"],

@@ -128,7 +128,7 @@ async def addChannel(
         await pipe.execute()
 
     # Make the chatbot join the channel
-    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
     if chatbot_token:
         try:
             await osuToken.joinChannel(chatbot_token["token_id"], name)
@@ -166,7 +166,7 @@ async def removeChannel(name: str) -> None:
             )
 
     # Make the chatbot leave the channel, if it was a member
-    chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+    chatbot_token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
     if chatbot_token:
         try:
             await osuToken.partChannel(chatbot_token["token_id"], name)

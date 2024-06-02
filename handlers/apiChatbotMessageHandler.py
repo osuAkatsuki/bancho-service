@@ -25,7 +25,7 @@ class handler(AsyncRequestHandler):
             if not key or key != settings.APP_CI_KEY:
                 raise exceptions.invalidArgumentsException()
 
-            chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+            chatbot_token = await osuToken.get_primary_token_by_user_id(CHATBOT_USER_ID)
             assert chatbot_token is not None
 
             messaging_error = await chatHelper.send_message(

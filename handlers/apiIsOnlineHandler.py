@@ -35,12 +35,14 @@ class handler(AsyncRequestHandler):
                 if username:
                     data["result"] = (
                         True
-                        if await osuToken.get_token_by_username(username)
+                        if await osuToken.get_primary_token_by_username(username)
                         else False
                     )
                 elif userID:
                     data["result"] = (
-                        True if await osuToken.get_token_by_user_id(userID) else False
+                        True
+                        if await osuToken.get_primary_token_by_user_id(userID)
+                        else False
                     )
                 else:
                     raise NotImplementedError("Unknown error")

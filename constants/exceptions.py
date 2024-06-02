@@ -99,3 +99,7 @@ class invalidUserException(Exception):
 
 class wrongChannelException(Exception):
     pass
+
+
+class primarySessionAlreadyExistsException(Exception):
+    pass
