@@ -612,38 +612,6 @@ async def allPlayersSkipped(match_id: int) -> None:
     await streamList.broadcast(playing_stream_name, serverPackets.allPlayersSkipped)
 
 
-async def updateScore(match_id: int, slot_id: int, score: int) -> None:
-    """
-    Update score for a slot
-
-    :param slotID: the slot that the user that is updating their score is in
-    :param score: the new score to update
-    :return:
-    """
-    _slot = await slot.get_slot(match_id, slot_id)
-    assert _slot is not None
-
-    _slot = await slot.update_slot(match_id, slot_id, score=score)
-    assert _slot is not None
-
-
-async def updateHP(match_id: int, slot_id: int, hp: int) -> None:
-    """
-    Update HP for a slot
-
-    :param slotID: the slot that the user that is updating their hp is in
-    :param hp: the new hp to update
-    :return:
-    """
-    _slot = await slot.get_slot(match_id, slot_id)
-    assert _slot is not None
-
-    failed = hp == 254
-
-    _slot = await slot.update_slot(match_id, slot_id, failed=failed)
-    assert _slot is not None
-
-
 async def playerCompleted(match_id: int, user_id: int) -> None:
     """
     Set userID's slot completed to True
