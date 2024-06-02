@@ -33,30 +33,30 @@ apps:
       type: ClusterIP
       port: 80
 
-  # - name: bancho-service-spam-protection-cronjob
-  #   environment: production
-  #   codebase: bancho-service
-  #   replicaCount: 1
-  #   container:
-  #     image:
-  #       repository: osuakatsuki/bancho-service
-  #       tag: latest
-  #     port: 80
-  #     resources:
-  #       limits:
-  #         cpu: 300m
-  #         memory: 250Mi
-  #       requests:
-  #         cpu: 150m
-  #         memory: 150Mi
-  #     env:
-  #       - name: APP_COMPONENT
-  #         value: reset-all-tokens-spam-rate
-  #     imagePullSecrets:
-  #       - name: osuakatsuki-registry-secret
-  #   service:
-  #     type: ClusterIP
-  #     port: 80
+  - name: bancho-service-spam-protection-cronjob
+    environment: production
+    codebase: bancho-service
+    replicaCount: 1
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      resources:
+        limits:
+          cpu: 300m
+          memory: 250Mi
+        requests:
+          cpu: 150m
+          memory: 150Mi
+      env:
+        - name: APP_COMPONENT
+          value: reset-all-tokens-spam-rate
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret
+    service:
+      type: ClusterIP
+      port: 80
 
   - name: bancho-service-inactivity-timeout-cronjob
     environment: production
