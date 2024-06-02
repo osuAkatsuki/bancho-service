@@ -968,9 +968,11 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 SELECT scores_first.scoreid, scores_first.userid, scores.{order} AS score_value
                 FROM scores_first
                 WHERE beatmap_md5 = %s
-                JOIN {table_name} AS scores ON scores.id = scoreid
-                AND mode = %s
-                AND rx = %s
+                JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
+
+                AND scores_first.mode = %s
+                AND scores_first.rx = %s
+
                 """,
                 [score["beatmap_md5"], score["play_mode"], rx],
             )
