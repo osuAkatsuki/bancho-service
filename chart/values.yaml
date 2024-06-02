@@ -2,7 +2,7 @@ apps:
   - name: bancho-service-api
     environment: production
     codebase: bancho-service
-    replicaCount: 3
+    replicaCount: 2
     container:
       image:
         repository: osuakatsuki/bancho-service
