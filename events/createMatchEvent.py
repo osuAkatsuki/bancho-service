@@ -53,9 +53,11 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
                 )
                 return await osuToken.enqueue(
                     token["token_id"],
-                    serverPackets.matchJoinFail
-                    + serverPackets.notification(
-                        "You are already in a match. Please leave it first!",
+                    (
+                        serverPackets.matchJoinFail
+                        + serverPackets.notification(
+                            "You are already in a match. Please leave it first!",
+                        )
                     ),
                 )
 
