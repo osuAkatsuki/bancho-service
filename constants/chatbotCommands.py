@@ -1570,7 +1570,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 "Incorrect syntax: !mp make <name>.",
             )
 
-        if user_token["privileges"] & privileges.USER_TOURNAMENT_STAFF:
+        if not (user_token["privileges"] & privileges.USER_TOURNAMENT_STAFF):
             return "Only tournament staff may use this command"
 
         match_name = " ".join(message[1:]).strip()
