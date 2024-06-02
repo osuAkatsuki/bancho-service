@@ -16,11 +16,11 @@ from common import exception_handling
 from common.log import logger
 from common.log import logging_config
 from objects import osuToken
-from objects.redisLock import redisLock
 
-# TODO: this should be used in other places in the code
-# and potentially abstracted into a more appropriate place
-CHAT_SPAM_SAMPLE_INTERVAL = 10  # seconds
+# TODO: this work should be done JIT when a player sends a message
+# and the cronjob/daemon strategy here should be completely removed
+
+CRON_RUN_INTERVAL = 60  # seconds
 
 SHUTDOWN_EVENT: asyncio.Event | None = None
 
@@ -47,7 +47,7 @@ async def main() -> int:
             try:
                 await asyncio.wait_for(
                     SHUTDOWN_EVENT.wait(),
-                    timeout=CHAT_SPAM_SAMPLE_INTERVAL,
+                    timeout=CRON_RUN_INTERVAL,
                 )
             except TimeoutError:
                 pass
