@@ -102,10 +102,14 @@ async def main() -> int:
 
             logger.info("Closing HTTP connections")
             # Allow grace period for ongoing connections to finish
-            await asyncio.wait_for(
-                http_server.close_all_connections(),
-                timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
-            )
+            try:
+                await asyncio.wait_for(
+                    http_server.close_all_connections(),
+                    timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
+                )
+            except TimeoutError:
+                logger.warning("Failed to close open HTTP connections in time")
+
             logger.info("Closed HTTP connections")
 
         if settings.MASTER_PROCESS:

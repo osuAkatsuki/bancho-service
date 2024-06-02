@@ -90,10 +90,13 @@ async def main() -> int:
         await lifecycle.startup()
         while True:
             await _timeout_inactive_users()
-            await asyncio.wait_for(
-                SHUTDOWN_EVENT.wait(),
-                timeout=OSU_MAX_PING_INTERVAL,
-            )
+            try:
+                await asyncio.wait_for(
+                    SHUTDOWN_EVENT.wait(),
+                    timeout=OSU_MAX_PING_INTERVAL,
+                )
+            except TimeoutError:
+                pass
     finally:
         await lifecycle.shutdown()
 

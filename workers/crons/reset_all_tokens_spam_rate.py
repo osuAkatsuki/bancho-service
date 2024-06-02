@@ -47,10 +47,13 @@ async def main() -> int:
                 ):
                     await osuToken.update_token(token_id, spam_rate=0)
 
-            await asyncio.wait_for(
-                SHUTDOWN_EVENT.wait(),
-                timeout=CHAT_SPAM_SAMPLE_INTERVAL,
-            )
+            try:
+                await asyncio.wait_for(
+                    SHUTDOWN_EVENT.wait(),
+                    timeout=CHAT_SPAM_SAMPLE_INTERVAL,
+                )
+            except TimeoutError:
+                pass
     finally:
         await lifecycle.shutdown()
 
