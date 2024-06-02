@@ -14,6 +14,12 @@ from objects import osuToken
 from objects.redisLock import redisLock
 
 
+MATCH_CREATION_DISABLED = True  # TODO: hook this up to an amplitude FF
+
+
+class MatchCreationDisabledError(Exception): ...
+
+
 async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
     try:
         # Read packet data
@@ -23,6 +29,9 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
         match_name = packetData["matchName"].strip()
         if not match_name:
             raise exceptions.matchCreateError()
+
+        if MATCH_CREATION_DISABLED and not osuToken.is_staff(token["privileges"]):
+            raise MatchCreationDisabledError()
 
         # Create a match object
         # TODO: Player number check
@@ -88,3 +97,13 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
     except exceptions.matchCreateError:
         logger.exception("An error occurred while creating a multiplayer match")
         await osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)
+    except MatchCreationDisabledError:
+        await osuToken.enqueue(
+            token["token_id"],
+            (
+                serverPackets.matchJoinFail
+                + serverPackets.notification(
+                    "Match creation is disabled. Please try again later!"
+                )
+            ),
+        )
