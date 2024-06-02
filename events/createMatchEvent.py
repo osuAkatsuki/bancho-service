@@ -13,7 +13,7 @@ from objects import matchList
 from objects import osuToken
 from objects.redisLock import redisLock
 
-MATCH_CREATION_DISABLED = True  # TODO: hook this up to an amplitude FF
+MATCH_CREATION_DISABLED = False  # TODO: hook this up to an amplitude FF
 
 
 class MatchCreationDisabledError(Exception): ...
