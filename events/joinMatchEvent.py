@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from amplitude import BaseEvent
 
+from common.constants import privileges
 from constants import clientPackets
 from constants import serverPackets
 from helpers import countryHelper
@@ -29,8 +30,8 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         if multiplayer_match["match_password"]:
             if (
                 password != multiplayer_match["match_password"]
-                # allow staff to use any password to join a protected match
-                and not osuToken.is_staff(userToken["privileges"])
+                # allow tourney staff to use any password to join a protected match
+                and not (userToken["privileges"] & privileges.USER_TOURNAMENT_STAFF)
             ):
                 await osuToken.enqueue(
                     userToken["token_id"],
