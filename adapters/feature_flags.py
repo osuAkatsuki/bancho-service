@@ -23,12 +23,12 @@ def is_feature_enabled(
         if device_id is None and user_id is None:
             user_id = "1xx"
 
-        user = User(device_id=device_id, user_id=user_id)  # type: ignore
+        user = User(device_id=device_id, user_id=user_id)  # type: ignore[unused-ignore]
         variant = experiment.evaluate_v2(user, {feature_name}).get(feature_name)
         if variant is None:
             return False
 
-        return variant.value == "on"
+        return variant.value == "on" # type: ignore[no-any-return]
     except Exception:
         logging.exception(
             "Failed to retrieve experiment",
