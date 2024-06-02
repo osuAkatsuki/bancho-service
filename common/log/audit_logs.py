@@ -5,6 +5,7 @@ import asyncio
 import httpx
 
 import settings
+from common import job_scheduling
 from common.log import logger
 from common.ripple import user_utils
 from common.web.discord import Webhook
@@ -80,7 +81,7 @@ async def send_log(
         [user_id, message, admin],
     )
     if discord_channel is not None:
-        asyncio.create_task(
+        job_scheduling.schedule_job(
             send_log_as_discord_webhook(
                 message=f"{user_utils.get_username_from_id(user_id)} {message}",
                 discord_channel=discord_channel,

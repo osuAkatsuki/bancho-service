@@ -52,6 +52,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
     # Split POST body so we can get username/password/hardware data
     loginData = web_handler.request.body.decode()[:-1].split("\n")
 
+    userID: int | None = None
+    username: str | None = None
+    osuVersionStr: str | None = None
+    restricted: bool | None = None
+
     try:
         # Make sure loginData is valid
         if len(loginData) < 3:
@@ -599,8 +604,14 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             ),
         )
 
-        if not restricted and (
-            v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
+        if (
+            userID
+            and username
+            and not restricted
+            and (
+                v_argstr in web_handler.request.arguments
+                or osuVersionStr == v_argverstr
+            )
         ):
             await audit_logs.send_log_as_discord_webhook(
                 message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",

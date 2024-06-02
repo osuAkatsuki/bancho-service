@@ -16,6 +16,7 @@ from amplitude import BaseEvent
 
 import settings
 from common import generalUtils
+from common import job_scheduling
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
@@ -658,6 +659,7 @@ async def getPPMessage(
             params={"b": currentMap, "m": currentMods},
             timeout=5,
         )
+        response.raise_for_status()
     except:
         logger.exception(
             "Failed to retrieve PP from score-service API",
@@ -668,9 +670,6 @@ async def getPPMessage(
             },
         )
         return "Score server currently down, could not retrieve PP."
-
-    if not response or response.status_code != 200:
-        return "API Timeout. Please try again in a few seconds."
 
     data = response.json()
 
@@ -1299,7 +1298,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         thumbnail=f"https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png",
     )
-    asyncio.create_task(webhook.post())
+    job_scheduling.schedule_job(webhook.post())
 
     if is_set:
         beatmap_url = (
@@ -1730,7 +1729,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             raise exceptions.userNotFoundException("No such user.")
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
-            success = match.setHost(
+            success = await match.setHost(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
             )
@@ -1846,7 +1845,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 loop = asyncio.get_running_loop()
                 loop.call_later(
                     1.00,
-                    lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                    lambda: job_scheduling.schedule_job(_decreaseTimer(t - 1)),
                 )
 
         if len(message) < 2 or not message[1].isnumeric():
@@ -1887,7 +1886,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             loop = asyncio.get_running_loop()
             loop.call_later(
                 1.00,
-                lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
+                lambda: job_scheduling.schedule_job(_decreaseTimer(startTime - 1)),
             )
 
             return (
@@ -2486,7 +2485,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             loop = asyncio.get_running_loop()
             loop.call_later(
                 1.00,
-                lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                lambda: job_scheduling.schedule_job(_decreaseTimer(t - 1)),
             )
 
         await match.update_match(
@@ -2497,7 +2496,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         loop = asyncio.get_running_loop()
         loop.call_later(
             1.00,
-            lambda: asyncio.create_task(_decreaseTimer(countdown_time - 1)),
+            lambda: job_scheduling.schedule_job(_decreaseTimer(countdown_time - 1)),
         )
         return _get_countdown_message(countdown_time, True)
 
