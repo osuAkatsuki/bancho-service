@@ -53,19 +53,18 @@ async def main() -> int:
 
         await lifecycle.startup()
 
-        if settings.MASTER_PROCESS:
-            await channelList.loadChannels()
+        await channelList.loadChannels()
 
-            # Initialize stremas
-            await streamList.add("main")
-            await streamList.add("lobby")
+        # Initialize stremas
+        await streamList.add("main")
+        await streamList.add("lobby")
 
-            logger.info(
-                "Connecting the in-game chat bot",
-                extra={"bot_name": CHATBOT_USER_NAME},
-            )
+        logger.info(
+            "Connecting the in-game chat bot",
+            extra={"bot_name": CHATBOT_USER_NAME},
+        )
 
-            await chatbot.connect()
+        await chatbot.connect()
 
         # Start the HTTP server
         API_ENDPOINTS = [
@@ -111,11 +110,6 @@ async def main() -> int:
                 logger.warning("Failed to close open HTTP connections in time")
 
             logger.info("Closed HTTP connections")
-
-        if settings.MASTER_PROCESS:
-            logger.info("Disconnecting Chatbot")
-            await chatbot.disconnect()
-            logger.info("Disconnected Chatbot")
 
         await lifecycle.shutdown()
 
