@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from amplitude import BaseEvent
 
+from adapters import feature_flags
 from common.log import logger
 from constants import clientPackets
 from constants import exceptions
@@ -12,8 +13,6 @@ from objects import match
 from objects import matchList
 from objects import osuToken
 from objects.redisLock import redisLock
-
-MATCH_CREATION_DISABLED = False  # TODO: hook this up to an amplitude FF
 
 
 class MatchCreationDisabledError(Exception): ...
@@ -29,7 +28,12 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
         if not match_name:
             raise exceptions.matchCreateError()
 
-        if MATCH_CREATION_DISABLED and not osuToken.is_staff(token["privileges"]):
+        match_creation_enabled = feature_flags.is_feature_enabled(
+            feature_name="osu_match_creation_enabled",
+            user_id=str(token["user_id"]),
+            device_id=token["amplitude_device_id"],
+        )
+        if not match_creation_enabled and not osuToken.is_staff(token["privileges"]):
             raise MatchCreationDisabledError()
 
         # Create a match object
