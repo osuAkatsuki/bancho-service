@@ -77,28 +77,3 @@ class listener:
                 # else:
                 #     # Function
                 #     await self.handlers[channel](item["data"])
-
-    async def run(self) -> None:
-        """
-        Listen for data on incoming channels and process it.
-        Runs forever.
-
-        :return:
-        """
-        pubsub = self.redis_connection.pubsub()
-
-        channels = list(self.handlers.keys())
-        await pubsub.subscribe(*channels)
-        logger.info(
-            "Subscribed to redis pubsub channels",
-            extra={"channels": channels},
-        )
-
-        async for item in pubsub.listen():
-            try:
-                await self.processItem(item)
-            except Exception:
-                logger.exception(
-                    "An error occurred while processing a pubsub item",
-                    extra={"item": item},
-                )

@@ -3,11 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import logging
 import os
 import signal
-import sys
-import traceback
-from datetime import datetime
 from types import FrameType
 
 import tornado.gen
@@ -26,36 +24,27 @@ from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
+from handlers import healthHandler
 from handlers import mainHandler
 from objects import channelList
 from objects import chatbot
 from objects import glob
 from objects import streamList
 
-
-def dump_thread_stacks() -> None:
-    try:
-        os.mkdir("stacktraces")
-    except FileExistsError:
-        pass
-    filename = f"{settings.APP_PORT}-{datetime.now().isoformat()}.txt"
-    with open(f"stacktraces/{filename}", "w") as f:
-        for thread_id, stack in sys._current_frames().items():
-            print(f"Thread ID: {thread_id}", file=f)
-            traceback.print_stack(stack, file=f)
-            print("\n", file=f)
+SHUTDOWN_EVENT: asyncio.Event | None = None
 
 
-def signal_handler(signum: int, frame: FrameType | None = None) -> None:
-    dump_thread_stacks()
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    signal.default_int_handler(signum, frame)
+def handle_shutdown_event(signum: int, frame: FrameType | None) -> None:
+    logging.info("Received shutdown signal", extra={"signum": signal.strsignal(signum)})
+    if SHUTDOWN_EVENT is not None:
+        SHUTDOWN_EVENT.set()
 
 
-signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, handle_shutdown_event)
 
 
 async def main() -> int:
+    SHUTDOWN_EVENT = asyncio.Event()
     http_server: tornado.httpserver.HTTPServer | None = None
     try:
         # TODO: do we need this anymore now with stateless design?
@@ -64,23 +53,23 @@ async def main() -> int:
 
         await lifecycle.startup()
 
-        if settings.MASTER_PROCESS:
-            await channelList.loadChannels()
+        await channelList.loadChannels()
 
-            # Initialize stremas
-            await streamList.add("main")
-            await streamList.add("lobby")
+        # Initialize stremas
+        await streamList.add("main")
+        await streamList.add("lobby")
 
-            logger.info(
-                "Connecting the in-game chat bot",
-                extra={"bot_name": CHATBOT_USER_NAME},
-            )
+        logger.info(
+            "Connecting the in-game chat bot",
+            extra={"bot_name": CHATBOT_USER_NAME},
+        )
 
-            await chatbot.connect()
+        await chatbot.connect()
 
         # Start the HTTP server
         API_ENDPOINTS = [
             (r"/", mainHandler.handler),
+            (r"/_health", healthHandler.handler),
             (r"/api/v1/isOnline", apiIsOnlineHandler.handler),
             (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
             (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
@@ -101,8 +90,7 @@ async def main() -> int:
                 "endpoints": [e[0] for e in API_ENDPOINTS],
             },
         )
-        shutdown_event = asyncio.Event()
-        await shutdown_event.wait()
+        await SHUTDOWN_EVENT.wait()
     finally:
         logger.info("Shutting down all services")
 
@@ -113,16 +101,15 @@ async def main() -> int:
 
             logger.info("Closing HTTP connections")
             # Allow grace period for ongoing connections to finish
-            await asyncio.wait_for(
-                http_server.close_all_connections(),
-                timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
-            )
-            logger.info("Closed HTTP connections")
+            try:
+                await asyncio.wait_for(
+                    http_server.close_all_connections(),
+                    timeout=settings.SHUTDOWN_HTTP_CONNECTION_TIMEOUT,
+                )
+            except TimeoutError:
+                logger.warning("Failed to close open HTTP connections in time")
 
-        if settings.MASTER_PROCESS:
-            logger.info("Disconnecting Chatbot")
-            await chatbot.disconnect()
-            logger.info("Disconnected Chatbot")
+            logger.info("Closed HTTP connections")
 
         await lifecycle.shutdown()
 

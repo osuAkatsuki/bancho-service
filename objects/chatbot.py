@@ -56,14 +56,6 @@ async def connect() -> None:
             await osuToken.joinChannel(token["token_id"], channel_name)
 
 
-async def disconnect() -> None:
-    async with redisLock(f"bancho:locks:aika"):
-        token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
-        assert token is not None
-
-        await tokenList.deleteToken(token["token_id"])
-
-
 class ChatbotResponse(TypedDict):
     response: str
     hidden: bool

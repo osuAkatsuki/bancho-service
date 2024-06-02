@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import logging
 import os
+import signal
 import sys
 import time
+from types import FrameType
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -16,13 +19,23 @@ from common.log import logging_config
 from constants import CHATBOT_USER_ID
 from events import logoutEvent
 from objects import osuToken
-from objects.redisLock import redisLock
 
-OSU_MAX_PING_INTERVAL = 300  # seconds
+CRON_RUN_INTERVAL = 10 * 60  # seconds
+
+SHUTDOWN_EVENT: asyncio.Event | None = None
+
+
+def handle_shutdown_event(signum: int, frame: FrameType | None) -> None:
+    logging.info("Received shutdown signal", extra={"signum": signal.strsignal(signum)})
+    if SHUTDOWN_EVENT is not None:
+        SHUTDOWN_EVENT.set()
+
+
+signal.signal(signal.SIGTERM, handle_shutdown_event)
 
 
 async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
-    oldest_ping_time = int(time.time()) - OSU_MAX_PING_INTERVAL
+    oldest_ping_time = int(time.time()) - CRON_RUN_INTERVAL
 
     if (
         token["ping_time"] < oldest_ping_time
@@ -44,14 +57,11 @@ async def _timeout_inactive_users() -> None:
     for token_id in await osuToken.get_token_ids():
         token = None
         try:
-            async with redisLock(
-                f"{osuToken.make_key(token_id)}:processing_lock",
-            ):
-                token = await osuToken.get_token(token_id)
-                if token is None:
-                    continue
+            token = await osuToken.get_token(token_id)
+            if token is None:
+                continue
 
-                await _revoke_token_if_inactive(token)
+            await _revoke_token_if_inactive(token)
 
         except Exception:
             logger.exception(
@@ -69,12 +79,20 @@ async def _timeout_inactive_users() -> None:
 
 
 async def main() -> int:
+    global SHUTDOWN_EVENT
+    SHUTDOWN_EVENT = asyncio.Event()
     logger.info("Starting inactive token timeout loop")
     try:
         await lifecycle.startup()
         while True:
             await _timeout_inactive_users()
-            await asyncio.sleep(OSU_MAX_PING_INTERVAL)
+            try:
+                await asyncio.wait_for(
+                    SHUTDOWN_EVENT.wait(),
+                    timeout=CRON_RUN_INTERVAL,
+                )
+            except TimeoutError:
+                pass
     finally:
         await lifecycle.shutdown()
 
