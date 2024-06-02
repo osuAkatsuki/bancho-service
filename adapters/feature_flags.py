@@ -28,7 +28,7 @@ def is_feature_enabled(
         if variant is None:
             return False
 
-        return variant.value == "on" # type: ignore[no-any-return]
+        return variant.value == "on"  # type: ignore[no-any-return]
     except Exception:
         logging.exception(
             "Failed to retrieve experiment",
