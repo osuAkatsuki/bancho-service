@@ -731,12 +731,12 @@ async def getUserSlotID(match_id: int, user_id: int) -> int | None:
     return None
 
 
-async def userJoin(match_id: int, token_id: str) -> bool:
+async def userJoin(match_id: int, token_id: str) -> int | None:
     """
     Add someone to users in match
 
     :param user: user object of the user
-    :return: True if join success, False if fail (room is full)
+    :return: The slot id if join success, None if fail (room is full)
     """
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
@@ -794,7 +794,7 @@ async def userJoin(match_id: int, token_id: str) -> bool:
 
             # Send updated match data
             await sendUpdates(match_id)
-            return True
+            return slot_id
 
     if osuToken.is_staff(
         token["privileges"],
@@ -827,9 +827,9 @@ async def userJoin(match_id: int, token_id: str) -> bool:
 
                 # Send updated match data
                 await sendUpdates(match_id)
-                return True
+                return slot_id
 
-    return False
+    return None
 
 
 async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
@@ -865,6 +865,7 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
     await osuToken.update_token(
         token_id,
         match_id=None,
+        match_slot_id=None,
     )
 
     await insert_match_event(
