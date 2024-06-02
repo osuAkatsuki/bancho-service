@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import logging
 import os
+import signal
 import sys
+from types import FrameType
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -19,9 +22,21 @@ from objects.redisLock import redisLock
 # and potentially abstracted into a more appropriate place
 CHAT_SPAM_SAMPLE_INTERVAL = 10  # seconds
 
+SHUTDOWN_EVENT: asyncio.Event | None = None
+
+
+def handle_shutdown_event(signum: int, frame: FrameType | None) -> None:
+    logging.info("Received shutdown signal", extra={"signum": signal.strsignal(signum)})
+    if SHUTDOWN_EVENT is not None:
+        SHUTDOWN_EVENT.set()
+
+
+signal.signal(signal.SIGTERM, handle_shutdown_event)
+
 
 async def main() -> int:
-    """bancho-service silences users by tracking how"""
+    global SHUTDOWN_EVENT
+    SHUTDOWN_EVENT = asyncio.Event()
     logger.info("Starting spam protection loop")
     try:
         await lifecycle.startup()
@@ -32,7 +47,10 @@ async def main() -> int:
                 ):
                     await osuToken.update_token(token_id, spam_rate=0)
 
-            await asyncio.sleep(CHAT_SPAM_SAMPLE_INTERVAL)
+            await asyncio.wait_for(
+                SHUTDOWN_EVENT.wait(),
+                timeout=CHAT_SPAM_SAMPLE_INTERVAL,
+            )
     finally:
         await lifecycle.shutdown()
 

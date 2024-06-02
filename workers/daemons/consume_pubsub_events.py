@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import logging
 import os
+import signal
 import sys
+from types import FrameType
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -35,19 +38,52 @@ PUBSUB_HANDLERS: dict[str, AbstractPubSubHandler] = {
     "peppy:wipe": wipeHandler.WipePubSubHandler(),
 }
 
+SHUTDOWN_EVENT: asyncio.Event | None = None
+
+
+def handle_shutdown_event(signum: int, frame: FrameType | None) -> None:
+    logging.info("Received shutdown signal", extra={"signum": signal.strsignal(signum)})
+    if SHUTDOWN_EVENT is not None:
+        SHUTDOWN_EVENT.set()
+
+
+signal.signal(signal.SIGTERM, handle_shutdown_event)
+
 
 async def main() -> int:
+    global SHUTDOWN_EVENT
+    SHUTDOWN_EVENT = asyncio.Event()
+    logger.info(
+        "Starting pubsub listener",
+        extra={"handlers": list(PUBSUB_HANDLERS)},
+    )
     try:
         await lifecycle.startup()
-        logger.info(
-            "Starting pubsub listener",
-            extra={"handlers": list(PUBSUB_HANDLERS)},
-        )
         pubsub_listener = pubSub.listener(
             redis_connection=glob.redis,
             handlers=PUBSUB_HANDLERS,
         )
-        await pubsub_listener.run()
+        pubsub = pubsub_listener.redis_connection.pubsub()
+
+        channels = list(pubsub_listener.handlers.keys())
+        await pubsub.subscribe(*channels)
+        logger.info(
+            "Subscribed to redis pubsub channels",
+            extra={"channels": channels},
+        )
+
+        async for item in pubsub.listen():
+            try:
+                await pubsub_listener.processItem(item)
+            except Exception:
+                logger.exception(
+                    "An error occurred while processing a pubsub item",
+                    extra={"item": item},
+                )
+
+                if SHUTDOWN_EVENT.is_set():
+                    break
+
     finally:
         await lifecycle.shutdown()
 

@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import logging
 import os
+import signal
 import sys
 import time
+from types import FrameType
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
@@ -19,6 +22,17 @@ from objects import osuToken
 from objects.redisLock import redisLock
 
 OSU_MAX_PING_INTERVAL = 300  # seconds
+
+SHUTDOWN_EVENT: asyncio.Event | None = None
+
+
+def handle_shutdown_event(signum: int, frame: FrameType | None) -> None:
+    logging.info("Received shutdown signal", extra={"signum": signal.strsignal(signum)})
+    if SHUTDOWN_EVENT is not None:
+        SHUTDOWN_EVENT.set()
+
+
+signal.signal(signal.SIGTERM, handle_shutdown_event)
 
 
 async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
@@ -69,12 +83,17 @@ async def _timeout_inactive_users() -> None:
 
 
 async def main() -> int:
+    global SHUTDOWN_EVENT
+    SHUTDOWN_EVENT = asyncio.Event()
     logger.info("Starting inactive token timeout loop")
     try:
         await lifecycle.startup()
         while True:
             await _timeout_inactive_users()
-            await asyncio.sleep(OSU_MAX_PING_INTERVAL)
+            await asyncio.wait_for(
+                SHUTDOWN_EVENT.wait(),
+                timeout=OSU_MAX_PING_INTERVAL,
+            )
     finally:
         await lifecycle.shutdown()
 
