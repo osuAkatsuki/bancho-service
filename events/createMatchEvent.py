@@ -74,7 +74,8 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
             async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
                 # Join that match
                 await osuToken.joinMatch(
-                    token["token_id"], multiplayer_match["match_id"],
+                    token["token_id"],
+                    multiplayer_match["match_id"],
                 )
 
                 # Give host to match creator
