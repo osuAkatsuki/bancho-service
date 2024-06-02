@@ -42,10 +42,7 @@ async def main() -> int:
         await lifecycle.startup()
         while True:
             for token_id in await osuToken.get_token_ids():
-                async with redisLock(
-                    f"{osuToken.make_key(token_id)}:processing_lock",
-                ):
-                    await osuToken.update_token(token_id, spam_rate=0)
+                await osuToken.update_token(token_id, spam_rate=0)
 
             try:
                 await asyncio.wait_for(

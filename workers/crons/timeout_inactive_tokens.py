@@ -58,14 +58,11 @@ async def _timeout_inactive_users() -> None:
     for token_id in await osuToken.get_token_ids():
         token = None
         try:
-            async with redisLock(
-                f"{osuToken.make_key(token_id)}:processing_lock",
-            ):
-                token = await osuToken.get_token(token_id)
-                if token is None:
-                    continue
+            token = await osuToken.get_token(token_id)
+            if token is None:
+                continue
 
-                await _revoke_token_if_inactive(token)
+            await _revoke_token_if_inactive(token)
 
         except Exception:
             logger.exception(
