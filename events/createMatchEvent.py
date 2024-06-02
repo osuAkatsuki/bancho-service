@@ -33,7 +33,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
             user_id=str(token["user_id"]),
             device_id=token["amplitude_device_id"],
         )
-        if not match_creation_enabled and not osuToken.is_staff(token["privileges"]):
+        if not (match_creation_enabled or osuToken.is_staff(token["privileges"])):
             raise MatchCreationDisabledError()
 
         # Create a match object
