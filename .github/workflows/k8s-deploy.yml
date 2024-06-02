@@ -1,4 +1,4 @@
-name: k8s-deploy
+name: production-deploy
 
 on:
   push:
