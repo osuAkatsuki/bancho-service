@@ -1195,8 +1195,16 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     if message[1] not in {"set", "map"}:
         return "Scope must either be set or map."
 
-    status_to_int = lambda s: {"love": 5, "rank": 2, "unrank": 0}[s]
-    status_to_readable = lambda s: {5: "Loved", 2: "Ranked", 0: "Unranked"}[s]
+    status_to_int: Callable[[str], int] = lambda s: {
+        "love": 5,
+        "rank": 2,
+        "unrank": 0,
+    }[s]
+    status_to_readable: Callable[[int], str] = lambda s: {
+        5: "Loved",
+        2: "Ranked",
+        0: "Unranked",
+    }[s]
 
     status = status_to_int(message[0])
     status_readable = status_to_readable(status)
@@ -1254,7 +1262,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     icon_nerinyan = ":cat2:"  # placeholder - they don't have a logo
 
     # osu! game mode emoji dictionary
-    mode_to_emoji = lambda s: {
+    mode_to_emoji: Callable[[int], str] = lambda s: {
         3: "<:modemania:1087863868782547014>",
         2: "<:modefruits:1087863938982612994>",
         1: "<:modetaiko:1087863916278853662>",
@@ -1262,8 +1270,12 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     }[s]
 
     # Colour & icons used in stable client
-    status_to_colour = lambda s: {5: 0xFF66AA, 2: 0x6BCEFF, 0: 0x696969}[s]
-    status_to_emoji_id = lambda s: {
+    status_to_colour: Callable[[int], int] = lambda s: {
+        5: 0xFF66AA,
+        2: 0x6BCEFF,
+        0: 0x696969,
+    }[s]
+    status_to_emoji_id: Callable[[int], str] = lambda s: {
         5: "1166976753869279272",
         2: "1166976760424964126",
         0: "1166976756230651934",
