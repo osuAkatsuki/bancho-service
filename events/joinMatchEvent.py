@@ -30,7 +30,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
             if (
                 password != multiplayer_match["match_password"]
                 # allow staff to use any password to join a protected match
-                or osuToken.is_staff(userToken["privileges"])
+                and not osuToken.is_staff(userToken["privileges"])
             ):
                 await osuToken.enqueue(
                     userToken["token_id"],
