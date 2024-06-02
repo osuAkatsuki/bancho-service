@@ -29,7 +29,7 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
         and token["user_id"] != CHATBOT_USER_ID
         and not token["tournament"]
     ):
-        logger.warning(
+        logger.info(
             "Timing out inactive bancho session",
             extra={
                 "username": token["username"],
