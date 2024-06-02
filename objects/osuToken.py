@@ -4,7 +4,7 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
-from typing import NotRequired
+from typing import Any, NotRequired
 from typing import TypedDict
 from typing import cast
 from uuid import uuid4
@@ -497,7 +497,7 @@ async def enqueue(
     token_id: str,
     data: bytes,
     *,
-    pipeline_for_reuse: Pipeline | None = None,
+    pipeline_for_reuse: Pipeline[Any] | None = None,
 ) -> None:
     """
     Add bytes (packets) to queue
