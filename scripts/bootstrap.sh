@@ -14,7 +14,6 @@ if [ -z "$APP_COMPONENT" ]; then
 fi
 
 if [[ $PULL_SECRETS_FROM_VAULT -eq 1 ]]; then
-  pip install --break-system-packages git+https://github.com/osuAkatsuki/akatsuki-cli
   # TODO: revert to $APP_ENV
   akatsuki vault get bancho-service production-k8s -o .env
   source .env
