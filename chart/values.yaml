@@ -29,7 +29,6 @@ apps:
           value: api
       imagePullSecrets:
         - name: osuakatsuki-registry-secret
-        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
@@ -55,7 +54,6 @@ apps:
           value: reset-all-tokens-spam-rate
       imagePullSecrets:
         - name: osuakatsuki-registry-secret
-        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
@@ -81,7 +79,6 @@ apps:
           value: timeout-inactive-tokens
       imagePullSecrets:
         - name: osuakatsuki-registry-secret
-        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
@@ -107,7 +104,6 @@ apps:
           value: consume-pubsub-events
       imagePullSecrets:
         - name: osuakatsuki-registry-secret
-        # - name: registry-akatsuki
     service:
       type: ClusterIP
       port: 80
