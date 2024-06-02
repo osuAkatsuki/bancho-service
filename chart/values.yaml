@@ -44,11 +44,11 @@ apps:
       port: 80
       resources:
         limits:
-          cpu: 300m
-          memory: 250Mi
+          cpu: 200m
+          memory: 200Mi
         requests:
-          cpu: 150m
-          memory: 150Mi
+          cpu: 100m
+          memory: 75Mi
       env:
         - name: APP_COMPONENT
           value: reset-all-tokens-spam-rate
@@ -69,11 +69,11 @@ apps:
       port: 80
       resources:
         limits:
-          cpu: 300m
-          memory: 250Mi
+          cpu: 200m
+          memory: 200Mi
         requests:
-          cpu: 150m
-          memory: 150Mi
+          cpu: 100m
+          memory: 75Mi
       env:
         - name: APP_COMPONENT
           value: timeout-inactive-tokens
@@ -94,11 +94,11 @@ apps:
       port: 80
       resources:
         limits:
-          cpu: 300m
-          memory: 250Mi
+          cpu: 200m
+          memory: 200Mi
         requests:
-          cpu: 150m
-          memory: 150Mi
+          cpu: 100m
+          memory: 75Mi
       env:
         - name: APP_COMPONENT
           value: consume-pubsub-events
