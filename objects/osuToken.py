@@ -184,7 +184,6 @@ async def create_token(
     safe_name = safeUsername(username)
 
     async with glob.redis.pipeline() as pipe:
-        await pipe.sadd("bancho:tokens", token_id)
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
         await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
         await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
@@ -195,7 +194,7 @@ async def create_token(
 
 
 async def get_token_ids() -> set[str]:
-    raw_token_ids: set[bytes] = await glob.redis.smembers("bancho:tokens")
+    raw_token_ids: list[bytes] = await glob.redis.hkeys("bancho:tokens:json")
     return {token_id.decode() for token_id in raw_token_ids}
 
 
@@ -387,7 +386,6 @@ async def delete_token(token_id: str) -> None:
         return
 
     async with glob.redis.pipeline() as pipe:
-        await pipe.srem("bancho:tokens", token_id)
         await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
         await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
         await pipe.hdel("bancho:tokens:json", token_id)
