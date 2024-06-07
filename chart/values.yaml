@@ -2,7 +2,10 @@ apps:
   - name: bancho-service-api
     environment: production
     codebase: bancho-service
-    replicaCount: 4
+    autoscaling:
+      minReplicas: 3
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 80
     container:
       image:
         repository: osuakatsuki/bancho-service
