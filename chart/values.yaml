@@ -3,6 +3,7 @@ apps:
     environment: production
     codebase: bancho-service
     autoscaling:
+      enabled: true
       minReplicas: 3
       maxReplicas: 6
       targetCPUUtilizationPercentage: 80
