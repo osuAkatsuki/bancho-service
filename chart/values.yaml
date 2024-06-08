@@ -23,7 +23,7 @@ apps:
         failureThreshold: 3
       resources:
         limits:
-          cpu: 700m
+          cpu: 1250m
           memory: 350Mi
         requests:
           cpu: 500m
