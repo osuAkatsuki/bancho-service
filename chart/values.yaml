@@ -5,8 +5,8 @@ apps:
     autoscaling:
       enabled: true
       minReplicas: 3
-      maxReplicas: 6
-      targetCPUUtilizationPercentage: 80
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
     container:
       image:
         repository: osuakatsuki/bancho-service
@@ -23,10 +23,10 @@ apps:
         failureThreshold: 3
       resources:
         limits:
-          cpu: 500m
+          cpu: 700m
           memory: 350Mi
         requests:
-          cpu: 300m
+          cpu: 500m
           memory: 250Mi
       env:
         - name: APP_COMPONENT
