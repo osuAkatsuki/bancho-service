@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 from typing import TypedDict
 
 from objects import glob
-from objects import stream
-from objects import streamList
 
 
 def make_key(stream_name: str) -> str:
@@ -20,17 +16,6 @@ class StreamMessage(TypedDict):
     excluded_token_ids: str
 
 
-async def xd(stream_name: str, et, st):
-    client_count = await stream.get_client_count(stream_name)
-    logging.info(
-        "Broadcast timing",
-        extra={
-            "time_elapsed_ms": (et - st) * 1000,
-            "client_count": client_count,
-        },
-    )
-
-
 async def broadcast_data(
     stream_name: str,
     data: bytes,
@@ -41,7 +26,6 @@ async def broadcast_data(
     if excluded_token_ids is None:
         excluded_token_ids = []
 
-    st = time.time()
     stream_key = make_key(stream_name)
     fields: StreamMessage = {
         "stream_key": stream_key,
@@ -49,9 +33,6 @@ async def broadcast_data(
         "excluded_token_ids": ",".join(excluded_token_ids),
     }
     await glob.redis.xadd(stream_key, fields)
-
-    et = time.time()
-    asyncio.create_task(xd(stream_name, et, st))
 
 
 async def _get_token_stream_offsets(token_id: str) -> dict[str, str]:
