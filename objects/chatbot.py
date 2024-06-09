@@ -112,7 +112,7 @@ async def query(
         time_elapsed_ms = (time() - start_time) * 1000
 
         if user_token["privileges"] & privileges.ADMIN_CAKER:
-            command_response += f"| Elapsed: {(time() - start_time) * 1000:.3f}ms"
+            command_response += f" | Elapsed: {(time() - start_time) * 1000:.3f}ms"
 
         if glob.amplitude is not None:
             glob.amplitude.track(
