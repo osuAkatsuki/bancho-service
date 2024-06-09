@@ -16,8 +16,8 @@ import lifecycle
 from common import exception_handling
 from common.log import logger
 from common.log import logging_config
-from objects import streamList
 from objects import stream_messages
+from objects import streamList
 
 # TODO: this work should be done JIT when a player sends a message
 # and the cronjob/daemon strategy here should be completely removed
