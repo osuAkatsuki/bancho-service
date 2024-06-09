@@ -107,3 +107,10 @@ async def read_all_pending_data(token_id: str) -> bytes:
             )
 
     return pending_data
+
+
+async def get_latest_message_id(stream_name: str) -> str:
+    data = await glob.redis.xrevrange(make_key(stream_name), count=1)
+    if not data:
+        return "0-0"
+    return data[0][0].decode()

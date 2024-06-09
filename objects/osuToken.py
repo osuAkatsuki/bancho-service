@@ -439,10 +439,12 @@ async def get_streams(token_id: str) -> set[str]:
 
 async def add_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
+
+    stream_offset = await stream_messages.get_latest_message_id(stream_name)
     await glob.redis.hset(
         f"{make_key(token_id)}:stream_offsets",
         stream_messages.make_key(stream_name),
-        "0-0",  # TODO: get the current offset of the stream
+        stream_offset,
     )
 
 
