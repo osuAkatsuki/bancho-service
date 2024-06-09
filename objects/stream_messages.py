@@ -73,7 +73,7 @@ async def read_all_pending_data(token_id: str) -> bytes:
     if new_stream_offsets:
         await glob.redis.hmset(
             f"bancho:{token_id}:stream_offsets",
-            new_stream_offsets,  # type: ignore
+            new_stream_offsets,  # type: ignore[arg-type]
         )
 
     return pending_data
