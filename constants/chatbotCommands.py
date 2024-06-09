@@ -2570,8 +2570,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         raise
 
 
+USER_IDS_WHITELISTED_FOR_PY_COMMAND: set[int] = {1001, 1935}
+
+
 @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
+    userID = await user_utils.get_id_from_username(fro)
+    if userID not in USER_IDS_WHITELISTED_FOR_PY_COMMAND:
+        return "You are not allowed to use this command."
+
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
     definition = "\n ".join(["async def __py(fro, chan, message):"] + lines)
