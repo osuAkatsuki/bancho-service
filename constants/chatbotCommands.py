@@ -1917,6 +1917,20 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 "or you might receive a penalty."
             )
 
+    async def mp_abort_timer(user_token: osuToken.Token) -> str | None:
+        if not user_token["match_id"]:
+            return None
+
+        multiplayer_match = await match.get_match(user_token["match_id"])
+        if multiplayer_match is None:
+            return None
+
+        await match.update_match(
+            multiplayer_match["match_id"],
+            is_timer_running=False,
+        )
+        return "Countdown stopped."
+
     async def mpInvite(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
@@ -2431,22 +2445,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp timer <time (in seconds)/stop>.",
+                "Incorrect syntax: !mp timer <time (in seconds)>.",
             )
-
-        if message[1] == "stop":
-            await match.update_match(
-                multiplayer_match["match_id"],
-                is_timer_running=False,
-            )
-            return "Countdown stopped."
 
         if multiplayer_match["is_timer_running"]:
             return "A countdown is already running."
 
         if not message[1].isnumeric():
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp timer <time (in seconds)/stop>.",
+                "Incorrect syntax: !mp timer <time (in seconds)>.",
             )
         countdown_time = int(message[1])
 
@@ -2550,6 +2557,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             "help": mpHelp,
             "link": mp_link,
             "timer": mp_timer,
+            "aborttimer": mp_abort_timer,
         }
 
         requestedSubcommand = message[0].lower().strip()
