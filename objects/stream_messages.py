@@ -51,6 +51,16 @@ async def _get_token_stream_offsets(token_id: str) -> dict[str, str]:
     }
 
 
+async def _set_token_stream_offsets(
+    token_id: str,
+    stream_offsets: dict[str, str],
+) -> None:
+    await glob.redis.hmset(
+        f"bancho:tokens:{token_id}:stream_offsets",
+        stream_offsets,  # type: ignore[arg-type]
+    )
+
+
 async def read_all_pending_data(token_id: str) -> bytes:
     """Read all data sent to these streams, excluding data sent by the client."""
     stream_offsets = await _get_token_stream_offsets(token_id)
@@ -58,6 +68,7 @@ async def read_all_pending_data(token_id: str) -> bytes:
 
     pending_data = bytearray()
     new_stream_offsets: dict[str, str] = {}
+
     for stream_name, stream_data in data:
         message_id: bytes | None = None
         for message_id, fields in stream_data:
@@ -71,9 +82,6 @@ async def read_all_pending_data(token_id: str) -> bytes:
             new_stream_offsets[stream_name.decode()] = message_id.decode()
 
     if new_stream_offsets:
-        await glob.redis.hmset(
-            f"bancho:{token_id}:stream_offsets",
-            new_stream_offsets,  # type: ignore[arg-type]
-        )
+        await _set_token_stream_offsets(token_id, new_stream_offsets)
 
     return pending_data
