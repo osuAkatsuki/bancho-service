@@ -4,7 +4,7 @@ apps:
     codebase: bancho-service
     autoscaling:
       enabled: true
-      minReplicas: 3
+      minReplicas: 5
       maxReplicas: 8
       targetCPUUtilizationPercentage: 70
     container:
