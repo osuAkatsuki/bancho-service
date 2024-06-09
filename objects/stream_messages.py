@@ -17,6 +17,7 @@ class StreamMessage(TypedDict):
     excluded_token_ids: str
 
 
+@profile
 async def broadcast_data(
     stream_name: str,
     data: bytes,
@@ -75,6 +76,7 @@ async def _set_token_stream_offsets(
     )
 
 
+@profile
 async def read_all_pending_data(token_id: str) -> bytes:
     """Read all data sent to these streams, excluding data sent by the client."""
     stream_offsets = await _get_token_stream_offsets(token_id)

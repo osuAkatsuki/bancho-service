@@ -1,4 +1,5 @@
 from __future__ import annotations
+import time
 
 from constants import clientPackets
 from constants import serverPackets
@@ -7,6 +8,9 @@ from objects import osuToken
 from objects import slot
 from objects import stream_messages
 from objects.osuToken import Token
+
+
+svg = []
 
 
 async def handle(userToken: Token, rawPacketData: bytes) -> None:
@@ -55,7 +59,11 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     )
 
     # Enqueue frames to who's playing
+    st = time.time()
     await stream_messages.broadcast_data(
         match.create_playing_stream_name(multiplayer_match["match_id"]),
         serverPackets.matchFrames(match_slot_id, rawPacketData),
     )
+    et = time.time()
+    svg.append((et - st) * 1000)
+    print(f"Broadcast took {sum(svg)/len(svg):,.2f}ms")

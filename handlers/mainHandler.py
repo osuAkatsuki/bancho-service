@@ -150,6 +150,8 @@ HTML_PAGE = (
     "</marquee><br><strike>Serving one handed osu! gamers since the dawn of time<i>&copy; Ripple & Akatsuki, 2020</i></pre></body></html>"
 )
 
+svg = []
+
 
 class handler(AsyncRequestHandler):
     async def _post(self) -> None:
@@ -250,9 +252,13 @@ class handler(AsyncRequestHandler):
 
                 # Token queue built, send it
                 responseTokenString = userToken["token_id"]
+                st = time.time()
                 responseData = await stream_messages.read_all_pending_data(
                     userToken["token_id"],
                 )
+                et = time.time()
+                svg.append((et - st) * 1000)
+                print(f"deqqueue took {sum(svg)/len(svg):,.2f}ms")
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
