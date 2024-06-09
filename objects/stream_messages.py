@@ -4,7 +4,6 @@ import logging
 from typing import TypedDict
 
 from objects import glob
-from objects import streamList
 
 
 def make_key(stream_name: str) -> str:
@@ -26,14 +25,6 @@ async def broadcast_data(
     """Send some data to all clients connected to this stream, with optional exclusions"""
     if excluded_token_ids is None:
         excluded_token_ids = []
-
-    # TODO: potentially remove this check? it's ~55% of the function's wall time
-    if not await streamList.stream_exists(stream_name):
-        logging.warning(
-            "Could not broadcast to stream which does not exist",
-            extra={"stream_name": stream_name},
-        )
-        return
 
     stream_key = make_key(stream_name)
     fields: StreamMessage = {
