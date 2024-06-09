@@ -420,8 +420,6 @@ async def _handle_public_message(
         message,
     )
 
-    # TODO: token["user_id"] != CHATBOT_USER_ID
-    # TODO: and token["token_id"] != sender_token["token_id"]
     only_send_to_staff = False
 
     chatbot_response: ChatbotResponse | None = None
