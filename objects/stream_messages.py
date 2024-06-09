@@ -95,5 +95,5 @@ async def get_latest_message_id(stream_name: str) -> str:
     return data[0][0].decode()
 
 
-async def trim_stream(stream_name: str, min_id: str) -> None:
-    await glob.redis.xtrim(make_key(stream_name), minid=min_id)
+async def trim_stream_messages(stream_name: str, min_id: str) -> int:
+    return await glob.redis.xtrim(make_key(stream_name), minid=min_id)

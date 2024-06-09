@@ -46,14 +46,21 @@ async def main() -> int:
             for stream_name in await streamList.getStreams():
                 try:
                     five_minutes_ago = time.time() - FIVE_MINUTES
-                    min_message_timestamp = str(five_minutes_ago * 1000)
-                    await stream_messages.trim_stream(
+                    trimmed_messages = await stream_messages.trim_stream_messages(
                         stream_name,
-                        min_id=min_message_timestamp,
+                        min_id=f"{int(five_minutes_ago * 1000)}-0",
                     )
+                    if trimmed_messages:
+                        logger.info(
+                            "Trimmed outdated stream messages",
+                            extra={
+                                "stream_name": stream_name,
+                                "trimmed_messages": trimmed_messages,
+                            },
+                        )
                     await asyncio.wait_for(
                         SHUTDOWN_EVENT.wait(),
-                        timeout=2,
+                        timeout=1,
                     )
                 except TimeoutError:
                     pass
