@@ -66,6 +66,13 @@ async def _set_token_stream_offsets(
 async def read_all_pending_data(token_id: str) -> bytes:
     """Read all data sent to these streams, excluding data sent by the client."""
     stream_offsets = await _get_token_stream_offsets(token_id)
+    if not stream_offsets:
+        logging.warning(
+            "Token is connected to no streams",
+            extra={"token_id": token_id},
+        )
+        return b""
+
     data = await glob.redis.xread(stream_offsets)
 
     pending_data = bytearray()
