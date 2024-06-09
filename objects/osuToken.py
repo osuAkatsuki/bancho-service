@@ -4,14 +4,12 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
-from typing import Any
 from typing import NotRequired
 from typing import TypedDict
 from typing import cast
 from uuid import uuid4
 
 import orjson
-from redis.asyncio.client import Pipeline
 
 from common import channel_utils
 from common.constants import actions
@@ -28,6 +26,7 @@ from helpers import chatHelper as chat
 from objects import channelList
 from objects import glob
 from objects import match
+from objects import stream_messages
 from objects import streamList
 
 # (set) bancho:tokens
@@ -37,7 +36,7 @@ from objects import streamList
 # (set[userid]) bancho:tokens:{token_id}:spectators
 # (list) bancho:tokens:{token_id}:messages
 # (list[userid]) bancho:tokens:{token_id}:sent_away_messages
-# (list) bancho:tokens:{token_id}:packet_queue
+# (stream) streams:tokens/{token_id}:messages
 
 
 class LastNp(TypedDict):
@@ -82,8 +81,6 @@ class Token(TypedDict):
     last_np: LastNp | None
     silence_end_time: int
     protocol_version: int
-    # packet_queue: list[int]
-    # packet_queue_lock: Lock
     spam_rate: int
 
     # stats
@@ -187,6 +184,11 @@ async def create_token(
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
         await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
         await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
+        await pipe.hset(
+            f"{make_key(token_id)}:stream_offsets",
+            f"{make_key(token_id)}:packet_queue",
+            "0-0",
+        )
         await pipe.execute()
 
     return token
@@ -392,8 +394,6 @@ async def delete_token(token_id: str) -> None:
         await pipe.delete(f"{make_key(token_id)}:streams")
         await pipe.delete(f"{make_key(token_id)}:message_history")
         await pipe.delete(f"{make_key(token_id)}:sent_away_messages")
-
-        await pipe.delete(f"{make_key(token_id)}:packet_queue")
         await pipe.delete(f"{make_key(token_id)}:processing_lock")
         await pipe.execute()
 
@@ -438,9 +438,20 @@ async def get_streams(token_id: str) -> set[str]:
 async def add_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
 
+    stream_offset = await stream_messages.get_latest_message_id(stream_name)
+    await glob.redis.hset(
+        f"{make_key(token_id)}:stream_offsets",
+        stream_messages.make_key(stream_name),
+        stream_offset,
+    )
+
 
 async def remove_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
+    await glob.redis.hdel(
+        f"{make_key(token_id)}:stream_offsets",
+        stream_messages.make_key(stream_name),
+    )
 
 
 # messages
@@ -489,12 +500,7 @@ def is_restricted(token_privileges: int) -> bool:
 #####
 
 
-async def enqueue(
-    token_id: str,
-    data: bytes,
-    *,
-    pipeline_for_reuse: Pipeline[Any] | None = None,
-) -> None:
+async def enqueue(token_id: str, data: bytes) -> None:
     """
     Add bytes (packets) to queue
 
@@ -514,29 +520,7 @@ async def enqueue(
             extra={"num_bytes": len(data), "token_id": token_id},
         )
 
-    await (pipeline_for_reuse or glob.redis).lpush(
-        f"{make_key(token_id)}:packet_queue",
-        data,
-    )
-
-
-async def dequeue(token_id: str) -> bytes:
-    token = await get_token(token_id)
-    if token is None:
-        return b""
-
-    # Read and remove all packets from the queue atomically
-    async with glob.redis.pipeline() as pipe:
-        await pipe.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
-        await pipe.delete(f"{make_key(token_id)}:packet_queue")
-
-        pipeline_results = await pipe.execute()
-
-    raw_packets: list[bytes] = pipeline_results[0]
-
-    raw_packets.reverse()  # redis returns backwards
-
-    return b"".join(raw_packets)
+    await stream_messages.broadcast_data(f"tokens/{token_id}:messages", data)
 
 
 async def joinChannel(token_id: str, channel_name: str) -> None:
@@ -683,7 +667,7 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
         )
 
     # Send fellow spectator join to all clients
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         streamName,
         serverPackets.fellowSpectatorJoined(token["user_id"]),
     )
@@ -984,7 +968,10 @@ async def silence(
     await enqueue(token_id, serverPackets.silenceEndTime(seconds))
 
     # Send silenced packet to everyone else
-    await streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
+    await stream_messages.broadcast_data(
+        "main",
+        serverPackets.userSilenced(token["user_id"]),
+    )
 
 
 async def spamProtection(token_id: str, increaseSpamRate: bool = True) -> None:

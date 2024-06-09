@@ -25,6 +25,7 @@ from objects import match
 from objects import matchList
 from objects import osuToken
 from objects import slot
+from objects import stream_messages
 from objects import streamList
 from objects import tokenList
 
@@ -559,7 +560,10 @@ async def allPlayersLoaded(match_id: int) -> None:
     assert multiplayer_match is not None
 
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(playing_stream_name, serverPackets.allPlayersLoaded)
+    await stream_messages.broadcast_data(
+        playing_stream_name,
+        serverPackets.allPlayersLoaded,
+    )
 
 
 async def playerSkip(match_id: int, user_id: int) -> None:
@@ -583,7 +587,7 @@ async def playerSkip(match_id: int, user_id: int) -> None:
     # Send skip packet to every playing user
     playing_stream_name = create_playing_stream_name(match_id)
     packet_data = serverPackets.playerSkipped(slot_id)
-    await streamList.broadcast(playing_stream_name, packet_data)
+    await stream_messages.broadcast_data(playing_stream_name, packet_data)
 
     slots = await slot.get_slots(match_id)
     assert len(slots) == 16
@@ -609,7 +613,10 @@ async def allPlayersSkipped(match_id: int) -> None:
     """
 
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(playing_stream_name, serverPackets.allPlayersSkipped)
+    await stream_messages.broadcast_data(
+        playing_stream_name,
+        serverPackets.allPlayersSkipped,
+    )
 
 
 async def playerCompleted(match_id: int, user_id: int) -> None:
@@ -664,7 +671,7 @@ async def allPlayersCompleted(match_id: int) -> None:
 
     # Send match complete
     stream_name = create_stream_name(match_id)
-    await streamList.broadcast(stream_name, serverPackets.matchComplete)
+    await stream_messages.broadcast_data(stream_name, serverPackets.matchComplete)
 
     # Destroy playing stream
     playing_stream_name = create_playing_stream_name(match_id)
@@ -991,7 +998,7 @@ async def changePassword(match_id: int, newPassword: str) -> None:
     assert multiplayer_match is not None
 
     # Send password change to every user in match
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         create_stream_name(match_id),
         serverPackets.changeMatchPassword(multiplayer_match["match_password"]),
     )
@@ -1082,7 +1089,7 @@ async def playerFailed(match_id: int, user_id: int) -> None:
 
     # Send packet to all players
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         playing_stream_name,
         serverPackets.playerFailed(slot_id),
     )
@@ -1186,11 +1193,11 @@ async def sendUpdates(match_id: int) -> None:
     uncensored_data = await serverPackets.updateMatch(match_id)
     if uncensored_data is not None:
         stream_name = create_stream_name(match_id)
-        await streamList.broadcast(stream_name, uncensored_data)
+        await stream_messages.broadcast_data(stream_name, uncensored_data)
 
     censored_data = await serverPackets.updateMatch(match_id, censored=True)
     if censored_data is not None:
-        await streamList.broadcast("lobby", censored_data)
+        await stream_messages.broadcast_data("lobby", censored_data)
     else:
         logger.error(
             f"Failed to send updates to a multiplayer match",
@@ -1287,7 +1294,7 @@ async def start(match_id: int) -> bool:
             await osuToken.joinStream(user_token["token_id"], playing_stream_name)
 
     # Send match start packet
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         playing_stream_name,
         await serverPackets.matchStart(match_id),
     )
@@ -1343,7 +1350,7 @@ async def abort(match_id: int) -> None:
     await sendUpdates(match_id)
 
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(playing_stream_name, serverPackets.matchAbort)
+    await stream_messages.broadcast_data(playing_stream_name, serverPackets.matchAbort)
     await streamList.dispose(playing_stream_name)
 
 

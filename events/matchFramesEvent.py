@@ -5,7 +5,7 @@ from constants import serverPackets
 from objects import match
 from objects import osuToken
 from objects import slot
-from objects import streamList
+from objects import stream_messages
 from objects.osuToken import Token
 
 
@@ -55,7 +55,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     )
 
     # Enqueue frames to who's playing
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         match.create_playing_stream_name(multiplayer_match["match_id"]),
         serverPackets.matchFrames(match_slot_id, rawPacketData),
     )

@@ -42,7 +42,7 @@ from objects import match
 from objects import matchList
 from objects import osuToken
 from objects import slot
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects.redisLock import redisLock
 
@@ -150,7 +150,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
         return "Guy was going to say @everyone and leave..."
 
     userID = await user_utils.get_id_from_username(fro)
-    await streamList.broadcast("main", serverPackets.notification(msg))
+    await stream_messages.broadcast_data("main", serverPackets.notification(msg))
     await audit_logs.send_log(
         userID,
         f"has sent an alert to all users: '{msg}'",
@@ -600,7 +600,7 @@ async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
             if not osuToken.is_staff(value["privileges"]):
                 who.append(value["user_id"])
 
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             serverPackets.notification(
                 " ".join(

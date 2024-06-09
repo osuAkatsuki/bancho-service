@@ -33,6 +33,8 @@ elif [[ $APP_COMPONENT == "timeout-inactive-tokens" ]]; then
   exec /scripts/run-timeout-inactive-tokens.sh
 elif [[ $APP_COMPONENT == "consume-pubsub-events" ]]; then
   exec /scripts/run-consume-pubsub-events.sh
+elif [[ $APP_COMPONENT == "trim-outdated-streams" ]]; then
+  exec /scripts/run-trim-outdated-streams.sh
 else
   echo "Unknown APP_COMPONENT: $APP_COMPONENT"
   exit 1
