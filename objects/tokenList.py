@@ -44,11 +44,9 @@ async def addToken(
 
     await osuToken.updateCachedStats(original_token["token_id"])
 
-    await streamList.add(f"streams:tokens/{original_token['token_id']}:messages")
-    await osuToken.joinStream(
-        original_token["token_id"],
-        f"streams:tokens/{original_token['token_id']}:messages",
-    )
+    token_stream_name = f"tokens/{original_token['token_id']}:messages"
+    await streamList.add(token_stream_name)
+    await osuToken.joinStream(original_token["token_id"], token_stream_name)
 
     await osuToken.joinStream(original_token["token_id"], "main")
     if osuToken.is_staff(original_token["privileges"]):
