@@ -15,7 +15,7 @@ from constants import serverPackets
 from objects import channelList
 from objects import glob
 from objects import osuToken
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects.redisLock import redisLock
 
@@ -43,11 +43,11 @@ async def connect() -> None:
         assert token is not None
 
         await osuToken.update_token(token["token_id"], action_id=actions.IDLE)
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             await serverPackets.userPanel(CHATBOT_USER_ID),
         )
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             await serverPackets.userStats(CHATBOT_USER_ID),
         )

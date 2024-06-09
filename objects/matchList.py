@@ -11,6 +11,7 @@ from objects import channelList
 from objects import match
 from objects import osuToken
 from objects import slot
+from objects import stream_messages
 from objects import streamList
 
 
@@ -113,14 +114,17 @@ async def disposeMatch(match_id: int) -> None:
     playing_stream_name = match.create_playing_stream_name(match_id)
 
     # Send matchDisposed packet before disposing streams
-    await streamList.broadcast(stream_name, serverPackets.disposeMatch(match_id))
+    await stream_messages.broadcast_data(
+        stream_name,
+        serverPackets.disposeMatch(match_id),
+    )
 
     # Dispose all streams
     await streamList.dispose(stream_name)
     await streamList.dispose(playing_stream_name)
 
     # Send match dispose packet to everyone in lobby
-    await streamList.broadcast("lobby", serverPackets.disposeMatch(match_id))
+    await stream_messages.broadcast_data("lobby", serverPackets.disposeMatch(match_id))
     await match.delete_match(match_id)
 
 
