@@ -12,7 +12,7 @@ def make_key(stream_name: str) -> str:
 
 
 class StreamMessage(TypedDict):
-    stream_name: str
+    stream_key: str
     packet_data: bytes
     excluded_token_ids: str
 
@@ -34,30 +34,32 @@ async def broadcast_data(
         )
         return
 
+    stream_key = make_key(stream_name)
+
     fields: StreamMessage = {
-        "stream_name": stream_name,
+        "stream_key": stream_key,
         "packet_data": data,
         "excluded_token_ids": ",".join(excluded_token_ids),
     }
-    await glob.redis.xadd(make_key(stream_name), fields)
+    await glob.redis.xadd(stream_key, fields)
 
 
 async def unicast_data(token_id: str, data: bytes) -> None:
     """Send some data to a single client in this stream."""
-    stream_name = f"bancho:tokens:{token_id}:packet_queue"
+    stream_key = f"bancho:tokens:{token_id}:packet_queue"
 
     fields: StreamMessage = {
-        "stream_name": stream_name,
+        "stream_key": stream_key,
         "packet_data": data,
         "excluded_token_ids": "",
     }
-    await glob.redis.xadd(stream_name, fields)
+    await glob.redis.xadd(stream_key, fields)
 
 
 async def _get_token_stream_offsets(token_id: str) -> dict[str, str]:
     return {
-        make_key(stream_name.decode()): stream_offset.decode()
-        for stream_name, stream_offset in (
+        stream_key.decode(): stream_offset.decode()
+        for stream_key, stream_offset in (
             await glob.redis.hgetall(f"bancho:tokens:{token_id}:stream_offsets")
         ).items()
     }
@@ -81,7 +83,7 @@ async def read_all_pending_data(token_id: str) -> bytes:
     pending_data = bytearray()
     new_stream_offsets: dict[str, str] = {}
 
-    for stream_name, stream_data in data:
+    for stream_key, stream_data in data:
         message_id: bytes | None = None
         for message_id, fields in stream_data:
             excluded_token_ids = fields[b"excluded_token_ids"].decode().split(",")
@@ -91,9 +93,17 @@ async def read_all_pending_data(token_id: str) -> bytes:
             pending_data += fields[b"packet_data"]
 
         if message_id is not None:
-            new_stream_offsets[stream_name.decode()] = message_id.decode()
+            new_stream_offsets[stream_key.decode()] = message_id.decode()
 
     if new_stream_offsets:
         await _set_token_stream_offsets(token_id, new_stream_offsets)
+
+        # Always trim the tokens's personal packet queue
+        user_token_stream_key = f"bancho:tokens:{token_id}:packet_queue"
+        if user_token_stream_key in new_stream_offsets:
+            await glob.redis.xtrim(
+                user_token_stream_key,
+                minid=new_stream_offsets[user_token_stream_key],
+            )
 
     return pending_data

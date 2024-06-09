@@ -184,6 +184,11 @@ async def create_token(
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
         await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
         await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
+        await pipe.hset(
+            f"{make_key(token_id)}:stream_offsets",
+            f"{make_key(token_id)}:packet_queue",
+            "0-0",
+        )
         await pipe.execute()
 
     return token
@@ -434,12 +439,19 @@ async def get_streams(token_id: str) -> set[str]:
 
 async def add_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
-    await glob.redis.hset(f"{make_key(token_id)}:stream_offsets", stream_name, "0-0")
+    await glob.redis.hset(
+        f"{make_key(token_id)}:stream_offsets",
+        stream_messages.make_key(stream_name),
+        "0-0",  # TODO: get the current offset of the stream
+    )
 
 
 async def remove_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
-    await glob.redis.hdel(f"{make_key(token_id)}:stream_offsets", stream_name)
+    await glob.redis.hdel(
+        f"{make_key(token_id)}:stream_offsets",
+        stream_messages.make_key(stream_name),
+    )
 
 
 # messages
