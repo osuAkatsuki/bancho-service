@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from objects import glob
@@ -60,6 +61,17 @@ async def leave(stream_name: str, token_id: str) -> None:
 import time
 
 
+async def xd(stream_name: str, et, st):
+    client_count = await stream.get_client_count(stream_name)
+    logging.info(
+        "Broadcast timing",
+        extra={
+            "time_elapsed_ms": (et - st) * 1000,
+            "client_count": client_count,
+        },
+    )
+
+
 async def broadcast(
     stream_name: str,
     data: bytes,
@@ -84,10 +96,7 @@ async def broadcast(
         excluded_token_ids=excluded_token_ids,
     )
     et = time.time()
-    logging.info(
-        "Broadcast timing",
-        extra={"time_elapsed_ms": (et - st) * 1000},
-    )
+    asyncio.create_task(xd(stream_name, et, st))
 
 
 async def multicast(
