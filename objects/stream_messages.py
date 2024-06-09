@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
 from typing import TypedDict
 
-from objects import glob, streamList
+from objects import glob
+from objects import streamList
 
 
 def make_key(stream_name: str) -> str:
