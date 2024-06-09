@@ -437,10 +437,12 @@ async def get_streams(token_id: str) -> set[str]:
 
 async def add_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
+    await glob.redis.hset(f"{make_key(token_id)}:stream_offsets", stream_name, "0-0")
 
 
 async def remove_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
+    await glob.redis.hdel(f"{make_key(token_id)}:stream_offsets", stream_name)
 
 
 # messages
@@ -509,10 +511,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
             extra={"num_bytes": len(data), "token_id": token_id},
         )
 
-    await stream_messages.broadcast_data(
-        f"{make_key(token_id)}:packet_queue",
-        data,
-    )
+    await stream_messages.unicast_data(token_id, data)
 
 
 async def joinChannel(token_id: str, channel_name: str) -> None:

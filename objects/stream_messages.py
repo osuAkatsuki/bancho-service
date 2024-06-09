@@ -42,9 +42,21 @@ async def broadcast_data(
     await glob.redis.xadd(make_key(stream_name), fields)
 
 
+async def unicast_data(token_id: str, data: bytes) -> None:
+    """Send some data to a single client in this stream."""
+    stream_name = f"bancho:tokens:{token_id}:packet_queue"
+
+    fields: StreamMessage = {
+        "stream_name": stream_name,
+        "packet_data": data,
+        "excluded_token_ids": "",
+    }
+    await glob.redis.xadd(stream_name, fields)
+
+
 async def _get_token_stream_offsets(token_id: str) -> dict[str, str]:
     return {
-        make_key(stream_name): stream_offset
+        make_key(stream_name.decode()): stream_offset.decode()
         for stream_name, stream_offset in (
             await glob.redis.hgetall(f"bancho:tokens:{token_id}:stream_offsets")
         ).items()
@@ -72,11 +84,11 @@ async def read_all_pending_data(token_id: str) -> bytes:
     for stream_name, stream_data in data:
         message_id: bytes | None = None
         for message_id, fields in stream_data:
-            excluded_token_ids = fields["excluded_token_ids"].decode().split(",")
+            excluded_token_ids = fields[b"excluded_token_ids"].decode().split(",")
             if token_id in excluded_token_ids:
                 continue
 
-            pending_data += fields["packet_data"]
+            pending_data += fields[b"packet_data"]
 
         if message_id is not None:
             new_stream_offsets[stream_name.decode()] = message_id.decode()
