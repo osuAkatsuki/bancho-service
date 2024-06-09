@@ -102,3 +102,25 @@ apps:
           value: consume-pubsub-events
       imagePullSecrets:
         - name: osuakatsuki-registry-secret
+
+  - name: bancho-service-trim-outdated-streams-daemon
+    environment: production
+    codebase: bancho-service
+    replicaCount: 1
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      resources:
+        limits:
+          cpu: 200m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 75Mi
+      env:
+        - name: APP_COMPONENT
+          value: trim-outdated-streams
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret
