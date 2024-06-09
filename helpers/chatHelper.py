@@ -478,6 +478,15 @@ async def _handle_public_message(
                 channel_names=channel_names,
                 message=chatbot_response["response"],
             )
+            await osuToken.enqueue(
+                sender_token["token_id"],
+                serverPackets.sendMessage(
+                    fro=chatbot_token["username"],
+                    to=channel_names["client_name"],
+                    message=chatbot_response["response"],
+                    fro_id=chatbot_token["user_id"],
+                ),
+            )
         else:
             await _broadcast_public_message(
                 sender_token=chatbot_token,
