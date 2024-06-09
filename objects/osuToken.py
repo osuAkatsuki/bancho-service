@@ -187,7 +187,6 @@ async def create_token(
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
         await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
         await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
-        await pipe.set(make_key(token_id), orjson.dumps(token))
         await pipe.execute()
 
     return token
@@ -203,7 +202,7 @@ async def get_online_players_count() -> int:
 
 
 async def get_token(token_id: str) -> Token | None:
-    token = await glob.redis.get(make_key(token_id))
+    token = await glob.redis.hget("bancho:tokens:json", token_id)
     if token is None:
         return None
     return cast(Token, orjson.loads(token))
@@ -373,7 +372,6 @@ async def update_token(
         token["amplitude_device_id"] = amplitude_device_id
 
     async with glob.redis.pipeline() as pipe:
-        await pipe.set(make_key(token_id), orjson.dumps(token))
         await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
         await pipe.execute()
 
@@ -389,7 +387,6 @@ async def delete_token(token_id: str) -> None:
         await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
         await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
         await pipe.hdel("bancho:tokens:json", token_id)
-        await pipe.delete(make_key(token_id))
         await pipe.delete(f"{make_key(token_id)}:channels")
         await pipe.delete(f"{make_key(token_id)}:spectators")
         await pipe.delete(f"{make_key(token_id)}:streams")
