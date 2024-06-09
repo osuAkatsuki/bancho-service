@@ -16,6 +16,7 @@ from objects import channelList
 from objects import chatbot
 from objects import osuToken
 from objects import stream
+from objects import stream_messages
 from objects import streamList
 from objects.chatbot import ChatbotResponse
 
@@ -279,22 +280,19 @@ async def _broadcast_public_message(
         message=message,
         fro_id=sender_token["user_id"],
     )
-
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         f"chat/{channel_names['server_name']}",
         packet,
-        # We don't send the packet to the sender because
-        # their game already displays what they sent
+        # (Don't re-send to sender; they already see it)
         excluded_token_ids=[sender_token["token_id"]],
     )
 
 
-async def _multicast_public_message(
+async def _send_public_message_to_staff(
     *,
     sender_token: osuToken.Token,
     channel_names: ContextualChannelNames,
     message: str,
-    recipient_token_ids: list[str],
 ) -> None:
     packet = serverPackets.sendMessage(
         fro=sender_token["username"],
@@ -302,12 +300,7 @@ async def _multicast_public_message(
         message=message,
         fro_id=sender_token["user_id"],
     )
-
-    await streamList.multicast(
-        stream_name=f"chat/{channel_names['server_name']}",
-        data=packet,
-        recipient_token_ids=recipient_token_ids,
-    )
+    await stream_messages.broadcast_data(stream_name="staff", data=packet)
 
 
 def _is_chatbot_interaction_message(message: str) -> bool:
@@ -427,16 +420,9 @@ async def _handle_public_message(
         message,
     )
 
-    recipient_tokens = [
-        token
-        for token in await osuToken.get_tokens()
-        if (
-            # Never send messages to any chatbot sessions
-            token["user_id"] != CHATBOT_USER_ID
-            # Never send our messages to our own session
-            and token["token_id"] != sender_token["token_id"]
-        )
-    ]
+    # TODO: token["user_id"] != CHATBOT_USER_ID
+    # TODO: and token["token_id"] != sender_token["token_id"]
+    only_send_to_staff = False
 
     chatbot_response: ChatbotResponse | None = None
     if _is_chatbot_interaction(message, recipient_name):
@@ -465,36 +451,39 @@ async def _handle_public_message(
             # This means that only the sender and staff members are
             # able to see the command invocation and chatbot response.
             # TODO: "hidden" is more like e.g. "private_interaction".
-            recipient_tokens = [
-                token
-                for token in recipient_tokens
-                if osuToken.is_staff(token["privileges"])
-            ]
-
-    recipient_token_ids = [t["token_id"] for t in recipient_tokens]
+            only_send_to_staff = True
 
     # Send the user's message
-    await _multicast_public_message(
-        sender_token=sender_token,
-        channel_names=channel_names,
-        message=message,
-        recipient_token_ids=recipient_token_ids,
-    )
+    if only_send_to_staff:
+        await _send_public_message_to_staff(
+            sender_token=sender_token,
+            channel_names=channel_names,
+            message=message,
+        )
+    else:
+        await _broadcast_public_message(
+            sender_token=sender_token,
+            channel_names=channel_names,
+            message=message,
+        )
 
     if chatbot_response is not None:
         chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
         assert chatbot_token is not None
 
-        # We want to send the chatbot's response to the initial sender
-        recipient_token_ids.append(sender_token["token_id"])
-
         # Send the chatbot's response
-        await _multicast_public_message(
-            sender_token=chatbot_token,
-            channel_names=channel_names,
-            message=chatbot_response["response"],
-            recipient_token_ids=recipient_token_ids,
-        )
+        if only_send_to_staff:
+            await _send_public_message_to_staff(
+                sender_token=chatbot_token,
+                channel_names=channel_names,
+                message=chatbot_response["response"],
+            )
+        else:
+            await _broadcast_public_message(
+                sender_token=chatbot_token,
+                channel_names=channel_names,
+                message=chatbot_response["response"],
+            )
 
     return None
 
