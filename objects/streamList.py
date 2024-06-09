@@ -57,6 +57,9 @@ async def leave(stream_name: str, token_id: str) -> None:
     await stream.remove_client(stream_name, token_id)
 
 
+import time
+
+
 async def broadcast(
     stream_name: str,
     data: bytes,
@@ -67,6 +70,7 @@ async def broadcast(
     if excluded_token_ids is None:
         excluded_token_ids = []
 
+    st = time.time()
     if not await stream_exists(stream_name):
         logging.warning(
             "Could not broadcast to stream which does not exist",
@@ -78,6 +82,11 @@ async def broadcast(
         stream_name=stream_name,
         data=data,
         excluded_token_ids=excluded_token_ids,
+    )
+    et = time.time()
+    logging.info(
+        "Broadcast timing",
+        extra={"time_elapsed_ms": (et - st) * 1000},
     )
 
 
