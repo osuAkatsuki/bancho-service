@@ -57,6 +57,7 @@ async def main() -> int:
 
         # Initialize stremas
         await streamList.add("main")
+        await streamList.add("staff")
         await streamList.add("lobby")
 
         logger.info(
