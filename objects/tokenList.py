@@ -4,6 +4,7 @@ from common.log import logger
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
+from objects import streamList
 
 
 async def addToken(
@@ -42,6 +43,12 @@ async def addToken(
     )
 
     await osuToken.updateCachedStats(original_token["token_id"])
+
+    await streamList.add(f"streams:tokens/{original_token['token_id']}:messages")
+    await osuToken.joinStream(
+        original_token["token_id"],
+        f"streams:tokens/{original_token['token_id']}:messages",
+    )
 
     await osuToken.joinStream(original_token["token_id"], "main")
     if osuToken.is_staff(original_token["privileges"]):

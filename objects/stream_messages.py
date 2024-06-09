@@ -35,23 +35,10 @@ async def broadcast_data(
         return
 
     stream_key = make_key(stream_name)
-
     fields: StreamMessage = {
         "stream_key": stream_key,
         "packet_data": data,
         "excluded_token_ids": ",".join(excluded_token_ids),
-    }
-    await glob.redis.xadd(stream_key, fields)
-
-
-async def unicast_data(token_id: str, data: bytes) -> None:
-    """Send some data to a single client in this stream."""
-    stream_key = f"bancho:tokens:{token_id}:packet_queue"
-
-    fields: StreamMessage = {
-        "stream_key": stream_key,
-        "packet_data": data,
-        "excluded_token_ids": "",
     }
     await glob.redis.xadd(stream_key, fields)
 
@@ -97,14 +84,6 @@ async def read_all_pending_data(token_id: str) -> bytes:
 
     if new_stream_offsets:
         await _set_token_stream_offsets(token_id, new_stream_offsets)
-
-        # Always trim the tokens's personal packet queue
-        user_token_stream_key = f"bancho:tokens:{token_id}:packet_queue"
-        if user_token_stream_key in new_stream_offsets:
-            await glob.redis.xtrim(
-                user_token_stream_key,
-                minid=new_stream_offsets[user_token_stream_key],
-            )
 
     return pending_data
 

@@ -36,7 +36,7 @@ from objects import streamList
 # (set[userid]) bancho:tokens:{token_id}:spectators
 # (list) bancho:tokens:{token_id}:messages
 # (list[userid]) bancho:tokens:{token_id}:sent_away_messages
-# (list) bancho:tokens:{token_id}:packet_queue
+# (stream) streams:tokens/{token_id}:messages
 
 
 class LastNp(TypedDict):
@@ -394,8 +394,6 @@ async def delete_token(token_id: str) -> None:
         await pipe.delete(f"{make_key(token_id)}:streams")
         await pipe.delete(f"{make_key(token_id)}:message_history")
         await pipe.delete(f"{make_key(token_id)}:sent_away_messages")
-
-        await pipe.delete(f"{make_key(token_id)}:packet_queue")
         await pipe.delete(f"{make_key(token_id)}:processing_lock")
         await pipe.execute()
 
@@ -522,7 +520,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
             extra={"num_bytes": len(data), "token_id": token_id},
         )
 
-    await stream_messages.unicast_data(token_id, data)
+    await stream_messages.broadcast_data(f"tokens/{token_id}:messages", data)
 
 
 async def joinChannel(token_id: str, channel_name: str) -> None:
