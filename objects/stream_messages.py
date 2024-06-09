@@ -42,14 +42,6 @@ async def broadcast_data(
         excluded_token_ids = []
 
     st = time.time()
-    # TODO: potentially remove this check? it's ~55% of the function's wall time
-    if not await streamList.stream_exists(stream_name):
-        logging.warning(
-            "Could not broadcast to stream which does not exist",
-            extra={"stream_name": stream_name},
-        )
-        return
-
     stream_key = make_key(stream_name)
     fields: StreamMessage = {
         "stream_key": stream_key,
