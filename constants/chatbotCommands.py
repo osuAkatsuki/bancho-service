@@ -16,6 +16,7 @@ from amplitude import BaseEvent
 
 import settings
 from common import generalUtils
+from common import job_scheduling
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
@@ -34,7 +35,6 @@ from constants import matchTeamTypes
 from constants import serverPackets
 from constants import slotStatuses
 from helpers import chatHelper as chat
-from helpers import systemHelper
 from objects import channelList
 from objects import chatbot
 from objects import glob
@@ -42,7 +42,7 @@ from objects import match
 from objects import matchList
 from objects import osuToken
 from objects import slot
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects.redisLock import redisLock
 
@@ -150,7 +150,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
         return "Guy was going to say @everyone and leave..."
 
     userID = await user_utils.get_id_from_username(fro)
-    await streamList.broadcast("main", serverPackets.notification(msg))
+    await stream_messages.broadcast_data("main", serverPackets.notification(msg))
     await audit_logs.send_log(
         userID,
         f"has sent an alert to all users: '{msg}'",
@@ -341,7 +341,7 @@ async def silence(fro: str, chan: str, message: list[str]) -> str:
     syntax="<target_name> <reason>",
     hidden=True,
 )
-async def removeSilence(fro: str, chan: str, message: list[str]) -> str:
+async def unsilence(fro: str, chan: str, message: list[str]) -> str:
     """Unsilence a specified player."""
     message = [m.lower() for m in message]
     target = message[0]
@@ -561,45 +561,6 @@ async def unrestrict(fro: str, chan: str, message: list[str]) -> str:
     return f"{target} has been unrestricted."
 
 
-# used immediately below
-async def _restartShutdown(restart: bool) -> str:
-    """Restart (if restart = True) or shutdown (if restart = False) the service safely"""
-    action = "restart" if restart else "shutdown"
-    msg = " ".join(
-        [
-            "We are performing some maintenance",
-            f"Akatsuki will {action} in 5 seconds.",
-            "Thank you for your patience.",
-        ],
-    )
-    await systemHelper.scheduleShutdown(
-        sendRestartTime=5,
-        restart=restart,
-        message=msg,
-    )
-    return msg
-
-
-@command(
-    trigger="!system restart",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
-    hidden=True,
-)
-async def systemRestart(fro: str, chan: str, message: list[str]) -> str:
-    """Restart the server."""
-    return await _restartShutdown(True)
-
-
-@command(
-    trigger="!system shutdown",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
-    hidden=True,
-)
-async def systemShutdown(fro: str, chan: str, message: list[str]) -> str:
-    """Shutdown the server."""
-    return await _restartShutdown(False)
-
-
 @command(
     trigger="!system reload",
     privs=privileges.ADMIN_MANAGE_SETTINGS,
@@ -639,7 +600,7 @@ async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
             if not osuToken.is_staff(value["privileges"]):
                 who.append(value["user_id"])
 
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             serverPackets.notification(
                 " ".join(
@@ -660,46 +621,6 @@ async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
 
     # Chat output
     return msg
-
-
-@command(
-    trigger="!system status",
-    privs=privileges.ADMIN_MANAGE_SERVERS,
-    hidden=True,
-)
-async def systemStatus(fro: str, chan: str, message: list[str]) -> str:
-    """Print debugging info related to the server's state."""
-    # Print some server info
-    data = await systemHelper.getSystemInfo()
-
-    # Final message
-    letsVersion = await glob.redis.get("lets:version")
-    letsVersion = letsVersion.decode("utf-8") if letsVersion else r"¯\_(ツ)_/¯"
-
-    msg = [
-        f"bancho-service",
-        "made by the Akatsuki, and Ripple teams\n",
-        "=== BANCHO STATS ===",
-        f'Connected users: {data["connectedUsers"]}',
-        f'Multiplayer matches: {data["matches"]}',
-        f'Uptime: {data["uptime"]}\n',
-        "=== SYSTEM STATS ===",
-        f'CPU: {data["cpuUsage"]}%',
-        f'RAM: {data["usedMemory"]}GB/{data["totalMemory"]}GB',
-    ]
-
-    if data["unix"]:
-        msg.append(
-            "/".join(
-                [
-                    f'Load average: {data["loadAverage"][0]}',
-                    data["loadAverage"][1],
-                    data["loadAverage"][2],
-                ],
-            ),
-        )
-
-    return "\n".join(msg)
 
 
 @overload
@@ -738,6 +659,7 @@ async def getPPMessage(
             params={"b": currentMap, "m": currentMods},
             timeout=5,
         )
+        response.raise_for_status()
     except:
         logger.exception(
             "Failed to retrieve PP from score-service API",
@@ -748,9 +670,6 @@ async def getPPMessage(
             },
         )
         return "Score server currently down, could not retrieve PP."
-
-    if not response or response.status_code != 200:
-        return "API Timeout. Please try again in a few seconds."
 
     data = response.json()
 
@@ -822,10 +741,7 @@ async def _get_beatmap_download_embed(beatmapID: int) -> str:
     )
 
 
-@command(
-    trigger="!mapdl",
-    hidden=False,
-)
+@command(trigger="!mapdl", hidden=False)
 async def mapdl(fro: str, chan: str, message: list[str]) -> str:
     """Get a download link for the beatmap in the current context (multi, spectator)."""
     try:
@@ -852,22 +768,10 @@ async def mapdl(fro: str, chan: str, message: list[str]) -> str:
     return f"[Map Download] {await _get_beatmap_download_embed(beatmap_id)}"
 
 
-@command(
-    trigger="\x01ACTION is playing",
-    hidden=True,
-)
-@command(
-    trigger="\x01ACTION is editing",
-    hidden=True,
-)
-@command(
-    trigger="\x01ACTION is watching",
-    hidden=True,
-)
-@command(
-    trigger="\x01ACTION is listening to",
-    hidden=True,
-)
+@command(trigger="\x01ACTION is playing", hidden=True)
+@command(trigger="\x01ACTION is editing", hidden=True)
+@command(trigger="\x01ACTION is watching", hidden=True)
+@command(trigger="\x01ACTION is listening to", hidden=True)
 async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
     # don't document this, don't want it showing up in !help
     if not (token := await osuToken.get_token_by_username(fro)):
@@ -885,10 +789,6 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             else None
         )
 
-    # Run the command in PM only
-    if chan.startswith("#"):
-        return None
-
     npmsg = " ".join(message[1:])
 
     match = chatbot.NOW_PLAYING_REGEX.fullmatch(npmsg)
@@ -904,8 +804,27 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
         for _mods in match["mods"][1:].split(" "):
             mods_int |= mods.NP_MAPPING_TO_INTS[_mods]
 
-    # Get beatmap id from URL
-    beatmap_id = int(match["bid"])
+    if match["bid"] is not None:
+        # Get beatmap id from URL
+        beatmap_id = int(match["bid"])
+    else:
+        # They /np'ed a map, but no beatmap id is present.
+        # We'll need to use the set id to find a beatmap id.
+        beatmapset_id = int(match["sid"])
+        beatmap_rec = await glob.db.fetch(
+            """
+            SELECT beatmap_id
+            FROM beatmaps
+            WHERE beatmapset_id = %s
+            ORDER BY beatmap_id DESC
+            LIMIT 1
+            """,
+            [beatmapset_id],
+        )
+        if beatmap_rec is None:
+            return "Could not find a beatmap for this beatmapset."
+
+        beatmap_id = beatmap_rec["beatmap_id"]
 
     # Return tillerino message
     await osuToken.update_token(
@@ -916,6 +835,10 @@ async def tillerinoNp(fro: str, chan: str, message: list[str]) -> str | None:
             "accuracy": -1.0,
         },
     )
+
+    # Send back pp values only if this is a DM (not a public channel)
+    if chan.startswith("#"):
+        return None
 
     return await getPPMessage(token["user_id"])
 
@@ -973,45 +896,6 @@ async def tillerinoMods(fro: str, chan: str, message: list[str]) -> str | None:
 
     # Return tillerino message for that beatmap with mods
     return await getPPMessage(token["user_id"])
-
-
-# @command(
-# async    trigger='!acc',
-#    syntax='<acc>',
-#    hidden=True
-# )
-# async def tillerinoAcc(fro: str, chan: str, message: list[str]) -> Optional[str]:
-#    """Get the pp values for the last /np'ed map, with specified acc."""
-#    try:
-#        # Run the command in PM only
-#        if chan.startswith("#"):
-#            return  None
-#
-#        # Get token and user ID
-#        token = await osuToken.get_token_by_username(fro)
-#        if not token:
-#            return  None
-#        userID = token.userID
-#
-#        # Make sure the user has triggered the bot with /np command
-#        if not token.tillerino[0]:
-#            return "Please give me a beatmap first with /np command."
-#
-#        # Convert acc to float
-#        acc = float(message[0].replace('%', ''))
-#
-#        if acc < 0 or acc > 100:
-#            raise ValueError
-#
-#        # Set new tillerino list acc value
-#        token.tillerino[2] = acc
-#
-#        # Return tillerino message for that beatmap with mods
-#        return await getPPMessage(userID)
-#    except ValueError:
-#        return "Invalid acc value."
-#    except:
-#        return
 
 
 @command(trigger="!last", hidden=False)
@@ -1286,92 +1170,6 @@ async def unfreeze(fro: str, chan: str, message: list[str]) -> str:
     return f"Unfroze {target}."
 
 
-@command(trigger="!update", privs=privileges.ADMIN_MANAGE_PRIVILEGES, hidden=True)
-async def updateServer(fro: str, chan: str, message: list[str]) -> None:
-    """Broadcast a notification to all online players, and reboot the server after a short delay."""
-    await streamList.broadcast(
-        "main",
-        serverPackets.notification(
-            "\n".join(
-                [
-                    "Akatsuki is being updated, the server will restart now.",
-                    "Average downtime is under 30 seconds.\n",
-                    "Score submission will not be affected.",
-                ],
-            ),
-        ),
-    )
-
-    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
-
-
-@command(trigger="!ss", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
-async def silentShutdown(fro: str, chan: str, message: list[str]) -> None:
-    """Silently shutdown the server."""
-    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=False)
-
-
-@command(trigger="!sr", privs=privileges.ADMIN_MANAGE_SERVERS, hidden=True)
-async def silentRestart(
-    fro: str,
-    chan: str,
-    message: list[str],
-) -> None:  # for beta moments
-    """Silently restart the server."""
-    await systemHelper.scheduleShutdown(sendRestartTime=0, restart=True)
-
-
-@command(
-    trigger="!changename",
-    privs=privileges.USER_DONOR,
-    syntax="<new_username>",
-    hidden=True,
-)
-async def changeUsernameSelf(fro: str, chan: str, message: list[str]) -> str:
-    """Change your own username."""
-    # For premium members to change their own usernames
-    newUsername = " ".join(message)
-    userID = await user_utils.get_id_from_username(fro)
-
-    if not chatbot.USERNAME_REGEX.match(newUsername) or (
-        " " in newUsername and "_" in newUsername
-    ):
-        return "Invalid username."
-
-    newUsernameSafe = user_utils.get_safe_username(newUsername)
-
-    if user_utils.get_id_from_safe_username(newUsernameSafe):
-        return "That username is already in use."
-
-    await user_utils.change_username(userID, newUsername)
-
-    notif_pkt = serverPackets.notification(
-        "\n".join(
-            [
-                "You username has been changed.",
-                f'New: "{newUsername}"\n',
-                "Please relogin using that name.",
-            ],
-        ),
-    )
-
-    for token in await osuToken.get_all_tokens_by_user_id(userID):
-        await osuToken.enqueue(token["token_id"], notif_pkt)
-        await osuToken.kick(
-            token["token_id"],
-        )
-
-    await user_utils.append_cm_notes(
-        userID,
-        f"Username changed (self): '{fro}' -> '{newUsername}'.",
-    )
-    await audit_logs.send_log(
-        userID,
-        f"changed their name from '{fro}' to '{newUsername}'.",
-    )
-    return f"Changed username to ({fro} -> {newUsername})."
-
-
 @command(
     trigger="!map",
     privs=privileges.ADMIN_MANAGE_BEATMAPS,
@@ -1397,8 +1195,16 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     if message[1] not in {"set", "map"}:
         return "Scope must either be set or map."
 
-    status_to_int = lambda s: {"love": 5, "rank": 2, "unrank": 0}[s]
-    status_to_readable = lambda s: {5: "Loved", 2: "Ranked", 0: "Unranked"}[s]
+    status_to_int: Callable[[str], int] = lambda s: {
+        "love": 5,
+        "rank": 2,
+        "unrank": 0,
+    }[s]
+    status_to_readable: Callable[[int], str] = lambda s: {
+        5: "Loved",
+        2: "Ranked",
+        0: "Unranked",
+    }[s]
 
     status = status_to_int(message[0])
     status_readable = status_to_readable(status)
@@ -1443,8 +1249,11 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     )
     assert beatmap_md5s is not None
 
-    for md5 in beatmap_md5s:
-        await glob.redis.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+    async with glob.redis.pipeline() as pipe:
+        for md5 in beatmap_md5s:
+            await pipe.publish("cache:map_update", f"{md5['beatmap_md5']},{status}")
+
+        await pipe.execute()
 
     # Service logos as emojis
     icon_akatsuki = "<:akatsuki:1160855094712078368>"
@@ -1453,7 +1262,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     icon_nerinyan = ":cat2:"  # placeholder - they don't have a logo
 
     # osu! game mode emoji dictionary
-    mode_to_emoji = lambda s: {
+    mode_to_emoji: Callable[[int], str] = lambda s: {
         3: "<:modemania:1087863868782547014>",
         2: "<:modefruits:1087863938982612994>",
         1: "<:modetaiko:1087863916278853662>",
@@ -1461,8 +1270,12 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     }[s]
 
     # Colour & icons used in stable client
-    status_to_colour = lambda s: {5: 0xFF66AA, 2: 0x6BCEFF, 0: 0x696969}[s]
-    status_to_emoji_id = lambda s: {
+    status_to_colour: Callable[[int], int] = lambda s: {
+        5: 0xFF66AA,
+        2: 0x6BCEFF,
+        0: 0x696969,
+    }[s]
+    status_to_emoji_id: Callable[[int], str] = lambda s: {
         5: "1166976753869279272",
         2: "1166976760424964126",
         0: "1166976756230651934",
@@ -1497,7 +1310,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         thumbnail=f"https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png",
     )
-    asyncio.create_task(webhook.post())
+    job_scheduling.schedule_job(webhook.post())
 
     if is_set:
         beatmap_url = (
@@ -1538,16 +1351,6 @@ async def postAnnouncement(fro: str, chan: str, message: list[str]) -> str:
         return "Failed to send announcement"
 
     return "Announcement successfully sent."
-
-
-@command(trigger="!playtime", hidden=False)
-async def getPlaytime(fro: str, chan: str, message: list[str]) -> str:
-    user_id = await user_utils.get_id_from_username(fro)
-    total_playtime = await user_utils.get_playtime_total(user_id)
-    readable_time = generalUtils.secondsToReadable(total_playtime)
-    return (
-        f"{fro}: Your total osu!Akatsuki playtime (all gamemodes) is: {readable_time}."
-    )
 
 
 @command(
@@ -1626,27 +1429,6 @@ async def getMapNominator(fro: str, chan: str, message: list[str]) -> str | None
     return f'{res["song_name"]} was {status_readable} by: {rankedby}.'
 
 
-# NOTE: This is old and poor code design, this may be refactored
-#       at a later date, but is currently 'out of order'.
-"""
-def competitionMap(fro: str, chan: str, message: list[str]) -> str:
-    if not (result := await glob.db.fetch( # TODO: this command and entire idea sucks
-        'SELECT competitions.*, beatmaps.song_name FROM competitions '
-        'LEFT JOIN beatmaps ON competitions.map = beatmaps.beatmap_id '
-        'WHERE end_time > UNIX_TIMESTAMP()')):
-        return 'There are currently no active contests.'
-
-    return "[Contest] [https://osu.ppy.sh/beatmaps/{beatmap_id} {song_name}] {relax}{leader} | Reward: {reward} | End date: {end_time} UTC.".format(relax='+RX' if result['relax'] else '', beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(await user_utils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
-
-def announceContest(fro: str, chan: str, message: list[str]) -> None:
-    await streamList.broadcast("main", serverPackets.notification('\n'.join([
-        'A new contest has begun!',
-        'To view details, please use the !contest command.\n',
-        'Best of luck!'
-    ])))
-"""
-
-
 @command(trigger="!overwrite", hidden=True)
 async def overwriteLatestScore(fro: str, chan: str, message: list[str]) -> str:
     """Force your latest score to overwrite. (NOTE: this is possibly destructive)"""
@@ -1699,7 +1481,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
     ):
         return None  # command used only on #multiplayer channels or bot PMs
 
-    async def mpAddRefer(user_token: osuToken.Token) -> str | None:
+    async def mpAddReferee(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1727,7 +1509,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         await match.add_referee(multiplayer_match["match_id"], target_token["user_id"])
         return f"Added {target_token['username']} to referees"
 
-    async def mpRemoveRefer(user_token: osuToken.Token) -> str | None:
+    async def mpRemoveReferee(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1758,7 +1540,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         )
         return f"Removed {target_token['username']} from referees"
 
-    async def mpListRefer(user_token: osuToken.Token) -> str | None:
+    async def mpListReferees(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
 
@@ -1787,6 +1569,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             raise exceptions.invalidArgumentsException(
                 "Incorrect syntax: !mp make <name>.",
             )
+
+        if not (user_token["privileges"] & privileges.USER_TOURNAMENT_STAFF):
+            return "Only tournament staff may use this command"
 
         match_name = " ".join(message[1:]).strip()
         if not match_name:
@@ -1891,26 +1676,6 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
 
         return f"Match size changed to {matchSize}."
 
-    async def mpForce(user_token: osuToken.Token) -> str | None:
-        if not (user_token["privileges"] & privileges.ADMIN_CAKER):
-            return None
-
-        if len(message) != 3 or not message[2].isnumeric():
-            return "Incorrect syntax: !mp force <user> <matchID>"
-
-        username = message[1]
-        matchID = int(message[2])
-
-        userToken = await osuToken.get_token_by_username(username)
-        if not userToken:
-            raise exceptions.userNotFoundException("No such user.")
-
-        async with redisLock(match.make_lock_key(matchID)):
-            if not await osuToken.joinMatch(userToken["token_id"], matchID):
-                return "Failed to join match."
-
-        return "Joined match."
-
     async def mpMove(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
             return None
@@ -1947,6 +1712,13 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 newSlotID,
             )
 
+            maybe_token = await osuToken.update_token(
+                target_token["token_id"],
+                match_slot_id=newSlotID,
+            )
+            assert maybe_token is not None
+            target_token = maybe_token
+
         return (
             f"{target_token['username']} moved to slot {newSlotID}."
             if success
@@ -1979,7 +1751,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             raise exceptions.userNotFoundException("No such user.")
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
-            success = match.setHost(
+            success = await match.setHost(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
             )
@@ -2095,7 +1867,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 loop = asyncio.get_running_loop()
                 loop.call_later(
                     1.00,
-                    lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                    lambda: job_scheduling.schedule_job(_decreaseTimer(t - 1)),
                 )
 
         if len(message) < 2 or not message[1].isnumeric():
@@ -2136,7 +1908,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             loop = asyncio.get_running_loop()
             loop.call_later(
                 1.00,
-                lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
+                lambda: job_scheduling.schedule_job(_decreaseTimer(startTime - 1)),
             )
 
             return (
@@ -2144,6 +1916,20 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 "Please don't leave the match during the countdown "
                 "or you might receive a penalty."
             )
+
+    async def mp_abort_timer(user_token: osuToken.Token) -> str | None:
+        if not user_token["match_id"]:
+            return None
+
+        multiplayer_match = await match.get_match(user_token["match_id"])
+        if multiplayer_match is None:
+            return None
+
+        await match.update_match(
+            multiplayer_match["match_id"],
+            is_timer_running=False,
+        )
+        return "Countdown stopped."
 
     async def mpInvite(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
@@ -2640,19 +2426,116 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         if multiplayer_match is None:
             return None
 
-        mp_message = await match.get_match_history_message(
+        return match.get_match_history_message(
             multiplayer_match["match_id"],
+            multiplayer_match["match_history_private"],
         )
-        return mp_message
+
+    async def mp_timer(user_token: osuToken.Token) -> str | None:
+        if not user_token["match_id"]:
+            return None
+
+        multiplayer_match = await match.get_match(user_token["match_id"])
+        if multiplayer_match is None:
+            return None
+
+        referees = await match.get_referees(multiplayer_match["match_id"])
+        if user_token["user_id"] not in referees:
+            return None
+
+        if len(message) < 2:
+            raise exceptions.invalidArgumentsException(
+                "Incorrect syntax: !mp timer <time (in seconds)>.",
+            )
+
+        if multiplayer_match["is_timer_running"]:
+            return "A countdown is already running."
+
+        if not message[1].isnumeric():
+            raise exceptions.invalidArgumentsException(
+                "Incorrect syntax: !mp timer <time (in seconds)>.",
+            )
+        countdown_time = int(message[1])
+
+        if countdown_time < 1:
+            raise exceptions.invalidArgumentsException(
+                "Countdown time must be at least 1 second.",
+            )
+
+        if countdown_time > 300:  # 5 mins
+            raise exceptions.invalidArgumentsException(
+                "Countdown time must be less than 5 minutes.",
+            )
+
+        def _get_countdown_message(t: int, force: bool = False) -> str | None:
+            minutes, seconds = divmod(t, 60)
+            if minutes > 0 and not seconds:
+                return f"Countdown ends in {minutes} minute(s)"
+
+            _, unit_digit = divmod(seconds, 10)
+            if force or (
+                not minutes and seconds <= 30 and (not unit_digit or seconds <= 5)
+            ):
+                return f"Countdown ends in {seconds} second(s)"
+
+            return None
+
+        async def _decreaseTimer(t: int) -> None:
+            chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
+            assert chatbot_token is not None
+
+            multi_match = await match.get_match(multiplayer_match["match_id"])
+            if multi_match is None:
+                return  # the match is gone
+
+            if not multi_match["is_timer_running"]:
+                return
+
+            if t <= 0:
+                await match.update_match(
+                    multiplayer_match["match_id"],
+                    is_timer_running=False,
+                )
+                await chat.send_message(
+                    sender_token_id=chatbot_token["token_id"],
+                    recipient_name=chan,
+                    message=f"Countdown finished.",
+                )
+                return
+
+            message = _get_countdown_message(t)
+            if message:
+                await chat.send_message(
+                    sender_token_id=chatbot_token["token_id"],
+                    recipient_name=chan,
+                    message=message,
+                )
+
+            loop = asyncio.get_running_loop()
+            loop.call_later(
+                1.00,
+                lambda: job_scheduling.schedule_job(_decreaseTimer(t - 1)),
+            )
+
+        await match.update_match(
+            multiplayer_match["match_id"],
+            is_timer_running=True,
+        )
+
+        loop = asyncio.get_running_loop()
+        loop.call_later(
+            1.00,
+            lambda: job_scheduling.schedule_job(_decreaseTimer(countdown_time - 1)),
+        )
+        return _get_countdown_message(countdown_time, True)
 
     try:
         subcommands: dict[str, Callable[[osuToken.Token], Awaitable[str | None]]] = {
-            "addref": mpAddRefer,
-            "rmref": mpRemoveRefer,
-            "listref": mpListRefer,
+            "addref": mpAddReferee,
+            "rmref": mpRemoveReferee,
+            "listref": mpListReferees,
             "make": mpMake,
             "close": mpClose,
-            "force": mpForce,
             "lock": mpLock,
             "unlock": mpUnlock,
             "size": mpSize,
@@ -2673,6 +2556,8 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             "scorev": mpScoreV,
             "help": mpHelp,
             "link": mp_link,
+            "timer": mp_timer,
+            "aborttimer": mp_abort_timer,
         }
 
         requestedSubcommand = message[0].lower().strip()
@@ -2693,49 +2578,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         raise
 
 
-# deprecated from osu!, 2020
-# def rtx(fro: str, chan: str, message: list[str]) -> str:
-#    target = message[0]
-#
-#    if not (message := ' '.join(message[1:]).strip()):
-#        return 'Invalid message.'
-#
-#    if not (targetID := await user_utils.getIDSafe(target)):
-#        return f'{target}: user not found.'
-#
-#    userToken = await osuToken.get_token_by_user_id(targetID, _all=False)
-#    userToken.enqueue(serverPackets.rtx(message))
-#    return ':box_flushed:'
-
-
-@command(
-    trigger="!fetus",
-    privs=privileges.ADMIN_CAKER,
-    syntax="<target_name>",
-    hidden=True,
-)
-async def crashClient(fro: str, chan: str, message: list[str]) -> str:
-    # NOTE: not documented on purpose
-    if not message:
-        return "I'll need a user to perform the command on.."
-
-    target = message[0]
-    if not (targetID := await user_utils.get_id_from_username(target)):
-        return f"{target} not found."
-
-    userToken = await osuToken.get_token_by_user_id(targetID)
-    assert userToken is not None
-
-    packet_data = serverPackets.invalidChatMessage(target)
-
-    for _ in range(16):  # takes a few to crash
-        await osuToken.enqueue(userToken["token_id"], packet_data)
-
-    return "deletus"
+USER_IDS_WHITELISTED_FOR_PY_COMMAND: set[int] = {1001, 1935}
 
 
 @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
+    userID = await user_utils.get_id_from_username(fro)
+    if userID not in USER_IDS_WHITELISTED_FOR_PY_COMMAND:
+        return "You are not allowed to use this command."
+
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
     definition = "\n ".join(["async def __py(fro, chan, message):"] + lines)
@@ -2747,34 +2598,3 @@ async def runPython(fro: str, chan: str, message: list[str]) -> str:
         ret = f"{e.__class__}: {e}"
 
     return ret
-
-
-# NOTE: this is dangerous, namely because ids of singletons (and other object)
-# will change and can break things. https://www.youtube.com/watch?v=oOs2JQu8KEw
-@command(trigger="!reload", privs=privileges.ADMIN_CAKER, hidden=True)
-async def reload(fro: str, chan: str, message: list[str]) -> str:
-    """Reload a python module, by name (relative to pep.py)."""
-    if fro != "cmyui":
-        return "no :)"
-
-    if len(message) != 1:
-        return "Invalid syntax: !reload <module>"
-
-    parent, *children = message[0].split(".")
-
-    try:
-        mod = __import__(parent)
-    except ModuleNotFoundError:
-        return "Module not found."
-
-    child = None
-    try:
-        for child in children:
-            mod = getattr(mod, child)
-    except AttributeError:
-        return f"Failed at {child}."
-
-    import importlib
-
-    mod = importlib.reload(mod)
-    return f"Reloaded {mod.__name__}"

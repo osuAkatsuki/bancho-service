@@ -25,6 +25,7 @@ from objects import match
 from objects import matchList
 from objects import osuToken
 from objects import slot
+from objects import stream_messages
 from objects import streamList
 from objects import tokenList
 
@@ -52,6 +53,7 @@ class Match(TypedDict):
     is_tourney: bool
     is_locked: bool
     is_starting: bool
+    is_timer_running: bool
     is_in_progress: bool
     creation_time: float
 
@@ -87,6 +89,7 @@ async def create_match(
     is_tourney: bool,
     is_locked: bool,
     is_starting: bool,
+    is_timer_running: bool,
     is_in_progress: bool,
     creation_time: float,
     current_game_id: int,
@@ -119,6 +122,7 @@ async def create_match(
         "is_tourney": is_tourney,
         "is_locked": is_locked,
         "is_starting": is_starting,
+        "is_timer_running": is_timer_running,
         "is_in_progress": is_in_progress,
         "creation_time": creation_time,
         "match_history_private": match_history_private,
@@ -143,6 +147,7 @@ async def get_match(match_id: int) -> Match | None:
 
 async def update_match(
     match_id: int,
+    *,
     match_name: str | None = None,
     match_password: str | None = None,
     beatmap_id: int | None = None,
@@ -158,6 +163,7 @@ async def update_match(
     is_tourney: bool | None = None,
     is_locked: bool | None = None,
     is_starting: bool | None = None,
+    is_timer_running: bool | None = None,
     is_in_progress: bool | None = None,
     creation_time: float | None = None,
     game_id: int | None = None,
@@ -199,6 +205,8 @@ async def update_match(
         match["is_locked"] = is_locked
     if is_starting is not None:
         match["is_starting"] = is_starting
+    if is_timer_running is not None:
+        match["is_timer_running"] = is_timer_running
     if is_in_progress is not None:
         match["is_in_progress"] = is_in_progress
     if creation_time is not None:
@@ -212,8 +220,10 @@ async def update_match(
 
 async def delete_match(match_id: int) -> None:
     # TODO: should we throw error when no match exists?
-    await glob.redis.srem("bancho:matches", match_id)
-    await glob.redis.delete(make_key(match_id))
+    async with glob.redis.pipeline() as pipe:
+        await pipe.srem("bancho:matches", match_id)
+        await pipe.delete(make_key(match_id))
+        await pipe.execute()
 
     # TODO: should devs have to do this separately?
     await slot.delete_slots(match_id)
@@ -354,12 +364,15 @@ async def setHost(match_id: int, new_host_id: int) -> bool:
     return True
 
 
-async def get_match_history_message(match_id: int) -> str:
-    multiplayer_match = await get_match(match_id)
-    assert multiplayer_match is not None
+def get_match_history_url(match_id: int) -> str:
+    return f"https://akatsuki.gg/matches/{match_id}"
 
-    message = f"Match history available [https://akatsuki.gg/matches/{multiplayer_match['match_id']} here]."
-    if multiplayer_match["match_history_private"]:
+
+def get_match_history_message(match_id: int, is_history_private: bool) -> str:
+    mp_history_link = get_match_history_url(match_id)
+
+    message = f"Match history available [{mp_history_link} here]."
+    if is_history_private:
         message += " This is only visible to participants of this match!"
 
     return message
@@ -547,7 +560,10 @@ async def allPlayersLoaded(match_id: int) -> None:
     assert multiplayer_match is not None
 
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(playing_stream_name, serverPackets.allPlayersLoaded)
+    await stream_messages.broadcast_data(
+        playing_stream_name,
+        serverPackets.allPlayersLoaded,
+    )
 
 
 async def playerSkip(match_id: int, user_id: int) -> None:
@@ -571,7 +587,7 @@ async def playerSkip(match_id: int, user_id: int) -> None:
     # Send skip packet to every playing user
     playing_stream_name = create_playing_stream_name(match_id)
     packet_data = serverPackets.playerSkipped(slot_id)
-    await streamList.broadcast(playing_stream_name, packet_data)
+    await stream_messages.broadcast_data(playing_stream_name, packet_data)
 
     slots = await slot.get_slots(match_id)
     assert len(slots) == 16
@@ -597,39 +613,10 @@ async def allPlayersSkipped(match_id: int) -> None:
     """
 
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(playing_stream_name, serverPackets.allPlayersSkipped)
-
-
-async def updateScore(match_id: int, slot_id: int, score: int) -> None:
-    """
-    Update score for a slot
-
-    :param slotID: the slot that the user that is updating their score is in
-    :param score: the new score to update
-    :return:
-    """
-    _slot = await slot.get_slot(match_id, slot_id)
-    assert _slot is not None
-
-    _slot = await slot.update_slot(match_id, slot_id, score=score)
-    assert _slot is not None
-
-
-async def updateHP(match_id: int, slot_id: int, hp: int) -> None:
-    """
-    Update HP for a slot
-
-    :param slotID: the slot that the user that is updating their hp is in
-    :param hp: the new hp to update
-    :return:
-    """
-    _slot = await slot.get_slot(match_id, slot_id)
-    assert _slot is not None
-
-    failed = hp == 254
-
-    _slot = await slot.update_slot(match_id, slot_id, failed=failed)
-    assert _slot is not None
+    await stream_messages.broadcast_data(
+        playing_stream_name,
+        serverPackets.allPlayersSkipped,
+    )
 
 
 async def playerCompleted(match_id: int, user_id: int) -> None:
@@ -684,7 +671,7 @@ async def allPlayersCompleted(match_id: int) -> None:
 
     # Send match complete
     stream_name = create_stream_name(match_id)
-    await streamList.broadcast(stream_name, serverPackets.matchComplete)
+    await stream_messages.broadcast_data(stream_name, serverPackets.matchComplete)
 
     # Destroy playing stream
     playing_stream_name = create_playing_stream_name(match_id)
@@ -751,12 +738,12 @@ async def getUserSlotID(match_id: int, user_id: int) -> int | None:
     return None
 
 
-async def userJoin(match_id: int, token_id: str) -> bool:
+async def userJoin(match_id: int, token_id: str) -> int | None:
     """
     Add someone to users in match
 
     :param user: user object of the user
-    :return: True if join success, False if fail (room is full)
+    :return: The slot id if join success, None if fail (room is full)
     """
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
@@ -814,7 +801,7 @@ async def userJoin(match_id: int, token_id: str) -> bool:
 
             # Send updated match data
             await sendUpdates(match_id)
-            return True
+            return slot_id
 
     if osuToken.is_staff(
         token["privileges"],
@@ -847,9 +834,9 @@ async def userJoin(match_id: int, token_id: str) -> bool:
 
                 # Send updated match data
                 await sendUpdates(match_id)
-                return True
+                return slot_id
 
-    return False
+    return None
 
 
 async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> None:
@@ -885,6 +872,7 @@ async def userLeft(match_id: int, token_id: str, disposeMatch: bool = True) -> N
     await osuToken.update_token(
         token_id,
         match_id=None,
+        match_slot_id=None,
     )
 
     await insert_match_event(
@@ -1010,7 +998,7 @@ async def changePassword(match_id: int, newPassword: str) -> None:
     assert multiplayer_match is not None
 
     # Send password change to every user in match
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         create_stream_name(match_id),
         serverPackets.changeMatchPassword(multiplayer_match["match_password"]),
     )
@@ -1101,7 +1089,7 @@ async def playerFailed(match_id: int, user_id: int) -> None:
 
     # Send packet to all players
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         playing_stream_name,
         serverPackets.playerFailed(slot_id),
     )
@@ -1205,11 +1193,11 @@ async def sendUpdates(match_id: int) -> None:
     uncensored_data = await serverPackets.updateMatch(match_id)
     if uncensored_data is not None:
         stream_name = create_stream_name(match_id)
-        await streamList.broadcast(stream_name, uncensored_data)
+        await stream_messages.broadcast_data(stream_name, uncensored_data)
 
     censored_data = await serverPackets.updateMatch(match_id, censored=True)
     if censored_data is not None:
-        await streamList.broadcast("lobby", censored_data)
+        await stream_messages.broadcast_data("lobby", censored_data)
     else:
         logger.error(
             f"Failed to send updates to a multiplayer match",
@@ -1306,7 +1294,7 @@ async def start(match_id: int) -> bool:
             await osuToken.joinStream(user_token["token_id"], playing_stream_name)
 
     # Send match start packet
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         playing_stream_name,
         await serverPackets.matchStart(match_id),
     )
@@ -1362,7 +1350,7 @@ async def abort(match_id: int) -> None:
     await sendUpdates(match_id)
 
     playing_stream_name = create_playing_stream_name(match_id)
-    await streamList.broadcast(playing_stream_name, serverPackets.matchAbort)
+    await stream_messages.broadcast_data(playing_stream_name, serverPackets.matchAbort)
     await streamList.dispose(playing_stream_name)
 
 
@@ -1488,7 +1476,8 @@ async def set_match_frame(
     assert user_slot is not None
 
     match_frame = decoded_frame_data | {
-        "mods": user_slot["mods"] + multiplayer_match["mods"],  # Add shared mods
+        "mods": user_slot["mods"]
+        | multiplayer_match["mods"],  # Merge match mods and user mods
         "passed": user_slot["passed"],
         "team": user_slot["team"],
         "mode": multiplayer_match["game_mode"],

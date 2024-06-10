@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 from constants import clientPackets
 from constants import serverPackets
 from objects import match
-from objects import streamList
+from objects import osuToken
+from objects import slot
+from objects import stream_messages
 from objects.osuToken import Token
-from objects.redisLock import redisLock
 
 
 async def handle(userToken: Token, rawPacketData: bytes) -> None:
@@ -16,39 +19,35 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
     # Parse the data
     packetData = clientPackets.matchFrames(rawPacketData)
 
-    async with redisLock(match.make_lock_key(userToken["match_id"])):
-        # Make sure the match exists
-        multiplayer_match = await match.get_match(userToken["match_id"])
-        if multiplayer_match is None:
-            return
+    # Make sure the match exists
+    multiplayer_match = await match.get_match(userToken["match_id"])
+    if multiplayer_match is None:
+        return
 
-        # Change slot id in packetData
-        slot_id = await match.getUserSlotID(
-            multiplayer_match["match_id"],
-            userToken["user_id"],
+    if userToken["match_slot_id"] is None:
+        logging.warning(
+            "User is in a match but has no slot id",
+            extra={"user_id": userToken["user_id"]},
         )
-        assert slot_id is not None
+        return
 
-        await match.set_match_frame(
-            multiplayer_match["match_id"],
-            slot_id,
-            packetData,
-        )
+    await match.set_match_frame(
+        multiplayer_match["match_id"],
+        userToken["match_slot_id"],
+        packetData,
+    )
 
-        # Update the score
-        await match.updateScore(
-            multiplayer_match["match_id"],
-            slot_id,
-            packetData["totalScore"],
-        )
-        await match.updateHP(
-            multiplayer_match["match_id"],
-            slot_id,
-            packetData["currentHp"],
-        )
+    # Update the score
+    user_failed = packetData["currentHp"] == 254
+    await slot.update_slot(
+        multiplayer_match["match_id"],
+        userToken["match_slot_id"],
+        score=packetData["totalScore"],
+        failed=user_failed,
+    )
 
-        # Enqueue frames to who's playing
-        await streamList.broadcast(
-            match.create_playing_stream_name(multiplayer_match["match_id"]),
-            serverPackets.matchFrames(slot_id, rawPacketData),
-        )
+    # Enqueue frames to who's playing
+    await stream_messages.broadcast_data(
+        match.create_playing_stream_name(multiplayer_match["match_id"]),
+        serverPackets.matchFrames(userToken["match_slot_id"], rawPacketData),
+    )

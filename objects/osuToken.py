@@ -25,6 +25,7 @@ from helpers import chatHelper as chat
 from objects import channelList
 from objects import glob
 from objects import match
+from objects import stream_messages
 from objects import streamList
 
 # (set) bancho:tokens
@@ -34,7 +35,7 @@ from objects import streamList
 # (set[userid]) bancho:tokens:{token_id}:spectators
 # (list) bancho:tokens:{token_id}:messages
 # (list[userid]) bancho:tokens:{token_id}:sent_away_messages
-# (list) bancho:tokens:{token_id}:packet_queue
+# (stream) streams:tokens/{token_id}:messages
 
 
 class LastNp(TypedDict):
@@ -72,11 +73,12 @@ class Token(TypedDict):
     away_message: str | None
     # sent_away_messages: list[int]
     match_id: int | None
+
+    match_slot_id: int | None
+
     last_np: LastNp | None
     silence_end_time: int
     protocol_version: int
-    # packet_queue: list[int]
-    # packet_queue_lock: Lock
     spam_rate: int
 
     # stats
@@ -118,6 +120,7 @@ def make_key(token_id: str) -> str:
 
 
 async def create_token(
+    *,
     user_id: int,
     username: str,
     privileges: int,
@@ -151,6 +154,7 @@ async def create_token(
         "country": 0,
         "away_message": None,
         "match_id": None,
+        "match_slot_id": None,
         "last_np": None,
         "silence_end_time": 0,
         "protocol_version": 0,
@@ -172,19 +176,24 @@ async def create_token(
         "amplitude_device_id": amplitude_device_id,
     }
 
-    await glob.redis.sadd("bancho:tokens", token_id)
-    await glob.redis.hset("bancho:tokens:json", token_id, orjson.dumps(token))
-    await glob.redis.set(f"bancho:tokens:ids:{token['user_id']}", token_id)
-    await glob.redis.set(
-        f"bancho:tokens:names:{safeUsername(token['username'])}",
-        token_id,
-    )
-    await glob.redis.set(make_key(token_id), orjson.dumps(token))
+    safe_name = safeUsername(username)
+
+    async with glob.redis.pipeline() as pipe:
+        await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
+        await pipe.set(f"bancho:tokens:ids:{user_id}", token_id)
+        await pipe.set(f"bancho:tokens:names:{safe_name}", token_id)
+        await pipe.hset(
+            f"{make_key(token_id)}:stream_offsets",
+            f"{make_key(token_id)}:packet_queue",
+            "0-0",
+        )
+        await pipe.execute()
+
     return token
 
 
 async def get_token_ids() -> set[str]:
-    raw_token_ids: set[bytes] = await glob.redis.smembers("bancho:tokens")
+    raw_token_ids: list[bytes] = await glob.redis.hkeys("bancho:tokens:json")
     return {token_id.decode() for token_id in raw_token_ids}
 
 
@@ -193,7 +202,7 @@ async def get_online_players_count() -> int:
 
 
 async def get_token(token_id: str) -> Token | None:
-    token = await glob.redis.get(make_key(token_id))
+    token = await glob.redis.hget("bancho:tokens:json", token_id)
     if token is None:
         return None
     return cast(Token, orjson.loads(token))
@@ -249,6 +258,7 @@ async def get_all_tokens_by_username(username: str) -> list[Token]:
 # TODO: the things that can actually be Optional need to have different defaults
 async def update_token(
     token_id: str,
+    *,
     # user_id: Optional[int] = None,
     username: str | None = None,
     privileges: int | None = None,
@@ -267,6 +277,7 @@ async def update_token(
     country: int | None = None,
     away_message: str | None | Unset = UNSET,
     match_id: int | None | Unset = UNSET,
+    match_slot_id: int | None | Unset = UNSET,
     last_np: LastNp | None | Unset = UNSET,
     silence_end_time: int | None = None,
     protocol_version: int | None = None,
@@ -319,6 +330,8 @@ async def update_token(
         token["away_message"] = away_message
     if not isinstance(match_id, Unset):
         token["match_id"] = match_id
+    if not isinstance(match_slot_id, Unset):
+        token["match_slot_id"] = match_slot_id
     if not isinstance(last_np, Unset):
         token["last_np"] = last_np
     if silence_end_time is not None:
@@ -357,8 +370,11 @@ async def update_token(
         token["pp"] = pp
     if amplitude_device_id is not None:
         token["amplitude_device_id"] = amplitude_device_id
-    await glob.redis.set(make_key(token_id), orjson.dumps(token))
-    await glob.redis.hset("bancho:tokens:json", token_id, orjson.dumps(token))
+
+    async with glob.redis.pipeline() as pipe:
+        await pipe.hset("bancho:tokens:json", token_id, orjson.dumps(token))
+        await pipe.execute()
+
     return token
 
 
@@ -367,19 +383,17 @@ async def delete_token(token_id: str) -> None:
     if token is None:
         return
 
-    await glob.redis.srem("bancho:tokens", token_id)
-    await glob.redis.delete(f"bancho:tokens:ids:{token['user_id']}")
-    await glob.redis.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
-    await glob.redis.hdel("bancho:tokens:json", token_id)
-    await glob.redis.delete(make_key(token_id))
-    await glob.redis.delete(f"{make_key(token_id)}:channels")
-    await glob.redis.delete(f"{make_key(token_id)}:spectators")
-    await glob.redis.delete(f"{make_key(token_id)}:streams")
-    await glob.redis.delete(f"{make_key(token_id)}:message_history")
-    await glob.redis.delete(f"{make_key(token_id)}:sent_away_messages")
-
-    await glob.redis.delete(f"{make_key(token_id)}:packet_queue")
-    await glob.redis.delete(f"{make_key(token_id)}:processing_lock")
+    async with glob.redis.pipeline() as pipe:
+        await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
+        await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
+        await pipe.hdel("bancho:tokens:json", token_id)
+        await pipe.delete(f"{make_key(token_id)}:channels")
+        await pipe.delete(f"{make_key(token_id)}:spectators")
+        await pipe.delete(f"{make_key(token_id)}:streams")
+        await pipe.delete(f"{make_key(token_id)}:message_history")
+        await pipe.delete(f"{make_key(token_id)}:sent_away_messages")
+        await pipe.delete(f"{make_key(token_id)}:processing_lock")
+        await pipe.execute()
 
 
 # joined channels
@@ -422,9 +436,20 @@ async def get_streams(token_id: str) -> set[str]:
 async def add_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.sadd(f"{make_key(token_id)}:streams", stream_name)
 
+    stream_offset = await stream_messages.get_latest_message_id(stream_name)
+    await glob.redis.hset(
+        f"{make_key(token_id)}:stream_offsets",
+        stream_messages.make_key(stream_name),
+        stream_offset,
+    )
+
 
 async def remove_stream(token_id: str, stream_name: str) -> None:
     await glob.redis.srem(f"{make_key(token_id)}:streams", stream_name)
+    await glob.redis.hdel(
+        f"{make_key(token_id)}:stream_offsets",
+        stream_messages.make_key(stream_name),
+    )
 
 
 # messages
@@ -493,26 +518,7 @@ async def enqueue(token_id: str, data: bytes) -> None:
             extra={"num_bytes": len(data), "token_id": token_id},
         )
 
-    await glob.redis.lpush(f"{make_key(token_id)}:packet_queue", data)
-
-
-async def dequeue(token_id: str) -> bytes:
-    token = await get_token(token_id)
-    if token is None:
-        return b""
-
-    # Read and remove all packets from the queue atomically
-    async with glob.redis.pipeline() as pipe:
-        await pipe.lrange(f"{make_key(token_id)}:packet_queue", 0, -1)
-        await pipe.delete(f"{make_key(token_id)}:packet_queue")
-
-        pipeline_results = await pipe.execute()
-
-    raw_packets: list[bytes] = pipeline_results[0]
-
-    raw_packets.reverse()  # redis returns backwards
-
-    return b"".join(raw_packets)
+    await stream_messages.broadcast_data(f"tokens/{token_id}:messages", data)
 
 
 async def joinChannel(token_id: str, channel_name: str) -> None:
@@ -659,7 +665,7 @@ async def startSpectating(token_id: str, host_token_id: str) -> None:
         )
 
     # Send fellow spectator join to all clients
-    await streamList.broadcast(
+    await stream_messages.broadcast_data(
         streamName,
         serverPackets.fellowSpectatorJoined(token["user_id"]),
     )
@@ -788,7 +794,8 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
         await leaveMatch(token_id)
 
     # Try to join match
-    if not await match.userJoin(multiplayer_match["match_id"], token_id):
+    match_slot_id = await match.userJoin(multiplayer_match["match_id"], token_id)
+    if match_slot_id is None:
         await enqueue(token_id, serverPackets.matchJoinFail)
         return False
 
@@ -796,6 +803,7 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     await update_token(
         token_id,
         match_id=match_id,
+        match_slot_id=match_slot_id,
     )
     await joinStream(token_id, match.create_stream_name(multiplayer_match["match_id"]))
     await chat.join_channel(
@@ -818,7 +826,11 @@ async def joinMatch(token_id: str, match_id: int) -> bool:
     bot_token = await get_token_by_user_id(CHATBOT_USER_ID)
     assert bot_token is not None
 
-    mp_message = await match.get_match_history_message(multiplayer_match["match_id"])
+    mp_message = match.get_match_history_message(
+        multiplayer_match["match_id"],
+        multiplayer_match["match_history_private"],
+    )
+
     await enqueue(
         token_id,
         serverPackets.sendMessage(
@@ -864,6 +876,7 @@ async def leaveMatch(token_id: str) -> None:
     await update_token(
         token_id,
         match_id=None,
+        match_slot_id=None,
     )
 
     # Make sure the match exists
@@ -953,7 +966,10 @@ async def silence(
     await enqueue(token_id, serverPackets.silenceEndTime(seconds))
 
     # Send silenced packet to everyone else
-    await streamList.broadcast("main", serverPackets.userSilenced(token["user_id"]))
+    await stream_messages.broadcast_data(
+        "main",
+        serverPackets.userSilenced(token["user_id"]),
+    )
 
 
 async def chat_spam_protection(
@@ -1066,8 +1082,10 @@ async def checkRestricted(token_id: str) -> None:
     old_restricted = is_restricted(token["privileges"])
     restricted = await user_utils.is_restricted(token["user_id"])
     if restricted:
+        # Is restricted; notify them of restriction
         await setRestricted(token_id)
-    elif not restricted and old_restricted != restricted:
+    elif old_restricted:
+        # Was previously restricted; notify them of unrestriction
         await resetRestricted(token_id)
 
 

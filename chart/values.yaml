@@ -1,0 +1,126 @@
+apps:
+  - name: bancho-service-api
+    environment: production
+    codebase: bancho-service
+    autoscaling:
+      enabled: true
+      minReplicas: 5
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      readinessProbe:
+        httpGet:
+          path: /_health
+          port: 80
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 3
+        successThreshold: 1
+        failureThreshold: 3
+      resources:
+        limits:
+          cpu: 1250m
+          memory: 350Mi
+        requests:
+          cpu: 500m
+          memory: 250Mi
+      env:
+        - name: APP_COMPONENT
+          value: api
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret
+    service:
+      type: ClusterIP
+      port: 80
+
+  - name: bancho-service-spam-protection-cronjob
+    environment: production
+    codebase: bancho-service
+    replicaCount: 1
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      resources:
+        limits:
+          cpu: 200m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 75Mi
+      env:
+        - name: APP_COMPONENT
+          value: reset-all-tokens-spam-rate
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret
+
+  - name: bancho-service-inactivity-timeout-cronjob
+    environment: production
+    codebase: bancho-service
+    replicaCount: 1
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      resources:
+        limits:
+          cpu: 200m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 75Mi
+      env:
+        - name: APP_COMPONENT
+          value: timeout-inactive-tokens
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret
+
+  - name: bancho-service-consume-pubsub-events-daemon
+    environment: production
+    codebase: bancho-service
+    replicaCount: 1
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      resources:
+        limits:
+          cpu: 200m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 75Mi
+      env:
+        - name: APP_COMPONENT
+          value: consume-pubsub-events
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret
+
+  - name: bancho-service-trim-outdated-streams-daemon
+    environment: production
+    codebase: bancho-service
+    replicaCount: 1
+    container:
+      image:
+        repository: osuakatsuki/bancho-service
+        tag: latest
+      port: 80
+      resources:
+        limits:
+          cpu: 200m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 75Mi
+      env:
+        - name: APP_COMPONENT
+          value: trim-outdated-streams
+      imagePullSecrets:
+        - name: osuakatsuki-registry-secret

@@ -10,7 +10,7 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
     async def handle(self, raw_data: bytes) -> None:
         userID = int(raw_data.decode("utf-8"))
 
-        logger.info(
+        logger.debug(
             "Handling update stats event for user",
             extra={"user_id": userID},
         )
@@ -28,7 +28,7 @@ class UpdateStatsPubSubHandler(AbstractPubSubHandler):
             await serverPackets.userStats(userID, force=True),
         )
 
-        logger.info(
+        logger.debug(
             "Successfully handled update stats event for user",
             extra={"user_id": userID},
         )

@@ -542,24 +542,6 @@ async def set_privileges(user_id: int, new_privileges: int) -> None:
     )
 
 
-async def compare_hwid(user_id: int, mac: str, unique: str, disk: str) -> bool:
-    """Compare a user's login hwid's against what are stored in the db for admin account security."""
-
-    allowed = await glob.db.fetch(
-        "SELECT * FROM hw_comparison WHERE id = %s",
-        [user_id],
-    )
-
-    return not (
-        allowed
-        and (
-            mac != allowed["mac"]
-            or unique != allowed["unique"]
-            or disk != allowed["disk"]
-        )
-    )
-
-
 def validate_hwid_set(hwid_set: list[str]) -> bool:
     """Validate that the mac addresses, unique id, and disk id are present."""
     return all(hwid_set[2:5])
@@ -593,14 +575,6 @@ async def associate_user_with_hwids_and_restrict_if_multiaccounting(
 
     # Run some HWID checks on that user if he is not restricted
     if not await is_restricted(user_id):
-        """
-        compare_ids = compare_hwid(user_id, hwid_set[2], hwid_set[3], hwid_set[4])
-
-        if not compare_ids: # Remove cmyui permissions if on a HWID different than usual.. Just safety procautions..
-            log.anticheat("{}: Unusual login detected.\n\nHashes:\nMAC: {}\nUnique: {}\nDisk: {}\n\nTheir login has been disallowed.".format(user_id, hwid_set[2], hwid_set[3], hwid_set[4]), 'ac_confidential')
-            return False
-        """
-
         # Get the list of banned or restricted users that have logged in from this or similar HWID hash set
         if hwid_set[2] == "b4ec3c4334a0249dae95c284ec5983df":
             # Running under wine, check by unique id
@@ -847,9 +821,10 @@ async def change_username(user_id: int, new_username: str) -> None:
     )
 
     # Empty redis username cache
-    # TODO: Le pipe woo woo
-    await glob.redis.delete(f"ripple:userid_cache:{old_safe_username}")
-    await glob.redis.delete(f"ripple:change_username_pending:{user_id}")
+    async with glob.redis.pipeline() as pipe:
+        await pipe.delete(f"ripple:userid_cache:{old_safe_username}")
+        await pipe.delete(f"ripple:change_username_pending:{user_id}")
+        await pipe.execute()
 
 
 async def remove_from_leaderboard(user_id: int) -> None:
@@ -859,11 +834,15 @@ async def remove_from_leaderboard(user_id: int) -> None:
     Removes listings across all game modes.
     """
     country = (await get_iso_country_code(user_id)).lower()
-    for board in ("leaderboard", "relaxboard"):
-        for mode in ("std", "taiko", "ctb", "mania"):
-            await glob.redis.zrem(f"ripple:{board}:{mode}", str(user_id))
-            if country and country != "xx":
-                await glob.redis.zrem(f"ripple:{board}:{mode}:{country}", str(user_id))
+
+    async with glob.redis.pipeline() as pipe:
+        for board in ("leaderboard", "relaxboard"):
+            for mode in ("std", "taiko", "ctb", "mania"):
+                await pipe.zrem(f"ripple:{board}:{mode}", str(user_id))
+                if country and country != "xx":
+                    await pipe.zrem(f"ripple:{board}:{mode}:{country}", str(user_id))
+
+        await pipe.execute()
 
 
 async def remove_from_specified_leaderboard(
@@ -887,9 +866,12 @@ async def remove_from_specified_leaderboard(
 
     redis_board = f"ripple:{board}:{mode_str}"
 
-    await glob.redis.zrem(redis_board, str(user_id))
-    if country and country != "xx":
-        await glob.redis.zrem(f"{redis_board}:{country}", str(user_id))
+    async with glob.redis.pipeline() as pipe:
+        await pipe.zrem(redis_board, str(user_id))
+        if country and country != "xx":
+            await pipe.zrem(f"{redis_board}:{country}", str(user_id))
+
+        await pipe.execute()
 
 
 async def get_remaining_overwrite_wait(user_id: int) -> int:

@@ -49,10 +49,6 @@ class matchCreateError(Exception):
     pass
 
 
-class banchoRestartingException(Exception):
-    pass
-
-
 class invalidArgumentsException(Exception):
     pass
 

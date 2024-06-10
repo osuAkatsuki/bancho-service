@@ -4,6 +4,7 @@ from common.log import logger
 from events import logoutEvent
 from objects import glob
 from objects import osuToken
+from objects import streamList
 
 
 async def addToken(
@@ -30,20 +31,26 @@ async def addToken(
     assert res is not None
 
     original_token = await osuToken.create_token(
-        user_id,
-        res["username"],
-        res["privileges"],
-        res["whitelist"],
-        ip,
-        utc_offset,
-        tournament,
-        block_non_friends_dm,
-        amplitude_device_id,
+        user_id=user_id,
+        username=res["username"],
+        privileges=res["privileges"],
+        whitelist=res["whitelist"],
+        ip=ip,
+        utc_offset=utc_offset,
+        tournament=tournament,
+        block_non_friends_dm=block_non_friends_dm,
+        amplitude_device_id=amplitude_device_id,
     )
 
     await osuToken.updateCachedStats(original_token["token_id"])
 
+    token_stream_name = f"tokens/{original_token['token_id']}:messages"
+    await streamList.add(token_stream_name)
+    await osuToken.joinStream(original_token["token_id"], token_stream_name)
+
     await osuToken.joinStream(original_token["token_id"], "main")
+    if osuToken.is_staff(original_token["privileges"]):
+        await osuToken.joinStream(original_token["token_id"], "staff")
 
     token = await osuToken.get_token(original_token["token_id"])
     assert token is not None
