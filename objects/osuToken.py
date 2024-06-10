@@ -4,7 +4,6 @@ import logging
 from time import localtime
 from time import strftime
 from time import time
-from typing import NotRequired
 from typing import TypedDict
 from typing import cast
 from uuid import uuid4
@@ -75,8 +74,7 @@ class Token(TypedDict):
     # sent_away_messages: list[int]
     match_id: int | None
 
-    # TODO: Make required once 100% available in production
-    match_slot_id: NotRequired[int | None]
+    match_slot_id: int | None
 
     last_np: LastNp | None
     silence_end_time: int
