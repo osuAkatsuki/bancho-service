@@ -797,7 +797,7 @@ async def send_message(
         return response
 
     if not osuToken.is_staff(sender_token["privileges"]):
-        await osuToken.spamProtection(sender_token["token_id"])
+        await osuToken.chat_spam_protection(sender_token["token_id"])
 
     if _should_audit_log_message(message):
         audit_log_message = f"{sender_token['username']} @ {recipient_name}: {message}"
