@@ -14,8 +14,7 @@ if [ -z "$APP_COMPONENT" ]; then
 fi
 
 if [[ $PULL_SECRETS_FROM_VAULT -eq 1 ]]; then
-  # TODO: revert to $APP_ENV
-  akatsuki vault get bancho-service production-k8s -o .env
+  akatsuki vault get bancho-service $APP_ENV -o .env
   source .env
 fi
 
