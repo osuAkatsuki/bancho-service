@@ -16,6 +16,7 @@ from amplitude import BaseEvent
 
 import settings
 from common import generalUtils
+from common import job_scheduling
 from common import speedrunning
 from common.constants import gameModes
 from common.constants import mods
@@ -43,7 +44,7 @@ from objects import match
 from objects import matchList
 from objects import osuToken
 from objects import slot
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects.redisLock import redisLock
 
@@ -244,7 +245,7 @@ async def alertall(fro: str, chan: str, message: list[str]) -> str:
         return "Guy was going to say @everyone and leave..."
 
     userID = await user_utils.get_id_from_username(fro)
-    await streamList.broadcast("main", serverPackets.notification(msg))
+    await stream_messages.broadcast_data("main", serverPackets.notification(msg))
     await audit_logs.send_log(
         userID,
         f"has sent an alert to all users: '{msg}'",
@@ -694,7 +695,7 @@ async def systemMaintenance(fro: str, chan: str, message: list[str]) -> str:
             if not osuToken.is_staff(value["privileges"]):
                 who.append(value["user_id"])
 
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             serverPackets.notification(
                 " ".join(
@@ -753,6 +754,7 @@ async def getPPMessage(
             params={"b": currentMap, "m": currentMods},
             timeout=5,
         )
+        response.raise_for_status()
     except:
         logger.exception(
             "Failed to retrieve PP from score-service API",
@@ -763,9 +765,6 @@ async def getPPMessage(
             },
         )
         return "Score server currently down, could not retrieve PP."
-
-    if not response or response.status_code != 200:
-        return "API Timeout. Please try again in a few seconds."
 
     data = response.json()
 
@@ -1291,8 +1290,16 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     if message[1] not in {"set", "map"}:
         return "Scope must either be set or map."
 
-    status_to_int = lambda s: {"love": 5, "rank": 2, "unrank": 0}[s]
-    status_to_readable = lambda s: {5: "Loved", 2: "Ranked", 0: "Unranked"}[s]
+    status_to_int: Callable[[str], int] = lambda s: {
+        "love": 5,
+        "rank": 2,
+        "unrank": 0,
+    }[s]
+    status_to_readable: Callable[[int], str] = lambda s: {
+        5: "Loved",
+        2: "Ranked",
+        0: "Unranked",
+    }[s]
 
     status = status_to_int(message[0])
     status_readable = status_to_readable(status)
@@ -1350,7 +1357,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     icon_nerinyan = ":cat2:"  # placeholder - they don't have a logo
 
     # osu! game mode emoji dictionary
-    mode_to_emoji = lambda s: {
+    mode_to_emoji: Callable[[int], str] = lambda s: {
         3: "<:modemania:1087863868782547014>",
         2: "<:modefruits:1087863938982612994>",
         1: "<:modetaiko:1087863916278853662>",
@@ -1358,8 +1365,12 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     }[s]
 
     # Colour & icons used in stable client
-    status_to_colour = lambda s: {5: 0xFF66AA, 2: 0x6BCEFF, 0: 0x696969}[s]
-    status_to_emoji_id = lambda s: {
+    status_to_colour: Callable[[int], int] = lambda s: {
+        5: 0xFF66AA,
+        2: 0x6BCEFF,
+        0: 0x696969,
+    }[s]
+    status_to_emoji_id: Callable[[int], str] = lambda s: {
         5: "1166976753869279272",
         2: "1166976760424964126",
         0: "1166976756230651934",
@@ -1394,7 +1405,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
         thumbnail=f"https://cdn.discordapp.com/emojis/{status_to_emoji_id(status)}.png",
     )
-    asyncio.create_task(webhook.post())
+    job_scheduling.schedule_job(webhook.post())
 
     if is_set:
         beatmap_url = (
@@ -1654,6 +1665,9 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 "Incorrect syntax: !mp make <name>.",
             )
 
+        if not (user_token["privileges"] & privileges.USER_TOURNAMENT_STAFF):
+            return "Only tournament staff may use this command"
+
         match_name = " ".join(message[1:]).strip()
         if not match_name:
             raise exceptions.invalidArgumentsException("Match name must not be empty!")
@@ -1793,6 +1807,13 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 newSlotID,
             )
 
+            maybe_token = await osuToken.update_token(
+                target_token["token_id"],
+                match_slot_id=newSlotID,
+            )
+            assert maybe_token is not None
+            target_token = maybe_token
+
         return (
             f"{target_token['username']} moved to slot {newSlotID}."
             if success
@@ -1825,7 +1846,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             raise exceptions.userNotFoundException("No such user.")
 
         async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
-            success = match.setHost(
+            success = await match.setHost(
                 multiplayer_match["match_id"],
                 target_token["user_id"],
             )
@@ -1941,7 +1962,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 loop = asyncio.get_running_loop()
                 loop.call_later(
                     1.00,
-                    lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                    lambda: job_scheduling.schedule_job(_decreaseTimer(t - 1)),
                 )
 
         if len(message) < 2 or not message[1].isnumeric():
@@ -1982,7 +2003,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             loop = asyncio.get_running_loop()
             loop.call_later(
                 1.00,
-                lambda: asyncio.create_task(_decreaseTimer(startTime - 1)),
+                lambda: job_scheduling.schedule_job(_decreaseTimer(startTime - 1)),
             )
 
             return (
@@ -1990,6 +2011,20 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
                 "Please don't leave the match during the countdown "
                 "or you might receive a penalty."
             )
+
+    async def mp_abort_timer(user_token: osuToken.Token) -> str | None:
+        if not user_token["match_id"]:
+            return None
+
+        multiplayer_match = await match.get_match(user_token["match_id"])
+        if multiplayer_match is None:
+            return None
+
+        await match.update_match(
+            multiplayer_match["match_id"],
+            is_timer_running=False,
+        )
+        return "Countdown stopped."
 
     async def mpInvite(user_token: osuToken.Token) -> str | None:
         if not user_token["match_id"]:
@@ -2505,22 +2540,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
 
         if len(message) < 2:
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp timer <time (in seconds)/stop>.",
+                "Incorrect syntax: !mp timer <time (in seconds)>.",
             )
-
-        if message[1] == "stop":
-            await match.update_match(
-                multiplayer_match["match_id"],
-                is_timer_running=False,
-            )
-            return "Countdown stopped."
 
         if multiplayer_match["is_timer_running"]:
             return "A countdown is already running."
 
         if not message[1].isnumeric():
             raise exceptions.invalidArgumentsException(
-                "Incorrect syntax: !mp timer <time (in seconds)/stop>.",
+                "Incorrect syntax: !mp timer <time (in seconds)>.",
             )
         countdown_time = int(message[1])
 
@@ -2581,7 +2609,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             loop = asyncio.get_running_loop()
             loop.call_later(
                 1.00,
-                lambda: asyncio.create_task(_decreaseTimer(t - 1)),
+                lambda: job_scheduling.schedule_job(_decreaseTimer(t - 1)),
             )
 
         await match.update_match(
@@ -2592,7 +2620,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         loop = asyncio.get_running_loop()
         loop.call_later(
             1.00,
-            lambda: asyncio.create_task(_decreaseTimer(countdown_time - 1)),
+            lambda: job_scheduling.schedule_job(_decreaseTimer(countdown_time - 1)),
         )
         return _get_countdown_message(countdown_time, True)
 
@@ -2624,6 +2652,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
             "help": mpHelp,
             "link": mp_link,
             "timer": mp_timer,
+            "aborttimer": mp_abort_timer,
         }
 
         requestedSubcommand = message[0].lower().strip()
@@ -2644,8 +2673,15 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
         raise
 
 
+USER_IDS_WHITELISTED_FOR_PY_COMMAND: set[int] = {1001, 1935}
+
+
 @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
+    userID = await user_utils.get_id_from_username(fro)
+    if userID not in USER_IDS_WHITELISTED_FOR_PY_COMMAND:
+        return "You are not allowed to use this command."
+
     # NOTE: not documented on purpose
     lines = " ".join(message).split(r"\n")
     definition = "\n ".join(["async def __py(fro, chan, message):"] + lines)

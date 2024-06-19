@@ -951,36 +951,35 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
     #   - add the score to scores_first.
 
     for rx, table_name in enumerate(("scores", "scores_relax", "scores_ap")):
+        order = "pp" if rx in (1, 2) else "score"
         for score in await glob.db.fetchAll(
-            "SELECT s.id, s.pp, s.score, s.play_mode, "
+            "SELECT s.id, s.{order} AS score_value, s.play_mode, "
             "s.beatmap_md5, b.ranked FROM {t} s "
             "LEFT JOIN beatmaps b USING(beatmap_md5) "
             "WHERE s.userid = %s AND s.completed = 3 "
-            "AND s.score > 0 AND b.ranked > 1".format(t=table_name),
+            "AND s.score > 0 AND b.ranked > 1".format(order=order, t=table_name),
             [user_id],
         ):
             # Vanilla always uses score to determine #1s.
-            # Relax & autopilot use score for loved maps, and pp for other statuses.
-            order = "pp" if rx in (1, 2) and score["ranked"] != 5 else "score"
 
             # Get the current first place.
-            firstPlace = await glob.db.fetch(
-                "SELECT s.{0}, s.userid FROM {1} s "
-                "LEFT JOIN users u ON s.userid = u.id "
-                "WHERE s.beatmap_md5 = %s AND s.play_mode = %s "
-                "AND u.privileges & 1 ORDER BY s.{0} DESC LIMIT 1".format(
-                    order,
-                    table_name,
-                ),
-                [score["beatmap_md5"], score["play_mode"]],
+            existing_first_place = await glob.db.fetch(
+                f"""
+                SELECT scores_first.scoreid, scores_first.userid, scores.{order} AS score_value
+                FROM scores_first
+                WHERE beatmap_md5 = %s
+                JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
+                AND scores_first.mode = %s
+                AND scores_first.rx = %s
+                """,
+                [score["beatmap_md5"], score["play_mode"], rx],
             )
 
             # Check if our score is better than the current #1.
             # If it is, then add/update scores_first.
             if (
-                not firstPlace
-                or score[order] > firstPlace[order]
-                or user_id == firstPlace["userid"]
+                not existing_first_place
+                or score["score_value"] > existing_first_place["score_value"]
             ):
                 await glob.db.execute(
                     "REPLACE INTO scores_first VALUES (%s, %s, %s, %s, %s)",

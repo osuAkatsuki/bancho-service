@@ -63,6 +63,7 @@ from events import userPanelRequestEvent
 from events import userStatsRequestEvent
 from objects import glob
 from objects import osuToken
+from objects import stream_messages
 from objects import tokenList
 
 PACKET_PROTO = struct.Struct("<HxI")
@@ -237,9 +238,7 @@ class handler(AsyncRequestHandler):
                                 device_id=None,
                                 event_properties={
                                     "packet_id": packetIDs.get_packet_name(packetID),
-                                    "_user_id": (
-                                        userToken["user_id"] if userToken else None
-                                    ),
+                                    "_user_id": userToken["user_id"],
                                     "time_elapsed_ms": time_elapsed_ms,
                                 },
                             ),
@@ -251,7 +250,9 @@ class handler(AsyncRequestHandler):
 
                 # Token queue built, send it
                 responseTokenString = userToken["token_id"]
-                responseData = await osuToken.dequeue(userToken["token_id"])
+                responseData = await stream_messages.read_all_pending_data(
+                    userToken["token_id"],
+                )
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's

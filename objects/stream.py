@@ -52,37 +52,6 @@ async def remove_client(
     await glob.redis.srem(make_key(stream_name), token_id)
 
 
-async def broadcast_data(
-    stream_name: str,
-    data: bytes,
-    *,
-    excluded_token_ids: list[str] | None = None,
-) -> None:
-    """Send some data to all clients connected to this stream, with optional exclusions"""
-    if excluded_token_ids is None:
-        excluded_token_ids = []
-
-    client_token_ids = await get_client_token_ids(stream_name)
-
-    for token_id in client_token_ids:
-        if token_id not in excluded_token_ids:
-            await osuToken.enqueue(token_id, data)
-
-
-async def multicast_data(
-    stream_name: str,
-    data: bytes,
-    *,
-    recipient_token_ids: list[str],
-) -> None:
-    """Send some data to specific clients who are also connected to this stream."""
-    client_token_ids = await get_client_token_ids(stream_name)
-
-    for token_id in client_token_ids:
-        if token_id in recipient_token_ids:
-            await osuToken.enqueue(token_id, data)
-
-
 async def dispose(stream_name: str) -> None:
     """Tell every client in this stream to leave the stream."""
     client_token_ids = await get_client_token_ids(stream_name)

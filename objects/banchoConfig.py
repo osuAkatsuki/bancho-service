@@ -7,7 +7,7 @@ from constants import serverPackets
 from objects import channelList
 from objects import glob
 from objects import stream
-from objects import streamList
+from objects import stream_messages
 
 
 class banchoConfig:
@@ -75,11 +75,11 @@ class banchoConfig:
         await channelList.loadChannels()
 
         # Send new channels and new bottom icon to everyone
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]),
         )
-        await streamList.broadcast("main", serverPackets.channelInfoEnd)
+        await stream_messages.broadcast_data("main", serverPackets.channelInfoEnd)
         for channel in await channelList.getChannels():
             if channel["public_read"] and not channel["instance"]:
                 client_count = await stream.get_client_count(f"chat/{channel['name']}")
@@ -88,4 +88,4 @@ class banchoConfig:
                     channel["description"],
                     client_count,
                 )
-                await streamList.broadcast("main", packet_data)
+                await stream_messages.broadcast_data("main", packet_data)

@@ -15,7 +15,7 @@ from constants import serverPackets
 from objects import channelList
 from objects import glob
 from objects import osuToken
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects.redisLock import redisLock
 
@@ -43,25 +43,17 @@ async def connect() -> None:
         assert token is not None
 
         await osuToken.update_token(token["token_id"], action_id=actions.IDLE)
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             await serverPackets.userPanel(CHATBOT_USER_ID),
         )
-        await streamList.broadcast(
+        await stream_messages.broadcast_data(
             "main",
             await serverPackets.userStats(CHATBOT_USER_ID),
         )
 
         for channel_name in await channelList.getChannelNames():
             await osuToken.joinChannel(token["token_id"], channel_name)
-
-
-async def disconnect() -> None:
-    async with redisLock(f"bancho:locks:aika"):
-        token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
-        assert token is not None
-
-        await tokenList.deleteToken(token["token_id"])
 
 
 class ChatbotResponse(TypedDict):
@@ -120,7 +112,7 @@ async def query(
         time_elapsed_ms = (time() - start_time) * 1000
 
         if user_token["privileges"] & privileges.ADMIN_CAKER:
-            command_response += f"| Elapsed: {(time() - start_time) * 1000:.3f}ms"
+            command_response += f" | Elapsed: {(time() - start_time) * 1000:.3f}ms"
 
         if glob.amplitude is not None:
             glob.amplitude.track(

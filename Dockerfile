@@ -4,6 +4,7 @@ ENV PYTHONUNBUFFERED=1
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+RUN pip install git+https://github.com/osuAkatsuki/akatsuki-cli
 
 COPY scripts /scripts
 

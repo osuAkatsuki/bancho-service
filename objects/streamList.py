@@ -57,51 +57,6 @@ async def leave(stream_name: str, token_id: str) -> None:
     await stream.remove_client(stream_name, token_id)
 
 
-async def broadcast(
-    stream_name: str,
-    data: bytes,
-    *,
-    excluded_token_ids: list[str] | None = None,
-) -> None:
-    """Send some data to all clients in a stream."""
-    if excluded_token_ids is None:
-        excluded_token_ids = []
-
-    if not await stream_exists(stream_name):
-        logging.warning(
-            "Could not broadcast to stream which does not exist",
-            extra={"stream_name": stream_name},
-        )
-        return
-
-    await stream.broadcast_data(
-        stream_name=stream_name,
-        data=data,
-        excluded_token_ids=excluded_token_ids,
-    )
-
-
-async def multicast(
-    stream_name: str,
-    data: bytes,
-    *,
-    recipient_token_ids: list[str],
-) -> None:
-    """Send some data to a set of specific clients in a stream."""
-    if not await stream_exists(stream_name):
-        logging.warning(
-            "Could not multicast to stream which does not exist",
-            extra={"stream_name": stream_name},
-        )
-        return
-
-    await stream.multicast_data(
-        stream_name,
-        data,
-        recipient_token_ids=recipient_token_ids,
-    )
-
-
 async def dispose(stream_name: str) -> None:
     """Removes an existing stream and kicks every user in it."""
     if not await stream_exists(stream_name):

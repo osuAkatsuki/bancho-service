@@ -25,7 +25,7 @@ from objects import channelList
 from objects import glob
 from objects import osuToken
 from objects import stream
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects import verifiedCache
 
@@ -51,6 +51,11 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
     # Split POST body so we can get username/password/hardware data
     loginData = web_handler.request.body.decode()[:-1].split("\n")
+
+    userID: int | None = None
+    username: str | None = None
+    osuVersionStr: str | None = None
+    restricted: bool | None = None
 
     try:
         # Make sure loginData is valid
@@ -491,7 +496,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         # Send to everyone our userpanel if we are not restricted or tournament
         if not osuToken.is_restricted(userToken["privileges"]):
-            await streamList.broadcast("main", await serverPackets.userPanel(userID))
+            await stream_messages.broadcast_data(
+                "main",
+                await serverPackets.userPanel(userID),
+            )
 
         if glob.amplitude is not None:
             glob.amplitude.track(
@@ -548,7 +556,9 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             )
 
         # Set reponse data to right value and reset our queue
-        queued_token_data = await osuToken.dequeue(userToken["token_id"])
+        queued_token_data = await stream_messages.read_all_pending_data(
+            userToken["token_id"],
+        )
         responseData = bytearray(queued_token_data)
     except exceptions.loginFailedException:
         # Login failed error packet
@@ -573,7 +583,9 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
     except exceptions.banchoMaintenanceException:
         # Bancho is in maintenance mode
         if userToken:
-            queued_token_data = await osuToken.dequeue(userToken["token_id"])
+            queued_token_data = await stream_messages.read_all_pending_data(
+                userToken["token_id"],
+            )
             responseData = bytearray(queued_token_data)
         else:
             responseData.clear()
@@ -599,8 +611,14 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             ),
         )
 
-        if not restricted and (
-            v_argstr in web_handler.request.arguments or osuVersionStr == v_argverstr
+        if (
+            userID
+            and username
+            and not restricted
+            and (
+                v_argstr in web_handler.request.arguments
+                or osuVersionStr == v_argverstr
+            )
         ):
             await audit_logs.send_log_as_discord_webhook(
                 message=f"**[{username}](https://akatsuki.gg/u/{userID})** has attempted to login with the {v_argstr} client.",

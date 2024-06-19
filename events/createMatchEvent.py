@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from amplitude import BaseEvent
 
+from adapters import feature_flags
 from common.log import logger
 from constants import clientPackets
 from constants import exceptions
@@ -14,6 +15,9 @@ from objects import osuToken
 from objects.redisLock import redisLock
 
 
+class MatchCreationDisabledError(Exception): ...
+
+
 async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
     try:
         # Read packet data
@@ -24,29 +28,65 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
         if not match_name:
             raise exceptions.matchCreateError()
 
-        # Create a match object
-        # TODO: Player number check
-        multiplayer_match = await matchList.createMatch(
-            match_name,
-            packetData["matchPassword"].strip(),
-            packetData["beatmapID"],
-            packetData["beatmapName"],
-            packetData["beatmapMD5"],
-            packetData["gameMode"],
-            token["user_id"],
+        match_creation_enabled = feature_flags.is_feature_enabled(
+            feature_name="osu_match_creation_enabled",
+            user_id=str(token["user_id"]),
+            device_id=token["amplitude_device_id"],
         )
+        if not (match_creation_enabled or osuToken.is_staff(token["privileges"])):
+            raise MatchCreationDisabledError()
 
-        async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
-            # Join that match
-            await osuToken.joinMatch(token["token_id"], multiplayer_match["match_id"])
+        async with redisLock(f'{osuToken.make_key(token["token_id"])}:match_creation'):
+            # Check if the user is already in a match.
+            # Fetch their updated token after acquiring the lock to ensure authenticity.
+            maybe_token = await osuToken.get_token(token["token_id"])
+            if maybe_token is None:
+                return None
 
-            # Give host to match creator
-            await match.setHost(multiplayer_match["match_id"], token["user_id"])
-            await match.sendUpdates(multiplayer_match["match_id"])
-            await match.changePassword(
-                multiplayer_match["match_id"],
-                packetData["matchPassword"],
+            token = maybe_token
+
+            if token["match_id"]:
+                logger.warning(
+                    "User %s tried to create a match while already in a match",
+                    token["user_id"],
+                    extra={"user_id": token["user_id"]},
+                )
+                return await osuToken.enqueue(
+                    token["token_id"],
+                    (
+                        serverPackets.matchJoinFail
+                        + serverPackets.notification(
+                            "You are already in a match. Please leave it first!",
+                        )
+                    ),
+                )
+
+            # Create a match object
+            # TODO: Player number check
+            multiplayer_match = await matchList.createMatch(
+                match_name,
+                packetData["matchPassword"].strip(),
+                packetData["beatmapID"],
+                packetData["beatmapName"],
+                packetData["beatmapMD5"],
+                packetData["gameMode"],
+                token["user_id"],
             )
+
+            async with redisLock(match.make_lock_key(multiplayer_match["match_id"])):
+                # Join that match
+                await osuToken.joinMatch(
+                    token["token_id"],
+                    multiplayer_match["match_id"],
+                )
+
+                # Give host to match creator
+                await match.setHost(multiplayer_match["match_id"], token["user_id"])
+                await match.sendUpdates(multiplayer_match["match_id"])
+                await match.changePassword(
+                    multiplayer_match["match_id"],
+                    packetData["matchPassword"],
+                )
 
         if glob.amplitude is not None:
             amplitude_event_props = {
@@ -88,3 +128,13 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
     except exceptions.matchCreateError:
         logger.exception("An error occurred while creating a multiplayer match")
         await osuToken.enqueue(token["token_id"], serverPackets.matchJoinFail)
+    except MatchCreationDisabledError:
+        await osuToken.enqueue(
+            token["token_id"],
+            (
+                serverPackets.matchJoinFail
+                + serverPackets.notification(
+                    "Match creation is disabled. Please try again later!",
+                )
+            ),
+        )

@@ -16,6 +16,7 @@ from objects import glob
 from objects import match
 from objects import osuToken
 from objects import stream
+from objects import stream_messages
 from objects import streamList
 
 # bancho:channels
@@ -155,7 +156,10 @@ async def removeChannel(name: str) -> None:
         )
         return
 
-    await streamList.broadcast(f"chat/{name}", serverPackets.channelKicked(name))
+    await stream_messages.broadcast_data(
+        f"chat/{name}",
+        serverPackets.channelKicked(name),
+    )
     for token_id in await stream.get_client_token_ids(f"chat/{name}"):
         token = await osuToken.get_token(token_id)
         if token is not None:

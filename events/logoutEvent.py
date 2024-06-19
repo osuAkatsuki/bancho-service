@@ -10,7 +10,7 @@ from constants import serverPackets
 from helpers import countryHelper
 from objects import glob
 from objects import osuToken
-from objects import streamList
+from objects import stream_messages
 from objects import tokenList
 from objects.osuToken import Token
 
@@ -42,7 +42,10 @@ async def handle(
     await osuToken.leaveAllStreams(token["token_id"])
 
     # Enqueue our disconnection to everyone else
-    await streamList.broadcast("main", serverPackets.userLogout(token["user_id"]))
+    await stream_messages.broadcast_data(
+        "main",
+        serverPackets.userLogout(token["user_id"]),
+    )
 
     # Delete token
     if deleteToken:

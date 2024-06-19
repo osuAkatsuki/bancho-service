@@ -7,6 +7,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from types import FrameType
 
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
@@ -15,12 +16,13 @@ import lifecycle
 from common import exception_handling
 from common.log import logger
 from common.log import logging_config
-from objects import osuToken
+from objects import stream_messages
+from objects import streamList
 
 # TODO: this work should be done JIT when a player sends a message
 # and the cronjob/daemon strategy here should be completely removed
 
-CRON_RUN_INTERVAL = 60  # seconds
+FIVE_MINUTES = 5 * 60
 
 SHUTDOWN_EVENT: asyncio.Event | None = None
 
@@ -37,20 +39,31 @@ signal.signal(signal.SIGTERM, handle_shutdown_event)
 async def main() -> int:
     global SHUTDOWN_EVENT
     SHUTDOWN_EVENT = asyncio.Event()
-    logger.info("Starting spam protection loop")
+    logger.info("Starting outdated stream message trim loop")
     try:
         await lifecycle.startup()
         while True:
-            for token_id in await osuToken.get_token_ids():
-                await osuToken.update_token(token_id, spam_rate=0)
-
-            try:
-                await asyncio.wait_for(
-                    SHUTDOWN_EVENT.wait(),
-                    timeout=CRON_RUN_INTERVAL,
-                )
-            except TimeoutError:
-                pass
+            for stream_name in await streamList.getStreams():
+                try:
+                    five_minutes_ago = time.time() - FIVE_MINUTES
+                    trimmed_messages = await stream_messages.trim_stream_messages(
+                        stream_name,
+                        min_id=f"{int(five_minutes_ago * 1000)}-0",
+                    )
+                    if trimmed_messages:
+                        logger.info(
+                            "Trimmed outdated stream messages",
+                            extra={
+                                "stream_name": stream_name,
+                                "trimmed_messages": trimmed_messages,
+                            },
+                        )
+                    await asyncio.wait_for(
+                        SHUTDOWN_EVENT.wait(),
+                        timeout=1,
+                    )
+                except TimeoutError:
+                    pass
     finally:
         await lifecycle.shutdown()
 

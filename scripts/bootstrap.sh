@@ -14,7 +14,6 @@ if [ -z "$APP_COMPONENT" ]; then
 fi
 
 if [[ $PULL_SECRETS_FROM_VAULT -eq 1 ]]; then
-  pip install --break-system-packages git+https://github.com/osuAkatsuki/akatsuki-cli
   akatsuki vault get bancho-service $APP_ENV -o .env
   source .env
 fi
@@ -33,6 +32,8 @@ elif [[ $APP_COMPONENT == "timeout-inactive-tokens" ]]; then
   exec /scripts/run-timeout-inactive-tokens.sh
 elif [[ $APP_COMPONENT == "consume-pubsub-events" ]]; then
   exec /scripts/run-consume-pubsub-events.sh
+elif [[ $APP_COMPONENT == "trim-outdated-streams" ]]; then
+  exec /scripts/run-trim-outdated-streams.sh
 else
   echo "Unknown APP_COMPONENT: $APP_COMPONENT"
   exit 1
