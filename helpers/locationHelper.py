@@ -7,7 +7,7 @@ from common.log import logger
 from helpers import countryHelper
 from objects import glob
 
-API_CALL_TIMEOUT = 3
+API_CALL_TIMEOUT = 5
 
 
 class Geolocation(TypedDict):
