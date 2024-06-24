@@ -1304,7 +1304,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
             {"name": k, "value": v}
             for k, v in {
                 "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}\n\n**Leaderboard**\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{last_np_map_id})",
-                "Download": f"{icon_osudirect}・[`osu.direct`](https://api.osu.direct/d/{res['beatmapset_id']})\n{icon_nerinyan}・[`nerinyan.moe`](https://api.nerinyan.moe/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`beatconnect.io`](https://beatconnect.io/b/{res['beatmapset_id']})",
+                "Download": f"{icon_osudirect}・[`Akatsuki`](https://beatmaps.akatsuki.gg/api/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`beatconnect.io`](https://beatconnect.io/b/{res['beatmapset_id']})",
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
