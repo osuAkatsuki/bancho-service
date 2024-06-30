@@ -661,12 +661,12 @@ async def getPPMessage(
         return "Could not retrieve beatmap information for the given map."
 
     est_performance, est_star_rating = await performance_utils.calculate_performance(
-        currentMap,
-        currentMode,
-        currentMods,
-        beatmap.max_combo,
-        currentAcc,
-        currentMisscount,
+        beatmap_id=currentMap,
+        vanilla_mode=currentMode,
+        mods=currentMods,
+        max_combo=beatmap.max_combo,
+        accuracy=currentAcc,
+        miss_count=currentMisscount,
     )
 
     data: dict[str, Any] = {

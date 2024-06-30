@@ -15,12 +15,13 @@ performance_service_http_client = httpx.AsyncClient(
 
 
 async def calculate_performance(
+    *,
     beatmap_id: int,
     vanilla_mode: int,
     mods: int,
     max_combo: int,
-    acc: float,
-    nmiss: int,
+    accuracy: float,
+    miss_count: int,
 ) -> tuple[float, float]:
     try:
         response = await performance_service_http_client.post(
@@ -31,8 +32,8 @@ async def calculate_performance(
                     "mode": vanilla_mode,
                     "mods": mods,
                     "max_combo": max_combo,
-                    "accuracy": acc,
-                    "miss_count": nmiss,
+                    "accuracy": accuracy,
+                    "miss_count": miss_count,
                 },
             ],
             timeout=4,
@@ -47,8 +48,8 @@ async def calculate_performance(
                     "mode": vanilla_mode,
                     "mods": mods,
                     "max_combo": max_combo,
-                    "accuracy": acc,
-                    "miss_count": nmiss,
+                    "accuracy": accuracy,
+                    "miss_count": miss_count,
                 },
             },
         )
