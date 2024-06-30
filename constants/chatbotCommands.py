@@ -63,6 +63,13 @@ return the message or **False** if there's no response by the bot
 TODO: Change False to None, because False doesn't make any sense
 """
 
+DEFAULT_PERFORMANCE_ACCURACY_VALUES = (
+    100.0,
+    99.0,
+    98.0,
+    95.0,
+)
+
 CommandCallable = Callable[[str, str, list[str]], Awaitable[Optional[str]]]
 
 
@@ -660,25 +667,49 @@ async def getPPMessage(
     if not beatmap:
         return "Could not retrieve beatmap information for the given map."
 
-    est_performance, est_star_rating = await performance_utils.calculate_performance(
-        beatmap_id=currentMap,
-        vanilla_mode=currentMode,
-        mods=currentMods,
-        max_combo=beatmap.max_combo,
-        accuracy=currentAcc,
-        miss_count=currentMisscount,
+    if currentAcc == -1:
+        performance_requests = [
+            performance_utils.PerformanceRequest(
+                beatmap_id=currentMap,
+                beatmap_md5=beatmap.beatmap_md5,
+                mode=currentMode,
+                mods=currentMods,
+                max_combo=beatmap.max_combo,
+                accuracy=accuracy,
+                miss_count=currentMisscount,
+            )
+            for accuracy in DEFAULT_PERFORMANCE_ACCURACY_VALUES
+        ]
+    else:
+        performance_requests = [
+            performance_utils.PerformanceRequest(
+                beatmap_id=currentMap,
+                beatmap_md5=beatmap.beatmap_md5,
+                mode=currentMode,
+                mods=currentMods,
+                max_combo=beatmap.max_combo,
+                accuracy=currentAcc,
+                miss_count=currentMisscount,
+            ),
+        ]
+
+    performance_results = await performance_utils.calculate_performance_batch(
+        requests=performance_requests,
     )
 
     data: dict[str, Any] = {
         "status": 200,
         "message": "ok",
         "song_name": beatmap.song_name,
-        "pp": est_performance,
         "length": beatmap.hit_length,
-        "stars": est_star_rating,  # TODO is this wrong for common values?
+        "stars": performance_results[0].stars,
         "ar": beatmap.ar,
         "bpm": beatmap.bpm,
     }
+    if currentAcc == -1:
+        data["pp"] = [result.pp for result in performance_results]
+    else:
+        data["pp"] = [performance_results[0].pp]
 
     if just_data:
         return data
