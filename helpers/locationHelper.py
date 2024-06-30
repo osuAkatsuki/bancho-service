@@ -41,7 +41,7 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
     response_data: dict[str, Any] | None = None
     try:
         response = await ip_api_http_client.get(
-            "/json/{ip_address}",
+            f"/json/{ip_address}",
             timeout=API_CALL_TIMEOUT,
         )
         response.raise_for_status()
