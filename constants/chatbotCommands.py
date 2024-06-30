@@ -15,8 +15,10 @@ from typing import overload
 from amplitude import BaseEvent
 
 import settings
+from adapters import beatmaps_service
 from common import generalUtils
 from common import job_scheduling
+from common import performance_utils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
@@ -60,6 +62,13 @@ Must have (fro: str, chan: str, msg: list[str]) as args.
 return the message or **False** if there's no response by the bot
 TODO: Change False to None, because False doesn't make any sense
 """
+
+DEFAULT_PERFORMANCE_ACCURACY_VALUES = (
+    100.0,
+    99.0,
+    98.0,
+    95.0,
+)
 
 CommandCallable = Callable[[str, str, list[str]], Awaitable[Optional[str]]]
 
@@ -651,38 +660,56 @@ async def getPPMessage(
     currentMap = current_info["beatmap_id"]
     currentMods = current_info["mods"]
     currentAcc = current_info["accuracy"]
+    currentMode = 0
+    currentMisscount = 0
 
-    # Send request to score-service to calculate pp
-    try:
-        response = await glob.http_client.get(
-            url=f"{settings.SCORE_SERVICE_BASE_URL}/api/v1/pp",
-            params={"b": currentMap, "m": currentMods},
-            timeout=5,
-        )
-        response.raise_for_status()
-    except:
-        logger.exception(
-            "Failed to retrieve PP from score-service API",
-            extra={
-                "user_id": userID,
-                "beatmap_id": currentMap,
-                "mods": currentMods,
-            },
-        )
-        return "Score server currently down, could not retrieve PP."
+    beatmap = await beatmaps_service.fetch_by_id(currentMap)
+    if not beatmap:
+        return "Could not retrieve beatmap information for the given map."
 
-    data = response.json()
+    if currentAcc == -1:
+        performance_requests = [
+            performance_utils.PerformanceRequest(
+                beatmap_id=currentMap,
+                beatmap_md5=beatmap.beatmap_md5,
+                mode=currentMode,
+                mods=currentMods,
+                max_combo=beatmap.max_combo,
+                accuracy=accuracy,
+                miss_count=currentMisscount,
+            )
+            for accuracy in DEFAULT_PERFORMANCE_ACCURACY_VALUES
+        ]
+    else:
+        performance_requests = [
+            performance_utils.PerformanceRequest(
+                beatmap_id=currentMap,
+                beatmap_md5=beatmap.beatmap_md5,
+                mode=currentMode,
+                mods=currentMods,
+                max_combo=beatmap.max_combo,
+                accuracy=currentAcc,
+                miss_count=currentMisscount,
+            ),
+        ]
 
-    # Make sure status is in response data
-    if "status" not in data:
-        return "Unknown error in LESS API call."
+    performance_results = await performance_utils.calculate_performance_batch(
+        requests=performance_requests,
+    )
 
-    # Make sure status is 200
-    if data["status"] != 200:
-        if "message" in data:
-            return f"Error in LESS API call ({data['message']})."
-        else:
-            return "Unknown error in LESS API call."
+    data: dict[str, Any] = {
+        "status": 200,
+        "message": "ok",
+        "song_name": beatmap.song_name,
+        "length": beatmap.hit_length,
+        "stars": performance_results[0].stars,
+        "ar": beatmap.ar,
+        "bpm": beatmap.bpm,
+    }
+    if currentAcc == -1:
+        data["pp"] = [result.pp for result in performance_results]
+    else:
+        data["pp"] = [performance_results[0].pp]
 
     if just_data:
         return data

@@ -5,8 +5,11 @@ from datetime import datetime as dt
 from time import time
 from typing import Any
 
+import httpx
+
 from common.log import logger
-from objects import glob
+
+discord_webhook_http_client = httpx.AsyncClient()
 
 
 class Webhook:
@@ -132,7 +135,7 @@ class Webhook:
         Send the JSON formated object to the specified `self.url`.
         """
 
-        response = await glob.http_client.post(
+        response = await discord_webhook_http_client.post(
             self.url,
             json=self.json,
         )

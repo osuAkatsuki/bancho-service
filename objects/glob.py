@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from objects.dbPool import DBPool
 
 
-http_client = httpx.AsyncClient()
 application: tornado.web.Application | None = None
 db: DBPool
 redis: Redis[Any]
