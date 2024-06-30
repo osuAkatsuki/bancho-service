@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - remove-score-service-calls
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
