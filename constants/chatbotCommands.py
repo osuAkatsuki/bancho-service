@@ -8,7 +8,6 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from typing import Any
 from typing import Literal
-from common import beatmap_utils, performance_utils
 from typing import Optional
 from typing import TypedDict
 from typing import overload
@@ -19,6 +18,7 @@ import settings
 from common import beatmap_utils
 from common import generalUtils
 from common import job_scheduling
+from common import performance_utils
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges

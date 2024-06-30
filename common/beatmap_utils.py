@@ -104,7 +104,7 @@ class Beatmap:
     bpm: int = 0
     filename: str = ""
     frozen: bool = False
-    rating: Optional[float] = None
+    rating: float | None = None
 
     @property
     def gives_pp(self) -> bool:
@@ -174,7 +174,7 @@ class Beatmap:
         )
 
 
-async def update_beatmap(beatmap: Beatmap) -> Optional[Beatmap]:
+async def update_beatmap(beatmap: Beatmap) -> Beatmap | None:
     if not beatmap.deserves_update:
         return beatmap
 
@@ -215,7 +215,7 @@ async def update_beatmap(beatmap: Beatmap) -> Optional[Beatmap]:
         return beatmap
 
 
-async def fetch_by_md5(md5: str) -> Optional[Beatmap]:
+async def fetch_by_md5(md5: str) -> Beatmap | None:
     if beatmap := await md5_from_database(md5):
         return beatmap
 
@@ -223,7 +223,7 @@ async def fetch_by_md5(md5: str) -> Optional[Beatmap]:
         return beatmap
 
 
-async def fetch_by_id(id: int) -> Optional[Beatmap]:
+async def fetch_by_id(id: int) -> Beatmap | None:
     if beatmap := await id_from_database(id):
         return beatmap
 
@@ -241,7 +241,7 @@ async def fetch_by_set_id(set_id: int) -> list[Beatmap]:
     return []
 
 
-async def md5_from_database(md5: str) -> Optional[Beatmap]:
+async def md5_from_database(md5: str) -> Beatmap | None:
     db_result = await glob.db.fetch(
         "SELECT * FROM beatmaps WHERE beatmap_md5 = :md5",
         {"md5": md5},
@@ -253,7 +253,7 @@ async def md5_from_database(md5: str) -> Optional[Beatmap]:
     return Beatmap.from_mapping(db_result)
 
 
-async def id_from_database(id: int) -> Optional[Beatmap]:
+async def id_from_database(id: int) -> Beatmap | None:
     db_result = await glob.db.fetch(
         "SELECT * FROM beatmaps WHERE beatmap_id = :id",
         {"id": id},
@@ -308,7 +308,7 @@ async def save(beatmap: Beatmap) -> None:
     )
 
 
-async def md5_from_api(md5: str, should_save: bool = True) -> Optional[Beatmap]:
+async def md5_from_api(md5: str, should_save: bool = True) -> Beatmap | None:
     api_key = random.choice(settings.OSU_API_KEYS)
 
     response = await glob.http_client.get(
@@ -335,7 +335,7 @@ async def md5_from_api(md5: str, should_save: bool = True) -> Optional[Beatmap]:
             return beatmap
 
 
-async def id_from_api(id: int, should_save: bool = True) -> Optional[Beatmap]:
+async def id_from_api(id: int, should_save: bool = True) -> Beatmap | None:
     api_key = random.choice(settings.OSU_API_KEYS)
 
     response = await glob.http_client.get(
@@ -362,7 +362,7 @@ async def id_from_api(id: int, should_save: bool = True) -> Optional[Beatmap]:
             return beatmap
 
 
-async def set_from_api(id: int, should_save: bool = True) -> Optional[list[Beatmap]]:
+async def set_from_api(id: int, should_save: bool = True) -> list[Beatmap] | None:
     api_key = random.choice(settings.OSU_API_KEYS)
 
     response = await glob.http_client.get(
