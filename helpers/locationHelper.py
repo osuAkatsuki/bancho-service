@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 from typing import TypedDict
 
 import httpx
@@ -37,6 +38,7 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
     if not settings.LOCALIZE_ENABLE:
         return unknown_geolocation()
 
+    response_data: dict[str, Any] | None = None
     try:
         response = await ip_api_http_client.get(
             "/json/{ip_address}",
@@ -44,6 +46,7 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
         )
         response.raise_for_status()
         response_data = response.json()
+        assert response_data is not None
         country = response_data["countryCode"]
         resolved_geolocation: Geolocation = {
             "iso_country_code": country,
@@ -63,6 +66,9 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
     except:
         logger.exception(
             f"Failed to resolve geolocation for {ip_address}",
-            extra={"ip_address": ip_address},
+            extra={
+                "ip_address": ip_address,
+                "response_data": response_data,
+            },
         )
         return unknown_geolocation()
