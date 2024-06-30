@@ -40,7 +40,7 @@ async def calculate_performance_batch(
             timeout=4,
         )
         response.raise_for_status()
-    except (httpx.RequestError, httpx.HTTPStatusError, TimeoutError):
+    except Exception:
         logging.exception(
             "Performance service returned an error",
             extra={"requests": [request.model_dump() for request in requests]},
