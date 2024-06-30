@@ -36,22 +36,24 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
             f"http://ip-api.com/json/{ip_address}",
             timeout=API_CALL_TIMEOUT,
         )
+        response.raise_for_status()
+        response_data = response.json()
+        country = response_data["countryCode"]
+        resolved_geolocation: Geolocation = {
+            "iso_country_code": country,
+            "osu_country_code": countryHelper.iso_code_to_osu_code(country),
+            "latitude": float(response_data["lat"]),
+            "longitude": float(response_data["lon"]),
+        }
         logging.info(
             "Made request to ip-api.com for geolocation resolution",
             extra={
                 "client_ip_address": ip_address,
+                "resolved_geolocation": resolved_geolocation,
                 "response_status": response.status_code,
             },
         )
-        response.raise_for_status()
-        json = response.json()
-        country = json["countryCode"]
-        return {
-            "iso_country_code": country,
-            "osu_country_code": countryHelper.iso_code_to_osu_code(country),
-            "latitude": float(json["lat"]),
-            "longitude": float(json["lon"]),
-        }
+        return resolved_geolocation
     except:
         logger.exception(
             f"Failed to resolve geolocation for {ip_address}",
