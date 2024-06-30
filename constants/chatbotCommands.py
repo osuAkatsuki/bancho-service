@@ -669,7 +669,7 @@ async def getPPMessage(
         currentMisscount,
     )
 
-    data = {
+    data: dict[str, Any] = {
         "status": 200,
         "message": "ok",
         "song_name": beatmap.song_name,

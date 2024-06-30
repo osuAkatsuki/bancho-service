@@ -3,12 +3,18 @@ from __future__ import annotations
 import logging
 from typing import TypedDict
 
+import httpx
+
 import settings
 from common.log import logger
 from helpers import countryHelper
-from objects import glob
 
 API_CALL_TIMEOUT = 5
+
+ip_api_http_client = httpx.AsyncClient(
+    # NOTE: TLS for ip-api is a paid feature
+    base_url="http://ip-api.com",
+)
 
 
 class Geolocation(TypedDict):
@@ -32,8 +38,8 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
         return unknown_geolocation()
 
     try:
-        response = await glob.http_client.get(
-            f"http://ip-api.com/json/{ip_address}",
+        response = await ip_api_http_client.get(
+            "/json/{ip_address}",
             timeout=API_CALL_TIMEOUT,
         )
         response.raise_for_status()

@@ -5,10 +5,15 @@ import logging
 import httpx
 
 import settings
-from objects import glob
+
+performance_service_http_client = httpx.AsyncClient(
+    base_url=settings.PERFORMANCE_SERVICE_BASE_URL,
+)
 
 
 # TODO: split sr & pp calculations
+
+
 async def calculate_performance(
     beatmap_id: int,
     vanilla_mode: int,
@@ -18,8 +23,8 @@ async def calculate_performance(
     nmiss: int,
 ) -> tuple[float, float]:
     try:
-        response = await glob.http_client.post(
-            f"{settings.PERFORMANCE_SERVICE_BASE_URL}/api/v1/calculate",
+        response = await performance_service_http_client.post(
+            "/api/v1/calculate",
             json=[
                 {
                     "beatmap_id": beatmap_id,
