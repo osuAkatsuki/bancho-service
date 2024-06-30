@@ -33,8 +33,6 @@ REDIS_USER = os.getenv("REDIS_USER") or None
 REDIS_PASS = os.environ["REDIS_PASS"]
 REDIS_USE_SSL = read_bool(os.environ["REDIS_USE_SSL"])
 
-OSU_API_KEYS = os.environ["OSU_API_KEYS"].split(",")
-
 SCORE_SERVICE_BASE_URL = os.environ["SCORE_SERVICE_BASE_URL"]
 PERFORMANCE_SERVICE_BASE_URL = os.environ["PERFORMANCE_SERVICE_BASE_URL"]
 
