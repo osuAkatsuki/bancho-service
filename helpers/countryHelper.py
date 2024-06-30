@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from common.log import logger
+
 # NOTE: This list is out of date.
 # At some point, it may be worth an update.
 ISO_TO_OSU_COUNTRY_CODES: dict[str, int] = {
@@ -259,9 +261,23 @@ OSU_TO_ISO_COUNTRY_CODES = {v: k for k, v in ISO_TO_OSU_COUNTRY_CODES.items()}
 
 def iso_code_to_osu_code(iso_code: str) -> int:
     """Get osu country code from an iso country code."""
-    return ISO_TO_OSU_COUNTRY_CODES.get(iso_code, 0)
+    osu_code = ISO_TO_OSU_COUNTRY_CODES.get(iso_code)
+    if osu_code is None:
+        logger.warning(
+            f"Unknown iso country code: {iso_code}",
+            extra={"iso_code": iso_code},
+        )
+        osu_code = 0
+    return osu_code
 
 
 def osu_code_to_iso_code(osu_code: int) -> str:
     """Get iso country code from osu country code."""
-    return OSU_TO_ISO_COUNTRY_CODES.get(osu_code, "XX")
+    iso_code = OSU_TO_ISO_COUNTRY_CODES.get(osu_code)
+    if iso_code is None:
+        logger.warning(
+            f"Unknown osu country code: {osu_code}",
+            extra={"osu_code": osu_code},
+        )
+        iso_code = "XX"
+    return iso_code
