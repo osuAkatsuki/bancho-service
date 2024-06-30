@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TypedDict
 
 import settings
@@ -32,18 +33,24 @@ async def resolve_ip_geolocation(ip_address: str) -> Geolocation:
 
     try:
         response = await glob.http_client.get(
-            f"{settings.LOCALIZE_IP_API_URL}/{ip_address}",
+            f"http://ip-api.com/json/{ip_address}",
             timeout=API_CALL_TIMEOUT,
+        )
+        logging.info(
+            "Made request to ip-api.com for geolocation resolution",
+            extra={
+                "client_ip_address": ip_address,
+                "response_status": response.status_code,
+            },
         )
         response.raise_for_status()
         json = response.json()
-        country = json["country"]
-        loc = json["loc"].split(",")
+        country = json["countryCode"]
         return {
             "iso_country_code": country,
             "osu_country_code": countryHelper.iso_code_to_osu_code(country),
-            "latitude": float(loc[0]),
-            "longitude": float(loc[1]),
+            "latitude": float(json["lat"]),
+            "longitude": float(json["lon"]),
         }
     except:
         logger.exception(
