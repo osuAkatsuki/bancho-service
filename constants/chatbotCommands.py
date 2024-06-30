@@ -15,7 +15,7 @@ from typing import overload
 from amplitude import BaseEvent
 
 import settings
-from common import beatmap_utils
+from adapters import beatmaps_service
 from common import generalUtils
 from common import job_scheduling
 from common import performance_utils
@@ -656,7 +656,7 @@ async def getPPMessage(
     currentMode = 0
     currentMisscount = 0
 
-    beatmap = await beatmap_utils.id_from_api(currentMap, should_save=False)
+    beatmap = await beatmaps_service.fetch_by_id(currentMap)
     if not beatmap:
         return "Could not retrieve beatmap information for the given map."
 
