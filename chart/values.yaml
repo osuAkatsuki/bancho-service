@@ -73,7 +73,7 @@ apps:
           cpu: 200m
           memory: 200Mi
         requests:
-          cpu: 100m
+          cpu: 75m
           memory: 75Mi
       env:
         - name: APP_COMPONENT
@@ -95,7 +95,7 @@ apps:
           cpu: 200m
           memory: 200Mi
         requests:
-          cpu: 100m
+          cpu: 75m
           memory: 75Mi
       env:
         - name: APP_COMPONENT
@@ -117,7 +117,7 @@ apps:
           cpu: 200m
           memory: 200Mi
         requests:
-          cpu: 100m
+          cpu: 75m
           memory: 75Mi
       env:
         - name: APP_COMPONENT
