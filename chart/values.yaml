@@ -5,7 +5,7 @@ apps:
     autoscaling:
       enabled: true
       minReplicas: 3
-      maxReplicas: 8
+      maxReplicas: 6
       targetCPUUtilizationPercentage: 70
     container:
       image:
