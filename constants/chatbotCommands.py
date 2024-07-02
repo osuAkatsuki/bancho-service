@@ -109,21 +109,6 @@ def command(
     return wrapper
 
 
-@command(trigger="!profiling enable")
-async def enable_profiling(fro: str, chan: str, message: list[str]) -> str:
-    """Enable the profiler."""
-    profiling.profiler.enable()
-    return "Profiler enabled."
-
-
-@command(trigger="!profiling disable")
-async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
-    """Disable the profiler."""
-    profiling.profiler.disable()
-    profiling.profiler.dump_stats("stats.dump")
-    return "Profiler disabled. Dumped stats to disk @ stats.dump"
-
-
 @command(trigger="!help", hidden=True)
 async def _help(fro: str, chan: str, message: list[str]) -> str:
     """Show all documented commands the player can access."""
@@ -2639,3 +2624,18 @@ async def runPython(fro: str, chan: str, message: list[str]) -> str:
         ret = f"{e.__class__}: {e}"
 
     return ret
+
+
+@command(trigger="!profiling enable")
+async def enable_profiling(fro: str, chan: str, message: list[str]) -> str:
+    """Enable the profiler."""
+    profiling.profiler.enable()
+    return "Profiler enabled."
+
+
+@command(trigger="!profiling disable")
+async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
+    """Disable the profiler."""
+    profiling.profiler.disable()
+    profiling.profiler.dump_stats("stats.dump")
+    return "Profiler disabled. Dumped stats to disk @ stats.dump"
