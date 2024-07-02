@@ -4,7 +4,6 @@ import redis.asyncio as redis
 
 import settings
 from common.log import logger
-from common.profiling import tracef
 from objects import banchoConfig
 from objects import glob
 from objects.dbPool import DBPool
@@ -36,64 +35,6 @@ async def startup() -> None:
             username=settings.REDIS_USER,
             ssl=settings.REDIS_USE_SSL,
         )
-
-        for redis_cmd in (
-            "get",
-            "set",
-            "delete",
-            "smembers",
-            "sadd",
-            "srem",
-            "expire",
-            "exists",
-            "hget",
-            "hset",
-            "hdel",
-            "hgetall",
-            "lpush",
-            "lrange",
-            "ltrim",
-            "lpop",
-            "llen",
-            "xadd",
-            "xread",
-            "xgroup",
-            "xinfo",
-            "xpending",
-            "xack",
-            "xtrim",
-            "xdel",
-            "xlen",
-            "zadd",
-            "zrange",
-            "zrevrange",
-            "zrem",
-            "zscore",
-            "zcard",
-            "zincrby",
-            "zcount",
-            "publish",
-            "subscribe",
-            "unsubscribe",
-            "psubscribe",
-            "punsubscribe",
-            "incr",
-            "decr",
-            "incrby",
-            "decrby",
-            "expire",
-            "ttl",
-            "persist",
-            "flushdb",
-            "flushall",
-        ):
-            try:
-                obj = getattr(glob.redis, redis_cmd)
-                setattr(glob.redis, redis_cmd, tracef(obj))
-            except Exception:
-                logger.exception(f"Error tracing {redis_cmd}")
-                continue
-
         await glob.redis.ping()
     except:
         logger.exception("Error connecting to redis")
