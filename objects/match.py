@@ -9,6 +9,8 @@ from typing import cast
 import orjson
 
 from common.log import logger
+from common.types import UNSET
+from common.types import Unset
 from constants import CHATBOT_USER_ID
 from constants import dataTypes
 from constants import matchModModes
@@ -58,7 +60,7 @@ class Match(TypedDict):
     creation_time: float
 
     match_history_private: bool
-    current_game_id: int
+    current_game_id: int | None
 
     # now separate
     # slots: list[slot.Slot]
@@ -92,7 +94,7 @@ async def create_match(
     is_timer_running: bool,
     is_in_progress: bool,
     creation_time: float,
-    current_game_id: int,
+    current_game_id: int | None,
 ) -> Match:
     match_history_private = False
     if match_password.endswith("//private"):
@@ -166,7 +168,7 @@ async def update_match(
     is_timer_running: bool | None = None,
     is_in_progress: bool | None = None,
     creation_time: float | None = None,
-    game_id: int | None = None,
+    current_game_id: int | None | Unset = UNSET,
 ) -> Match | None:
     match = await get_match(match_id)
     if match is None:
@@ -211,8 +213,8 @@ async def update_match(
         match["is_in_progress"] = is_in_progress
     if creation_time is not None:
         match["creation_time"] = creation_time
-    if game_id is not None:
-        match["current_game_id"] = game_id
+    if not isinstance(current_game_id, Unset):
+        match["current_game_id"] = current_game_id
 
     await glob.redis.set(make_key(match_id), orjson.dumps(match))
     return match
@@ -677,7 +679,7 @@ async def allPlayersCompleted(match_id: int) -> None:
     playing_stream_name = create_playing_stream_name(match_id)
     await streamList.dispose(playing_stream_name)
 
-    if multiplayer_match["current_game_id"] != 0:
+    if multiplayer_match["current_game_id"]:
         await finish_match_game(multiplayer_match["current_game_id"])
 
     # Console output
@@ -1252,7 +1254,7 @@ async def start(match_id: int) -> bool:
     assert multiplayer_match is not None
 
     # Reset game id
-    multiplayer_match = await update_match(match_id, game_id=0)
+    multiplayer_match = await update_match(match_id, current_game_id=None)
     assert multiplayer_match is not None
 
     # Remove isStarting timer flag thingie
@@ -1307,7 +1309,7 @@ async def start(match_id: int) -> bool:
         multiplayer_match["match_scoring_type"],
         multiplayer_match["match_team_type"],
     )
-    multiplayer_match = await update_match(match_id, game_id=game_id)
+    multiplayer_match = await update_match(match_id, current_game_id=game_id)
     assert multiplayer_match is not None
 
     # Send updates
@@ -1462,67 +1464,6 @@ async def remove_referee(match_id: int, user_id: int) -> None:
     assert multiplayer_match is not None
 
     await glob.redis.srem(f"bancho:matches:{match_id}:referees", user_id)
-
-
-async def set_match_frame(
-    match_id: int,
-    slot_id: int,
-    decoded_frame_data: dict[str, Any],
-) -> None:
-    multiplayer_match = await get_match(match_id)
-    assert multiplayer_match is not None
-
-    user_slot = await slot.get_slot(match_id, slot_id)
-    assert user_slot is not None
-
-    match_frame = decoded_frame_data | {
-        "mods": user_slot["mods"]
-        | multiplayer_match["mods"],  # Merge match mods and user mods
-        "passed": user_slot["passed"],
-        "team": user_slot["team"],
-        "mode": multiplayer_match["game_mode"],
-    }
-    await glob.redis.set(
-        f"bancho:matches:{match_id}:frames:{user_slot['user_id']}",
-        orjson.dumps(match_frame),
-    )
-
-
-async def insert_match_frame(
-    match_id: int,
-    user_id: int,
-) -> None:
-    multiplayer_match = await get_match(match_id)
-    assert multiplayer_match is not None
-
-    match_frame = await glob.redis.get(
-        f"bancho:matches:{match_id}:frames:{user_id}",
-    )
-    if not match_frame:
-        return
-
-    await glob.redis.delete(
-        f"bancho:matches:{match_id}:frames:{user_id}",
-    )
-    match_frame = orjson.loads(match_frame)
-
-    await insert_match_game_score(
-        match_id,
-        multiplayer_match["current_game_id"],
-        user_id,
-        match_frame["mode"],
-        match_frame["count300"],
-        match_frame["count100"],
-        match_frame["count50"],
-        match_frame["countMiss"],
-        match_frame["countGeki"],
-        match_frame["countKatu"],
-        match_frame["totalScore"],
-        match_frame["maxCombo"],
-        match_frame["mods"],
-        match_frame["passed"],
-        match_frame["team"],
-    )
 
 
 async def insert_match_game(
