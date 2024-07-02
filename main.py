@@ -22,6 +22,7 @@ from constants import CHATBOT_USER_NAME
 from handlers import apiChatbotMessageHandler
 from handlers import apiIsOnlineHandler
 from handlers import apiOnlineUsersHandler
+from handlers import apiPlayerMatchStatusHandler
 from handlers import apiServerStatusHandler
 from handlers import apiVerifiedStatusHandler
 from handlers import healthHandler
@@ -75,6 +76,7 @@ async def main() -> int:
             (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
             (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
             (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+            (r"/api/v1/playerMatchStatus", apiPlayerMatchStatusHandler.handler),
             # XXX: "fokabot" for legacy reasons
             (r"/api/v1/fokabotMessage", apiChatbotMessageHandler.handler),
         ]
