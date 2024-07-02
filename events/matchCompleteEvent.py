@@ -17,9 +17,4 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         if multiplayer_match is None:
             return
 
-        await match.insert_match_frame(
-            multiplayer_match["match_id"],
-            userToken["user_id"],
-        )
-
         await match.playerCompleted(multiplayer_match["match_id"], userToken["user_id"])

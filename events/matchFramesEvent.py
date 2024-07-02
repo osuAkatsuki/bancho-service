@@ -31,12 +31,6 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         )
         return
 
-    await match.set_match_frame(
-        multiplayer_match["match_id"],
-        userToken["match_slot_id"],
-        packetData,
-    )
-
     # Update the score
     user_failed = packetData["currentHp"] == 254
     await slot.update_slot(
