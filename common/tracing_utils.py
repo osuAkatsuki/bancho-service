@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import logging
 import os.path
 import sys
@@ -12,6 +13,7 @@ R = TypeVar("R")
 
 
 def tracef(f: Callable[P, R]) -> Callable[P, R]:
+    @functools.wraps(f)
     def tracef(*args: P.args, **kwargs: P.kwargs) -> R:
         # print where this is being called from
         caller_frame = sys._getframe(1)
