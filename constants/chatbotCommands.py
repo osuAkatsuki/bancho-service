@@ -19,6 +19,7 @@ from adapters import beatmaps_service
 from common import generalUtils
 from common import job_scheduling
 from common import performance_utils
+from common import profiling
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
@@ -2623,3 +2624,21 @@ async def runPython(fro: str, chan: str, message: list[str]) -> str:
         ret = f"{e.__class__}: {e}"
 
     return ret
+
+
+# NOTE: the profiling commands must be run on the same k8s pod
+
+
+@command(trigger="!profiling enable")
+async def enable_profiling(fro: str, chan: str, message: list[str]) -> str:
+    """Enable the profiler."""
+    profiling.profiler.enable()
+    return "Profiler enabled."
+
+
+@command(trigger="!profiling disable")
+async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
+    """Disable the profiler."""
+    profiling.profiler.disable()
+    profiling.profiler.dump_stats("stats.dump")  # TODO: persist in s3
+    return "Profiler disabled. Dumped stats to disk @ stats.dump"
