@@ -93,10 +93,10 @@ class handler(AsyncRequestHandler):
             statusCode = 400
             data["message"] = "missing required arguments"
         except exceptions.matchNotFoundException:
-            statusCode = 404
+            statusCode = 200
             data["message"] = "match not found"
         except exceptions.tokenNotFoundException:
-            statusCode = 404
+            statusCode = 200
             data["message"] = "online user (token) not found"
         finally:
             # Add status code to data
