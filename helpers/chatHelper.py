@@ -149,7 +149,7 @@ async def part_channel(
             channelClient = "#multiplayer"
 
         # Make sure the channel exists
-        if channel_name not in await channelList.getChannelNames():
+        if not await channelList.channelExists(channel_name):
             raise exceptions.channelUnknownException()
 
         # Make sure a game client is not trying to join a #mp_ or #spect_ channel manually

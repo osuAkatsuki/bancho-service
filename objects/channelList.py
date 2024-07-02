@@ -59,6 +59,11 @@ async def loadChannels() -> None:
             )
 
 
+async def channelExists(channel_name: str) -> bool:
+    """Check if a channel exists in redis."""
+    return await glob.redis.sismember("bancho:channels", channel_name) == 1
+
+
 async def getChannelNames() -> set[str]:
     """Get all channel names from redis."""
     raw_channel_names: set[bytes] = await glob.redis.smembers("bancho:channels")
@@ -104,9 +109,8 @@ async def addChannel(
     :param hidden: if True, thic channel won't be shown in channels list
     :return:
     """
-    channels = await getChannelNames()
-    if name in channels:
-        return
+    if await channelExists(name):
+        return None
 
     # TODO: this should really be in the pipeline
     await streamList.add(f"chat/{name}")
@@ -148,8 +152,7 @@ async def removeChannel(name: str) -> None:
     :param name: channel name
     :return:
     """
-    channels = await getChannelNames()
-    if name not in channels:
+    if not await channelExists(name):
         logger.warning(
             "Attempted to remove channel from redis that does not exist",
             extra={"channel_name": name},
