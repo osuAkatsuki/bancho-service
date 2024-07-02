@@ -78,7 +78,12 @@ class handler(AsyncRequestHandler):
                 )
                 raise exceptions.matchNotFoundException()
 
-            data["result"] = {"team": user_match_slot["team"]}
+            data["result"] = {
+                "match_name": multiplayer_match["match_name"],
+                "match_id": userToken["match_id"],
+                "slot_id": userToken["match_slot_id"],
+                "team": user_match_slot["team"],
+            }
 
             # Status code and message
             statusCode = 200
