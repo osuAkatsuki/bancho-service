@@ -4,6 +4,7 @@ import redis.asyncio as redis
 
 import settings
 from common.log import logger
+from common.tracing_utils import tracef
 from objects import banchoConfig
 from objects import glob
 from objects.dbPool import DBPool
@@ -35,6 +36,9 @@ async def startup() -> None:
             username=settings.REDIS_USER,
             ssl=settings.REDIS_USE_SSL,
         )
+
+        glob.redis.smembers = tracef(glob.redis.smembers)
+
         await glob.redis.ping()
     except:
         logger.exception("Error connecting to redis")
