@@ -6,6 +6,7 @@ from common.ripple import user_utils
 from constants import clientPackets
 from constants import serverPackets
 from objects import osuToken
+from objects import stream_messages
 from objects.osuToken import Token
 
 
@@ -73,7 +74,7 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         packetData["actionMods"] &= ~mods.RELAX
         should_update_cached_stats = True
 
-    await osuToken.update_token(
+    maybe_token = await osuToken.update_token(
         userToken["token_id"],
         relax=userToken["relax"],
         autopilot=userToken["autopilot"],
@@ -85,26 +86,20 @@ async def handle(userToken: Token, rawPacketData: bytes) -> None:
         action_mods=packetData["actionMods"],
         beatmap_id=packetData["beatmapID"],
     )
+    assert maybe_token is not None
+    userToken = maybe_token
+
     if should_update_cached_stats:
         await osuToken.updateCachedStats(userToken["token_id"])
 
-    # Enqueue our new user panel and stats to us and our spectators
-    recipients = [userToken]
-    spectators = await osuToken.get_spectators(userToken["token_id"])
-    for spectator_user_id in spectators:
-        token = await osuToken.get_token_by_user_id(spectator_user_id)
-        if token is not None:
-            recipients.append(token)
-
-    for spectator in recipients:
-        # Force our own packet
-        force = spectator == userToken
-
-        await osuToken.enqueue(
-            spectator["token_id"],
-            await serverPackets.userPanel(userToken["user_id"], force),
+    if not osuToken.is_restricted(userToken["privileges"]):
+        await stream_messages.broadcast_data(
+            stream_name="main",
+            data=await serverPackets.userStats(userToken["user_id"]),
+            excluded_token_ids=[userToken["token_id"]],
         )
-        await osuToken.enqueue(
-            spectator["token_id"],
-            await serverPackets.userStats(userToken["user_id"], force),
-        )
+
+    await osuToken.enqueue(
+        userToken["token_id"],
+        await serverPackets.userStats(userToken["user_id"], force=True),
+    )
