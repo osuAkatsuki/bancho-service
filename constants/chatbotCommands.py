@@ -2637,5 +2637,5 @@ async def enable_profiling(fro: str, chan: str, message: list[str]) -> str:
 async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
     """Disable the profiler."""
     profiling.profiler.disable()
-    profiling.profiler.dump_stats("stats.dump")
+    profiling.profiler.dump_stats("stats.dump")  # TODO: persist in s3
     return "Profiler disabled. Dumped stats to disk @ stats.dump"
