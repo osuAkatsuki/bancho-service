@@ -1253,6 +1253,14 @@ async def start(match_id: int) -> bool:
     multiplayer_match = await get_match(match_id)
     assert multiplayer_match is not None
 
+    # Reset game id
+    multiplayer_match = await update_match(match_id, current_game_id=None)
+    assert multiplayer_match is not None
+
+    # Remove isStarting timer flag thingie
+    multiplayer_match = await update_match(match_id, is_starting=False)
+    assert multiplayer_match is not None
+
     # Make sure we have enough players
     if not await checkTeams(match_id):
         return False
@@ -1260,6 +1268,10 @@ async def start(match_id: int) -> bool:
     # Create playing channel
     playing_stream_name = create_playing_stream_name(match_id)
     await streamList.add(playing_stream_name)
+
+    # Change inProgress value
+    multiplayer_match = await update_match(match_id, is_in_progress=True)
+    assert multiplayer_match is not None
 
     # Set playing to ready players and set load, skip and complete to False
     # Make clients join playing stream
@@ -1297,12 +1309,7 @@ async def start(match_id: int) -> bool:
         multiplayer_match["match_scoring_type"],
         multiplayer_match["match_team_type"],
     )
-    multiplayer_match = await update_match(
-        match_id,
-        current_game_id=game_id,
-        is_in_progress=True,
-        is_starting=False,
-    )
+    multiplayer_match = await update_match(match_id, current_game_id=game_id)
     assert multiplayer_match is not None
 
     # Send updates
