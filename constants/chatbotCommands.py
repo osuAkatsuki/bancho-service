@@ -109,14 +109,14 @@ def command(
     return wrapper
 
 
-@command(trigger="profiling enable")
+@command(trigger="!profiling enable")
 async def enable_profiling(fro: str, chan: str, message: list[str]) -> str:
     """Enable the profiler."""
     profiling.profiler.enable()
     return "Profiler enabled."
 
 
-@command(trigger="profiling disable")
+@command(trigger="!profiling disable")
 async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
     """Disable the profiler."""
     profiling.profiler.disable()
