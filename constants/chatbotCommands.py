@@ -2625,6 +2625,8 @@ async def runPython(fro: str, chan: str, message: list[str]) -> str:
 
     return ret
 
+# NOTE: the profiling commands must be run on the same k8s pod
+
 
 @command(trigger="!profiling enable")
 async def enable_profiling(fro: str, chan: str, message: list[str]) -> str:
