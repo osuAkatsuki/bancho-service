@@ -13,6 +13,14 @@ loggers:
     level: WARN
     handlers: [console]
     propagate: no
+  httpx:
+    level: WARN
+    handlers: [console]
+    propagate: no
+  httpcore:
+    level: WARN
+    handlers: [console]
+    propagate: no
 handlers:
   console:
     class: logging.StreamHandler
