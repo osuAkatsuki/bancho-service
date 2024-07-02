@@ -35,6 +35,7 @@ class handler(AsyncRequestHandler):
             if not username and not userID:
                 raise exceptions.invalidArgumentsException()
 
+            userToken: osuToken.Token | None = None
             if username:
                 userToken = await osuToken.get_token_by_username(username)
             elif userID:
