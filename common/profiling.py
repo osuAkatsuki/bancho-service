@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cProfile
 import functools
 import logging
 import os.path
@@ -12,6 +13,10 @@ from typing import TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+# (global state, referenced elsewhere)
+profiler = cProfile.Profile()
 
 
 def tracef(f: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:

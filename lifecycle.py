@@ -4,7 +4,7 @@ import redis.asyncio as redis
 
 import settings
 from common.log import logger
-from common.tracing_utils import tracef
+from common.profiling import tracef
 from objects import banchoConfig
 from objects import glob
 from objects.dbPool import DBPool
