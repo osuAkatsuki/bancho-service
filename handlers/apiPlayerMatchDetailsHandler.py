@@ -82,6 +82,7 @@ class handler(AsyncRequestHandler):
                 "match_name": multiplayer_match["match_name"],
                 "match_id": userToken["match_id"],
                 "slot_id": userToken["match_slot_id"],
+                "game_id": multiplayer_match["current_game_id"],
                 "team": user_match_slot["team"],
             }
 
