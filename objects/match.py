@@ -1498,10 +1498,12 @@ async def insert_match_frame(
     match_frame = await glob.redis.get(
         f"bancho:matches:{match_id}:frames:{user_id}",
     )
+    if not match_frame:
+        return
+
     await glob.redis.delete(
         f"bancho:matches:{match_id}:frames:{user_id}",
     )
-    assert match_frame is not None
     match_frame = orjson.loads(match_frame)
 
     await insert_match_game_score(
