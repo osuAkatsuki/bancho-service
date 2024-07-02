@@ -75,6 +75,7 @@ async def main() -> int:
             (r"/api/v1/onlineUsers", apiOnlineUsersHandler.handler),
             (r"/api/v1/serverStatus", apiServerStatusHandler.handler),
             (r"/api/v1/verifiedStatus", apiVerifiedStatusHandler.handler),
+            (r"/api/v1/playerMatchStatus", apiVerifiedStatusHandler.handler),
             # XXX: "fokabot" for legacy reasons
             (r"/api/v1/fokabotMessage", apiChatbotMessageHandler.handler),
         ]
