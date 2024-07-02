@@ -21,7 +21,7 @@ class handler(AsyncRequestHandler):
             if "u" not in self.request.arguments and "id" not in self.request.arguments:
                 raise exceptions.invalidArgumentsException()
 
-            # Get online staus
+            # Get online status
             username = None
             userID = None
             if "u" in self.request.arguments:
