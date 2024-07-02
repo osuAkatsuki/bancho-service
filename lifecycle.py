@@ -37,7 +37,7 @@ async def startup() -> None:
             ssl=settings.REDIS_USE_SSL,
         )
 
-        glob.redis.smembers = tracef(glob.redis.smembers)
+        glob.redis.smembers = tracef(glob.redis.smembers)  # type: ignore[method-assign]
 
         await glob.redis.ping()
     except:

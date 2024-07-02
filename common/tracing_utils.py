@@ -13,9 +13,10 @@ R = TypeVar("R")
 
 
 def tracef(f: Callable[P, R]) -> Callable[P, R]:
+    """A helper to understand where functions are being called."""
+
     @functools.wraps(f)
     def tracef(*args: P.args, **kwargs: P.kwargs) -> R:
-        # print where this is being called from
         caller_frame = sys._getframe(1)
         logging.info(
             "Traced function",
