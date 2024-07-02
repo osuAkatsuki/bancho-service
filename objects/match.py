@@ -689,9 +689,8 @@ async def allPlayersCompleted(match_id: int) -> None:
 
     # If this is a tournament match, then we send a notification in the chat
     # saying that the match has completed.
-    if (
-        multiplayer_match["is_tourney"]
-        and channel_name in await channelList.getChannelNames()
+    if multiplayer_match["is_tourney"] and await channelList.channelExists(
+        channel_name,
     ):
         chatbot_token = await osuToken.get_token_by_user_id(CHATBOT_USER_ID)
         assert chatbot_token is not None
@@ -1400,7 +1399,7 @@ async def sendReadyStatus(match_id: int) -> None:
     channel_name = f"#mp_{match_id}"
 
     # Make sure match exists before attempting to do anything else
-    if channel_name not in await channelList.getChannelNames():
+    if not await channelList.channelExists(channel_name):
         return
 
     slots = await slot.get_slots(match_id)
