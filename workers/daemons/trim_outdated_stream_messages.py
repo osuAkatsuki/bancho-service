@@ -42,7 +42,7 @@ async def main() -> int:
     logger.info("Starting outdated stream message trim loop")
     try:
         await lifecycle.startup()
-        while True:
+        while not SHUTDOWN_EVENT.is_set():
             for stream_name in await streamList.getStreams():
                 try:
                     five_minutes_ago = time.time() - FIVE_MINUTES

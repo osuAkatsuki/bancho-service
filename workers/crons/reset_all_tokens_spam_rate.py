@@ -40,7 +40,7 @@ async def main() -> int:
     logger.info("Starting spam protection loop")
     try:
         await lifecycle.startup()
-        while True:
+        while not SHUTDOWN_EVENT.is_set():
             for token_id in await osuToken.get_token_ids():
                 await osuToken.update_token(token_id, spam_rate=0)
 
