@@ -58,10 +58,7 @@ async def main() -> int:
                                 "trimmed_messages": trimmed_messages,
                             },
                         )
-                    await asyncio.wait_for(
-                        SHUTDOWN_EVENT.wait(),
-                        timeout=0.25,
-                    )
+                    await asyncio.sleep(0.05)
                 except TimeoutError:
                     pass
     finally:
