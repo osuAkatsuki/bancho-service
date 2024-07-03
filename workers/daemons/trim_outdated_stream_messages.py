@@ -60,7 +60,7 @@ async def main() -> int:
                         )
                     await asyncio.wait_for(
                         SHUTDOWN_EVENT.wait(),
-                        timeout=1,
+                        timeout=0.25,
                     )
                 except TimeoutError:
                     pass
