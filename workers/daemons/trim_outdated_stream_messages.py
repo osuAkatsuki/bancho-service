@@ -22,6 +22,8 @@ from objects import streamList
 # TODO: this work should be done JIT when a player sends a message
 # and the cronjob/daemon strategy here should be completely removed
 
+CRON_INTERVAL = 60  # seconds
+
 FIVE_MINUTES = 5 * 60
 
 SHUTDOWN_EVENT: asyncio.Event | None = None
@@ -58,9 +60,9 @@ async def main() -> int:
                                 "trimmed_messages": trimmed_messages,
                             },
                         )
-                    await asyncio.sleep(0.05)
                 except TimeoutError:
                     pass
+            await asyncio.sleep(CRON_INTERVAL)
     finally:
         await lifecycle.shutdown()
 
