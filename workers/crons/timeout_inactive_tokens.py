@@ -84,7 +84,7 @@ async def main() -> int:
     logger.info("Starting inactive token timeout loop")
     try:
         await lifecycle.startup()
-        while True:
+        while not SHUTDOWN_EVENT.is_set():
             await _timeout_inactive_users()
             try:
                 await asyncio.wait_for(
