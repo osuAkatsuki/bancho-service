@@ -21,64 +21,64 @@ async def overwritePreviousScore(userID: int) -> str | None:
         return None
 
     # Figure out whether they would like
-    # to overwrite a relax or vanilla score
-    # TODO: support autopilot, if this feature lives on
-    relax = await glob.db.fetch(
-        "SELECT time, play_mode FROM scores_relax "
-        "WHERE userid = %s AND completed = 2 "
-        "ORDER BY id DESC LIMIT 1",
-        [userID],
-    )
-    vanilla = await glob.db.fetch(
-        "SELECT time, play_mode FROM scores "
-        "WHERE userid = %s AND completed = 2 "
-        "ORDER BY id DESC LIMIT 1",
-        [userID],
-    )
+    # to overwrite a relax, vanilla or autopilot score
+    # TODO: decide if this feature lives on
 
-    if not (relax or vanilla):
-        return None  # No scores?
+    latest_time = -1
+    table_for_latest_score: str | None = None
+    mode_for_latest_score: int | None = None
 
-    if relax and not vanilla:
-        table = "scores_relax"
-        mode = relax["play_mode"]
-    elif vanilla and not relax:
-        table = "scores"
-        mode = vanilla["play_mode"]
-    else:
-        assert vanilla and relax
-        table = "scores_relax" if relax["time"] > vanilla["time"] else "scores"
-        mode = relax["play_mode"] if table == "scores_relax" else vanilla["play_mode"]
+    for table in {"scores", "scores_relax", "scores_ap"}:
+        latest_score = await glob.db.fetch(
+            f"SELECT time, play_mode FROM {table} "
+            "WHERE userid = %s AND completed = 2 "
+            "ORDER BY id DESC LIMIT 1",
+            [userID],
+        )
+        if latest_score is None:
+            continue
+
+        if latest_score["time"] > latest_time:
+            latest_time = latest_score["time"]
+
+            table_for_latest_score = table
+            mode_for_latest_score = latest_score["play_mode"]
+
+    # no score
+    if table_for_latest_score is None:
+        return None
+    
+    assert mode_for_latest_score is not None
 
     # Select the users newest completed=2 score
     new_best_score = await glob.db.fetch(
         "SELECT {0}.id, {0}.beatmap_md5, beatmaps.song_name FROM {0} "
         "LEFT JOIN beatmaps USING(beatmap_md5) "
         "WHERE {0}.userid = %s AND {0}.completed = 2 AND {0}.play_mode = %s "
-        "ORDER BY {0}.time DESC LIMIT 1".format(table),
-        [userID, mode],
+        "ORDER BY {0}.time DESC LIMIT 1".format(table_for_latest_score),
+        [userID, mode_for_latest_score],
     )
     assert new_best_score is not None
 
     # Set their previous completed scores on the map to completed = 2.
     old_best_score = await glob.db.fetch(
-        f"SELECT id FROM {table} "
+        f"SELECT id FROM {table_for_latest_score} "
         "WHERE beatmap_md5 = %s AND completed = 3 "
         "AND userid = %s AND play_mode = %s",
-        [new_best_score["beatmap_md5"], userID, mode],
+        [new_best_score["beatmap_md5"], userID, mode_for_latest_score],
     )
     assert old_best_score is not None
 
     await glob.db.execute(
-        f"UPDATE {table} SET completed = 2 "
+        f"UPDATE {table_for_latest_score} SET completed = 2 "
         "WHERE beatmap_md5 = %s AND completed = 3 "
         "AND userid = %s AND play_mode = %s",
-        [new_best_score["beatmap_md5"], userID, mode],
+        [new_best_score["beatmap_md5"], userID, mode_for_latest_score],
     )
 
     # Set their new score to completed = 3.
     await glob.db.execute(
-        f"UPDATE {table} SET completed = 3 WHERE id = %s",
+        f"UPDATE {table_for_latest_score} SET completed = 3 WHERE id = %s",
         [new_best_score["id"]],
     )
 
@@ -87,6 +87,15 @@ async def overwritePreviousScore(userID: int) -> str | None:
         "UPDATE users SET previous_overwrite = UNIX_TIMESTAMP() " "WHERE id = %s",
         [userID],
     )
+
+    if table_for_latest_score == "scores":
+        custom_mode_offset = 0
+    elif table_for_latest_score == "scores_relax":
+        custom_mode_offset = 4
+    elif table_for_latest_score == "scores_ap":
+        custom_mode_offset = 8
+    else:
+        raise ValueError(f"Unknown scores table {table_for_latest_score}")
 
     if glob.amplitude is not None:
         glob.amplitude.track(
@@ -98,7 +107,7 @@ async def overwritePreviousScore(userID: int) -> str | None:
                     "new_best_score_id": new_best_score["id"],
                     "old_best_score_id": old_best_score["id"],
                     "beatmap_md5": new_best_score["beatmap_md5"],
-                    "mode": adapters.amplitude.format_mode(mode + (4 if relax else 0)),
+                    "mode": adapters.amplitude.format_mode(mode_for_latest_score + custom_mode_offset),
                     "source": "bancho-service",
                 },
             ),
