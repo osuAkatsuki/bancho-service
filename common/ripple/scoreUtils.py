@@ -47,7 +47,7 @@ async def overwritePreviousScore(userID: int) -> str | None:
     # no score
     if table_for_latest_score is None:
         return None
-    
+
     assert mode_for_latest_score is not None
 
     # Select the users newest completed=2 score
@@ -107,7 +107,9 @@ async def overwritePreviousScore(userID: int) -> str | None:
                     "new_best_score_id": new_best_score["id"],
                     "old_best_score_id": old_best_score["id"],
                     "beatmap_md5": new_best_score["beatmap_md5"],
-                    "mode": adapters.amplitude.format_mode(mode_for_latest_score + custom_mode_offset),
+                    "mode": adapters.amplitude.format_mode(
+                        mode_for_latest_score + custom_mode_offset,
+                    ),
                     "source": "bancho-service",
                 },
             ),
