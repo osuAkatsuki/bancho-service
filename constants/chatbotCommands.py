@@ -1284,7 +1284,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         await pipe.execute()
 
     # Service logos as emojis
-    icon_akatsuki = "<:akatsuki:1160855094712078368>"
+    icon_akatsuki = "<:akatsuki:1253876231645171814>"
     icon_beatconnect = "<:beatconnect:1170497747548381184>"
 
     # osu! game mode emoji dictionary
@@ -1330,7 +1330,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
             {"name": k, "value": v}
             for k, v in {
                 "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}\n\n**Leaderboard**\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{last_np_map_id})",
-                "Download": f"{icon_akatsuki}・[`Akatsuki`](https://beatmaps.akatsuki.gg/api/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`beatconnect.io`](https://beatconnect.io/b/{res['beatmapset_id']})",
+                "Download": f"{icon_akatsuki}・[`Akatsuki`](https://beatmaps.akatsuki.gg/api/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`Beatconnect`](https://beatconnect.io/b/{res['beatmapset_id']})",
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
