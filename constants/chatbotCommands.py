@@ -1284,10 +1284,12 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         await pipe.execute()
 
     # Service logos as emojis
-    icon_akatsuki = "<:akatsuki:1253876231645171814>" # unused for now
+    icon_akatsuki = "<:akatsuki:1253876231645171814>"  # unused for now
     icon_osudirect = "<:osudirect:1171396293948612689>"
-    icon_osu = "<:logo:231158916480892928>" # 
-    icon_nerinyan = ":cat2:" # placeholder as they don't have a logo but seem to use this cat
+    icon_osu = "<:logo:231158916480892928>"  #
+    icon_nerinyan = (
+        ":cat2:"  # placeholder as they don't have a logo but seem to use this cat
+    )
 
     # osu! game mode emoji dictionary
     mode_to_emoji: Callable[[int], str] = lambda s: {
