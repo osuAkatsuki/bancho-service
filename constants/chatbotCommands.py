@@ -1284,8 +1284,10 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         await pipe.execute()
 
     # Service logos as emojis
-    icon_akatsuki = "<:akatsuki:1253876231645171814>"
-    icon_beatconnect = "<:beatconnect:1170497747548381184>"
+    icon_akatsuki = "<:akatsuki:1253876231645171814>" # unused for now
+    icon_osudirect = "<:osudirect:1171396293948612689>"
+    icon_osu = "<:logo:231158916480892928>" # 
+    icon_nerinyan = ":cat2:" # placeholder as they don't have a logo but seem to use this cat
 
     # osu! game mode emoji dictionary
     mode_to_emoji: Callable[[int], str] = lambda s: {
@@ -1324,13 +1326,13 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         author_url=f"{nominator_profile_url}",
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
-        title_url=f"https://osu.ppy.sh/b/{last_np_map_id}",
+        title_url=f"https://akatsuki.gg/b/{last_np_map_id}",
         desc=f'This {message[1]} has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Combo**: `{res["max_combo"]}x`',
         fields=[
             {"name": k, "value": v}
             for k, v in {
                 "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}\n\n**Leaderboard**\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{last_np_map_id})",
-                "Download": f"{icon_akatsuki}・[`Akatsuki`](https://beatmaps.akatsuki.gg/api/d/{res['beatmapset_id']})\n{icon_beatconnect}・[`Beatconnect`](https://beatconnect.io/b/{res['beatmapset_id']})",
+                "Download": f"{icon_osu}・[`ppy.sh`](https://osu.ppy.sh/s/{res['beatmapset_id']})\n{icon_osudirect}・[`osu.direct`](https://api.osu.direct/d/{res['beatmapset_id']})\n{icon_nerinyan}・[`nerinyan.moe`](https://api.nerinyan.moe/d/{res['beatmapset_id']})",
             }.items()
         ],
         image=f'https://assets.ppy.sh/beatmaps/{res["beatmapset_id"]}/covers/cover.jpg?1522396856',
