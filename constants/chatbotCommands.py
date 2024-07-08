@@ -1328,7 +1328,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         fields=[
             {"name": k, "value": v}
             for k, v in {
-                "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}\n\n**Leaderboard**\n{icon_akatsuki}・[Akatsuki](https://akatsuki.gg/b/{last_np_map_id})",
+                "Previous Status": f"<:{prev_status_readable}:{prev_status_emoji_id}>・{prev_status_readable}",
                 "Leaderboard": f"\n{icon_akatsuki}・[`Akatsuki`](https://akatsuki.gg/s/{res['beatmapset_id']})",
             }.items()
         ],
