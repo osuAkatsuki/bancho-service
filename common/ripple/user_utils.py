@@ -754,7 +754,8 @@ async def authorize_login_and_activate_new_account(
     username = await get_username_from_id(user_id)
 
     user_ids_associated_with_device = await find_user_ids_with_hwid_matches(
-        user_id, hwid_set,
+        user_id,
+        hwid_set,
     )
 
     if user_ids_associated_with_device:
