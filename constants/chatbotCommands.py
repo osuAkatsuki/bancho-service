@@ -128,6 +128,20 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
 
     return "\n".join(l)
 
+@command(trigger="!addbn",
+         syntax="<name>" ,
+         privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+         )
+async def addbn(fro: str, chan: str, message: list[str]) -> str:
+    """Add BN priveleges to a user"""
+    userid = await user_utils.get_id_from_username(fro)
+    if not (targetID := await user_utils.get_id_from_username(userid)):
+        return "Could not find user"
+    current_priveleges = await user_utils.get_privileges(userid)
+    new_priveleges = current_priveleges | 256
+    
+    user_utils.set_privileges(userid,new_priveleges)
+    
 
 @command(trigger="!faq", syntax="<name>")
 async def faq(fro: str, chan: str, message: list[str]) -> str:
