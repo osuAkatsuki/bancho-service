@@ -142,8 +142,8 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
     current_priveleges = await user_utils.get_privileges(targetID)
-    new_priveleges = current_priveleges | privileges.ADMIN_MANAGE_BEATMAPS
-    await user_utils.set_privileges(targetID, new_priveleges)
+    new_privileges = current_priveleges | privileges.ADMIN_MANAGE_BEATMAPS
+    await user_utils.set_privileges(targetID, new_privileges)
     return f"{fro} has given BN to {username}."
 
 
@@ -160,8 +160,8 @@ async def removebn(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
     current_priveleges = await user_utils.get_privileges(targetID)
-    new_priveleges = current_priveleges & ~privileges.ADMIN_MANAGE_BEATMAPS
-    await user_utils.set_privileges(targetID, new_priveleges)
+    new_privileges = current_priveleges & ~privileges.ADMIN_MANAGE_BEATMAPS
+    await user_utils.set_privileges(targetID, new_privileges)
     return f"{fro} has removed BN from {username}."
 
 
