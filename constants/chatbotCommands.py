@@ -28,7 +28,6 @@ from common.log import audit_logs
 from common.log import logger
 from common.ripple import scoreUtils
 from common.ripple import user_utils
-from common.speedrunning import SpeedrunTimeframe
 from common.web import discord
 from constants import CHATBOT_USER_ID
 from constants import CHATBOT_USER_NAME
@@ -201,6 +200,7 @@ async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
         return "You must first run"
 
     best_speedrun = max(user_speedruns, key=lambda s: s.score_value)
+    # TODO: show scores under this like !speedrun end
     return f"Your best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
 
 
