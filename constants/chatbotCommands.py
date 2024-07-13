@@ -140,9 +140,25 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
     current_priveleges = await user_utils.get_privileges(targetID)
-    new_priveleges = current_priveleges | 256
+    new_priveleges = current_priveleges | privileges.ADMIN_MANAGE_BEATMAPS
     await user_utils.set_privileges(targetID, new_priveleges)
     return f"{fro} has given BN to {username}."
+
+
+@command(
+    trigger="!removebn",
+    syntax="<name>",
+    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+)
+async def removebn(fro: str, chan: str, message: list[str]) -> str:
+    """Remove BN priveleges from a user"""
+    username = message[0]
+    if not (targetID := await user_utils.get_id_from_username(username)):
+        return "Could not find user"
+    current_priveleges = await user_utils.get_privileges(targetID)
+    new_priveleges = current_priveleges & ~privileges.ADMIN_MANAGE_BEATMAPS
+    await user_utils.set_privileges(targetID, new_priveleges)
+    return f"{fro} has removed BN from {username}."
 
 
 @command(trigger="!faq", syntax="<name>")
