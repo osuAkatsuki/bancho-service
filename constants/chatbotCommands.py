@@ -129,6 +129,42 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
     return "\n".join(l)
 
 
+@command(
+    trigger="!addbn",
+    syntax="<name>",
+    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+)
+async def addbn(fro: str, chan: str, message: list[str]) -> str:
+    """Add BN privileges to a user"""
+    if not message:
+        return "Invalid command syntax"
+    username = message[0]
+    if not (targetID := await user_utils.get_id_from_username(username)):
+        return "Could not find user"
+    current_privileges = await user_utils.get_privileges(targetID)
+    new_privileges = current_privileges | privileges.ADMIN_MANAGE_BEATMAPS
+    await user_utils.set_privileges(targetID, new_privileges)
+    return f"{fro} has given BN to {username}."
+
+
+@command(
+    trigger="!removebn",
+    syntax="<name>",
+    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+)
+async def removebn(fro: str, chan: str, message: list[str]) -> str:
+    """Remove BN privileges from a user"""
+    if not message:
+        return "Invalid command syntax"
+    username = message[0]
+    if not (targetID := await user_utils.get_id_from_username(username)):
+        return "Could not find user"
+    current_privileges = await user_utils.get_privileges(targetID)
+    new_privileges = current_privileges & ~privileges.ADMIN_MANAGE_BEATMAPS
+    await user_utils.set_privileges(targetID, new_privileges)
+    return f"{fro} has removed BN from {username}."
+
+
 @command(trigger="!faq", syntax="<name>")
 async def faq(fro: str, chan: str, message: list[str]) -> str:
     """Fetch a given FAQ response."""
