@@ -129,18 +129,28 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
     return "\n".join(l)
 
 
+# TODO: make an nqa privilege for the enum
+NQA_USER_IDS: set[int] = {24732, 4640, 43810}
+
+
 @command(
     trigger="!addbn",
     syntax="<name>",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=privileges.ADMIN_MANAGE_BEATMAPS,
 )
 async def addbn(fro: str, chan: str, message: list[str]) -> str:
     """Add BN privileges to a user"""
+    fro_user_id = await user_utils.get_id_from_username(fro)
+    if fro_user_id not in NQA_USER_IDS:
+        return "You are not allowed to use this command."
+
     if not message:
         return "Invalid command syntax"
+
     username = message[0]
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
+
     current_privileges = await user_utils.get_privileges(targetID)
     new_privileges = current_privileges | privileges.ADMIN_MANAGE_BEATMAPS
     await user_utils.set_privileges(targetID, new_privileges)
@@ -153,15 +163,21 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
 @command(
     trigger="!removebn",
     syntax="<name>",
-    privs=privileges.ADMIN_MANAGE_PRIVILEGES,
+    privs=privileges.ADMIN_MANAGE_BEATMAPS,
 )
 async def removebn(fro: str, chan: str, message: list[str]) -> str:
     """Remove BN privileges from a user"""
+    fro_user_id = await user_utils.get_id_from_username(fro)
+    if fro_user_id not in NQA_USER_IDS:
+        return "You are not allowed to use this command."
+
     if not message:
         return "Invalid command syntax"
+
     username = message[0]
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
+
     current_privileges = await user_utils.get_privileges(targetID)
     new_privileges = current_privileges & ~privileges.ADMIN_MANAGE_BEATMAPS
     await user_utils.set_privileges(targetID, new_privileges)
