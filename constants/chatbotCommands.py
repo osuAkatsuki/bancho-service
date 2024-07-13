@@ -136,6 +136,8 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
 )
 async def addbn(fro: str, chan: str, message: list[str]) -> str:
     """Add BN privileges to a user"""
+    if not message:
+        return "Invalid command syntax"
     username = message[0]
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
@@ -152,6 +154,8 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
 )
 async def removebn(fro: str, chan: str, message: list[str]) -> str:
     """Remove BN privileges from a user"""
+    if not message:
+        return "Invalid command syntax"
     username = message[0]
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
