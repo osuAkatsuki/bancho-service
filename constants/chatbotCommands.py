@@ -151,7 +151,7 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
     privs=privileges.ADMIN_MANAGE_PRIVILEGES,
 )
 async def removebn(fro: str, chan: str, message: list[str]) -> str:
-    """Remove BN priveleges from a user"""
+    """Remove BN privileges from a user"""
     username = message[0]
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
