@@ -144,6 +144,9 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
     current_privileges = await user_utils.get_privileges(targetID)
     new_privileges = current_privileges | privileges.ADMIN_MANAGE_BEATMAPS
     await user_utils.set_privileges(targetID, new_privileges)
+    target_tokens = await osuToken.get_all_tokens_by_user_id(targetID)
+    for token in target_tokens:
+        await osuToken.update_token(token["token_id"], privileges=new_privileges)
     return f"{fro} has given BN to {username}."
 
 
@@ -162,6 +165,9 @@ async def removebn(fro: str, chan: str, message: list[str]) -> str:
     current_privileges = await user_utils.get_privileges(targetID)
     new_privileges = current_privileges & ~privileges.ADMIN_MANAGE_BEATMAPS
     await user_utils.set_privileges(targetID, new_privileges)
+    target_tokens = await osuToken.get_all_tokens_by_user_id(targetID)
+    for token in target_tokens:
+        await osuToken.update_token(token["token_id"], privileges=new_privileges)
     return f"{fro} has removed BN from {username}."
 
 
