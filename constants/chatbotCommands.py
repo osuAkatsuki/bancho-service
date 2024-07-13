@@ -135,7 +135,7 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
     privs=privileges.ADMIN_MANAGE_PRIVILEGES,
 )
 async def addbn(fro: str, chan: str, message: list[str]) -> str:
-    """Add BN priveleges to a user"""
+    """Add BN privileges to a user"""
     username = message[0]
     if not (targetID := await user_utils.get_id_from_username(username)):
         return "Could not find user"
