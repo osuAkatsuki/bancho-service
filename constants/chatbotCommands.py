@@ -128,6 +128,7 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
 
     return "\n".join(l)
 
+
 @command(
     trigger="!addbn",
     syntax="<name>",
@@ -141,9 +142,9 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
     current_priveleges = await user_utils.get_privileges(targetID)
     new_priveleges = current_priveleges | 256
     await user_utils.set_privileges(targetID, new_priveleges)
-    return f"{fro} has given BN to {username}."  
-    
-    
+    return f"{fro} has given BN to {username}."
+
+
 @command(trigger="!faq", syntax="<name>")
 async def faq(fro: str, chan: str, message: list[str]) -> str:
     """Fetch a given FAQ response."""
