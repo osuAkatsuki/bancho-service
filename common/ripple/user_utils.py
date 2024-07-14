@@ -791,7 +791,8 @@ async def add_user_badge(user_id: int, badge_id: int) -> None:
 async def remove_user_badge(user_id: int, badge_id: int) -> None:
     """Removes specified badge from user"""
     await glob.db.execute(
-        "DELETE FROM user_badges WHERE user = %s AND badge = %s;",
+        "DELETE FROM user_badges WHERE user = %s AND badge = %s",
+
         [user_id, badge_id],
     )
 
