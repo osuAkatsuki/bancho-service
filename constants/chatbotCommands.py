@@ -20,7 +20,8 @@ from common import generalUtils
 from common import job_scheduling
 from common import performance_utils
 from common import profiling
-from common.constants import badges, gameModes
+from common.constants import badges
+from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
 from common.log import audit_logs
