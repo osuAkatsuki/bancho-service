@@ -772,6 +772,30 @@ async def get_absolute_donor_expiry_time(user_id: int) -> int:
     return data["donor_expire"] if data else 0  # type: ignore[no-any-return]
 
 
+async def set_absolute_donor_expiry_time(user_id: int, donor_expire: int) -> None:
+    """Sets a user's donor expire time"""
+    await glob.db.execute(
+        "UPDATE users SET donor_expire = %s WHERE id = %s",
+        [donor_expire, user_id],
+    )
+
+
+async def add_user_badge(user_id: int, badge_id: int) -> None:
+    """Adds a badge to a user"""
+    await glob.db.execute(
+        "INSERT INTO user_badges (user, badge) VALUES (%s, %s)",
+        [user_id, badge_id],
+    )
+
+
+async def remove_user_badge(user_id: int, badge_id: int) -> None:
+    """Removes specified badge from user"""
+    await glob.db.execute(
+        "DELETE FROM user_badges WHERE user = %s AND badge = %s;",
+        [user_id, badge_id],
+    )
+
+
 class InvalidUsernameError(Exception):
     pass
 
