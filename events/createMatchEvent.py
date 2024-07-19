@@ -33,8 +33,16 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
             user_id=str(token["user_id"]),
             device_id=token["amplitude_device_id"],
         )
-        if not (match_creation_enabled or osuToken.is_staff(token["privileges"])):
-            raise MatchCreationDisabledError()
+        if not match_creation_enabled:
+            if osuToken.is_staff(token["privileges"]):
+                await osuToken.enqueue(
+                    token["token_id"],
+                    data=serverPackets.notification(
+                        "Allowed staff bypass of new multi creation restriction",
+                    ),
+                )
+            else:
+                raise MatchCreationDisabledError()
 
         async with redisLock(f'{osuToken.make_key(token["token_id"])}:match_creation'):
             # Check if the user is already in a match.
