@@ -156,8 +156,6 @@ async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
 @command(trigger="!speedrun end", hidden=False)
 async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
-    # if user_id not in {1001, 4528}:
-    #     return "u may not taste my delicious lettuce"
 
     speedrun_results = await speedrunning.end_active_user_speedrun(user_id)
     if speedrun_results is None:
@@ -178,8 +176,6 @@ async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
 @command("!speedrun best", hidden=False)
 async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
     user_id = await user_utils.get_id_from_username(fro)
-    # if user_id not in {1001, 4528}:
-    #     return "u may not taste my delicious lettuce"
 
     try:
         _, timeframe_str, mode_str, score_type_str = message
