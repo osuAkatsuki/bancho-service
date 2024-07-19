@@ -20,6 +20,7 @@ from common import generalUtils
 from common import job_scheduling
 from common import performance_utils
 from common import profiling
+from common import speedrunning
 from common.constants import badges
 from common.constants import gameModes
 from common.constants import mods
@@ -108,6 +109,96 @@ def command(
         return f
 
     return wrapper
+
+
+def get_beatmap_url(beatmap_id: int) -> str:
+    return f"https://osu.ppy.sh/beatmaps/{beatmap_id}"
+
+
+def get_url_embed(url: str, text: str) -> str:
+    return f"[{url} {text}]"
+
+
+# !speedrun start <10m/1h/1d/1w> <mode> <score_type>
+
+
+@command(trigger="!speedrun start", hidden=False)
+async def start_speedrun(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await user_utils.get_id_from_username(fro)
+    # if user_id not in {1001, 4528}:
+    #     return "u may not taste my delicious lettuce"
+
+    try:
+        _, timeframe_str, mode_str, score_type_str = message
+        timeframe = speedrunning.SpeedrunTimeframe(timeframe_str)
+        score_type = speedrunning.ScoreType(score_type_str)
+        game_mode = int(mode_str)
+    except ValueError:
+        return (
+            "Invalid syntax. Usage: !speedrun start <10m/1h/1d/1w> <mode> <score_type>"
+        )
+
+    active_speedrun = await speedrunning.get_active_user_speedrun(user_id)
+    if active_speedrun:
+        return "Speedrun already in progress."
+
+    # TODO: cronjob to auto clean these up
+    user_speedrun = await speedrunning.create_user_speedrun(
+        user_id=user_id,
+        game_mode=game_mode,
+        timeframe=timeframe,
+        score_type=score_type,
+    )
+
+    return f"Speedrun started! ID: {user_speedrun.id}"
+
+
+@command(trigger="!speedrun end", hidden=False)
+async def end_speedrun(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await user_utils.get_id_from_username(fro)
+
+    speedrun_results = await speedrunning.end_active_user_speedrun(user_id)
+    if speedrun_results is None:
+        return "No speedrun in progress."
+
+    speedrun = speedrun_results.speedrun
+    scores = speedrun_results.scores
+
+    ret = f"Speedrun ended! Total score: {speedrun.score_value:,.2f} in {speedrun.timeframe}\n"
+    for score in scores:
+        beatmap_url = get_beatmap_url(score.beatmap_id)
+        mods_str = f" +{scoreUtils.readableMods(score.mods)}" if score.mods else ""
+        ret += f"{get_url_embed(beatmap_url, score.song_name)}: {score.value:,.2f}{mods_str}\n"
+
+    return ret[:-1]
+
+
+@command("!speedrun best", hidden=False)
+async def best_speedrun(fro: str, chan: str, message: list[str]) -> str:
+    user_id = await user_utils.get_id_from_username(fro)
+
+    try:
+        _, timeframe_str, mode_str, score_type_str = message
+        timeframe = speedrunning.SpeedrunTimeframe(timeframe_str)
+        game_mode = int(mode_str)
+        score_type = speedrunning.ScoreType(score_type_str)
+    except ValueError:
+        return (
+            "Invalid syntax. Usage: !speedrun best <10m/1h/1d/1w> <mode> <score_type>"
+        )
+
+    user_speedruns = await speedrunning.get_user_speedruns(
+        user_id=user_id,
+        game_mode=game_mode,
+        score_type=score_type,
+        timeframe=timeframe,
+    )
+    if not user_speedruns:
+        return "You must first run"
+
+    best_speedrun = max(user_speedruns, key=lambda s: s.score_value)
+    # TODO: show scores under this like !speedrun end
+    return f"Your best speedrun: {best_speedrun.score_value:,.2f} in {best_speedrun.timeframe}"
 
 
 @command(trigger="!help", hidden=True)
