@@ -21,6 +21,7 @@ from common import job_scheduling
 from common import performance_utils
 from common import profiling
 from common import speedrunning
+from common.constants import badges
 from common.constants import gameModes
 from common.constants import mods
 from common.constants import privileges
@@ -224,21 +225,13 @@ async def _help(fro: str, chan: str, message: list[str]) -> str:
     return "\n".join(l)
 
 
-# TODO: make an nqa privilege for the enum
-NQA_USER_IDS: set[int] = {24732, 4640, 43810}
-
-
 @command(
     trigger="!addbn",
     syntax="<name>",
-    privs=privileges.ADMIN_MANAGE_BEATMAPS,
+    privs=privileges.ADMIN_MANAGE_NOMINATORS,
 )
 async def addbn(fro: str, chan: str, message: list[str]) -> str:
     """Add BN privileges to a user"""
-    fro_user_id = await user_utils.get_id_from_username(fro)
-    if fro_user_id not in NQA_USER_IDS:
-        return "You are not allowed to use this command."
-
     if not message:
         return "Invalid command syntax"
 
@@ -247,25 +240,28 @@ async def addbn(fro: str, chan: str, message: list[str]) -> str:
         return "Could not find user"
 
     current_privileges = await user_utils.get_privileges(targetID)
-    new_privileges = current_privileges | privileges.ADMIN_MANAGE_BEATMAPS
+    new_privileges = (
+        current_privileges
+        | privileges.ADMIN_MANAGE_BEATMAPS
+        | privileges.USER_DONOR
+        | privileges.USER_PREMIUM
+    )
     await user_utils.set_privileges(targetID, new_privileges)
     target_tokens = await osuToken.get_all_tokens_by_user_id(targetID)
     for token in target_tokens:
         await osuToken.update_token(token["token_id"], privileges=new_privileges)
+    await user_utils.add_user_badge(targetID, badges.BEATMAP_NOMINATION)
+    await user_utils.set_absolute_donor_expiry_time(targetID, 2147483647)
     return f"{fro} has given BN to {username}."
 
 
 @command(
     trigger="!removebn",
     syntax="<name>",
-    privs=privileges.ADMIN_MANAGE_BEATMAPS,
+    privs=privileges.ADMIN_MANAGE_NOMINATORS,
 )
 async def removebn(fro: str, chan: str, message: list[str]) -> str:
     """Remove BN privileges from a user"""
-    fro_user_id = await user_utils.get_id_from_username(fro)
-    if fro_user_id not in NQA_USER_IDS:
-        return "You are not allowed to use this command."
-
     if not message:
         return "Invalid command syntax"
 
@@ -274,8 +270,15 @@ async def removebn(fro: str, chan: str, message: list[str]) -> str:
         return "Could not find user"
 
     current_privileges = await user_utils.get_privileges(targetID)
-    new_privileges = current_privileges & ~privileges.ADMIN_MANAGE_BEATMAPS
+    new_privileges = (
+        current_privileges
+        & ~privileges.ADMIN_MANAGE_BEATMAPS
+        & ~privileges.USER_DONOR
+        & ~privileges.USER_PREMIUM
+    )
     await user_utils.set_privileges(targetID, new_privileges)
+    await user_utils.remove_user_badge(targetID, badges.BEATMAP_NOMINATION)
+    await user_utils.set_absolute_donor_expiry_time(targetID, 0)
     target_tokens = await osuToken.get_all_tokens_by_user_id(targetID)
     for token in target_tokens:
         await osuToken.update_token(token["token_id"], privileges=new_privileges)
