@@ -2808,7 +2808,7 @@ async def leaderboard_size_cmd(fro: str, chan: str, message: list[str]) -> str:
         return "Please specify a new leaderboard size."
 
     size_str = message[0]
-    if not size_str.isnumeric():
+    if not size_str.isdigit():
         return "Invalid size!"
 
     size = int(size_str)
