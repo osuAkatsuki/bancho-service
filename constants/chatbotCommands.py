@@ -2795,18 +2795,10 @@ async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
     return "Profiler disabled. Dumped stats to disk @ stats.dump"
 
 
-@command(trigger="!leaderboardsize", syntax="<size>", hidden=True)
+@command(trigger="!leaderboardsize", syntax="<size>", hidden=True, privs=privileges.USER_PREMIUM)
 async def leaderboard_size_cmd(fro: str, chan: str, message: list[str]) -> str:
-    userID = await user_utils.get_id_from_username(
-        fro,
-    )
-    user_privs = await user_utils.get_privileges(userID)
-
-    if not user_privs & privileges.USER_PREMIUM:
-        return (
-            "The leaderboardsize command is only available to Akatsuki premium users."
-        )
-
+    userID = await user_utils.get_id_from_username(fro)
+    
     if not any(message):
         return "Please specify a new leaderboard size."
 
