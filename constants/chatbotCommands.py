@@ -2793,3 +2793,29 @@ async def disable_profiling(fro: str, chan: str, message: list[str]) -> str:
     profiling.profiler.disable()
     profiling.profiler.dump_stats("stats.dump")  # TODO: persist in s3
     return "Profiler disabled. Dumped stats to disk @ stats.dump"
+
+
+@command(
+    trigger="!leaderboardsize",
+    syntax="<size>",
+    hidden=True,
+    privs=privileges.USER_PREMIUM,
+)
+async def leaderboard_size_cmd(fro: str, chan: str, message: list[str]) -> str:
+    userID = await user_utils.get_id_from_username(fro)
+
+    if not any(message):
+        return "Please specify a new leaderboard size."
+
+    size_str = message[0]
+    if not size_str.isdigit():
+        return "Invalid size!"
+
+    size = int(size_str)
+    if size > 1000:
+        size = 1000
+    elif size < 1:
+        size = 1
+
+    await user_utils.update_leaderboard_size(userID, size)
+    return f"Your leaderboard size has been updated to {size}!"

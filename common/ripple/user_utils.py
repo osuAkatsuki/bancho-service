@@ -16,6 +16,17 @@ from constants import CHATBOT_USER_ID
 from objects import glob
 
 
+async def update_leaderboard_size(user_id: int, leaderboard_size: int) -> None:
+    """
+    Update a user's in-game leaderboard size preference.
+    """
+
+    await glob.db.execute(
+        "UPDATE users SET leaderboard_size = %s WHERE id = %s",
+        [leaderboard_size, user_id],
+    )
+
+
 async def get_playtime_total(user_id: int) -> int:
     """Get a users playtime for all gameModes combined."""
 
