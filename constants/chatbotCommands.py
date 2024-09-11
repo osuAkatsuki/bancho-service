@@ -2803,15 +2803,17 @@ async def leaderboard_size_cmd(fro: str, chan: str, message: list[str]) -> str:
     user_privs = await user_utils.get_privileges(userID)
 
     if not user_privs & privileges.USER_PREMIUM:
-        return "The leaderboardsize command is only available to Akatsuki premium users."
-    
+        return (
+            "The leaderboardsize command is only available to Akatsuki premium users."
+        )
+
     if not any(message):
         return "Please specify a new leaderboard size."
-    
+
     size_str = message[0]
     if not size_str.isnumeric():
         return "Invalid size!"
-    
+
     size = int(size_str)
     if size > 1000:
         size = 1000
