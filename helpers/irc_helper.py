@@ -1,37 +1,44 @@
 from __future__ import annotations
+
 import time
+from typing import TypedDict
 
 import orjson
+from amplitude.event import BaseEvent
 
 from constants import serverPackets
-from typing import TypedDict
 from objects import glob
+from objects import osuToken
 from objects import stream_messages
 from objects import tokenList
-from objects import osuToken
 
-from amplitude.event import BaseEvent
 
 def irc_username_safe(s: str) -> str:
     return s.replace(" ", "_")
 
+
 def clean_irc_variable(variable: str) -> str:
     return variable.strip(":").strip()
+
 
 def irc_prefix(privileges: int, is_irc: bool = False) -> str:
     if osuToken.is_staff(privileges):
         return "@"
-    
+
     if is_irc:
         return "+"
-    
-    return "" # osu clients have no prefix.
-    
+
+    return ""  # osu clients have no prefix.
+
+
 class IRCAuthResponse(TypedDict):
     username_safe: str
     user_id: int
 
-async def irc_authenticate(username_safe: str, login_token_hash: str) -> None | IRCAuthResponse:
+
+async def irc_authenticate(
+    username_safe: str, login_token_hash: str,
+) -> None | IRCAuthResponse:
     user_data = await glob.db.fetch(
         "SELECT u.username_safe, u.id FROM users u LEFT JOIN irc_tokens t "
         "ON u.id = t.userid WHERE t.token = %s AND u.username_safe = %s",
@@ -39,26 +46,31 @@ async def irc_authenticate(username_safe: str, login_token_hash: str) -> None | 
     )
     if user_data is None:
         return None
-    
+
     return IRCAuthResponse(
         username_safe=user_data["username_safe"],
         user_id=user_data["id"],
     )
+
 
 # TODO: rewrite that once dual session handling is implemented.
 async def irc_login(user_id: int, ip: str) -> osuToken.Token:
     # TODO: implement dual session handling for IRC and osu client.
     token = await osuToken.get_token_by_user_id(user_id)
     if token is not None:
-        await osuToken.kick(token_id=token["token_id"], reason="Logged in from another client.")
+        await osuToken.kick(
+            token_id=token["token_id"], reason="Logged in from another client.",
+        )
 
     token = await tokenList.addToken(
         user_id=user_id,
         ip=ip,
     )
-    
+
     if not osuToken.is_restricted(token["privileges"]):
-        await stream_messages.broadcast_data("main", await serverPackets.userPanel(user_id))
+        await stream_messages.broadcast_data(
+            "main", await serverPackets.userPanel(user_id),
+        )
 
     if glob.amplitude is not None:
         glob.amplitude.track(
@@ -78,12 +90,13 @@ async def irc_login(user_id: int, ip: str) -> osuToken.Token:
 
     return token
 
+
 # TODO: rewrite that once dual session handling is implemented.
 async def irc_logout(token_id: str) -> None:
     token = await osuToken.get_token(token_id)
     if token is None:
         return
-    
+
     # Part all joined channels
     await osuToken.leaveAllChannels(token["token_id"])
 
@@ -130,4 +143,3 @@ async def irc_logout(token_id: str) -> None:
                 ip=token["ip"],
             ),
         )
-    

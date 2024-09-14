@@ -16,11 +16,11 @@ sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
 import settings
-from constants.irc_commands import IRCCommands
-from common.ripple import user_utils
-from helpers import irc_helper
 from common import exception_handling
 from common.log import logging_config
+from common.ripple import user_utils
+from constants.irc_commands import IRCCommands
+from helpers import irc_helper
 from objects import osuToken
 
 
@@ -34,7 +34,7 @@ class IRCMessage:
 
 
 WELCOME_MESSAGE = IRCMessage(
-    code=IRCCommands.RPL_WELCOME, message="Welcome to Akatsuki IRC!"
+    code=IRCCommands.RPL_WELCOME, message="Welcome to Akatsuki IRC!",
 )
 MOTD_START_MESSAGE = IRCMessage(code=IRCCommands.RPL_MOTDSTART, message="-")
 MOTD_MSG_MESSAGE = IRCMessage(code=IRCCommands.RPL_MOTD, message="- {msg}")
@@ -47,7 +47,7 @@ MISSING_NICK_MESSAGE = IRCMessage(
 
 # Auth message is only special case and it requires different IRC codes than usual.
 AUTH_WELCOME_MESSAGE = IRCMessage(
-    code=IRCCommands.RPL_MOTD, message="Welcome to Akatsuki IRC!"
+    code=IRCCommands.RPL_MOTD, message="Welcome to Akatsuki IRC!",
 )
 AUTH_START_MESSAGE = IRCMessage(code=IRCCommands.RPL_MOTD, message="-")
 AUTH_FAILED_MOTD = [
@@ -57,7 +57,7 @@ AUTH_FAILED_MOTD = [
 ]
 AUTH_END_MESSAGE = IRCMessage(code=IRCCommands.RPL_MOTD, message="-")
 AUTH_FAILED_MESSAGE = IRCMessage(
-    code=IRCCommands.ERR_PASSWDMISMATCH, message="Bad authentication token."
+    code=IRCCommands.ERR_PASSWDMISMATCH, message="Bad authentication token.",
 )
 
 AddressType = tuple[str, int]
@@ -135,7 +135,7 @@ class IRCClient:
             return
 
         token = await osuToken.update_token(
-            self.token_id, ping_time=time.perf_counter()
+            self.token_id, ping_time=time.perf_counter(),
         )
         if token is None:
             logging.warning(
@@ -212,7 +212,7 @@ class IRCClient:
             if not self.is_authenticated:
                 try:
                     data = await asyncio.wait_for(self._reader.read(1024), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
             else:
                 data = await self._reader.read(1024)
@@ -270,7 +270,7 @@ class IRCClient:
         )
 
     async def send(self, message: str) -> None:
-        self._writer.write(f"{message}\r\n".encode("utf-8"))
+        self._writer.write(f"{message}\r\n".encode())
         await self._writer.drain()
 
     async def send_auth_failed_message(self) -> None:
@@ -279,7 +279,7 @@ class IRCClient:
 
         for msg in AUTH_FAILED_MOTD:
             await self.send(
-                MOTD_MSG_MESSAGE.to_string(self.irc_username).format(msg=msg)
+                MOTD_MSG_MESSAGE.to_string(self.irc_username).format(msg=msg),
             )
 
         await self.send(AUTH_END_MESSAGE.to_string(self.irc_username))
@@ -291,7 +291,7 @@ class IRCClient:
 
         for msg in self._server._motd:
             await self.send(
-                MOTD_MSG_MESSAGE.to_string(self.irc_username).format(msg=msg)
+                MOTD_MSG_MESSAGE.to_string(self.irc_username).format(msg=msg),
             )
 
         await self.send(MOTD_END_MESSAGE.to_string(self.irc_username))
@@ -377,7 +377,7 @@ class IRCServer:
     async def _send_outstanding_packets(self, client: IRCClient) -> None: ...
 
     async def _disconnect_inactive_client(
-        self, client: IRCClient, current_time: float
+        self, client: IRCClient, current_time: float,
     ) -> None: ...
 
     def get_client_by_username(self, username: str) -> IRCClient | None:
@@ -387,7 +387,7 @@ class IRCServer:
         return None
 
     def get_clients_by_ip(
-        self, ip: str, excluding_port: int | None = None
+        self, ip: str, excluding_port: int | None = None,
     ) -> list[IRCClient] | None:
         clients = []
         for client in self._clients.values():
