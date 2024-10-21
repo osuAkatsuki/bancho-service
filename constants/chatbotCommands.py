@@ -655,7 +655,7 @@ async def restrict(fro: str, chan: str, message: list[str]) -> str:
     # Put this user in restricted mode
     await user_utils.restrict(targetID)
 
-    # Inform user of restriction if they're offline
+    # Inform user of restriction if they're online
     if targetToken := await osuToken.get_token_by_user_id(targetID):
         await osuToken.notifyUserOfRestriction(targetToken["token_id"])
 
