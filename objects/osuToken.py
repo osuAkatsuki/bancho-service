@@ -1069,7 +1069,7 @@ async def updateCachedStats(token_id: str) -> None:
     )
 
 
-async def checkRestricted(token_id: str) -> None:
+async def notifyUserOfRestrictionStatusChange(token_id: str) -> None:
     """
     Check if this token is restricted. If so, send Aika message
 
@@ -1083,10 +1083,10 @@ async def checkRestricted(token_id: str) -> None:
     restricted = await user_utils.is_restricted(token["user_id"])
     if restricted:
         # Is restricted; notify them of restriction
-        await setRestricted(token_id)
+        await notifyUserOfRestriction(token_id)
     elif old_restricted:
         # Was previously restricted; notify them of unrestriction
-        await resetRestricted(token_id)
+        await informUserOfUnrestriction(token_id)
 
 
 async def disconnectUserIfBanned(token_id: str) -> None:
@@ -1106,10 +1106,9 @@ async def disconnectUserIfBanned(token_id: str) -> None:
         await logoutEvent.handle(token, deleteToken=False)
 
 
-async def setRestricted(token_id: str) -> None:
+async def notifyUserOfRestriction(token_id: str) -> None:
     """
-    Set this token as restricted, send Aika message to user
-    and send offline packet to everyone
+    Send Aika message to user to inform them of the restriciton.
 
     :return:
     """
@@ -1126,7 +1125,7 @@ async def setRestricted(token_id: str) -> None:
     )
 
 
-async def resetRestricted(token_id: str) -> None:
+async def informUserOfUnrestriction(token_id: str) -> None:
     """
     Send Aika message to alert the user that he has been unrestricted
     and he has to log in again.

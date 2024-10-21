@@ -21,7 +21,7 @@ class BanPubSubHandler(AbstractPubSubHandler):
 
         targetToken["privileges"] = await user_utils.get_privileges(userID)
         await osuToken.disconnectUserIfBanned(targetToken["token_id"])
-        await osuToken.checkRestricted(targetToken["token_id"])
+        await osuToken.notifyUserOfRestrictionStatusChange(targetToken["token_id"])
 
         logger.info(
             "Successfully handled ban event for user",
