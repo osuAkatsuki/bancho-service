@@ -38,6 +38,7 @@ osu_ver_regex = re.compile(
     r"(?P<stream>beta|cuttingedge|dev|tourney)?$",
 )
 
+
 class LoginData(TypedDict):
     username: str
     password_md5: bytes
@@ -50,6 +51,7 @@ class LoginData(TypedDict):
     adapters_md5: str
     uninstall_md5: str
     disk_signature_md5: str
+
 
 def parse_login_data(data: bytes) -> LoginData:
     """Parse data from the body of a login request."""
