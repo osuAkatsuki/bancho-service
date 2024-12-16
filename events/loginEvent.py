@@ -106,7 +106,10 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     routing_key=routing_key,
                 )
         except Exception:  # don't allow publish failure to block login
-            logger.warning("[Non-blocking] Failed to send bancho login request through AMQP", exc_info=True)
+            logger.warning(
+                "[Non-blocking] Failed to send bancho login request through AMQP",
+                exc_info=True,
+            )
 
         # Make sure we are not banned or locked
         priv = await user_utils.get_privileges(userID)
