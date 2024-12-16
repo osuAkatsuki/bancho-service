@@ -8,7 +8,6 @@ from datetime import timedelta as td
 
 import aio_pika
 import orjson
-
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
@@ -93,17 +92,20 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not await user_utils.authenticate(userID, loginData[1]):
             # Invalid password
             raise exceptions.loginFailedException()
-        
+
         try:
             # we have a user ID we can rely on, allow further processing of login body
-            bancho_login_request = {"login_body": web_handler.request.body.decode(), "user_id": userID}
+            bancho_login_request = {
+                "login_body": web_handler.request.body.decode(),
+                "user_id": userID,
+            }
 
             for routing_key in settings.BANCHO_LOGIN_ROUTING_KEYS:
                 await glob.amqp_channel.default_exchange.publish(
                     aio_pika.Message(body=orjson.dumps(bancho_login_request)),
                     routing_key=routing_key,
                 )
-        except Exception: # don't allow publish failure to block login
+        except Exception:  # don't allow publish failure to block login
             logger.exception("Failed to send bancho login request through AMQP")
 
         # Make sure we are not banned or locked

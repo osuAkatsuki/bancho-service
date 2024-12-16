@@ -45,7 +45,7 @@ async def startup() -> None:
     logger.info("Connecting to AMQP")
     try:
         glob.amqp = await aio_pika.connect_robust(
-            f"amqp://{settings.AMQP_USER}:{settings.AMQP_PASS}@{settings.AMQP_HOST}:{settings.AMQP_PORT}/"
+            f"amqp://{settings.AMQP_USER}:{settings.AMQP_PASS}@{settings.AMQP_HOST}:{settings.AMQP_PORT}/",
         )
 
         glob.amqp_channel = await glob.amqp.channel()
