@@ -150,11 +150,15 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         try:
             # we have a user ID we can rely on, allow further processing of login body
             login_data = parse_login_data(web_handler.request.body.decode())
-            bancho_login_request = login_data | {"user_id": userID}
+
+            amqp_login_message = login_data | {"user_id": userID}
+
+            # don't transport the `password_md5` key
+            del amqp_login_message["password_md5"]
 
             for routing_key in settings.BANCHO_LOGIN_ROUTING_KEYS:
                 await glob.amqp_channel.default_exchange.publish(
-                    aio_pika.Message(body=orjson.dumps(bancho_login_request)),
+                    aio_pika.Message(body=orjson.dumps(amqp_login_message)),
                     routing_key=routing_key,
                 )
         except Exception:  # don't allow publish failure to block login
