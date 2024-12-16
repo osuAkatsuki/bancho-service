@@ -165,6 +165,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             logger.warning(
                 "[Non-blocking] Failed to send bancho login request through AMQP",
                 exc_info=True,
+                extra={"user_id": userID},
             )
 
         # Make sure we are not banned or locked
