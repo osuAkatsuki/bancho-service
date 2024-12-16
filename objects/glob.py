@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 from typing import Any
 
-import httpx
 from amplitude import Amplitude
 from amplitude import Config as AmplitudeConfig
 
 import settings
 
 if TYPE_CHECKING:
+    import aio_pika
     import tornado.web
     from redis.asyncio import Redis
 
@@ -35,3 +34,6 @@ if settings.AMPLITUDE_API_KEY:
         # our user ids start from 1000
         AmplitudeConfig(min_id_length=4),
     )
+
+amqp: aio_pika.abc.AbstractConnection
+amqp_channel: aio_pika.abc.AbstractChannel
