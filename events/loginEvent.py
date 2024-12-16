@@ -149,7 +149,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         try:
             # we have a user ID we can rely on, allow further processing of login body
-            login_data = parse_login_data(web_handler.request.body.decode())
+            login_data = parse_login_data(web_handler.request.body)
 
             amqp_login_message = login_data | {"user_id": userID}
 
