@@ -6,10 +6,14 @@ import time
 from datetime import datetime as dt
 from datetime import timedelta as td
 
+import aio_pika
+import orjson
+
 from amplitude.event import BaseEvent
 from amplitude.event import EventOptions
 from amplitude.event import Identify
 
+import settings
 from common import generalUtils
 from common.constants import privileges
 from common.log import audit_logs
@@ -89,6 +93,15 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not await user_utils.authenticate(userID, loginData[1]):
             # Invalid password
             raise exceptions.loginFailedException()
+        
+        # we have a user ID we can rely on, allow further processing of login body
+        bancho_login_request = {"login_body": web_handler.request.body.decode(), "user_id": userID}
+
+        for routing_key in settings.BANCHO_LOGIN_ROUTING_KEYS:
+            await glob.amqp_channel.default_exchange.publish(
+                aio_pika.Message(body=orjson.dumps(bancho_login_request)),
+                routing_key=routing_key,
+            )
 
         # Make sure we are not banned or locked
         priv = await user_utils.get_privileges(userID)

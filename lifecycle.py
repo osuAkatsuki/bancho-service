@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import aio_pika
 import redis.asyncio as redis
 
 import settings
@@ -38,6 +39,18 @@ async def startup() -> None:
         await glob.redis.ping()
     except:
         logger.exception("Error connecting to redis")
+        raise
+
+    # Connect to AMQP
+    logger.info("Connecting to AMQP")
+    try:
+        glob.amqp = await aio_pika.connect_robust(
+            f"amqp://{settings.AMQP_USER}:{settings.AMQP_PASS}@{settings.AMQP_HOST}:{settings.AMQP_PORT}/"
+        )
+
+        glob.amqp_channel = await glob.amqp.channel()
+    except:
+        logger.exception("Error connecting to AMQP")
         raise
 
     # Load bancho_settings

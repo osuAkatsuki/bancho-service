@@ -1,3 +1,4 @@
+aio-pika
 aiomysql
 amplitude-analytics
 amplitude-experiment
