@@ -41,7 +41,7 @@ osu_ver_regex = re.compile(
 
 class LoginData(TypedDict):
     username: str
-    password_md5: bytes
+    password_md5: str
     osu_version: str
     utc_offset: int
     display_city: bool
@@ -79,7 +79,7 @@ def parse_login_data(data: bytes) -> LoginData:
 
     return {
         "username": username,
-        "password_md5": password_md5.encode(),
+        "password_md5": password_md5,
         "osu_version": osu_version,
         "utc_offset": int(utc_offset),
         "display_city": display_city == "1",
