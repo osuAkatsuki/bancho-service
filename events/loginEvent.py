@@ -5,6 +5,7 @@ import re
 import time
 from datetime import datetime as dt
 from datetime import timedelta as td
+from typing import TypedDict
 
 import aio_pika
 import orjson
@@ -36,6 +37,57 @@ osu_ver_regex = re.compile(
     r"^b(?P<ver>\d{8})(?:\.(?P<subver>\d))?"
     r"(?P<stream>beta|cuttingedge|dev|tourney)?$",
 )
+
+class LoginData(TypedDict):
+    username: str
+    password_md5: bytes
+    osu_version: str
+    utc_offset: int
+    display_city: bool
+    pm_private: bool
+    osu_path_md5: str
+    adapters_str: str
+    adapters_md5: str
+    uninstall_md5: str
+    disk_signature_md5: str
+
+def parse_login_data(data: bytes) -> LoginData:
+    """Parse data from the body of a login request."""
+    (
+        username,
+        password_md5,
+        remainder,
+    ) = data.decode().split("\n", maxsplit=2)
+
+    (
+        osu_version,
+        utc_offset,
+        display_city,
+        client_hashes,
+        pm_private,
+    ) = remainder.split("|", maxsplit=4)
+
+    (
+        osu_path_md5,
+        adapters_str,
+        adapters_md5,
+        uninstall_md5,
+        disk_signature_md5,
+    ) = client_hashes[:-1].split(":", maxsplit=4)
+
+    return {
+        "username": username,
+        "password_md5": password_md5.encode(),
+        "osu_version": osu_version,
+        "utc_offset": int(utc_offset),
+        "display_city": display_city == "1",
+        "pm_private": pm_private == "1",
+        "osu_path_md5": osu_path_md5,
+        "adapters_str": adapters_str,
+        "adapters_md5": adapters_md5,
+        "uninstall_md5": uninstall_md5,
+        "disk_signature_md5": disk_signature_md5,
+    }
 
 
 async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # token, data
@@ -95,10 +147,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
         try:
             # we have a user ID we can rely on, allow further processing of login body
-            bancho_login_request = {
-                "login_body": web_handler.request.body.decode(),
-                "user_id": userID,
-            }
+            login_data = parse_login_data(web_handler.request.body.decode())
+            bancho_login_request = login_data | {"user_id": userID}
 
             for routing_key in settings.BANCHO_LOGIN_ROUTING_KEYS:
                 await glob.amqp_channel.default_exchange.publish(
