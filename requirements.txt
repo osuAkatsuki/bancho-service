@@ -1,7 +1,7 @@
 aio-pika
 aiomysql
 amplitude-analytics
-amplitude-experiment
+amplitude-experiment==1.3.1
 bcrypt
 certifi
 cryptography
