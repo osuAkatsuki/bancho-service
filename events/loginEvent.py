@@ -106,6 +106,8 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         logger.warning("Failed to resolve a request IP for a login request")
         return responseTokenString, responseData
 
+    mcosu_version = web_handler.request.headers.get("x-mcosu-ver")
+
     # Split POST body so we can get username/password/hardware data
     loginData = web_handler.request.body.decode()[:-1].split("\n")
 
@@ -589,6 +591,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                         "privileges": userToken["privileges"],
                         "login_time": userToken["login_time"],
                         "source": "bancho-service",
+                        "mcosu_version": mcosu_version,
                     },
                     location_lat=geolocation["latitude"],
                     location_lng=geolocation["longitude"],
