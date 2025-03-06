@@ -250,7 +250,7 @@ async def userStats(userID: int, force: bool = False) -> bytes:
             (
                 (
                     userToken["ranked_score"]
-                    if userToken["pp"] < 0x8000
+                    if userToken["pp"] < 0x10000
                     else userToken["pp"]
                 ),
                 dataTypes.UINT64,
@@ -259,7 +259,7 @@ async def userStats(userID: int, force: bool = False) -> bytes:
             (userToken["playcount"], dataTypes.UINT32),
             (userToken["total_score"], dataTypes.UINT64),
             (userToken["global_rank"], dataTypes.UINT32),
-            (userToken["pp"] if userToken["pp"] < 0x8000 else 0, dataTypes.UINT16),
+            (userToken["pp"] if userToken["pp"] < 0x10000 else 0, dataTypes.UINT16),
         ),
     )
 
