@@ -48,9 +48,7 @@ async def handle(
     )
 
     # Delete token
-    if deleteToken:
-        await tokenList.deleteToken(token["token_id"])
-    else:
+    if not deleteToken:
         await osuToken.update_token(
             token["token_id"],
             kicked=True,

@@ -383,6 +383,7 @@ async def delete_token(token_id: str) -> None:
     if token is None:
         return
 
+    token_stream_name = f"tokens/{token_id}:messages"
     async with glob.redis.pipeline() as pipe:
         await pipe.delete(f"bancho:tokens:ids:{token['user_id']}")
         await pipe.delete(f"bancho:tokens:names:{safeUsername(token['username'])}")
@@ -390,6 +391,8 @@ async def delete_token(token_id: str) -> None:
         await pipe.delete(f"{make_key(token_id)}:channels")
         await pipe.delete(f"{make_key(token_id)}:spectators")
         await pipe.delete(f"{make_key(token_id)}:streams")
+        await pipe.delete(f"{make_key(token_id)}:stream_offsets")
+        await pipe.delete(f"bancho:streams:{token_stream_name}:messages")
         await pipe.delete(f"{make_key(token_id)}:message_history")
         await pipe.delete(f"{make_key(token_id)}:sent_away_messages")
         await pipe.delete(f"{make_key(token_id)}:processing_lock")

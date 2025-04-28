@@ -199,6 +199,7 @@ class handler(AsyncRequestHandler):
                 if userToken is None:
                     raise exceptions.tokenNotFoundException()
 
+                doLogout = False
                 # Keep reading packets until everything has been read
                 requestDataLen = len(requestData)
                 while pos < requestDataLen:
@@ -210,6 +211,11 @@ class handler(AsyncRequestHandler):
                     packetID, dataLength = PACKET_PROTO.unpack(leftData[:7])
                     assert isinstance(packetID, int) and isinstance(dataLength, int)
                     packetData = leftData[: dataLength + 7]
+
+                    # Stop handling packets on logout
+                    if packetID == 2:
+                        doLogout = True
+                        break
 
                     # Process/ignore packet
                     if packetID != 4:
@@ -253,6 +259,11 @@ class handler(AsyncRequestHandler):
                 responseData = await stream_messages.read_all_pending_data(
                     userToken["token_id"],
                 )
+
+                # on logout event, delete the players token and everything belonging to it
+                if doLogout:
+                    await tokenList.deleteToken(userToken["token_id"])
+                    userToken = None  # skip the check below
 
             except exceptions.tokenNotFoundException:
                 # Client thinks it's logged in when it's
