@@ -260,7 +260,7 @@ class handler(AsyncRequestHandler):
                     userToken["token_id"],
                 )
 
-                # on logout event, delete the players token and everything belonging to it 
+                # on logout event, delete the players token and everything belonging to it
                 if doLogout:
                     await tokenList.deleteToken(userToken["token_id"])
                     userToken = None  # skip the check below
