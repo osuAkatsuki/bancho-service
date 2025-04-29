@@ -19,6 +19,7 @@ from common.log import logging_config
 from constants import CHATBOT_USER_ID
 from events import logoutEvent
 from objects import osuToken
+from objects import tokenList
 
 CRON_RUN_INTERVAL = 10 * 60  # seconds
 
@@ -51,6 +52,7 @@ async def _revoke_token_if_inactive(token: osuToken.Token) -> None:
         )
 
         await logoutEvent.handle(token)
+        await tokenList.deleteToken(token["token_id"])
 
 
 async def _timeout_inactive_users() -> None:
