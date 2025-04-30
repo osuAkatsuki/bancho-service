@@ -392,10 +392,6 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                     userID,
                     f"{donor_role_name} subscription expired.",
                 )
-                await audit_logs.send_log_as_discord_webhook(
-                    message=f"[{username}](https://akatsuki.gg/u/{userID})'s {donor_role_name} subscription has expired.",
-                    discord_channel="ac_general",
-                )
 
                 await osuToken.enqueue(
                     userToken["token_id"],
