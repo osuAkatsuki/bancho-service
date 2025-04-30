@@ -25,7 +25,7 @@ async def handle(token: osuToken.Token, rawPacketData: bytes) -> None:
 
         # Make sure the name is valid
         match_name = packetData["matchName"].strip()
-        if not match_name:
+        if not match_name or len(match_name) > 50:
             raise exceptions.matchCreateError()
 
         match_creation_enabled = feature_flags.is_feature_enabled(
