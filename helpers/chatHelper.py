@@ -806,7 +806,7 @@ async def send_message(
 
         await audit_logs.send_log_as_discord_webhook(
             message=audit_log_message,
-            discord_channel="ac_confidential",
+            discord_channel="ac_general",
         )
 
     logger.info(
