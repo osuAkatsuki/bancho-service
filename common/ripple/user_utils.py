@@ -38,7 +38,7 @@ async def get_playtime_total(user_id: int) -> int:
         """,
         [user_id],
     )
-    return res["total_playtime"] if res else 0  # type: ignore[no-any-return]
+    return res["total_playtime"] if res else 0
 
 
 async def update_whitelist_status(user_id: int, new_value: int) -> None:
@@ -211,7 +211,7 @@ async def get_user_pp_for_mode(
         """,
         [user_id, game_mode + mode_offset],
     )
-    return result["pp"] if result else 0  # type: ignore[no-any-return]
+    return result["pp"] if result else 0
 
 
 async def is_not_banned_or_restricted(user_id: int) -> bool:
@@ -343,7 +343,7 @@ async def get_privileges(user_id: int) -> int:
         [user_id],
     )
 
-    return result["privileges"] if result else 0  # type: ignore[no-any-return]
+    return result["privileges"] if result else 0
 
 
 async def get_freeze_restriction_date(user_id: int) -> int:
@@ -352,7 +352,7 @@ async def get_freeze_restriction_date(user_id: int) -> int:
         "SELECT frozen FROM users WHERE id = %s",
         [user_id],
     )
-    return result["frozen"] if result else 0  # type: ignore[no-any-return]
+    return result["frozen"] if result else 0
 
 
 async def freeze(user_id: int, *, author_user_id: int = CHATBOT_USER_ID) -> None:
@@ -423,7 +423,7 @@ async def get_absolute_silence_end(user_id: int) -> int:
         "SELECT silence_end FROM users WHERE id = %s",
         [user_id],
     )
-    return rec["silence_end"] if rec else 0  # type: ignore[no-any-return]
+    return rec["silence_end"] if rec else 0
 
 
 async def get_remaining_silence_time(user_id: int) -> int:
@@ -521,7 +521,7 @@ async def get_iso_country_code(user_id: int) -> str:
         "SELECT country FROM users WHERE id = %s",
         [user_id],
     )
-    return rec["country"] if rec else "XX"  # type: ignore[no-any-return]
+    return rec["country"] if rec else "XX"
 
 
 async def set_iso_country_code(user_id: int, iso_country_code: str) -> None:
@@ -780,7 +780,7 @@ async def get_absolute_donor_expiry_time(user_id: int) -> int:
         "SELECT donor_expire FROM users WHERE id = %s",
         [user_id],
     )
-    return data["donor_expire"] if data else 0  # type: ignore[no-any-return]
+    return data["donor_expire"] if data else 0
 
 
 async def set_absolute_donor_expiry_time(user_id: int, donor_expire: int) -> None:
