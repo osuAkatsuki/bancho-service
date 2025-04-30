@@ -14,10 +14,7 @@ from objects import glob
 RETRY_INTERVAL = 8
 MAX_RETRIES = 10
 
-DISCORD_CHANNELS = {
-    "ac_general": settings.WEBHOOK_AC_GENERAL,
-    "ac_confidential": settings.WEBHOOK_AC_CONFIDENTIAL,
-}
+DISCORD_CHANNELS = {"ac_general": settings.WEBHOOK_AC_GENERAL}
 DISCORD_WEBHOOK_EMBED_COLOR = 0x7352C4
 
 

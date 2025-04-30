@@ -704,7 +704,7 @@ async def authorize_login_and_activate_new_account(
         # Running under wine, check only by uniqueid
         await audit_logs.send_log_as_discord_webhook(
             message=f"[{username}](https://akatsuki.gg/u/{user_id}) running under wine:\n**Full data:** {hwid_set}\n**Usual wine mac address hash:** b4ec3c4334a0249dae95c284ec5983df\n**Usual wine disk id:** ffae06fb022871fe9beb58b005c5e21d",
-            discord_channel="ac_confidential",
+            discord_channel="ac_general",
         )
         logger.debug("Veryfing with Linux/Mac hardware")
         match = await glob.db.fetchAll(

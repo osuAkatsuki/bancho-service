@@ -236,7 +236,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
         if not user_utils.validate_hwid_set(clientData):
             await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid hash set ({clientData}) for user [{username}](https://akatsuki.gg/u/{userID}) in HWID check",
-                discord_channel="ac_confidential",
+                discord_channel="ac_general",
             )
             raise exceptions.haxException()
 
@@ -394,7 +394,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
                 )
                 await audit_logs.send_log_as_discord_webhook(
                     message=f"[{username}](https://akatsuki.gg/u/{userID})'s {donor_role_name} subscription has expired.",
-                    discord_channel="ac_confidential",
+                    discord_channel="ac_general",
                 )
 
                 await osuToken.enqueue(
@@ -719,7 +719,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
 
             await audit_logs.send_log_as_discord_webhook(
                 message=f"Invalid bancho login request from **{request_ip_address}** (insufficient POST data)",
-                discord_channel="ac_confidential",
+                discord_channel="ac_general",
             )
 
         # Return token string and data
