@@ -1394,8 +1394,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
 
     if not (
         res := await glob.db.fetch(  # bsid is needed for dl link so we need it either way
-            "SELECT `ranked`, `beatmapset_id`, `song_name`, `mode`, `max_combo`, `hit_length`, `ar`, `od`, `bpm`"
-            "FROM `beatmaps` WHERE `beatmap_id` = %s",
+            "SELECT * " "FROM `beatmaps` WHERE `beatmap_id` = %s",
             [token["last_np"]["beatmap_id"]],
         )
     ):
