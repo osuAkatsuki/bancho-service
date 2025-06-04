@@ -1465,9 +1465,6 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
     # Get the nominator profile URL just once
     nominator_profile_url = user_utils.get_profile_url(token["user_id"])
 
-    # Get the last /np'd Beatmap ID
-    last_np_map_id = token["last_np"]["beatmap_id"]
-
     webhook = discord.Webhook(
         url=settings.WEBHOOK_NOW_RANKED,
         colour=status_to_colour(status),
@@ -1475,7 +1472,7 @@ async def editMap(fro: str, chan: str, message: list[str]) -> str | None:
         author_url=f"{nominator_profile_url}",
         author_icon=f"https://a.akatsuki.gg/{token['user_id']}",
         title=f'{mode_to_emoji(res["mode"])} {res["song_name"]}',
-        title_url=f"https://beatmaps.akatsuki.gg/api/d/{res['beatmapset_id']}",
+        title_url=f"https://akatsuki.gg/api/b/{res['beatmap_id']}",
         desc=f'### This {message[1]} has received a status update. 📝\n**Length**: `{generalUtils.secondsToReadable(res["hit_length"])}` **BPM**: `{res["bpm"]}`\n**AR**: `{res["ar"]}` **OD**: `{res["od"]}` **Combo**: `{res["max_combo"]}x`',
         fields=[
             {"name": k, "value": v}
