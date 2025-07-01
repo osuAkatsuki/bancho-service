@@ -1012,7 +1012,7 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 FROM scores_first
                 INNER JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
                 INNER JOIN users ON users.id = scores_first.userid
-                WHERE beatmap_md5 = %s
+                WHERE scores_first.beatmap_md5 = %s
                 AND scores_first.mode = %s
                 AND scores_first.rx = %s
                 AND users.privileges & 1
