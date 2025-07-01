@@ -1034,23 +1034,20 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 logging.info(
                     "Updating first place score",
                     extra={
+                        "score_id": score["id"],
                         "user_id": user_id,
                         "beatmap_md5": score["beatmap_md5"],
                         "play_mode": score["play_mode"],
                         "rx": rx,
                         "score_value": score["score_value"],
-                        "previous_score_id": (
-                            existing_first_place["scoreid"]
-                            if existing_first_place
-                            else None
-                        ),
-                        "previous_user_id": (
-                            existing_first_place["userid"]
-                            if existing_first_place
-                            else None
-                        ),
-                        "previous_score_value": (
-                            existing_first_place["score_value"]
+                        "time": score["time"],
+                        "previous": (
+                            {
+                                "score_id": existing_first_place["scoreid"],
+                                "user_id": existing_first_place["userid"],
+                                "score_value": existing_first_place["score_value"],
+                                "time": existing_first_place["time"],
+                            }
                             if existing_first_place
                             else None
                         ),
