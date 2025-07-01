@@ -1009,7 +1009,8 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
             # Get the current first place.
             existing_first_place = await glob.db.fetch(
                 f"""
-                SELECT scores_first.scoreid, scores_first.userid, scores.{order} AS score_value, time
+                SELECT scores_first.scoreid, scores_first.userid,
+                scores.{order} AS score_value, scores.time
                 FROM scores_first
                 INNER JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
                 INNER JOIN users ON users.id = scores_first.userid
