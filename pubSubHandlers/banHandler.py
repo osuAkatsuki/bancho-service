@@ -12,16 +12,19 @@ class BanPubSubHandler(AbstractPubSubHandler):
 
         logger.info("Handling ban event for user", extra={"user_id": userID})
 
-        # Remove the user from global, country and first place leaderboards
         await user_utils.remove_from_leaderboard(userID)
         await user_utils.remove_user_first_places(userID)
 
         if not (targetToken := await osuToken.get_token_by_user_id(userID)):
+            logger.error(
+                "Failed to find user by id in ban pubsub handler",
+                extra={"user_id": userID},
+            )
             return
 
         targetToken["privileges"] = await user_utils.get_privileges(userID)
-        await osuToken.disconnectUserIfBanned(targetToken["token_id"])
-        await osuToken.notifyUserOfRestrictionStatusChange(targetToken["token_id"])
+        await osuToken.disconnect_user_if_banned(targetToken["token_id"])
+        await osuToken.notify_user_of_restriction_status_change(targetToken["token_id"])
 
         logger.info(
             "Successfully handled ban event for user",

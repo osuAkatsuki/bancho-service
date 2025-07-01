@@ -1072,7 +1072,7 @@ async def updateCachedStats(token_id: str) -> None:
     )
 
 
-async def notifyUserOfRestrictionStatusChange(token_id: str) -> None:
+async def notify_user_of_restriction_status_change(token_id: str) -> None:
     """
     Check if this token is restricted. If so, send Aika message
 
@@ -1092,7 +1092,7 @@ async def notifyUserOfRestrictionStatusChange(token_id: str) -> None:
         await informUserOfUnrestriction(token_id)
 
 
-async def disconnectUserIfBanned(token_id: str) -> None:
+async def disconnect_user_if_banned(token_id: str) -> None:
     """
     Check if this user is banned. If so, disconnect it.
 
