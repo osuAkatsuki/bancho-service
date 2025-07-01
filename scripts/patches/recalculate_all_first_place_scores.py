@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging
 import os
 import sys
@@ -10,6 +11,8 @@ import sys
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
+from common import exception_handling
+from common.log import logging_config
 from common.ripple import user_utils
 from objects import glob
 
@@ -25,4 +28,11 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    exit(asyncio.run(main()))
+    logging_config.configure_logging()
+    exception_handling.hook_exception_handlers()
+    atexit.register(exception_handling.unhook_exception_handlers)
+    try:
+        exit_code = asyncio.run(main())
+    except KeyboardInterrupt:
+        exit_code = 0
+    exit(exit_code)
