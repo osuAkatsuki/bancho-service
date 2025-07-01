@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from time import localtime
 from time import strftime
@@ -1015,7 +1016,7 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 WHERE scores_first.beatmap_md5 = %s
                 AND scores_first.mode = %s
                 AND scores_first.rx = %s
-                AND users.privileges & 1
+                AND users.privileges & 3 = 3
                 """,
                 [score["beatmap_md5"], score["play_mode"], rx],
             )
@@ -1026,6 +1027,26 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 not existing_first_place
                 or score["score_value"] > existing_first_place["score_value"]
             ):
+                logging.info(
+                    "Updating first place score",
+                    extra={
+                        "user_id": user_id,
+                        "beatmap_md5": score["beatmap_md5"],
+                        "play_mode": score["play_mode"],
+                        "rx": rx,
+                        "score_value": score["score_value"],
+                        "previous_score_id": (
+                            existing_first_place["scoreid"]
+                            if existing_first_place
+                            else None
+                        ),
+                        "previous_user_id": (
+                            existing_first_place["userid"]
+                            if existing_first_place
+                            else None
+                        ),
+                    },
+                )
                 await glob.db.execute(
                     "REPLACE INTO scores_first VALUES (%s, %s, %s, %s, %s)",
                     [
