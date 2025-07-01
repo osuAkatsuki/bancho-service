@@ -997,7 +997,7 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
     for rx, table_name in enumerate(("scores", "scores_relax", "scores_ap")):
         order = "pp" if rx in (1, 2) else "score"
         for score in await glob.db.fetchAll(
-            "SELECT s.id, s.{order} AS score_value, s.play_mode, "
+            "SELECT s.id, s.{order} AS score_value, s.play_mode, s.time, "
             "s.beatmap_md5, b.ranked FROM {t} s "
             "LEFT JOIN beatmaps b USING(beatmap_md5) "
             "WHERE s.userid = %s AND s.completed = 3 "
@@ -1009,7 +1009,7 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
             # Get the current first place.
             existing_first_place = await glob.db.fetch(
                 f"""
-                SELECT scores_first.scoreid, scores_first.userid, scores.{order} AS score_value
+                SELECT scores_first.scoreid, scores_first.userid, scores.{order} AS score_value, time
                 FROM scores_first
                 INNER JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
                 INNER JOIN users ON users.id = scores_first.userid
@@ -1023,9 +1023,12 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
 
             # Check if our score is better than the current #1.
             # If it is, then add/update scores_first.
-            if (
-                not existing_first_place
-                or score["score_value"] > existing_first_place["score_value"]
+            if not existing_first_place or (
+                score["score_value"] > existing_first_place["score_value"]
+                or (
+                    score["score_value"] == existing_first_place["score_value"]
+                    and score["time"] < existing_first_place["time"]
+                )
             ):
                 logging.info(
                     "Updating first place score",
