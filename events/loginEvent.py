@@ -293,7 +293,7 @@ async def handle(web_handler: AsyncRequestHandler) -> tuple[str, bytes]:  # toke
             },
         )
 
-        await osuToken.notifyUserOfRestrictionStatusChange(userToken["token_id"])
+        await osuToken.notify_user_of_restriction_status_change(userToken["token_id"])
 
         """ osu!Akatuki account freezing. """
 
