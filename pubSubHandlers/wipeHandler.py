@@ -14,7 +14,7 @@ class WipePubSubHandler(AbstractPubSubHandler):
             extra={"user_id": userID},
         )
 
-        await user_utils.remove_first_place(userID, rx, gm)
+        await user_utils.remove_user_first_places(userID, rx, gm)
         await user_utils.remove_from_specified_leaderboard(userID, gm, rx)
 
         logger.info(

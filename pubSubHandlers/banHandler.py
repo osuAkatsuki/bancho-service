@@ -14,7 +14,7 @@ class BanPubSubHandler(AbstractPubSubHandler):
 
         # Remove the user from global, country and first place leaderboards
         await user_utils.remove_from_leaderboard(userID)
-        await user_utils.remove_first_place(userID)
+        await user_utils.remove_user_first_places(userID)
 
         if not (targetToken := await osuToken.get_token_by_user_id(userID)):
             return

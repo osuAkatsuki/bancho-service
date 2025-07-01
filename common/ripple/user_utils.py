@@ -929,7 +929,7 @@ async def get_remaining_overwrite_wait(user_id: int) -> int:
     return rec["previous_overwrite"]  # type: ignore[no-any-return]
 
 
-async def remove_first_place(
+async def remove_user_first_places(
     user_id: int,
     # Filter params
     akat_mode: int | None = None,
