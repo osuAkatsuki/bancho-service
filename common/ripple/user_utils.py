@@ -983,6 +983,8 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
     give them back their #1 scores.
 
     This works for vanilla, relax and autopilot.
+
+    NOTE: this function ASSUMES that you're calling it with an unbanned user
     """
 
     # The algorithm works as follows:
@@ -1008,10 +1010,12 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                 f"""
                 SELECT scores_first.scoreid, scores_first.userid, scores.{order} AS score_value
                 FROM scores_first
-                JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
+                INNER JOIN {table_name} AS scores ON scores.id = scores_first.scoreid
+                INNER JOIN users ON users.id = scores_first.userid
                 WHERE beatmap_md5 = %s
                 AND scores_first.mode = %s
                 AND scores_first.rx = %s
+                AND users.privileges & 1
                 """,
                 [score["beatmap_md5"], score["play_mode"], rx],
             )
