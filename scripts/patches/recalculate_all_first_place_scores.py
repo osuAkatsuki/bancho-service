@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import sys
+
+sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 
 import lifecycle
 from common.ripple import user_utils
