@@ -1045,6 +1045,11 @@ async def recalculate_and_update_first_place_scores(user_id: int) -> None:
                             if existing_first_place
                             else None
                         ),
+                        "previous_score_value": (
+                            existing_first_place["score_value"]
+                            if existing_first_place
+                            else None
+                        ),
                     },
                 )
                 await glob.db.execute(
