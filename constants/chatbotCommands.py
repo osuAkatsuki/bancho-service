@@ -2753,6 +2753,7 @@ async def multiplayer(fro: str, chan: str, message: list[str]) -> str | None:
 
 USER_IDS_WHITELISTED_FOR_PY_COMMAND: set[int] = {1001, 1935}
 
+
 @command(trigger="!switch", hidden=False)
 async def switch(fro: str, chan: str, message: list[str]) -> str:
     if not (token := await osuToken.get_token_by_username(fro)):
@@ -2760,6 +2761,7 @@ async def switch(fro: str, chan: str, message: list[str]) -> str:
 
     await osuToken.enqueue(token["token_id"], serverPackets.switchServer("c.cmyui.xyz"))
     return "You will now be sent to the new server."
+
 
 @command(trigger="!py", privs=privileges.ADMIN_CAKER, hidden=False)
 async def runPython(fro: str, chan: str, message: list[str]) -> str:
